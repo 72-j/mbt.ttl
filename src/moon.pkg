@@ -1,8 +1,8 @@
 import {
   "moonbitlang/core/cmp",
   "moonbitlang/core/debug",
-  "moonbitlang/async/io",
-  "moonbitlang/async/socket",
+  // "moonbitlang/async/io",
+  // "moonbitlang/async/socket",
   // "moonbitlang/async/fs",
   "tonyfettes/utf8"
 }
