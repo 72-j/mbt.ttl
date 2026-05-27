@@ -33,7 +33,6 @@ impl IriErrOut for IriError with fn position(self : IriError) -> Int {
     IriError::InvalidIriCodePoint(_, pos) => pos
     IriError::InvalidPercentEncoding(pos) => pos
     IriError::PathStartingWithTwoSlashes(pos) => pos
-    IriError::Expected(_, pos) => pos
     // _ => 0 // 默认位置
   }
 }
@@ -335,8 +334,18 @@ pub(all) suberror LexerError {
 
 ///|
 pub(all) suberror LanguageTagParseError {
-  LanguageTagParseError
+  // LanguageTagParseError
   TagParseErr(TagParseErr)
+}
+
+///|
+impl Show for LanguageTagParseError with fn output(self, logger : &Logger) -> Unit {
+  match self {
+    LanguageTagParseError::TagParseErr(e) => {
+      logger.write_string("Language Tag Parse Error: ")
+      logger.write_string(e.to_string())
+    }
+  }
 }
 
 ///|
@@ -349,4 +358,18 @@ pub(all) suberror TagParseErr {
   SubtagTooLong
   EmptySubtag
   TooManyExtlangs
+}
+
+///|
+impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
+  match self {
+    TagParseErr::EmptyExtension => logger.write_string("EmptyExtension")
+    TagParseErr::EmptyPrivateUse => logger.write_string("EmptyPrivateUse")
+    TagParseErr::ForbiddenChar => logger.write_string("ForbiddenChar")
+    TagParseErr::InvalidSubtag => logger.write_string("InvalidSubtag")
+    TagParseErr::InvalidLanguage => logger.write_string("InvalidLanguage")
+    TagParseErr::SubtagTooLong => logger.write_string("SubtagTooLong")
+    TagParseErr::EmptySubtag => logger.write_string("EmptySubtag")
+    TagParseErr::TooManyExtlangs => logger.write_string("TooManyExtlangs")
+  }
 }

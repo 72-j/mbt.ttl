@@ -1,9 +1,7 @@
-
 ///|
 pub struct LexerOptions {
-  base_iri : Iri[StringView]?
+  base_iri : Iri?
 } derive(Default)
-
 
 ///|
 pub struct Lexer[TR] {
@@ -30,8 +28,9 @@ pub struct TextPosition {
   line : UInt64
   column : UInt64
   offset : UInt64
-}derive(Default)
+} derive(Default)
 
+///|
 fn TextPosition::TextPosition(
   line : UInt64,
   column : UInt64,
@@ -40,6 +39,7 @@ fn TextPosition::TextPosition(
   { line, column, offset }
 }
 
+///|
 impl Show for TextPosition with fn output(self, logger : &Logger) -> Unit {
   logger.write_string("[")
   logger.write_string(self.line.to_string())
@@ -49,7 +49,6 @@ impl Show for TextPosition with fn output(self, logger : &Logger) -> Unit {
   logger.write_string(self.offset.to_string())
   logger.write_string("]")
 }
-
 
 ///|
 pub fn[TR] Lexer::new(
@@ -152,7 +151,6 @@ pub async fn[TR] Lexer::extend_from_reader(
   Ok(())
 }
 
-
 ///|
 pub async fn[TR] Lexer::extend_from_async_read(
   self : Lexer[TR],
@@ -192,7 +190,6 @@ pub async fn[TR] Lexer::extend_from_async_read(
 
   Ok(())
 }
-
 
 ///|
 pub fn[TR] Lexer::shrink_data(self : Lexer[TR]) -> Unit {
@@ -358,7 +355,6 @@ pub fn[TR] Lexer::location_from_buffer_offset_range(
       self.previous_position.global_offset + Int::to_uint64(offset_range.end),
     ),
   }
-
 }
 
 ///|
@@ -403,7 +399,6 @@ pub fn[TR] Lexer::last_token_source(self : Lexer[TR]) -> String {
 pub fn[TR] Lexer::is_end(self : Lexer[TR]) -> Bool {
   self.is_ending && self.data.length() == self.position.buffer_offset
 }
-
 
 ///|
 fn[TR] Lexer::skip_whitespaces(self : Lexer[TR]) -> Bool? {
@@ -519,7 +514,6 @@ fn Lexer::find_line_end(buf : Bytes, start : Int) -> Int? {
   None
 }
 
-
 ///|
 fn Lexer::find_number_of_line_jumps_and_start_of_last_line(
   bytes : Bytes,
@@ -551,7 +545,6 @@ fn Lexer::find_number_of_line_jumps_and_start_of_last_line(
 
   (jumps, last_start)
 }
-
 
 ///|
 fn Lexer::column_from_bytes(bytes : Bytes) -> UInt64 {

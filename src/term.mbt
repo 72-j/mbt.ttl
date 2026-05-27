@@ -1,36 +1,35 @@
+///|
+// pub enum NamedOrBlankNodeRef {
+//   NamedNodeRef(NamedNodeRef)
+//   BlankNodeRef(BlankNodeRef)
+// }
 
 ///|
-pub enum NamedOrBlankNodeRef {
-  NamedNodeRef(NamedNodeRef)
-  BlankNodeRef(BlankNodeRef)
-}
+// pub fn NamedOrBlankNodeRef::is_named_node(self : NamedOrBlankNodeRef) -> Bool {
+//   match self {
+//     NamedOrBlankNodeRef::NamedNodeRef(_) => true
+//     NamedOrBlankNodeRef::BlankNodeRef(_) => false
+//   }
+// }
 
 ///|
-pub fn NamedOrBlankNodeRef::is_named_node(self : NamedOrBlankNodeRef) -> Bool {
-  match self {
-    NamedOrBlankNodeRef::NamedNodeRef(_) => true
-    NamedOrBlankNodeRef::BlankNodeRef(_) => false
-  }
-}
+// pub fn NamedOrBlankNodeRef::is_blank_node(self : NamedOrBlankNodeRef) -> Bool {
+//   match self {
+//     NamedOrBlankNodeRef::NamedNodeRef(_) => false
+//     NamedOrBlankNodeRef::BlankNodeRef(_) => true
+//   }
+// }
 
 ///|
-pub fn NamedOrBlankNodeRef::is_blank_node(self : NamedOrBlankNodeRef) -> Bool {
-  match self {
-    NamedOrBlankNodeRef::NamedNodeRef(_) => false
-    NamedOrBlankNodeRef::BlankNodeRef(_) => true
-  }
-}
-
-///|
-pub fn NamedOrBlankNodeRef::into_owned(
-  self : NamedOrBlankNodeRef,
-) -> NamedOrBlankNode {
-  match self {
-    NamedOrBlankNodeRef::NamedNodeRef(node) =>
-      NamedOrBlankNode::NamedNode(node.into_owned())
-    NamedOrBlankNodeRef::BlankNodeRef(node) => NamedOrBlankNode::BlankNode(node)
-  }
-}
+// pub fn NamedOrBlankNodeRef::into_owned(
+//   self : NamedOrBlankNodeRef,
+// ) -> NamedOrBlankNode {
+//   match self {
+//     NamedOrBlankNodeRef::NamedNodeRef(node) =>
+//       NamedOrBlankNode::NamedNode(node.into_owned())
+//     NamedOrBlankNodeRef::BlankNodeRef(node) => NamedOrBlankNode::BlankNode(node)
+//   }
+// }
 
 ///|
 pub(all) enum NamedOrBlankNode {
@@ -39,7 +38,7 @@ pub(all) enum NamedOrBlankNode {
 } derive(Debug)
 
 ///|
-pub fn NamedOrBlankNode::into(self : NamedOrBlankNode) -> GraphName {
+pub fn NamedOrBlankNode::into_enum(self : NamedOrBlankNode) -> GraphName {
   match self {
     NamedOrBlankNode::NamedNode(v) => GraphName::NamedNode(v)
     NamedOrBlankNode::BlankNode(v) => GraphName::BlankNode(v)
@@ -50,9 +49,9 @@ pub fn NamedOrBlankNode::into(self : NamedOrBlankNode) -> GraphName {
 pub fn NamedOrBlankNode::as_ref(self : NamedOrBlankNode) -> NamedOrBlankNodeRef {
   match self {
     NamedOrBlankNode::NamedNode(node) =>
-      NamedOrBlankNodeRef::NamedNodeRef(node.as_ref())
+      NamedOrBlankNode::NamedNode(node.as_ref())
     NamedOrBlankNode::BlankNode(node) =>
-      NamedOrBlankNodeRef::BlankNodeRef(node.as_ref())
+      NamedOrBlankNode::BlankNode(node.as_ref())
   }
 }
 
@@ -87,18 +86,27 @@ pub(all) struct NamedNode {
 } derive(Debug, Eq, Hash)
 
 ///|
-pub(all) struct NamedNodeRef {
-  iri : StringView
-} derive(Debug, Eq, Hash)
-
-///|
-fn NamedNodeRef::NamedNodeRef(iri : String) -> NamedNodeRef {
-  NamedNodeRef(iri)
+impl Show for NamedNode with fn to_string(self : NamedNode) -> String {
+  self.iri
 }
 
 ///|
-pub fn NamedNodeRef::new_unchecked(iri : String) -> NamedNodeRef {
-  NamedNodeRef(iri)
+// pub(all) struct NamedNodeRef {
+//   iri : StringView
+// } derive(Debug, Eq, Hash)
+
+// impl Show for NamedNodeRef with to_string(self : NamedNodeRef) -> String {
+//   self.iri.to_owned()
+// }
+
+///|
+// fn NamedNodeRef::NamedNodeRef(iri : StringView) -> NamedNodeRef {
+//   NamedNodeRef::{ iri, }
+// }
+
+///|
+pub fn NamedNodeRef::new_unchecked(iri : StringView) -> NamedNodeRef {
+  NamedNode::NamedNode(iri.to_owned())
 }
 
 ///|
@@ -111,7 +119,7 @@ pub fn NamedNode::NamedNode(iri : String) -> NamedNode {
 
 ///|
 pub fn NamedNodeRef::into_owned(self : NamedNodeRef) -> NamedNode {
-  NamedNode::NamedNode(self.iri.to_owned())
+  NamedNode::NamedNode(self.iri)
 }
 
 ///|
@@ -120,7 +128,7 @@ pub fn NamedNode::as_ref(self : NamedNode) -> NamedNodeRef {
 }
 
 ///|
-pub fn NamedNode::into(self : NamedNode) -> NamedOrBlankNode {
+pub fn NamedNode::into_enum(self : NamedNode) -> NamedOrBlankNode {
   NamedOrBlankNode::NamedNode(self)
 }
 
@@ -188,7 +196,6 @@ pub fn GraphName::into_owned(self : GraphName) -> GraphName {
 }
 
 ///|
-type GraphNameRef = GraphName
 
 ///|
 pub struct Quad {
@@ -209,29 +216,29 @@ pub fn Quad::Quad(
 }
 
 ///|
-pub struct QuadRef {
-  subject : NamedOrBlankNodeRef
-  predicate : NamedNodeRef
-  object : TermRef
-  graph_name : GraphNameRef
-}
+// pub struct QuadRef {
+//   subject : NamedOrBlankNodeRef
+//   predicate : NamedNodeRef
+//   object : TermRef
+//   graph_name : GraphNameRef
+// }
 
 ///|
-pub fn QuadRef::new(
-  subject : NamedOrBlankNodeRef,
-  predicate : NamedNodeRef,
-  object : TermRef,
-  graph_name : GraphNameRef,
-) -> QuadRef {
-  { subject, predicate, object, graph_name }
-}
+// pub fn QuadRef::new(
+//   subject : NamedOrBlankNodeRef,
+//   predicate : NamedNodeRef,
+//   object : TermRef,
+//   graph_name : GraphNameRef,
+// ) -> QuadRef {
+//   { subject, predicate, object, graph_name }
+// }
 
 ///|
 pub fn QuadRef::into_owned(self : QuadRef) -> Quad {
   {
-    subject: self.subject.into_owned(),
+    subject: self.subject,
     predicate: self.predicate.into_owned(),
-    object: self.object.into_owned(),
+    object: self.object,
     graph_name: self.graph_name.into_owned(),
   }
 }
@@ -255,10 +262,9 @@ pub(all) enum TermRef {
 ///|
 pub fn TermRef::into_owned(self : TermRef) -> Term {
   match self {
-    TermRef::NamedNodeRef(v) => Term::NamedNode(v.into_owned())
+    TermRef::NamedNodeRef(v) => Term::NamedNode(v)
     TermRef::BlankNodeRef(v) => Term::BlankNode(v)
-    // TermRef::LiteralRef(v) => Term::Literal(v.into_owned())
-    TermRef::LiteralRef(_v) => panic()
+    TermRef::LiteralRef(v) => Term::Literal(v.into_owned())
     TermRef::Triple(v) => Term::Triple(v)
   }
 }

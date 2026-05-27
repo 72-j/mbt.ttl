@@ -1,12 +1,12 @@
 ///|
 test "parse_unchecked: basic absolute IRI" {
-  let iri = "https://example.com/path?query#fragment"[:]
-  let iri = Iri::default(iri)
-  assert_eq(iri.as_str(), "https://example.com/path?query#fragment")
+  let iri = "https://example.com/path?query#fragment"
+  let iri = Iri::Iri(iri)
+  assert_eq(iri.to_own(), "https://example.com/path?query#fragment")
   let result = Iri::parse(iri, unchecked=true)
   match result {
     Ok(parsed) => {
-      assert_eq(parsed.as_str(), iri.as_str())
+      assert_eq(parsed.to_own(), iri.to_own())
       assert_true(parsed.is_absolute())
       assert_eq(parsed.scheme(), Some("https"))
       assert_eq(parsed.authority(), Some("example.com"))
@@ -20,13 +20,13 @@ test "parse_unchecked: basic absolute IRI" {
 
 ///|
 test "parse: basic absolute IRI" {
-  let iri = "https://example.com/path?query#fragment"[:]
-  let iri = Iri::default(iri)
-  assert_eq(iri.as_str(), "https://example.com/path?query#fragment")
+  let iri = "https://example.com/path?query#fragment"
+  let iri = Iri::Iri(iri)
+  assert_eq(iri.to_own(), "https://example.com/path?query#fragment")
   let result = Iri::parse(iri)
   match result {
     Ok(parsed) => {
-      assert_eq(parsed.as_str(), iri.as_str())
+      assert_eq(parsed.to_own(), iri.to_own())
       assert_true(parsed.is_absolute())
       assert_eq(parsed.scheme(), Some("https"))
       assert_eq(parsed.authority(), Some("example.com"))
@@ -40,13 +40,13 @@ test "parse: basic absolute IRI" {
 
 ///|
 test "parse: relative IRI (absolute path)" {
-  let iri = "/path/to/resource"[:]
-  let iri = Iri::default(iri)
+  let iri = "/path/to/resource"
+  let iri = Iri::Iri(iri)
   let result = Iri::parse(iri)
 
   match result {
     Ok(parsed) => {
-      assert_eq(parsed.as_str(), iri.as_str())
+      assert_eq(parsed.to_own(), iri.to_own())
       assert_false(parsed.is_absolute()) // No scheme
       assert_eq(parsed.scheme(), None)
       assert_eq(parsed.authority(), None)
@@ -60,8 +60,8 @@ test "parse: relative IRI (absolute path)" {
 
 ///|
 test "parse: relative path (relative-path reference)" {
-  let iri = "path/to/resource"[:]
-  let iri = Iri::default(iri)
+  let iri = "path/to/resource"
+  let iri = Iri::Iri(iri)
 
   let result = Iri::parse(iri)
 
@@ -76,8 +76,8 @@ test "parse: relative path (relative-path reference)" {
 
 ///|
 test "parse: query only" {
-  let iri = "https://example.com?query=value"[:]
-  let iri = Iri::default(iri)
+  let iri = "https://example.com?query=value"
+  let iri = Iri::Iri(iri)
 
   let result = Iri::parse(iri)
 
@@ -92,8 +92,8 @@ test "parse: query only" {
 
 ///|
 test "parse: fragment only" {
-  let iri = "https://example.com#fragment"[:]
-  let iri = Iri::default(iri)
+  let iri = "https://example.com#fragment"
+  let iri = Iri::Iri(iri)
 
   let result = Iri::parse(iri)
 
@@ -111,7 +111,7 @@ test "parse: error on invalid scheme format" {
   // Let's adjust the test to expect Ok if the parser is standard, 
   // OR change input to something that definitely fails if we had strict validation.
   // For now, assuming standard parser behavior:
-  let iri = Iri::default("invalid:iri"[:])
+  let iri = Iri::Iri("invalid:iri")
   let result = Iri::parse(iri)
 
   match result {
@@ -123,12 +123,12 @@ test "parse: error on invalid scheme format" {
 
 ///|
 test "parse_unchecked: basic functionality" {
-  let iri = "https://example.com/path"[:]
-  let iri = Iri::default(iri)
+  let iri = "https://example.com/path"
+  let iri = Iri::Iri(iri)
   let parsed = Iri::parse(iri, unchecked=true)
   match parsed {
     Ok(parsed) => {
-      assert_eq(parsed.as_str(), iri.as_str())
+      assert_eq(parsed.to_own(), iri.to_own())
       assert_true(parsed.is_absolute())
       assert_eq(parsed.scheme(), Some("https"))
     }
@@ -138,11 +138,11 @@ test "parse_unchecked: basic functionality" {
 
 ///|
 test "parse_unchecked: empty string" {
-  let iri = Iri::default(""[:])
+  let iri = Iri::Iri("")
   let parsed = Iri::parse(iri, unchecked=true)
   match parsed {
     Ok(parsed) => {
-      assert_eq(parsed.as_str(), "")
+      assert_eq(parsed.to_own(), "")
       assert_false(parsed.is_absolute()) // Empty string has no scheme
       assert_eq(parsed.scheme(), None)
       assert_eq(parsed.authority(), None)
@@ -154,13 +154,13 @@ test "parse_unchecked: empty string" {
 
 ///|
 test "parse_unchecked: Unicode IRI" {
-  let iri = "https://例子.测试/路径"[:]
-  let iri = Iri::default(iri)
+  let iri = "https://例子.测试/路径"
+  let iri = Iri::Iri(iri)
 
   let parsed = Iri::parse(iri, unchecked=true)
   match parsed {
     Ok(parsed) => {
-      assert_eq(parsed.as_str(), "https://例子.测试/路径")
+      assert_eq(parsed.to_own(), "https://例子.测试/路径")
       assert_eq(parsed.scheme(), Some("https"))
       assert_eq(parsed.authority(), Some("例子.测试"))
       assert_eq(parsed.path(), Some("/路径"))
@@ -171,8 +171,8 @@ test "parse_unchecked: Unicode IRI" {
 
 ///|
 test "parse_unchecked: percent encoding preserved" {
-  let iri = "https://example.com/path%20with%20spaces"[:]
-  let iri = Iri::default(iri)
+  let iri = "https://example.com/path%20with%20spaces"
+  let iri = Iri::Iri(iri)
   let parsed = Iri::parse(iri, unchecked=true)
   match parsed {
     Ok(parsed) => assert_eq(parsed.path(), Some("/path%20with%20spaces"))
@@ -182,20 +182,26 @@ test "parse_unchecked: percent encoding preserved" {
 
 // --- Group: Resolution Tests ---
 
-// test "resolve: relative to absolute base" {
-//   let iri = "https://example.com/base/path"[:]
-//   let iri = Iri::default(iri)
+///|
+test "resolve: relative to absolute base" {
+  let iri = "https://example.com/base/path"
+  let iri_obj = Iri::Iri(iri)
 
-//   let base = Iri::parse_unchecked(iri)
-//   let relative = "relative/path"
+  // 先解析 base，处理可能的解析错误
+  match Iri::parse(iri_obj, unchecked=true) {
+    Ok(base) => {
+      let relative = "relative/path"
 
-//   match base.resolve(relative) {
-//     Ok(resolved) => {
-//       assert_eq(resolved.as_str(), "https://example.com/base/path/relative/path")
-//     }
-//     Err(e) => fail("Expected Ok, got Err: \{e}")
-//   }
-// }
+      // 再调用 resolve，处理可能的解析/合并错误
+      match base.resolve(relative) {
+        Ok(resolved) =>
+          assert_eq(resolved.to_own(), "https://example.com/base/relative/path")
+        Err(e) => fail("Expected Ok from resolve, got Err: \{e}")
+      }
+    }
+    Err(e) => fail("Expected Ok from parse, got Err: \{e}")
+  }
+}
 
 // test "resolve: absolute reference overrides base" {
 //   let base = Iri::parse_unchecked("https://example.com/base/")
@@ -203,7 +209,7 @@ test "parse_unchecked: percent encoding preserved" {
 
 //   match base.resolve(absolute) {
 //     Ok(resolved) => {
-//       assert_eq(resolved.as_str(), "http://other.com/path")
+//       assert_eq(resolved.to_own(), "http://other.com/path")
 //       assert_eq(resolved.scheme(), Some("http"))
 //       assert_eq(resolved.authority(), Some("other.com"))
 //     }
@@ -217,7 +223,7 @@ test "parse_unchecked: percent encoding preserved" {
 
 //   match base.resolve(relative) {
 //     Ok(resolved) => {
-//       assert_eq(resolved.as_str(), "https://example.com/new/path")
+//       assert_eq(resolved.to_own(), "https://example.com/new/path")
 //     }
 //     Err(e) => fail("Expected Ok, got Err: \{e}")
 //   }
@@ -229,7 +235,7 @@ test "parse_unchecked: percent encoding preserved" {
 
 //   match base.resolve(relative) {
 //     Ok(resolved) => {
-//       assert_eq(resolved.as_str(), "https://example.com/path?query=value#fragment")
+//       assert_eq(resolved.to_own(), "https://example.com/path?query=value#fragment")
 //       assert_eq(resolved.query(), Some("query=value"))
 //       assert_eq(resolved.fragment(), Some("fragment"))
 //     }
@@ -247,7 +253,7 @@ test "parse_unchecked: percent encoding preserved" {
 //       // Base path: /a/b/c/ -> last slash at index 7. Substr(0, 8) = "/a/b/c/"
 //       // Relative: ../d/e
 //       // Result: /a/b/c/../d/e
-//       assert_eq(resolved.as_str(), "https://example.com/a/b/c/../d/e")
+//       assert_eq(resolved.to_own(), "https://example.com/a/b/c/../d/e")
 //     }
 //     Err(e) => fail("Expected Ok, got Err: \{e}")
 //   }
@@ -259,11 +265,11 @@ test "parse_unchecked: percent encoding preserved" {
 
 //   match base.resolve("d") {
 //     Ok(r1) => {
-//       assert_eq(r1.as_str(), "https://example.com/a/b/c/d")
+//       assert_eq(r1.to_own(), "https://example.com/a/b/c/d")
 
 //       match r1.resolve("e") {
 //         Ok(r2) => {
-//           assert_eq(r2.as_str(), "https://example.com/a/b/c/d/e")
+//           assert_eq(r2.to_own(), "https://example.com/a/b/c/d/e")
 //         }
 //         Err(e) => fail("Failed second resolve: \{e}")
 //       }
@@ -292,7 +298,7 @@ test "parse_unchecked: percent encoding preserved" {
 
 //   match Iri::relativize(base, absolute) {
 //     Ok(relative) => {
-//       assert_eq(relative.as_str(), "d/e")
+//       assert_eq(relative.to_own(), "d/e")
 //     }
 //     Err(e) => fail("Expected Ok, got Err: \{e}")
 //   }
@@ -304,7 +310,7 @@ test "parse_unchecked: percent encoding preserved" {
 
 //   match Iri::relativize(base, absolute) {
 //     Ok(relative) => {
-//       assert_eq(relative.as_str(), "http://example.com/path")
+//       assert_eq(relative.to_own(), "http://example.com/path")
 //     }
 //     Err(e) => fail("Expected Ok, got Err: \{e}")
 //   }
@@ -316,7 +322,7 @@ test "parse_unchecked: percent encoding preserved" {
 
 //   match Iri::relativize(base, absolute) {
 //     Ok(relative) => {
-//       assert_eq(relative.as_str(), "https://different.com/path")
+//       assert_eq(relative.to_own(), "https://different.com/path")
 //     }
 //     Err(e) => fail("Expected Ok, got Err: \{e}")
 //   }
@@ -329,7 +335,7 @@ test "parse_unchecked: percent encoding preserved" {
 //   match Iri::relativize(base, absolute) {
 //     Ok(relative) => {
 //       // Our simple relativize returns absolute if prefix doesn't match
-//       assert_eq(relative.as_str(), "https://example.com/a/b/e/f")
+//       assert_eq(relative.to_own(), "https://example.com/a/b/e/f")
 //     }
 //     Err(e) => fail("Expected Ok, got Err: \{e}")
 //   }
@@ -376,7 +382,7 @@ test "parse_unchecked: percent encoding preserved" {
 //   // But if defined:
 //   let as_ref = iri // Copy/Self
 
-//   assert_eq(as_ref.as_str(), "https://example.com/path")
+//   assert_eq(as_ref.to_own(), "https://example.com/path")
 //   assert_true(as_ref.is_absolute())
 //   assert_eq(as_ref.scheme(), Some("https"))
 // }
@@ -392,7 +398,7 @@ test "parse_unchecked: percent encoding preserved" {
 
 // test "edge: single slash" {
 //   let slash = Iri::parse_unchecked("/")
-//   assert_eq(slash.as_str(), "/")
+//   assert_eq(slash.to_own(), "/")
 //   assert_eq(slash.path(), "/")
 // }
 

@@ -1,5 +1,9 @@
+///|
 type TriGRecognizerContext
+
+///|
 type NQuadsRecognizerContext
+
 ///|
 pub(all) enum Context {
   TriGRecognizerContext(TriGRecognizerContext)
@@ -10,10 +14,11 @@ pub(all) enum Context {
 pub(all) enum LexOutput {
   Quad(Quad)
 }
+
+///|
 pub fn LexOutput::new(quad : Quad) -> LexOutput {
   Quad(quad)
 }
-
 
 ///|
 pub struct Parser[TR, RR] {
@@ -65,13 +70,11 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
       is Some(lex_result) {
       match lex_result {
         Ok(token) => {
-        //  let token = TokenOrLineJump::Token(token)
+          //  let token = TokenOrLineJump::Token(token)
           self.state = self.state.map(fn(state) {
-            
             state.recognize_next(token, self.context, self.results, self.errors)
           })
           continue
-
         }
         Err(_e) => {
           self.state = self.state.map(fn(s) { RR::error_recovery_state(s) })
@@ -133,21 +136,17 @@ pub fn[B, RR] Parser::for_async_reader(
   { reader, parser: self }
 }
 
-
-
 ///|
 pub struct ReaderIterator[B, RR] {
   reader : &Reader
   parser : Parser[B, RR]
 }
 
-
 ///|
 pub struct AsyncReaderIterator[B, RR] {
   reader : &Reader
   parser : Parser[B, RR]
 }
-
 
 ///|
 pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::next(
@@ -156,7 +155,9 @@ pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::nex
   while !self.parser.is_end() {
     if self.parser.parse_next() is Some(result) {
       // 修复：将 TurtleError 转换为 String
-      return Some(result.map_err(_e => LexerError::SyntaxError("Syntax Error: ")))
+      return Some(
+        result.map_err(_e => LexerError::SyntaxError("Syntax Error: ")),
+      )
     }
     if self.parser.lexer.extend_from_async_read(self.reader) is Err(_e) {
       return Some(Err(LexerError::IoReadError("IO Read Error: ")))
@@ -165,6 +166,7 @@ pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::nex
   None
 }
 
+///|
 pub(all) struct SliceIterator[RR] {
   parser : Parser[Array[Byte], RR]
 }

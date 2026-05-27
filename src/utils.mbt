@@ -23,7 +23,6 @@ pub fn is_unreserved(c : Char) -> Bool {
   c == '~'
 }
 
-
 ///|
 pub fn remove_dot_segments_from_array(
   segments : Array[String],
@@ -44,15 +43,15 @@ pub fn remove_dot_segments_from_array(
   output
 }
 
-
+///|
 fn array_to_view(arr : Array[Byte]) -> Bytes {
   let bytes : Bytes = Bytes::from_array(arr) // 假设有此 API，或者 Bytes::of_array_view
   // let view : BytesView = bytes.view() // 假设 Bytes 有 .view() 方法
   return bytes
 }
 
-
-fn eq_ignore_ascii_case(s1 : String, s2 : String) -> Bool {
+///|
+fn eq_ignore_ascii_case(s1 : StringView, s2 : StringView) -> Bool {
   if s1.length() != s2.length() {
     return false
   }
@@ -67,7 +66,7 @@ fn eq_ignore_ascii_case(s1 : String, s2 : String) -> Bool {
 
     // 手动实现 ASCII 忽略大小写比较
     // 只有当字符是 'A'-'Z' 或 'a'-'z' 时才需要转换
-    
+
     let is_alpha1 = (u1 >= 65 && u1 <= 90) || (u1 >= 97 && u1 <= 122)
     let is_alpha2 = (u2 >= 65 && u2 <= 90) || (u2 >= 97 && u2 <= 122)
 
@@ -90,6 +89,7 @@ fn eq_ignore_ascii_case(s1 : String, s2 : String) -> Bool {
   true
 }
 
+///|
 fn is_ascii_alphanumeric(c : Char) -> Bool {
   let code = c.to_int()
   // '0'=48, '9'=57, 'A'=65, 'Z'=90, 'a'=97, 'z'=122
@@ -108,4 +108,9 @@ fn is_ascii_alphanumeric(c : Char) -> Bool {
 //     }
 //   }
 //   result
+// }
+// fn type_of(v : Value) -> String {
+//   match v {
+
+//   }
 // }

@@ -1,10 +1,12 @@
 import {
   "moonbitlang/core/cmp",
+  "moonbitlang/core/string",  
+  // "moonbitlang/core/buffer",
   "moonbitlang/core/debug",
   "moonbitlang/async/io",
   // "moonbitlang/async/socket",
   // "moonbitlang/async/fs",
-  "tonyfettes/utf8"
+  "tonyfettes/utf8",
 }
 
 options(
