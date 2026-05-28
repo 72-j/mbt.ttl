@@ -98,6 +98,29 @@ fn is_ascii_alphanumeric(c : Char) -> Bool {
   (code >= 97 && code <= 122)
 }
 
+
+fn memchr2(c1 : Byte, c2 : Byte, data : BytesView) -> Int? {
+  // 实现逻辑：遍历 data，返回第一个匹配 c1 或 c2 的索引
+  for i in 0..<data.length() {
+    let b = data.at(i)
+    if b == c1 || b == c2 {
+      return Some(i)
+    }
+  }
+  None
+}
+
+///|
+fn memchr(target : Byte, data : BytesView) -> Int? {
+  for i in 0..<data.length() {
+    if data.at(i) == target {
+      return Some(i)
+    }
+  }
+  None
+}
+
+
 // fn make_ascii_lowercase(s : String) -> String {
 //   let mut result = s.clone()
 //   for i in 0; i < result.length(); i = i + 1 {

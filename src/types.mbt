@@ -27,9 +27,9 @@ type QuadRef = Quad
 
 ///|
 type GraphNameRef = GraphName
-
+type TermRef= Term
 ///|
-type Triple
+// type Triple
 
 ///|
 enum VarDataType {
@@ -41,6 +41,14 @@ enum VarDataType {
   UIntVar(UInt)
   // DecimalVar(Decimal)
 } derive(Debug, Hash, Eq)
+fn VarDataType::new(value : String) -> VarDataType {
+match value {
+  "true" => TrueVar
+  "false" => FalseVar
+  // "Uint" => UIntVar(value)
+  _ => StringVar(value)
+}
+}
 // fn VarDataType::into_var(self : VarDataType) -> String {
 //   match self {
 //     IntVar(i) => i

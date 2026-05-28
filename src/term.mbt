@@ -21,22 +21,28 @@
 // }
 
 ///|
-// pub fn NamedOrBlankNodeRef::into_owned(
-//   self : NamedOrBlankNodeRef,
-// ) -> NamedOrBlankNode {
-//   match self {
-//     NamedOrBlankNodeRef::NamedNodeRef(node) =>
-//       NamedOrBlankNode::NamedNode(node.into_owned())
-//     NamedOrBlankNodeRef::BlankNodeRef(node) => NamedOrBlankNode::BlankNode(node)
-//   }
-// }
+pub fn NamedOrBlankNodeRef::into_owned(
+  self : NamedOrBlankNodeRef,
+) -> NamedOrBlankNode {
+  match self {
+    NamedOrBlankNodeRef::NamedNode(node) =>
+      NamedOrBlankNode::NamedNode(node.into_owned())
+    NamedOrBlankNodeRef::BlankNode(node) => NamedOrBlankNode::BlankNode(node)
+  }
+}
 
 ///|
 pub(all) enum NamedOrBlankNode {
   NamedNode(NamedNode)
   BlankNode(BlankNode)
-} derive(Debug)
+} derive(Debug,Eq,Hash)
 
+// pub fn[T] NamedOrBlankNode::from(node : T) -> NamedOrBlankNode {
+//   match node {
+//     NamedNode::NamedNode(node) => NamedOrBlankNode::NamedNode(node)
+//     BlankNode::BlankNode(node) => NamedOrBlankNode::BlankNode(node)
+//   }
+// }
 ///|
 pub fn NamedOrBlankNode::into_enum(self : NamedOrBlankNode) -> GraphName {
   match self {
@@ -138,7 +144,7 @@ pub fn NamedNode::into_enum(self : NamedNode) -> NamedOrBlankNode {
 pub(all) enum BlankNode {
   Named(String)
   Anonymous(Anonymous)
-} derive(Debug)
+} derive(Debug,Eq,Hash)
 
 ///|
 pub fn BlankNode::default() -> BlankNode {
@@ -175,7 +181,7 @@ pub fn BlankNode::new_from_unique_id(id : UInt64) -> BlankNode {
 pub(all) struct Anonymous {
   id : UInt64
   str : String
-} derive(Debug)
+} derive(Debug,Eq,Hash)
 
 ///|
 pub fn Anonymous::Anonymous(id : UInt64, str : String) -> Anonymous {
@@ -188,13 +194,15 @@ pub(all) enum GraphName {
   DefaultGraph
   NamedNode(NamedNode)
   BlankNode(BlankNode)
-}
+} derive(Debug,Eq,Hash)
 
 ///|
 pub fn GraphName::into_owned(self : GraphName) -> GraphName {
   self
 }
-
+pub fn GraphName::new_unchecked(value : String) -> GraphName {
+  DefaultGraph
+}
 ///|
 
 ///|
@@ -249,25 +257,25 @@ pub(all) enum Term {
   BlankNode(BlankNode)
   Literal(Literal)
   Triple(Triple)
-}
+} derive(Debug,Eq,Hash)
 
 ///|
-pub(all) enum TermRef {
-  NamedNodeRef(NamedNodeRef)
-  BlankNodeRef(BlankNodeRef)
-  LiteralRef(LiteralRef)
-  Triple(Triple)
-}
+// pub(all) enum TermRef {
+//   NamedNodeRef(NamedNodeRef)
+//   BlankNodeRef(BlankNodeRef)
+//   LiteralRef(LiteralRef)
+//   TripleRef(TripleRef)
+// } derive(Debug,Eq,Hash)
 
 ///|
-pub fn TermRef::into_owned(self : TermRef) -> Term {
-  match self {
-    TermRef::NamedNodeRef(v) => Term::NamedNode(v)
-    TermRef::BlankNodeRef(v) => Term::BlankNode(v)
-    TermRef::LiteralRef(v) => Term::Literal(v.into_owned())
-    TermRef::Triple(v) => Term::Triple(v)
-  }
-}
+// pub fn TermRef::into_owned(self : TermRef) -> Term {
+//   match self {
+//     TermRef::NamedNodeRef(v) => Term::NamedNode(v)
+//     TermRef::BlankNodeRef(v) => Term::BlankNode(v)
+//     TermRef::LiteralRef(v) => Term::Literal(v.into_owned())
+//     TermRef::Triple(v) => Term::Triple(v)
+//   }
+// }
 
 // type LiteralRef = Literal
 // pub struct Literal {

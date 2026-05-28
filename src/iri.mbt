@@ -774,6 +774,147 @@ pub fn Iri::resolve(self : Iri, ref_iri_str : String) -> Result[Iri, IriError] {
 }
 
 ///|
+pub fn Iri::resolve_unchecked(self : Iri, ref_iri_str : String) -> Iri {
+  // 1. 解析参考 IRI (Relative Reference) - Unchecked
+  let ref_parser = Iri::Iri(ref_iri_str)
+  // 忽略错误，如果解析失败，parsed_ref 将是一个处于初始状态或部分解析状态的对象
+  let parsed_ref = match ref_parser.parse(unchecked=true) {
+    Ok(iri) => iri
+    Err(_) => ref_parser // 使用原始 parser 作为 fallback，其 state.pos 可能为 0
+  }
+
+  // 2. 如果参考 IRI 是绝对的，直接返回它 (Unchecked)
+  // 注意：is_absolute 依赖于 scheme 的解析。如果 parse 失败，scheme 可能为空。
+  if parsed_ref.is_absolute() {
+    return parsed_ref
+  }
+
+  // 3. 解析 Base IRI (当前 self) - Unchecked
+  let base_parser = Iri::Iri(self.base_iri)
+  let parsed_base = match base_parser.parse(unchecked=true) {
+    Ok(iri) => iri
+    Err(_) => base_parser
+  }
+
+  // 4. 提取组件
+  // 由于是 unchecked，这些方法应该能安全返回 Option[String]，即使内部状态不完全正确
+  let base_scheme = parsed_base.scheme()
+  let base_authority = parsed_base.authority()
+  let base_path = parsed_base.path()
+
+  let ref_scheme = parsed_ref.scheme()
+  let ref_authority = parsed_ref.authority()
+  let ref_path = parsed_ref.path()
+  let ref_query = parsed_ref.query()
+  let ref_fragment = parsed_ref.fragment()
+
+  // 5. 构建目标 IRI 的各个部分
+
+  // Scheme
+  let target_scheme = match ref_scheme {
+    Some(s) => Some(s)
+    None => base_scheme
+  }
+
+  // Authority
+  let target_authority = match ref_authority {
+    Some(auth) => Some(auth)
+    None => if ref_scheme != None { None } else { base_authority }
+  }
+
+  // Path: 核心合并逻辑
+  let target_path = match ref_path {
+    Some(r_path) =>
+      if r_path.has_prefix("/") {
+        // 绝对路径，去除点段
+        self.remove_dot_segments(r_path)
+      } else {
+        // 相对路径，与 Base 合并
+        let merged_raw = match base_path {
+          Some(b_path) =>
+            if b_path == "" && base_scheme != None && base_authority == None {
+              "/" + r_path
+            } else {
+              let last_slash_idx = b_path.rev_find("/")
+              match last_slash_idx {
+                Some(idx) => {
+                  let base_dir = b_path.sub(start=0, end=idx + 1)
+                  base_dir.to_owned() + r_path
+                }
+                None =>
+                  if b_path == "" {
+                    "/" + r_path
+                  } else {
+                    r_path
+                  }
+              }
+            }
+          None => "/" + r_path
+        }
+        self.remove_dot_segments(merged_raw)
+      }
+    None =>
+      match base_path {
+        Some(p) => p
+        None => ""
+      }
+  }
+
+  // Query
+  let target_query = match ref_query {
+    Some(q) => Some(q)
+    None => parsed_base.query()
+  }
+
+  // Fragment
+  let target_fragment = match ref_fragment {
+    Some(f) => Some(f)
+    None => parsed_base.fragment()
+  }
+
+  // 6. 重组字符串
+  let sb = StringBuilder::new()
+
+  match target_scheme {
+    Some(s) => {
+      sb.write(s)
+      sb.write(":")
+    }
+    None => ()
+  }
+
+  match target_authority {
+    Some(auth) => {
+      sb.write("//")
+      sb.write(auth)
+    }
+    None => ()
+  }
+
+  sb.write(target_path)
+
+  match target_query {
+    Some(q) => {
+      sb.write("?")
+      sb.write(q)
+    }
+    None => ()
+  }
+
+  match target_fragment {
+    Some(f) => {
+      sb.write("#")
+      sb.write(f)
+    }
+    None => ()
+  }
+
+  let final_str = sb.to_string()
+
+  // 7. 直接返回新的 Iri 对象，不进行严格解析验证
+  Iri::Iri(final_str)
+}
+///|
 // pub fn Iri::resolve(
 //   self : Iri,
 //   ref_iri : String,

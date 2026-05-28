@@ -104,6 +104,11 @@ pub(all) suberror TokenRecognizerError {
   IncompleteEscapeSequence(BytesView, Range)
   InvalidEscapeSequence(BytesView, Range)
   UnsupportedFeature(BytesView, Range)
+  IriTruncated(BytesView,Range)
+  IriParsingError(String, Range)
+  UnexpectedEndOfInput(BytesView,Range)
+  InvalidErrMessage(BytesView,Range,String)
+
 }
 
 ///|
@@ -131,6 +136,10 @@ impl TokenErrOut for TokenRecognizerError with fn range(
     TokenRecognizerError::IncompleteEscapeSequence(_, range) => range
     TokenRecognizerError::InvalidEscapeSequence(_, range) => range
     TokenRecognizerError::UnsupportedFeature(_, range) => range
+    TokenRecognizerError::IriTruncated(_, range) => range
+    TokenRecognizerError::IriParsingError(_msg, range) => range
+    TokenRecognizerError::UnexpectedEndOfInput(_, range) => range
+    TokenRecognizerError::InvalidErrMessage(_, range, _) => range
   }
 }
 
@@ -149,6 +158,12 @@ impl TokenErrOut for TokenRecognizerError with fn message(
       range.utf8_range(msg)
     TokenRecognizerError::UnsupportedFeature(msg, range) =>
       range.utf8_range(msg)
+      TokenRecognizerError::IriTruncated(msg, range) => range.utf8_range(msg)
+      TokenRecognizerError::IriParsingError(msg, _) => msg
+      TokenRecognizerError::UnexpectedEndOfInput(msg, range) =>
+        range.utf8_range(msg)
+        TokenRecognizerError::InvalidErrMessage(msg, range, msg_string) =>
+          range.utf8_range(msg)+ " - "+ msg_string
   }
 }
 
@@ -165,6 +180,9 @@ impl TokenErrOut for TokenRecognizerError with fn err_kind(
       "IncompleteEscapeSequence"
     TokenRecognizerError::InvalidEscapeSequence(_, _) => "InvalidEscapeSequence"
     TokenRecognizerError::UnsupportedFeature(_, _) => "UnsupportedFeature"
+    TokenRecognizerError::IriTruncated(_, _) => "IriTruncated"
+    TokenRecognizerError::IriParsingError(_, _pos) => "IriParsingError"
+    TokenRecognizerError::UnexpectedEndOfInput(_, _) => "UnexpectedEndOfInput"
   }
 }
 
@@ -220,6 +238,7 @@ pub(all) suberror RuleRecognizerError {
   PredicateNotAnIRI
   LiteralDatatypeError
   TripleMissingDot
+  InvalidLanguageTag
 
   //  UnexpectedToken(UnexpectedToken)
   // RecoveryError(RecoveryError)
@@ -266,6 +285,8 @@ pub impl RuleParserErrOut for RuleRecognizerError with fn text_range(
       TextRange::TextRange(TextPosition::default(), TextPosition::default())
     RuleRecognizerError::LiteralDatatypeError =>
       TextRange::TextRange(TextPosition::default(), TextPosition::default())
+    RuleRecognizerError::InvalidLanguageTag =>
+      TextRange::TextRange(TextPosition::default(), TextPosition::default())
   }
 }
 
@@ -282,6 +303,8 @@ pub impl RuleParserErrOut for RuleRecognizerError with fn message(
     RuleRecognizerError::LiteralDatatypeError =>
       "The datatype of a literal must be an IRI"
     RuleRecognizerError::TripleMissingDot => "Triples must be followed by a dot"
+    RuleRecognizerError::InvalidLanguageTag =>
+      "Invalid language tag"
   }
 }
 
@@ -295,6 +318,7 @@ pub impl RuleParserErrOut for RuleRecognizerError with fn err_kind(
     RuleRecognizerError::PredicateNotAnIRI => "PredicateNotAnIRI"
     RuleRecognizerError::LiteralDatatypeError => "LiteralDatatypeError"
     RuleRecognizerError::TripleMissingDot => "TripleMissingDot"
+    RuleRecognizerError::InvalidLanguageTag => "InvalidLanguageTag"
   }
 }
 

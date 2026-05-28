@@ -3,7 +3,7 @@ pub(all) enum TokenOrLineJump[T] {
   Token(T)
   // N3Token(T)
   LineJump
-}
+} derive(Eq)
 
 ///|
 pub fn[T] TokenOrLineJump::into_token(self : TokenOrLineJump[T]) -> T? {
@@ -85,7 +85,7 @@ pub impl Show for BaseDirection with fn to_string(self) {
 
 ///|
 pub(all) enum N3Token {
-  IriRef(String)
+  Iri(String)
   PrefixedName(prefix~ : String, localx~ : String, might_be_invalid_iri~ : Bool)
   Variable(String)
   BlankNodeLabel(String)
@@ -98,3 +98,21 @@ pub(all) enum N3Token {
   Punctuation(String)
   PlainKeyword(String)
 } derive(Debug, Eq)
+
+///|
+pub impl Show for N3Token with fn output(self : N3Token, f : &Logger) -> Unit {
+  match self {
+    Iri(iri) => f.write(iri)
+    PrefixedName(prefix~, localx~, might_be_invalid_iri~) => {
+      f.write(prefix)
+      f.write(":")
+      f.write(localx)
+      if might_be_invalid_iri {
+        f.write(" (invalid IRI)")
+      }
+    }
+    Punctuation(punct) => f.write(punct)
+    PlainKeyword(keyword) => f.write(keyword)
+    _ => ()
+  }
+}

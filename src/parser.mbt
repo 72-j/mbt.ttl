@@ -2,7 +2,7 @@
 type TriGRecognizerContext
 
 ///|
-type NQuadsRecognizerContext
+// type NQuadsRecognizerContext
 
 ///|
 pub(all) enum Context {
