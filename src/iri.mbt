@@ -5,6 +5,9 @@ struct Iri {
 } derive(Debug)
 
 ///|
+struct IriRef(Ref[Iri])
+
+///|
 pub struct IriPositions {
   mut scheme_end : Int
   mut authority_end : Int
@@ -13,9 +16,21 @@ pub struct IriPositions {
 } derive(Default, Debug)
 
 ///|
-// fn IriRef::IriRef(view_iri : StringView) -> IriRef {
-//   { view_iri,}
-// }
+fn IriRef::new(iri : Iri) -> IriRef {
+  guard iri.base_iri.is_empty()
+
+  IriRef(Ref::Ref(iri))
+}
+
+///|
+fn IriRef::new_unchecked(iri : Iri) -> IriRef {
+  IriRef(Ref::Ref(iri))
+}
+
+///|
+fn IriRef::to_owned(iri_ref : IriRef) -> Iri {
+  { base_iri: iri_ref.val.base_iri, state: iri_ref.val.state }
+}
 
 ///|
 priv struct ParserState {
@@ -62,16 +77,16 @@ pub fn Iri::Iri(base_iri : String) -> Iri {
 // 定义 CharMatch 类型
 
 // 修复 peek_match - 只查看不消耗
-pub fn Iri::peek_match(self : Iri, pattern : CharMatch) -> Bool {
-  let mut current_pos = self.state.pos
-  let input_len = self.as_ref().length()
+pub fn IriRef::peek_match(self : IriRef, pattern : CharMatch) -> Bool {
+  let mut current_pos = self.val.state.pos
+  let input_len = self.val.as_ref().length()
 
   for i in 0..<pattern.length() {
     if current_pos >= input_len {
       return false
     }
 
-    match StringView::get_char(self.base_iri, current_pos) {
+    match StringView::get_char(self.val.base_iri, current_pos) {
       Some(c) => {
         if c != pattern[i] {
           return false
@@ -88,15 +103,18 @@ pub fn Iri::peek_match(self : Iri, pattern : CharMatch) -> Bool {
 // 最常用的模式：尝试匹配并消费
 
 ///|
-pub fn Iri::try_match_range(self : Iri, pattern : Array[CharMatchRule]) -> Bool {
-  let mut current_pos = self.state.pos
+pub fn IriRef::try_match_range(
+  self : IriRef,
+  pattern : Array[CharMatchRule],
+) -> Bool {
+  let mut current_pos = self.val.state.pos
 
   for rule in pattern {
-    if current_pos >= self.as_ref().length() {
+    if current_pos >= self.val.as_ref().length() {
       return false
     }
 
-    match StringView::get_char(self.base_iri, current_pos) {
+    match StringView::get_char(self.val.base_iri, current_pos) {
       Some(c) => {
         let (expected, range_end) = rule
         let is_match = match range_end {
@@ -115,17 +133,17 @@ pub fn Iri::try_match_range(self : Iri, pattern : Array[CharMatchRule]) -> Bool 
   }
 
   // 匹配成功，更新状态
-  self.state.pos = current_pos
+  self.val.state.pos = current_pos
   true
 }
 
 ///|
-pub fn Iri::peek_match_range(
-  self : Iri,
+pub fn IriRef::peek_match_range(
+  self : IriRef,
   pattern : Array[CharMatchRule],
 ) -> Int? {
-  let mut current_pos = self.state.pos
-  let input_len = self.as_ref().length()
+  let mut current_pos = self.val.state.pos
+  let input_len = self.val.as_ref().length()
 
   for rule in pattern {
     // 检查是否越界
@@ -134,7 +152,7 @@ pub fn Iri::peek_match_range(
     }
 
     // 获取当前字符
-    match StringView::get_char(self.base_iri, current_pos) {
+    match StringView::get_char(self.val.base_iri, current_pos) {
       Some(c) => {
         let (expected, range_end) = rule
 
@@ -162,17 +180,17 @@ pub fn Iri::peek_match_range(
   }
 
   // 返回消耗的字节数
-  Some(current_pos - self.state.pos)
+  Some(current_pos - self.val.state.pos)
 }
 // 解析完整的 IRI
 
 ///|
-pub fn Iri::parse(
-  self : Iri,
+pub fn IriRef::parse(
+  self : IriRef,
   unchecked? : Bool = false,
 ) -> Result[Iri, IriError] {
   // 保存起始位置，以便在无 scheme 时重置
-  let start_pos = self.state.pos
+  let start_pos = self.val.state.pos
 
   // 1. 解析 scheme
   let has_scheme = match self.parse_scheme() {
@@ -182,7 +200,7 @@ pub fn Iri::parse(
         // 在 unchecked 模式下，如果 scheme 解析出错（极少见，因为 parse_scheme 内部主要返回 Ok(false)），
         // 我们假设没有 scheme 并重置位置，或者根据具体错误策略处理。
         // 这里为了稳健，如果 parse_scheme 报错，我们在 unchecked 下视为无 scheme
-        self.state.pos = start_pos
+        self.val.state.pos = start_pos
         false
       } else {
         return Err(e)
@@ -192,14 +210,14 @@ pub fn Iri::parse(
   if has_scheme {
     // 期望 ':'
     match self.expect(':') {
-      Ok(_) => self.state.positions.scheme_end = self.state.pos
+      Ok(_) => self.val.state.positions.scheme_end = self.val.state.pos
       Err(e) =>
         if unchecked {
           // 如果缺少 ':' 但识别出了 scheme 字符，在 unchecked 模式下可能意味着这不是一个标准的 scheme
           // 或者我们强制认为它是 scheme 的一部分直到遇到非合法字符。
           // 简单策略：重置 scheme 标记，当作相对引用处理，或者保留当前位置但不标记 scheme_end
           // 这里选择重置，退化为相对路径解析
-          self.state.pos = start_pos
+          self.val.state.pos = start_pos
           // 注意：此时 has_scheme 逻辑上应视为 false，但位置已移动。
           // 更安全的 unchecked 做法是：如果 expect 失败，不回退 pos，但也不记录 scheme_end
         } else {
@@ -213,8 +231,8 @@ pub fn Iri::parse(
     // 所以需要重新检查当前状态是否真的拥有 scheme。
     // 简化逻辑：如果 scheme_end > 0，说明 scheme 解析成功
 
-    if self.state.positions.scheme_end > 0 && self.peek_match(['/', '/']) {
-      self.state.pos += 2 // 跳过 "//"
+    if self.val.state.positions.scheme_end > 0 && self.peek_match(['/', '/']) {
+      self.val.state.pos += 2 // 跳过 "//"
       match self.parse_authority() {
         Ok(_) => ()
         Err(e) => if !unchecked { return Err(e) }
@@ -223,7 +241,7 @@ pub fn Iri::parse(
     }
   } else {
     // 没有 scheme，重置位置到开始，作为相对引用解析
-    self.state.pos = start_pos
+    self.val.state.pos = start_pos
   }
 
   // 2. 解析 path
@@ -232,7 +250,7 @@ pub fn Iri::parse(
     Err(e) => if !unchecked { return Err(e) }
     // unchecked: 忽略 path 错误
   }
-  self.state.positions.path_end = self.state.pos
+  self.val.state.positions.path_end = self.val.state.pos
 
   // 3. 解析 query (可选)
   if self.peek_match(['?']) {
@@ -241,7 +259,7 @@ pub fn Iri::parse(
       Err(e) => if !unchecked { return Err(e) }
     }
   }
-  self.state.positions.query_end = self.state.pos
+  self.val.state.positions.query_end = self.val.state.pos
 
   // 4. 解析 fragment (可选)
   if self.peek_match(['#']) {
@@ -253,12 +271,12 @@ pub fn Iri::parse(
 
   // 始终返回 Ok，因为在 unchecked 模式下我们忽略了错误
   // 在 checked 模式下，如果到达这里，说明所有步骤都成功了
-  Ok({ base_iri: self.base_iri, state: self.state })
+  Ok({ base_iri: self.val.base_iri, state: self.val.state })
 }
 
 ///|
-pub fn Iri::parse_scheme(self : Iri) -> Result[Bool, IriError] {
-  let start_pos = self.state.pos
+pub fn IriRef::parse_scheme(self : IriRef) -> Result[Bool, IriError] {
+  let start_pos = self.val.state.pos
 
   // 获取第一个字符
   let first = match self.peek() {
@@ -272,7 +290,7 @@ pub fn Iri::parse_scheme(self : Iri) -> Result[Bool, IriError] {
   }
 
   // 移动位置
-  self.state.pos += first.utf16_len()
+  self.val.state.pos += first.utf16_len()
 
   // 继续解析 scheme 字符
   while self.peek() is Some(c) {
@@ -281,36 +299,36 @@ pub fn Iri::parse_scheme(self : Iri) -> Result[Bool, IriError] {
       c == '+' ||
       c == '-' ||
       c == '.' {
-      self.state.pos += c.utf16_len()
+      self.val.state.pos += c.utf16_len()
     } else if c == ':' {
       // 找到 scheme 结束
       return Ok(true)
     } else {
       // 无效字符，回退
-      self.state.pos = start_pos
+      self.val.state.pos = start_pos
       return Ok(false)
     }
   }
 
   // 没有找到 ':'，回退
-  self.state.pos = start_pos
+  self.val.state.pos = start_pos
   Ok(false)
 }
 // 解析 authority
 
 ///|
-pub fn Iri::parse_authority(self : Iri) -> Result[Unit, IriError] {
-  // self.state.positions.authority_start = self.state.pos
+pub fn IriRef::parse_authority(self : IriRef) -> Result[Unit, IriError] {
+  // self.val.state.positions.authority_start = self.val.state.pos
 
   // 解析 userinfo (可选)
   while self.peek() is Some(c) {
     if c == '@' {
-      self.state.pos += c.utf16_len()
+      self.val.state.pos += c.utf16_len()
       break
     } else if c == '/' || c == '?' || c == '#' {
       break
     }
-    self.state.pos += c.utf16_len()
+    self.val.state.pos += c.utf16_len()
   }
 
   // 解析 host
@@ -318,25 +336,25 @@ pub fn Iri::parse_authority(self : Iri) -> Result[Unit, IriError] {
 
   // 解析 port (可选)
   if self.peek_match([':']) {
-    self.state.pos += 1
+    self.val.state.pos += 1
     while self.peek() is Some(c) {
       if c.is_ascii_digit() {
-        self.state.pos += c.utf16_len()
+        self.val.state.pos += c.utf16_len()
       } else {
         break
       }
     }
   }
 
-  self.state.positions.authority_end = self.state.pos
+  self.val.state.positions.authority_end = self.val.state.pos
   Ok(())
 }
 
 // 解析 host (支持 IPv4、IPv6、域名)
 
 ///|
-pub fn Iri::parse_host(
-  self : Iri,
+pub fn IriRef::parse_host(
+  self : IriRef,
   unchecked? : Bool = false,
 ) -> Result[Unit, IriError] {
   if self.peek_match(['[']) {
@@ -356,10 +374,10 @@ pub fn Iri::parse_host(
 }
 
 ///|
-pub fn Iri::parse_ipv6_host(self : Iri) -> Result[Unit, IriError] {
-  self.state.pos += 1 // 跳过 '['
+pub fn IriRef::parse_ipv6_host(self : IriRef) -> Result[Unit, IriError] {
+  self.val.state.pos += 1 // 跳过 '['
   while self.peek() is Some(c) {
-    self.state.pos += c.utf16_len()
+    self.val.state.pos += c.utf16_len()
     if c == ']' {
       break
     }
@@ -368,12 +386,12 @@ pub fn Iri::parse_ipv6_host(self : Iri) -> Result[Unit, IriError] {
 }
 
 ///|
-pub fn Iri::parse_domain_host(self : Iri) -> Result[Unit, IriError] {
+pub fn IriRef::parse_domain_host(self : IriRef) -> Result[Unit, IriError] {
   while self.peek() is Some(c) {
     if c == ':' || c == '/' || c == '?' || c == '#' {
       break
     }
-    self.state.pos += c.utf16_len()
+    self.val.state.pos += c.utf16_len()
   }
   Ok(())
 }
@@ -381,17 +399,17 @@ pub fn Iri::parse_domain_host(self : Iri) -> Result[Unit, IriError] {
 // 解析路径
 
 ///|
-pub fn Iri::parse_path(self : Iri) -> Result[Unit, IriError] {
-  // self.state.positions.path_start = self.state.pos
+pub fn IriRef::parse_path(self : IriRef) -> Result[Unit, IriError] {
+  // self.val.state.positions.path_start = self.val.state.pos
 
   while self.peek() is Some(c) {
     if c == '?' || c == '#' {
       break
     }
-    self.state.pos += c.utf16_len()
+    self.val.state.pos += c.utf16_len()
   }
 
-  self.state.positions.path_end = self.state.pos
+  self.val.state.positions.path_end = self.val.state.pos
   Ok(())
 }
 
@@ -400,9 +418,9 @@ pub fn Iri::parse_path(self : Iri) -> Result[Unit, IriError] {
 // 解析 query
 
 ///|
-pub fn Iri::parse_query(self : Iri) -> Result[Unit, IriError] {
-  self.state.pos += 1 // 跳过 '?'
-  // let query_start = self.state.pos
+pub fn IriRef::parse_query(self : IriRef) -> Result[Unit, IriError] {
+  self.val.state.pos += 1 // 跳过 '?'
+  // let query_start = self.val.state.pos
 
   // 修复：使用 is_some() 检查是否存在字符，替代 while let
   while self.peek() is Some(c) {
@@ -410,37 +428,37 @@ pub fn Iri::parse_query(self : Iri) -> Result[Unit, IriError] {
     if c == '#' {
       break
     }
-    self.state.pos += c.utf16_len()
+    self.val.state.pos += c.utf16_len()
   }
 
-  self.state.positions.query_end = self.state.pos
+  self.val.state.positions.query_end = self.val.state.pos
   Ok(())
 }
 
 // 解析 fragment
 
 ///|
-pub fn Iri::parse_fragment(self : Iri) -> Result[Unit, IriError] {
-  self.state.pos += 1 // 跳过 '#'
-  // self.state.positions.fragment_start = self.state.pos
+pub fn IriRef::parse_fragment(self : IriRef) -> Result[Unit, IriError] {
+  self.val.state.pos += 1 // 跳过 '#'
+  // self.val.state.positions.fragment_start = self.val.state.pos
 
   while self.peek() is Some(c) {
-    self.state.pos += c.utf16_len()
+    self.val.state.pos += c.utf16_len()
   }
 
-  // self.state.positions.query_end = self.state.pos // fragment 结束后，query_end 也指向这里
+  // self.val.state.positions.query_end = self.val.state.pos // fragment 结束后，query_end 也指向这里
   Ok(())
 }
 
 // 辅助函数
 
 ///|
-pub fn Iri::peek(self : Iri) -> Char? {
-  if self.state.pos >= self.as_ref().length() {
+pub fn IriRef::peek(self : IriRef) -> Char? {
+  if self.val.state.pos >= self.val.as_ref().length() {
     None
   } else {
     // 使用 try? 或 match 更优雅地处理错误
-    match StringView::get_char(self.base_iri, self.state.pos) {
+    match StringView::get_char(self.val.base_iri, self.val.state.pos) {
       Some(c) => Some(c)
       None => None // 无效的 UTF-16 序列
     }
@@ -448,64 +466,64 @@ pub fn Iri::peek(self : Iri) -> Char? {
 }
 
 ///|
-pub fn Iri::peek_next(self : Iri) -> Char? {
-  if self.state.pos + 1 >= self.as_ref().length() {
+pub fn IriRef::peek_next(self : IriRef) -> Char? {
+  if self.val.state.pos + 1 >= self.val.as_ref().length() {
     None
   } else {
     // 需要找到下一个字符的起始位置
-    // 不能直接用 self.state.pos + 1，因为当前字符可能占多个字节
+    // 不能直接用 self.val.state.pos + 1，因为当前字符可能占多个字节
 
-    let mut next_pos = self.state.pos
+    let mut next_pos = self.val.state.pos
     // 跳过当前字符的所有字节
-    match StringView::get_char(self.base_iri, next_pos) {
+    match StringView::get_char(self.val.base_iri, next_pos) {
       Some(c) => next_pos += c.utf16_len()
       None => return None
     }
 
     // 获取下一个字符
-    if next_pos >= self.as_ref().length() {
+    if next_pos >= self.val.as_ref().length() {
       None
     } else {
-      StringView::get_char(self.base_iri, next_pos)
+      StringView::get_char(self.val.base_iri, next_pos)
     }
   }
 }
 
 ///|
-pub fn Iri::expect(self : Iri, expected : Char) -> Result[Unit, IriError] {
+pub fn IriRef::expect(self : IriRef, expected : Char) -> Result[Unit, IriError] {
   if self.peek() == Some(expected) {
-    self.state.pos += expected.utf16_len()
+    self.val.state.pos += expected.utf16_len()
     Ok(())
   } else {
-    Err(IriError::Expected(expected, self.state.pos))
+    Err(IriError::Expected(expected, self.val.state.pos))
   }
 }
 
 ///|
-pub fn Iri::parse_percent_encoded(self : Iri) -> Result[Char, IriError] {
+pub fn IriRef::parse_percent_encoded(self : IriRef) -> Result[Char, IriError] {
   if self.peek() != Some('%') {
-    return Err(IriError::Expected('%', self.state.pos))
+    return Err(IriError::Expected('%', self.val.state.pos))
   }
 
-  self.state.pos += 1 // 跳过 '%'
+  self.val.state.pos += 1 // 跳过 '%'
 
   let c1 = self.peek().unwrap()
   let c2 = self.peek_next().unwrap()
 
   if c1.is_ascii_hexdigit() && c2.is_ascii_hexdigit() {
     // 验证百分比编码，但不解码（保持原始形式）
-    self.state.pos += 2 // 跳过两个十六进制字符
+    self.val.state.pos += 2 // 跳过两个十六进制字符
     Ok('%') // 返回 '%' 表示遇到了编码
   } else {
-    Err(IriError::InvalidPercentEncoding(self.state.pos))
+    Err(IriError::InvalidPercentEncoding(self.val.state.pos))
   }
 }
 
 // 解析单个路径段
 
 ///|
-pub fn Iri::parse_path_segment(self : Iri) -> Result[String, IriError] {
-  let start = self.state.pos
+pub fn IriRef::parse_path_segment(self : IriRef) -> Result[String, IriError] {
+  let start = self.val.state.pos
 
   while self.peek() is Some(c) {
     match c {
@@ -515,14 +533,14 @@ pub fn Iri::parse_path_segment(self : Iri) -> Result[String, IriError] {
       }
       _ =>
         if is_pchar(c) {
-          self.state.pos += c.utf16_len()
+          self.val.state.pos += c.utf16_len()
         } else {
-          return Err(IriError::RelativePathSegment(c, self.state.pos))
+          return Err(IriError::RelativePathSegment(c, self.val.state.pos))
         }
     }
   }
 
-  Ok(self.base_iri.sub(start~, end=self.state.pos).to_owned())
+  Ok(self.val.base_iri.sub(start~, end=self.val.state.pos).to_owned())
 }
 
 // 2. Iri 结构中的完整实现
@@ -567,34 +585,39 @@ pub fn Iri::remove_dot_segments(_self : Iri, path : StringView) -> String {
 }
 
 ///|
-// pub fn Iri::as_str(self : Iri) -> String {
-//   self.base_iri
+// pub fn IriRef::as_str(self : IriRef) -> String {
+//   self.val.base_iri
 // }
 
 ///|
-pub fn Iri::validate(self : Iri) -> Result[Unit, IriError] {
+pub fn IriRef::validate(self : IriRef) -> Result[Unit, IriError] {
   // 保存原始状态
-  let saved_state = self.state
+  let saved_state = self.val.state
 
   // 尝试解析（会修改 state）
   match self.parse() {
     Ok(_) => {
       // 解析成功，恢复原始状态（不保留解析结果）
-      self.state = saved_state
+      self.val.state = saved_state
       Ok(())
     }
     Err(e) => {
       // 解析失败，恢复原始状态
-      self.state = saved_state
+      self.val.state = saved_state
       Err(e)
     }
   }
 }
 
 ///|
-pub fn Iri::resolve(self : Iri, ref_iri_str : String) -> Result[Iri, IriError] {
+pub fn IriRef::resolve(
+  self : IriRef,
+  ref_iri_str : String,
+  remove_dot_segments? : Bool = true,
+) -> Result[Iri, IriError] {
   // 1. 解析参考 IRI (Relative Reference)
   let ref_parser = Iri::Iri(ref_iri_str)
+  let ref_parser = IriRef::new(ref_parser)
   // 注意：parse 会修改内部 state，所以我们需要一个解析后的副本或者确保后续只读
   // 由于 parse 返回 Result[Iri, ...]，我们直接使用解析后的对象
   let parsed_ref = match ref_parser.parse(unchecked=false) {
@@ -610,7 +633,8 @@ pub fn Iri::resolve(self : Iri, ref_iri_str : String) -> Result[Iri, IriError] {
 
   // 3. 解析 Base IRI (当前 self)
   // 注意：self 可能尚未解析，或者状态已脏。为了安全，重新解析 self
-  let base_parser = Iri::Iri(self.base_iri)
+  let base_parser = Iri::Iri(self.val.base_iri)
+  let base_parser = IriRef::new(base_parser)
   let parsed_base = match base_parser.parse(unchecked=false) {
     Ok(iri) => iri
     Err(e) => return Err(e)
@@ -646,9 +670,15 @@ pub fn Iri::resolve(self : Iri, ref_iri_str : String) -> Result[Iri, IriError] {
   // Path: 核心合并逻辑
   let target_path = match ref_path {
     Some(r_path) =>
-      if r_path.has_prefix("/") {
+      if r_path == "" {
+        // 如果参考路径为空字符串（例如 ?query 或 #frag），直接继承基路径
+        match base_path {
+          Some(p) => p
+          None => ""
+        }
+      } else if r_path.has_prefix("/") {
         // 如果参考路径是绝对的，直接使用，并去除点段
-        self.remove_dot_segments(r_path)
+        self.to_owned().remove_dot_segments(r_path)
       } else {
         // 如果参考路径是相对的，需要与 Base 路径合并
         let merged_raw = match base_path {
@@ -679,7 +709,11 @@ pub fn Iri::resolve(self : Iri, ref_iri_str : String) -> Result[Iri, IriError] {
             // Base 没有路径部分
             "/" + r_path
         }
-        self.remove_dot_segments(merged_raw)
+        if remove_dot_segments {
+          self.to_owned().remove_dot_segments(merged_raw)
+        } else {
+          merged_raw
+        }
       }
     None =>
       // 参考 IRI 没有路径，使用 Base 路径
@@ -768,19 +802,25 @@ pub fn Iri::resolve(self : Iri, ref_iri_str : String) -> Result[Iri, IriError] {
 
   // 7. 返回新的 Iri 对象
   let final_parser = Iri::Iri(final_str)
+  let final_parser = IriRef::new(final_parser)
   // 再次解析以确保内部状态一致，或者直接返回未解析但字符串正确的对象？
   // 通常 resolve 应该返回一个有效的 Iri 对象，所以再次 parse 是安全的
   final_parser.parse(unchecked=false)
 }
 
 ///|
-pub fn Iri::resolve_unchecked(self : Iri, ref_iri_str : String) -> Iri {
+pub fn IriRef::resolve_unchecked(
+  self : IriRef,
+  ref_iri_str : String,
+  remove_dot_segments? : Bool = true,
+) -> Iri {
   // 1. 解析参考 IRI (Relative Reference) - Unchecked
   let ref_parser = Iri::Iri(ref_iri_str)
+  let ref_parser = IriRef::new(ref_parser)
   // 忽略错误，如果解析失败，parsed_ref 将是一个处于初始状态或部分解析状态的对象
   let parsed_ref = match ref_parser.parse(unchecked=true) {
     Ok(iri) => iri
-    Err(_) => ref_parser // 使用原始 parser 作为 fallback，其 state.pos 可能为 0
+    Err(_) => ref_parser.to_owned() // 使用原始 parser 作为 fallback，其 state.pos 可能为 0
   }
 
   // 2. 如果参考 IRI 是绝对的，直接返回它 (Unchecked)
@@ -790,10 +830,11 @@ pub fn Iri::resolve_unchecked(self : Iri, ref_iri_str : String) -> Iri {
   }
 
   // 3. 解析 Base IRI (当前 self) - Unchecked
-  let base_parser = Iri::Iri(self.base_iri)
+  let base_parser = Iri::Iri(self.val.base_iri)
+  let base_parser = IriRef::new(base_parser)
   let parsed_base = match base_parser.parse(unchecked=true) {
     Ok(iri) => iri
-    Err(_) => base_parser
+    Err(_) => base_parser.to_owned()
   }
 
   // 4. 提取组件
@@ -827,7 +868,7 @@ pub fn Iri::resolve_unchecked(self : Iri, ref_iri_str : String) -> Iri {
     Some(r_path) =>
       if r_path.has_prefix("/") {
         // 绝对路径，去除点段
-        self.remove_dot_segments(r_path)
+        self.to_owned().remove_dot_segments(r_path)
       } else {
         // 相对路径，与 Base 合并
         let merged_raw = match base_path {
@@ -841,17 +882,16 @@ pub fn Iri::resolve_unchecked(self : Iri, ref_iri_str : String) -> Iri {
                   let base_dir = b_path.sub(start=0, end=idx + 1)
                   base_dir.to_owned() + r_path
                 }
-                None =>
-                  if b_path == "" {
-                    "/" + r_path
-                  } else {
-                    r_path
-                  }
+                None => if b_path == "" { "/" + r_path } else { r_path }
               }
             }
           None => "/" + r_path
         }
-        self.remove_dot_segments(merged_raw)
+        if remove_dot_segments {
+          self.to_owned().remove_dot_segments(merged_raw)
+        } else {
+          merged_raw
+        }
       }
     None =>
       match base_path {
@@ -914,13 +954,14 @@ pub fn Iri::resolve_unchecked(self : Iri, ref_iri_str : String) -> Iri {
   // 7. 直接返回新的 Iri 对象，不进行严格解析验证
   Iri::Iri(final_str)
 }
+
 ///|
-// pub fn Iri::resolve(
-//   self : Iri,
+// pub fn IriRef::resolve(
+//   self : IriRef,
 //   ref_iri : String,
 // ) -> Result[Iri, IriError] {
 //   // 1. 解析参考 IRI
-//   let ref_parser = Iri::Iri(ref_iri)
+//   let ref_parser = IriRef::Iri(ref_iri)
 //   let parsed_ref = match ref_parser.parse(unchecked=false){
 //     Ok(iri) => iri
 //     Err(e) => return Err(e)
@@ -932,7 +973,7 @@ pub fn Iri::resolve_unchecked(self : Iri, ref_iri_str : String) -> Iri {
 //   }
 
 //   // 2. 解析 Base IRI
-//   let base_parser = Iri::Iri(self.base_iri)
+//   let base_parser = IriRef::Iri(self.val.base_iri)
 //   let parsed_base = match base_parser.parse(unchecked=false){
 //     Ok(iri) => iri
 //     Err(e) => return Err(e)
@@ -981,7 +1022,7 @@ pub fn Iri::resolve_unchecked(self : Iri, ref_iri_str : String) -> Iri {
 //   }
 
 //   // 移除 . 和 .. 并追加到 StringBuilder
-//   sb.write(self.remove_dot_segments(merged_path.to_string()))
+//   sb.write(self.val.remove_dot_segments(merged_path.to_string()))
 
 //   // 5. 构建 Query (仅当 Ref 存在时)
 //   if r_query_end > r_path_end {
@@ -997,6 +1038,6 @@ pub fn Iri::resolve_unchecked(self : Iri, ref_iri_str : String) -> Iri {
 
 //   // 7. 返回最终结果
 //   let final_str = sb.to_string()
-//   let final_parser = Iri::Iri(final_str)
+//   let final_parser = IriRef::Iri(final_str)
 //   final_parser.parse(unchecked=false)
 // }
