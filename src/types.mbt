@@ -5,6 +5,11 @@ using @io {trait Reader}
 
 ///|
 using @io {trait Writer}
+
+///|
+pub using @ref {type Ref}
+
+///|
 using @string {trait FromStr}
 
 ///|
@@ -14,40 +19,45 @@ type CharMatch = Array[Char]
 type CharMatchRule = (Char, Char?)
 
 ///|
-type NamedOrBlankNodeRef = NamedOrBlankNode
+// type NamedOrBlankNodeRef = NamedOrBlankNode
 
 ///|
-type NamedNodeRef = NamedNode
+// type NamedNodeRef = NamedNode
 
 ///|
-type BlankNodeRef = BlankNode
+// type BlankNodeRef = BlankNode
 
 ///|
-type QuadRef = Quad
+// type QuadRef = Quad
 
 ///|
-type GraphNameRef = GraphName
-type TermRef= Term
+// type GraphNameRef = GraphName
+
+///|
+// type TermRef = Term
+
 ///|
 // type Triple
 
 ///|
 enum VarDataType {
   IntVar(Int)
-  FloatVar(Float)
+  // FloatVar(Float)
   StringVar(String)
   FalseVar
   TrueVar
-  UIntVar(UInt)
+  // UIntVar(UInt)
   // DecimalVar(Decimal)
 } derive(Debug, Hash, Eq)
+
+///|
 fn VarDataType::new(value : String) -> VarDataType {
-match value {
-  "true" => TrueVar
-  "false" => FalseVar
-  // "Uint" => UIntVar(value)
-  _ => StringVar(value)
-}
+  match value {
+    "true" => TrueVar
+    "false" => FalseVar
+    // "Uint" => UIntVar(value)
+    _ => StringVar(value)
+  }
 }
 // fn VarDataType::into_var(self : VarDataType) -> String {
 //   match self {
@@ -64,11 +74,11 @@ match value {
 impl Show for VarDataType with fn to_string(self : VarDataType) -> String {
   match self {
     IntVar(i) => i.to_string()
-    FloatVar(f) => f.to_string()
+    // FloatVar(f) => f.to_string()
     StringVar(s) => s
     TrueVar => "true"
     FalseVar => "false"
-    UIntVar(u) => u.to_string()
+    // UIntVar(u) => u.to_string()
   }
 }
 

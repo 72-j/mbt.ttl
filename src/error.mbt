@@ -12,6 +12,7 @@ pub(all) suberror IriError {
   InvalidPortCharacter(Char, Int)
   PathStartingWithTwoSlashes(Int)
   RelativePathSegment(Char, Int)
+  InvalidErrMessage(String)
 }
 
 ///|
@@ -33,6 +34,7 @@ impl IriErrOut for IriError with fn position(self : IriError) -> Int {
     IriError::InvalidIriCodePoint(_, pos) => pos
     IriError::InvalidPercentEncoding(pos) => pos
     IriError::PathStartingWithTwoSlashes(pos) => pos
+    IriError::InvalidErrMessage(_) => 0
     // _ => 0 // 默认位置
   }
 }
@@ -54,6 +56,7 @@ impl IriErrOut for IriError with fn message(self : IriError) -> String {
       "The IRI contains invalid percent encoding"
     IriError::PathStartingWithTwoSlashes(_) =>
       "The path starts with two slashes"
+    IriError::InvalidErrMessage(msg) => msg
     // _ => "An unknown error occurred" // 默认错误信息
   }
 }
@@ -70,6 +73,7 @@ impl IriErrOut for IriError with fn err_kind(self : IriError) -> String {
     IriError::InvalidIriCodePoint(_, _) => "InvalidIriCodePoint"
     IriError::InvalidPercentEncoding(_) => "InvalidPercentEncoding"
     IriError::PathStartingWithTwoSlashes(_) => "PathStartingWithTwoSlashes"
+    IriError::InvalidErrMessage(_) => "InvalidErrMessage"
     // _ => "UnknownError" // 默认错误类型
   }
 }
@@ -104,11 +108,10 @@ pub(all) suberror TokenRecognizerError {
   IncompleteEscapeSequence(BytesView, Range)
   InvalidEscapeSequence(BytesView, Range)
   UnsupportedFeature(BytesView, Range)
-  IriTruncated(BytesView,Range)
+  IriTruncated(BytesView, Range)
   IriParsingError(String, Range)
-  UnexpectedEndOfInput(BytesView,Range)
-  InvalidErrMessage(BytesView,Range,String)
-
+  UnexpectedEndOfInput(BytesView, Range)
+  InvalidErrMessage(BytesView, Range, String)
 }
 
 ///|
@@ -158,12 +161,12 @@ impl TokenErrOut for TokenRecognizerError with fn message(
       range.utf8_range(msg)
     TokenRecognizerError::UnsupportedFeature(msg, range) =>
       range.utf8_range(msg)
-      TokenRecognizerError::IriTruncated(msg, range) => range.utf8_range(msg)
-      TokenRecognizerError::IriParsingError(msg, _) => msg
-      TokenRecognizerError::UnexpectedEndOfInput(msg, range) =>
-        range.utf8_range(msg)
-        TokenRecognizerError::InvalidErrMessage(msg, range, msg_string) =>
-          range.utf8_range(msg)+ " - "+ msg_string
+    TokenRecognizerError::IriTruncated(msg, range) => range.utf8_range(msg)
+    TokenRecognizerError::IriParsingError(msg, _) => msg
+    TokenRecognizerError::UnexpectedEndOfInput(msg, range) =>
+      range.utf8_range(msg)
+    TokenRecognizerError::InvalidErrMessage(msg, range, msg_string) =>
+      range.utf8_range(msg) + " - " + msg_string
   }
 }
 
@@ -183,6 +186,8 @@ impl TokenErrOut for TokenRecognizerError with fn err_kind(
     TokenRecognizerError::IriTruncated(_, _) => "IriTruncated"
     TokenRecognizerError::IriParsingError(_, _pos) => "IriParsingError"
     TokenRecognizerError::UnexpectedEndOfInput(_, _) => "UnexpectedEndOfInput"
+    TokenRecognizerError::InvalidErrMessage(_, _, msg) =>
+      "InvalidErrMessage" + " - " + msg
   }
 }
 
@@ -303,8 +308,7 @@ pub impl RuleParserErrOut for RuleRecognizerError with fn message(
     RuleRecognizerError::LiteralDatatypeError =>
       "The datatype of a literal must be an IRI"
     RuleRecognizerError::TripleMissingDot => "Triples must be followed by a dot"
-    RuleRecognizerError::InvalidLanguageTag =>
-      "Invalid language tag"
+    RuleRecognizerError::InvalidLanguageTag => "Invalid language tag"
   }
 }
 

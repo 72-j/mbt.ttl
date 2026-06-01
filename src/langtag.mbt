@@ -2,7 +2,7 @@
 pub struct LanguageTag {
   tag : String
   positions : TagElementsPositions
-} derive(Default,Hash,Eq)
+} derive(Default, Hash, Eq)
 
 // Error types
 
@@ -16,7 +16,7 @@ struct TagElementsPositions {
   region_end : Int
   variant_end : Int
   extension_end : Int
-} derive(Default,Hash,Eq)
+} derive(Default, Hash, Eq)
 
 // Public API
 
@@ -184,6 +184,13 @@ pub fn LanguageTag::parse_and_normalize(
 impl Show for LanguageTag with fn to_string(self : LanguageTag) -> String {
   self.tag
 }
+
+// fn LanguageTag::from_str(tag : StringView) -> Result[LanguageTag, TagParseErr] {
+//   match LanguageTag::parse_and_normalize(tag.to_owned()) {
+//     Err(_e) => Err(_e)
+//     Ok(lang_tag) => Ok(lang_tag)
+//   }
+// }
 // FromStr for parsing using @string.FromStr
 
 ///|
@@ -222,7 +229,9 @@ fn split_to_strings(s : String, delim : Char) -> Array[String] {
 }
 
 // Parsing functions
+
 ///|
+
 ///|
 // fn parse_language_tag(
 //   input : StringView,
@@ -256,6 +265,7 @@ fn split_to_strings(s : String, delim : Char) -> Array[String] {
 
 //   calculate_positions(input)
 // }
+
 ///|
 fn parse_language_tag(
   input : StringView,
@@ -296,7 +306,6 @@ fn parse_language_tag(
 
   calculate_positions(input)
 }
-
 
 // fn parse_language_tag(
 //   input : StringView,
@@ -805,7 +814,6 @@ fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
   Ok(result.to_string())
 }
 
-
 // Helper functions
 
 ///|
@@ -818,74 +826,6 @@ struct ExtensionsIterator {
 ///|
 fn ExtensionsIterator::new(input : String) -> ExtensionsIterator {
   { input, }
-}
-
-///|
-fn is_alphabetic(s : StringView) -> Bool {
-  let chars = StringView::iter(s)
-  let mut result = true
-  for c in chars {
-    if !c.is_ascii_alphabetic() {
-      result = false
-      break
-    }
-  }
-  result
-}
-
-///|
-fn is_numeric(s : StringView) -> Bool {
-  let chars = StringView::iter(s)
-  let mut result = true
-  for c in chars {
-    if !c.is_ascii_digit() {
-      result = false
-      break
-    }
-  }
-  result
-}
-
-///|
-fn is_alphanumeric(s : String) -> Bool {
-  let chars = String::iter(s)
-  let mut result = true
-  for c in chars {
-    if !is_ascii_alphanumeric(c) {
-      result = false
-      break
-    }
-  }
-  result
-}
-
-///|
-fn is_alphanumeric_or_dash(s : StringView) -> Bool {
-  let chars = StringView::iter(s)
-  let mut result = true
-  for c in chars {
-    if !(is_ascii_alphanumeric(c) || c == '-') {
-      result = false
-      break
-    }
-  }
-  result
-}
-
-///|
-fn to_title_case(s : StringView) -> String {
-  let result = StringBuilder::new()
-  let chars = StringView::iter(s)
-  let mut is_first = true
-  for c in chars {
-    if is_first {
-      result.write_char(c.to_ascii_uppercase())
-      is_first = false
-    } else {
-      result.write_char(c.to_ascii_lowercase())
-    }
-  }
-  result.to_string()
 }
 
 ///|

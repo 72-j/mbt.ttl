@@ -91,30 +91,40 @@ pub impl IriComponents for Iri with fn fragment(self : Iri) -> String? {
 }
 
 ///|
-trait ToView {
-  fn as_ref(self : Self) -> StringView
-  fn to_own(self : Self) -> String
+trait StringRepr {
+  fn as_stringview(self : Self) -> StringView
+  fn into_string(self : Self) -> String
 }
 
 ///|
-pub impl ToView for Iri with fn as_ref(self : Iri) -> StringView {
+pub impl StringRepr for Iri with fn as_stringview(self : Iri) -> StringView {
   self.base_iri
 }
 
 ///|
-pub impl ToView for Iri with fn to_own(self : Iri) -> String {
+pub impl StringRepr for Iri with fn into_string(self : Iri) -> String {
   self.base_iri
 }
 
-// pub impl IriComponents  for Iri with resolve(
-//   self : Iri,
+///|
+pub impl StringRepr for IriRef with fn as_stringview(self : IriRef) -> StringView {
+  self.val.base_iri
+}
+
+///|
+pub impl StringRepr for IriRef with fn into_string(self : IriRef) -> String {
+  self.val.base_iri
+}
+
+// pub impl IriComponents  for IriRef with resolve(
+//   self : IriRef,
 //   relative : String,
 // ) -> String? {
 //   // 创建结果缓冲区
 //   // let target_buffer = StringBuilder::new()
 
-//   // 调用底层解析器，传入当前 IRI 作为 base
-//   let positions = self.parse()
+//   // 调用底层解析器，传入当前 IriRef 作为 base
+//   let positions = self.val.parse()
 
 // }
 
@@ -148,25 +158,28 @@ pub trait RuleRecognizer {
   fn lexer_options(context : Context) -> LexerOptions?
 }
 
+// trait AsRef {
+//  fn as_ref(self: Self) -> Ref[Self]
+// }
 // ///|
-// pub trait IriInput {
+// pub trait IriRefInput {
 //   fn to_str(self : Self) -> String
 //   fn len(self : Self) -> Int
 //   fn sub(self : Self, start~ : Int, end~ : Int) -> StringView
 // }
 
 // ///|
-// impl IriInput for StringView with fn to_str(self : StringView) -> String {
-//   self.to_owned()
+// impl IriRefInput for StringView with fn to_str(self : StringView) -> String {
+//   self.val.to_owned()
 // }
 
 // ///|
-// impl IriInput for StringView with fn len(self : StringView) -> Int {
-//   self.length()
+// impl IriRefInput for StringView with fn len(self : StringView) -> Int {
+//   self.val.length()
 // }
 
 // ///|
-// impl IriInput for StringView with fn sub(
+// impl IriRefInput for StringView with fn sub(
 //   self : StringView,
 //   start~ : Int,
 //   end~ : Int,
@@ -175,17 +188,17 @@ pub trait RuleRecognizer {
 // }
 
 // ///|
-// impl IriInput for String with fn to_str(self : String) -> String {
+// impl IriRefInput for String with fn to_str(self : String) -> String {
 //   self
 // }
 
 // ///|
-// impl IriInput for String with fn len(self : String) -> Int {
-//   self.length()
+// impl IriRefInput for String with fn len(self : String) -> Int {
+//   self.val.length()
 // }
 
 // ///|
-// impl IriInput for String with fn sub(self : String, start~ : Int, end~ : Int) -> StringView {
+// impl IriRefInput for String with fn sub(self : String, start~ : Int, end~ : Int) -> StringView {
 //   self[start:end]
 // }
 

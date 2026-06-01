@@ -28,7 +28,7 @@ pub struct Literal(LiteralContent) derive(Eq, Debug, Hash)
 //     LiteralContent::TypedLiteral(value~, datatype~) => {
 //       f.write_string(value.to_string())
 //       f.write("^^")
-//       f.write_string(datatype.as_ref().to_string())
+//       f.write_string(datatype.as_stringview().to_string())
 //     }
 //   }
 // }
@@ -63,6 +63,7 @@ impl Show for Literal with fn to_string(self : Literal) -> String {
     }
   }
 }
+
 ///|
 enum LiteralContent {
   String(String)
@@ -88,7 +89,7 @@ pub fn Literal::new_typed_literal(
   let value = value
   let datatype = datatype
   Literal(
-    if datatype == lwSTRING.into_owned() {
+    if datatype == lwSTRING {
       LiteralContent::String(value.to_string())
     } else {
       LiteralContent::TypedLiteral(value~, datatype~)
@@ -188,16 +189,16 @@ pub fn Literal::direction(self : Literal) -> BaseDirection? {
 ///|
 pub fn Literal::datatype(self : Literal) -> NamedNodeRef {
   match self.0 {
-    LiteralContent::LanguageTaggedString(..) => lwLANG_STRING.into_owned()
+    LiteralContent::LanguageTaggedString(..) => lwLANG_STRING.as_stringview()
     LiteralContent::DirectionalLanguageTaggedString(..) =>
-      lwDIR_LANG_STRING.into_owned()
-    LiteralContent::String(_) => lwSTRING.into_owned()
-    LiteralContent::TypedLiteral(datatype~, ..) => datatype.into_owned()
+      lwDIR_LANG_STRING.as_stringview()
+    LiteralContent::String(_) => lwSTRING.as_stringview()
+    LiteralContent::TypedLiteral(datatype~, ..) => datatype.as_stringview()
   }
 }
 
 ///|
-pub fn Literal::as_ref(self : Literal) -> LiteralRef {
+pub fn Literal::as_stringview(self : Literal) -> LiteralRef {
   LiteralRef(
     match self.0 {
       LiteralContent::String(value) => LiteralRefContent::String(value)
@@ -214,7 +215,10 @@ pub fn Literal::as_ref(self : Literal) -> LiteralRef {
           direction~,
         )
       LiteralContent::TypedLiteral(value~, datatype~) =>
-        LiteralRefContent::TypedLiteral(value~, datatype=datatype.as_ref())
+        LiteralRefContent::TypedLiteral(
+          value~,
+          datatype=datatype.as_stringview(),
+        )
     },
   )
 }
@@ -236,9 +240,6 @@ pub fn Literal::destruct(
       (value.to_string(), Some(datatype), None, None)
   }
 }
-
-
-
 
 ///|
 pub struct LiteralRef(LiteralRefContent) derive(Eq, Debug, Hash)
@@ -286,7 +287,7 @@ pub fn LiteralRef::new_typed_literal(
   datatype : NamedNodeRef,
 ) -> LiteralRef {
   LiteralRef(
-    if datatype == lwSTRING {
+    if datatype == lwSTRING.as_stringview() {
       LiteralRefContent::String(value.to_string())
     } else {
       LiteralRefContent::TypedLiteral(value~, datatype~)
@@ -351,9 +352,10 @@ pub fn LiteralRef::direction(self : LiteralRef) -> BaseDirection? {
 ///|
 pub fn LiteralRef::datatype(self : LiteralRef) -> NamedNodeRef {
   match self.0 {
-    LiteralRefContent::String(_) => lwSTRING
-    LiteralRefContent::LanguageTaggedString(..) => lwLANG_STRING
-    LiteralRefContent::DirectionalLanguageTaggedString(..) => lwDIR_LANG_STRING
+    LiteralRefContent::String(_) => lwSTRING.as_stringview()
+    LiteralRefContent::LanguageTaggedString(..) => lwLANG_STRING.as_stringview()
+    LiteralRefContent::DirectionalLanguageTaggedString(..) =>
+      lwDIR_LANG_STRING.as_stringview()
     LiteralRefContent::TypedLiteral(datatype~, ..) => datatype
   }
 }
@@ -418,7 +420,7 @@ impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
   }
 }
 
-
+///|
 pub fn print_quoted_str(f : StringBuilder, string : String) -> String {
   f.write('\"')
   for c in string {

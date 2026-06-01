@@ -3,7 +3,18 @@ pub(all) enum TokenOrLineJump[T] {
   Token(T)
   // N3Token(T)
   LineJump
-} derive(Eq)
+} derive(Eq, Debug)
+
+///|
+impl Show for TokenOrLineJump[N3Token] with fn output(
+  self : TokenOrLineJump[N3Token],
+  f : &Logger,
+) -> Unit {
+  match self {
+    TokenOrLineJump::Token(t) => t.output(f)
+    TokenOrLineJump::LineJump => f.write_string("\\n")
+  }
+}
 
 ///|
 pub fn[T] TokenOrLineJump::into_token(self : TokenOrLineJump[T]) -> T? {

@@ -5,7 +5,7 @@ struct Iri {
 } derive(Debug)
 
 ///|
-struct IriRef(Ref[Iri])
+struct IriRef(Ref[Iri]) derive(Debug)
 
 ///|
 pub struct IriPositions {
@@ -17,15 +17,15 @@ pub struct IriPositions {
 
 ///|
 fn IriRef::new(iri : Iri) -> IriRef {
-  guard iri.base_iri.is_empty()
-
   IriRef(Ref::Ref(iri))
 }
 
 ///|
-fn IriRef::new_unchecked(iri : Iri) -> IriRef {
-  IriRef(Ref::Ref(iri))
-}
+// fn IriRef::new_unchecked(iri : Iri) -> IriRef {
+//     guard !iri.base_iri.is_empty()
+
+//   IriRef(Ref::Ref(iri))
+// }
 
 ///|
 fn IriRef::to_owned(iri_ref : IriRef) -> Iri {
@@ -79,7 +79,7 @@ pub fn Iri::Iri(base_iri : String) -> Iri {
 // 修复 peek_match - 只查看不消耗
 pub fn IriRef::peek_match(self : IriRef, pattern : CharMatch) -> Bool {
   let mut current_pos = self.val.state.pos
-  let input_len = self.val.as_ref().length()
+  let input_len = self.val.as_stringview().length()
 
   for i in 0..<pattern.length() {
     if current_pos >= input_len {
@@ -110,7 +110,7 @@ pub fn IriRef::try_match_range(
   let mut current_pos = self.val.state.pos
 
   for rule in pattern {
-    if current_pos >= self.val.as_ref().length() {
+    if current_pos >= self.val.as_stringview().length() {
       return false
     }
 
@@ -143,7 +143,7 @@ pub fn IriRef::peek_match_range(
   pattern : Array[CharMatchRule],
 ) -> Int? {
   let mut current_pos = self.val.state.pos
-  let input_len = self.val.as_ref().length()
+  let input_len = self.val.as_stringview().length()
 
   for rule in pattern {
     // 检查是否越界
@@ -454,7 +454,7 @@ pub fn IriRef::parse_fragment(self : IriRef) -> Result[Unit, IriError] {
 
 ///|
 pub fn IriRef::peek(self : IriRef) -> Char? {
-  if self.val.state.pos >= self.val.as_ref().length() {
+  if self.val.state.pos >= self.val.as_stringview().length() {
     None
   } else {
     // 使用 try? 或 match 更优雅地处理错误
@@ -467,7 +467,7 @@ pub fn IriRef::peek(self : IriRef) -> Char? {
 
 ///|
 pub fn IriRef::peek_next(self : IriRef) -> Char? {
-  if self.val.state.pos + 1 >= self.val.as_ref().length() {
+  if self.val.state.pos + 1 >= self.val.as_stringview().length() {
     None
   } else {
     // 需要找到下一个字符的起始位置
@@ -481,7 +481,7 @@ pub fn IriRef::peek_next(self : IriRef) -> Char? {
     }
 
     // 获取下一个字符
-    if next_pos >= self.val.as_ref().length() {
+    if next_pos >= self.val.as_stringview().length() {
       None
     } else {
       StringView::get_char(self.val.base_iri, next_pos)

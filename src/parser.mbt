@@ -3,11 +3,22 @@ type TriGRecognizerContext
 
 ///|
 // type NQuadsRecognizerContext
+trait AsEnumContext {
+  fn as_ctx(self : Self) -> Context
+}
 
 ///|
 pub(all) enum Context {
   TriGRecognizerContext(TriGRecognizerContext)
   NQuadsRecognizerContext(NQuadsRecognizerContext)
+}
+
+///|
+impl AsEnumContext for Context with fn as_ctx(self : Context) -> Context {
+  match self {
+    TriGRecognizerContext(c) => TriGRecognizerContext(c)
+    NQuadsRecognizerContext(c) => NQuadsRecognizerContext(c)
+  }
 }
 
 ///|
