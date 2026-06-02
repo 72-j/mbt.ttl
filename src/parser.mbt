@@ -1,34 +1,20 @@
-///|
-type TriGRecognizerContext
-
-///|
-// type NQuadsRecognizerContext
-trait AsEnumContext {
-  fn as_ctx(self : Self) -> Context
-}
 
 ///|
 pub(all) enum Context {
   TriGRecognizerContext(TriGRecognizerContext)
   NQuadsRecognizerContext(NQuadsRecognizerContext)
+  
 }
 
-///|
-impl AsEnumContext for Context with fn as_ctx(self : Context) -> Context {
-  match self {
-    TriGRecognizerContext(c) => TriGRecognizerContext(c)
-    NQuadsRecognizerContext(c) => NQuadsRecognizerContext(c)
-  }
-}
 
 ///|
 pub(all) enum LexOutput {
-  Quad(Quad)
+  QuadRef(QuadRef)
 }
 
 ///|
-pub fn LexOutput::new(quad : Quad) -> LexOutput {
-  Quad(quad)
+pub fn LexOutput::new(quad : QuadRef) -> LexOutput {
+  QuadRef(quad)
 }
 
 ///|

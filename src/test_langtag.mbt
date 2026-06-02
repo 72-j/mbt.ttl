@@ -1,3 +1,4 @@
+///|
 /// Tests for langtag creation
 test "formatting" {
   assert_eq(
@@ -68,7 +69,7 @@ test "primary language" {
   )
 }
 
-
+///|
 test "extended language" {
   // 使用专用 getter 替代 parts
   let tag_zh = LanguageTag::parse("zh").unwrap()
@@ -124,6 +125,7 @@ test "extended language" {
   // assert_eq(["afb"], tag_ar_afb.extended_language_subtags())
   // assert_eq(["afb"],tag_ar_afb.extended_language_subtags())
 }
+
 ///|
 test "script" {
   assert_eq(Some("Latn"), LanguageTag::parse("sr-Latn").unwrap().script())

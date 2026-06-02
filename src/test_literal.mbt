@@ -333,7 +333,7 @@ test "language-tagged literal case normalization" {
 //     NamedNode::NamedNode(lwSTRING.to_string()),
 //   )
 //   let literalref = LiteralRef::new_simple_literal("foo")
-//   assert_eq(literalref, literal.as_ref())
+//   assert_eq(literalref, literal.as_stringview())
 // }
 
 // ///|

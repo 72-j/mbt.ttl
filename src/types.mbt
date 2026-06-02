@@ -1,5 +1,14 @@
 // type Read= &@io.Reader
 
+// type TriGRecognizerContext
+
+///|
+// type NQuadsRecognizerContext
+type Decimal = StringView
+
+///|
+using @string {parse_double}
+
 ///|
 using @io {trait Reader}
 
@@ -42,23 +51,24 @@ type CharMatchRule = (Char, Char?)
 ///|
 enum VarDataType {
   IntVar(Int)
+  DoubleVar(Double)
   // FloatVar(Float)
-  StringVar(String)
+  StringVar(StringView)
   FalseVar
   TrueVar
   // UIntVar(UInt)
-  // DecimalVar(Decimal)
-} derive(Debug, Hash, Eq)
+  DecimalVar(Decimal)
+} derive(Debug, Eq, Hash)
 
 ///|
-fn VarDataType::new(value : String) -> VarDataType {
-  match value {
-    "true" => TrueVar
-    "false" => FalseVar
-    // "Uint" => UIntVar(value)
-    _ => StringVar(value)
-  }
-}
+// fn VarDataType::new(value : String) -> VarDataType {
+//   match value {
+//     "true" => TrueVar
+//     "false" => FalseVar
+//     // "Uint" => UIntVar(value)
+//     _ => StringVar(value)
+//   }
+// }
 // fn VarDataType::into_var(self : VarDataType) -> String {
 //   match self {
 //     IntVar(i) => i
@@ -71,14 +81,69 @@ fn VarDataType::new(value : String) -> VarDataType {
 // }
 
 ///|
-impl Show for VarDataType with fn to_string(self : VarDataType) -> String {
+fn VarDataType::to_type(self : VarDataType) -> String {
   match self {
     IntVar(i) => i.to_string()
+    DoubleVar(d) => d.to_string()
+    DecimalVar(d) => d.to_owned()
     // FloatVar(f) => f.to_string()
-    StringVar(s) => s
+    StringVar(s) => s.to_owned()
     TrueVar => "true"
     FalseVar => "false"
     // UIntVar(u) => u.to_string()
+  }
+}
+
+///|
+fn VarDataType::to_value(self : VarDataType) -> String {
+  match self {
+    IntVar(value) => value.to_string()
+    DoubleVar(value) => value.to_string()
+    DecimalVar(value) => value.to_owned()
+    StringVar(value) => value.to_owned()
+    TrueVar => "true"
+    FalseVar => "false"
+  }
+}
+
+fn VarDataType::new(value: String, data_type:VarDataType ) -> VarDataType {
+  match (data_type, value) {
+    (TrueVar, _) => TrueVar
+    (FalseVar, _) => FalseVar
+    (StringVar(_), value) => StringVar(value)
+    (DoubleVar(_), value) => {
+      let value =try? @string.parse_double(value)
+      match value {
+        Ok(value) => DoubleVar(value)
+        Err(_) => StringVar("")
+      }
+    }
+    (IntVar(_), value) => {
+      let value = try? @string.parse_int(value)
+     match value {
+      Ok(value) => IntVar(value)
+      Err(_) => StringVar("")
+     }
+    }
+    (DecimalVar(_), value) => {
+      let value = try? @string.parse_double(value)
+      match value {
+        Ok(value) => DecimalVar(value.to_string())
+        Err(_) => StringVar("")
+      }
+    }
+    // IntVar(_) => ...
+    // DecimalVar(_) => ...
+  }
+}
+
+///|
+fn VarDataType::from_name_node(data_type : NamedNode) -> VarDataType {
+  match data_type {
+    lwINT => IntVar(0)
+    lwFLOAT => DoubleVar(0.0)
+    lwDECIMAL => DecimalVar("")
+    lwSTRING => StringVar("")
   }
 }
 
@@ -97,5 +162,17 @@ impl Show for VarDataType with fn to_string(self : VarDataType) -> String {
 //       match value {
 //         VarDataType::BoolVar(_) =>  Literal(LiteralContent::TypedLiteral(value="Bool", datatype=lwBOOLEAN.into_owned()))
 //       }
+//   }
+// }
+
+// trait AsEnumContext {
+//   fn as_ctx(self : Self) -> Context
+// }
+
+///|
+// impl AsEnumContext for Context with fn as_ctx(self : Context) -> Context {
+//   match self {
+//     TriGRecognizerContext(c) => TriGRecognizerContext(c)
+//     NQuadsRecognizerContext(c) => NQuadsRecognizerContext(c)
 //   }
 // }

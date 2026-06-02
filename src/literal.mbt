@@ -28,7 +28,7 @@ pub struct Literal(LiteralContent) derive(Eq, Debug, Hash)
 //     LiteralContent::TypedLiteral(value~, datatype~) => {
 //       f.write_string(value.to_string())
 //       f.write("^^")
-//       f.write_string(datatype.as_stringview().to_string())
+//       f.write_string(datatype.as_ref().to_string())
 //     }
 //   }
 // }
@@ -69,7 +69,7 @@ enum LiteralContent {
   String(String)
   LanguageTaggedString(value~ : String, language~ : String)
   DirectionalLanguageTaggedString(
-    value~ : String,
+    value~ : StringView,
     language~ : String,
     direction~ : BaseDirection
   )
@@ -150,7 +150,7 @@ pub fn Literal::new_directional_language_tagged_literal(
 
 ///|
 pub fn Literal::new_directional_language_tagged_literal_unchecked(
-  value : String,
+  value : StringView,
   language : LanguageTag,
   direction : BaseDirection,
 ) -> Literal {
@@ -172,7 +172,7 @@ pub fn Literal::value(self : Literal) -> String {
     LiteralContent::String(value)
     | LiteralContent::LanguageTaggedString(value~, ..) => value
     LiteralContent::TypedLiteral(value~, ..) => value.to_string()
-    LiteralContent::DirectionalLanguageTaggedString(value~, ..) => value
+    LiteralContent::DirectionalLanguageTaggedString(value~, ..) => value.to_owned()
   }
 }
 
@@ -189,16 +189,16 @@ pub fn Literal::direction(self : Literal) -> BaseDirection? {
 ///|
 pub fn Literal::datatype(self : Literal) -> NamedNodeRef {
   match self.0 {
-    LiteralContent::LanguageTaggedString(..) => lwLANG_STRING.as_stringview()
+    LiteralContent::LanguageTaggedString(..) => lwLANG_STRING.as_ref()
     LiteralContent::DirectionalLanguageTaggedString(..) =>
-      lwDIR_LANG_STRING.as_stringview()
-    LiteralContent::String(_) => lwSTRING.as_stringview()
-    LiteralContent::TypedLiteral(datatype~, ..) => datatype.as_stringview()
+      lwDIR_LANG_STRING.as_ref()
+    LiteralContent::String(_) => lwSTRING.as_ref()
+    LiteralContent::TypedLiteral(datatype~, ..) => datatype.as_ref()
   }
 }
 
 ///|
-pub fn Literal::as_stringview(self : Literal) -> LiteralRef {
+pub fn Literal::as_ref(self : Literal) -> LiteralRef {
   LiteralRef(
     match self.0 {
       LiteralContent::String(value) => LiteralRefContent::String(value)
@@ -217,7 +217,7 @@ pub fn Literal::as_stringview(self : Literal) -> LiteralRef {
       LiteralContent::TypedLiteral(value~, datatype~) =>
         LiteralRefContent::TypedLiteral(
           value~,
-          datatype=datatype.as_stringview(),
+          datatype=datatype.as_ref(),
         )
     },
   )
@@ -226,7 +226,7 @@ pub fn Literal::as_stringview(self : Literal) -> LiteralRef {
 ///|
 pub fn Literal::destruct(
   self : Literal,
-) -> (String, NamedNode?, String?, BaseDirection?) {
+) -> (StringView, NamedNode?, String?, BaseDirection?) {
   match self.0 {
     LiteralContent::String(s) => (s, None, None, None)
     LiteralContent::LanguageTaggedString(value~, language~) =>
@@ -287,7 +287,7 @@ pub fn LiteralRef::new_typed_literal(
   datatype : NamedNodeRef,
 ) -> LiteralRef {
   LiteralRef(
-    if datatype == lwSTRING.as_stringview() {
+    if datatype == lwSTRING.as_ref() {
       LiteralRefContent::String(value.to_string())
     } else {
       LiteralRefContent::TypedLiteral(value~, datatype~)
@@ -352,10 +352,10 @@ pub fn LiteralRef::direction(self : LiteralRef) -> BaseDirection? {
 ///|
 pub fn LiteralRef::datatype(self : LiteralRef) -> NamedNodeRef {
   match self.0 {
-    LiteralRefContent::String(_) => lwSTRING.as_stringview()
-    LiteralRefContent::LanguageTaggedString(..) => lwLANG_STRING.as_stringview()
+    LiteralRefContent::String(_) => lwSTRING.as_ref()
+    LiteralRefContent::LanguageTaggedString(..) => lwLANG_STRING.as_ref()
     LiteralRefContent::DirectionalLanguageTaggedString(..) =>
-      lwDIR_LANG_STRING.as_stringview()
+      lwDIR_LANG_STRING.as_ref()
     LiteralRefContent::TypedLiteral(datatype~, ..) => datatype
   }
 }
@@ -421,7 +421,7 @@ impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
 }
 
 ///|
-pub fn print_quoted_str(f : StringBuilder, string : String) -> String {
+pub fn print_quoted_str(f : StringBuilder, string : StringView) -> String {
   f.write('\"')
   for c in string {
     let code = Char::to_int(c)

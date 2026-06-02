@@ -1,6 +1,6 @@
 ///|
 pub struct LexerOptions {
-  base_iri : Iri?
+ mut base_iri : Iri?
 } derive(Default)
 
 ///|

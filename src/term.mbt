@@ -54,14 +54,14 @@ pub fn NamedOrBlankNode::into_enum(self : NamedOrBlankNode) -> GraphName {
 }
 
 ///|
-pub fn NamedOrBlankNode::as_stringview(
+pub fn NamedOrBlankNode::as_ref(
   self : NamedOrBlankNode,
 ) -> NamedOrBlankNodeRef {
   match self {
     NamedOrBlankNode::NamedNode(node) =>
-      NamedOrBlankNodeRef::NamedNodeRef(node.as_stringview())
+      NamedOrBlankNodeRef::NamedNodeRef(node.as_ref())
     NamedOrBlankNode::BlankNode(node) =>
-      NamedOrBlankNodeRef::BlankNodeRef(node.as_stringview())
+      NamedOrBlankNodeRef::BlankNodeRef(node.as_ref())
   }
 }
 
@@ -136,7 +136,7 @@ pub fn NamedNodeRef::into_owned(self : NamedNodeRef) -> NamedNode {
 }
 
 ///|
-pub fn NamedNode::as_stringview(self : NamedNode) -> NamedNodeRef {
+pub fn NamedNode::as_ref(self : NamedNode) -> NamedNodeRef {
   NamedNodeRef::{ iri: self.iri }
 }
 
@@ -186,7 +186,7 @@ pub fn BlankNode::new_unchecked(iri : String) -> BlankNode {
 }
 
 ///|
-pub fn BlankNode::as_stringview(self : BlankNode) -> BlankNodeRef {
+pub fn BlankNode::as_ref(self : BlankNode) -> BlankNodeRef {
   match self {
     BlankNode::Named(v) => BlankNodeRef::Named(v)
     BlankNode::Anonymous(v) => BlankNodeRef::Anonymous(v)
@@ -248,12 +248,12 @@ pub fn GraphName::is_default_graph(self : GraphName) -> Bool {
 }
 
 ///|
-pub fn GraphName::as_stringview(self : GraphName) -> GraphNameRef {
+pub fn GraphName::as_ref(self : GraphName) -> GraphNameRef {
   match self {
     GraphName::NamedNode(node) =>
-      GraphNameRef::NamedNodeRef(node.as_stringview())
+      GraphNameRef::NamedNodeRef(node.as_ref())
     GraphName::BlankNode(node) =>
-      GraphNameRef::BlankNodeRef(node.as_stringview())
+      GraphNameRef::BlankNodeRef(node.as_ref())
     GraphName::DefaultGraph => GraphNameRef::DefaultGraph
   }
 }
@@ -331,12 +331,12 @@ pub fn Quad::new(
 }
 
 ///|
-pub fn Quad::as_stringview(self : Quad) -> QuadRef {
+pub fn Quad::as_ref(self : Quad) -> QuadRef {
   {
-    subject: self.subject.as_stringview(),
-    predicate: self.predicate.as_stringview(),
-    object: self.object.as_stringview(),
-    graph_name: self.graph_name.as_stringview(),
+    subject: self.subject.as_ref(),
+    predicate: self.predicate.as_ref(),
+    object: self.object.as_ref(),
+    graph_name: self.graph_name.as_ref(),
   }
 }
 
@@ -369,12 +369,12 @@ pub fn Term::is_triple(self : Term) -> Bool {
 }
 
 ///|
-pub fn Term::as_stringview(self : Term) -> TermRef {
+pub fn Term::as_ref(self : Term) -> TermRef {
   match self {
-    Term::NamedNode(node) => TermRef::NamedNodeRef(node.as_stringview())
-    Term::BlankNode(node) => TermRef::BlankNodeRef(node.as_stringview())
-    Term::Literal(literal) => TermRef::LiteralRef(literal.as_stringview())
-    Term::Triple(triple) => TermRef::TripleRef(triple.as_stringview())
+    Term::NamedNode(node) => TermRef::NamedNodeRef(node.as_ref())
+    Term::BlankNode(node) => TermRef::BlankNodeRef(node.as_ref())
+    Term::Literal(literal) => TermRef::LiteralRef(literal.as_ref())
+    Term::Triple(triple) => TermRef::TripleRef(triple.as_ref())
   }
 }
 

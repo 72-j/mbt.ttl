@@ -34,11 +34,11 @@ pub fn Triple::in_graph(self : Triple, graph_name : GraphNameRef) -> Quad {
 }
 
 ///|
-pub fn Triple::as_stringview(self : Triple) -> TripleRef {
+pub fn Triple::as_ref(self : Triple) -> TripleRef {
   {
-    subject: self.subject.as_stringview(),
-    predicate: self.predicate.as_stringview(),
-    object: self.object.as_stringview(),
+    subject: self.subject.as_ref(),
+    predicate: self.predicate.as_ref(),
+    object: self.object.as_ref(),
   }
 }
 

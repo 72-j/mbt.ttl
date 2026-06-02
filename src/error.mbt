@@ -244,7 +244,7 @@ pub(all) suberror RuleRecognizerError {
   LiteralDatatypeError
   TripleMissingDot
   InvalidLanguageTag
-
+BlankNodePropertyListMissingEndBracket
   //  UnexpectedToken(UnexpectedToken)
   // RecoveryError(RecoveryError)
 }
@@ -292,6 +292,9 @@ pub impl RuleParserErrOut for RuleRecognizerError with fn text_range(
       TextRange::TextRange(TextPosition::default(), TextPosition::default())
     RuleRecognizerError::InvalidLanguageTag =>
       TextRange::TextRange(TextPosition::default(), TextPosition::default())
+
+      RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
+        TextRange::TextRange(TextPosition::default(), TextPosition::default())
   }
 }
 
@@ -309,6 +312,8 @@ pub impl RuleParserErrOut for RuleRecognizerError with fn message(
       "The datatype of a literal must be an IRI"
     RuleRecognizerError::TripleMissingDot => "Triples must be followed by a dot"
     RuleRecognizerError::InvalidLanguageTag => "Invalid language tag"
+    RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
+      "blank node property lists should end with a ']'"
   }
 }
 
@@ -323,6 +328,8 @@ pub impl RuleParserErrOut for RuleRecognizerError with fn err_kind(
     RuleRecognizerError::LiteralDatatypeError => "LiteralDatatypeError"
     RuleRecognizerError::TripleMissingDot => "TripleMissingDot"
     RuleRecognizerError::InvalidLanguageTag => "InvalidLanguageTag"
+    RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
+      "BlankNodePropertyListMissingEndBracket"
   }
 }
 
