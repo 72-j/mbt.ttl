@@ -2,4 +2,7 @@
 _build/
 .mooncakes/
 .moonagent/
+.repos/
+.vscode/
 *.bak
+bak/
