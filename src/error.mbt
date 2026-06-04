@@ -1,7 +1,4 @@
 ///|
-// type TextPosition = String
-
-///|
 pub(all) suberror IriError {
   NoScheme(Int)
   Expected(Char, Int)
@@ -16,14 +13,14 @@ pub(all) suberror IriError {
 }
 
 ///|
-pub trait IriErrOut {
-  fn position(self : Self) -> Int
+pub trait ErrOut {
+  // fn position(self : Self) -> Int
   fn message(self : Self) -> String
   fn err_kind(self : Self) -> String
 }
 
 ///|
-impl IriErrOut for IriError with fn position(self : IriError) -> Int {
+pub fn IriError::position(self : IriError) -> Int {
   match self {
     IriError::NoScheme(pos) => pos
     IriError::Expected(_, pos) => pos
@@ -40,7 +37,7 @@ impl IriErrOut for IriError with fn position(self : IriError) -> Int {
 }
 
 ///|
-impl IriErrOut for IriError with fn message(self : IriError) -> String {
+impl ErrOut for IriError with fn message(self : IriError) -> String {
   match self {
     IriError::NoScheme(_) => "The IRI does not have a scheme"
     IriError::Expected(_, _) => "An expected character was not found"
@@ -62,7 +59,7 @@ impl IriErrOut for IriError with fn message(self : IriError) -> String {
 }
 
 ///|
-impl IriErrOut for IriError with fn err_kind(self : IriError) -> String {
+impl ErrOut for IriError with fn err_kind(self : IriError) -> String {
   match self {
     IriError::NoScheme(_) => "NoScheme"
     IriError::Expected(_, _) => "Expected"
@@ -115,22 +112,13 @@ pub(all) suberror TokenRecognizerError {
 }
 
 ///|
-pub trait TokenErrOut {
-  fn range(self : Self) -> Range
-  fn message(self : Self) -> String
-  fn err_kind(self : Self) -> String
-}
-
-///|
 struct Range {
   start : Int
   end : Int
 }
 
 ///|
-impl TokenErrOut for TokenRecognizerError with fn range(
-  self : TokenRecognizerError,
-) -> Range {
+pub fn TokenRecognizerError::range(self : TokenRecognizerError) -> Range {
   match self {
     TokenRecognizerError::Invalid => Range::{ start: -1, end: -1 }
     TokenRecognizerError::InvalidFormat(_, range) => range
@@ -147,7 +135,7 @@ impl TokenErrOut for TokenRecognizerError with fn range(
 }
 
 ///|
-impl TokenErrOut for TokenRecognizerError with fn message(
+impl ErrOut for TokenRecognizerError with fn message(
   self : TokenRecognizerError,
 ) -> String {
   match self {
@@ -171,7 +159,7 @@ impl TokenErrOut for TokenRecognizerError with fn message(
 }
 
 ///|
-impl TokenErrOut for TokenRecognizerError with fn err_kind(
+impl ErrOut for TokenRecognizerError with fn err_kind(
   self : TokenRecognizerError,
 ) -> String {
   match self {
@@ -244,7 +232,7 @@ pub(all) suberror RuleRecognizerError {
   LiteralDatatypeError
   TripleMissingDot
   InvalidLanguageTag
-BlankNodePropertyListMissingEndBracket
+  BlankNodePropertyListMissingEndBracket
   //  UnexpectedToken(UnexpectedToken)
   // RecoveryError(RecoveryError)
 }
@@ -270,16 +258,7 @@ impl Show for TextRange with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-pub trait RuleParserErrOut {
-  fn text_range(self : Self) -> TextRange
-  fn message(self : Self) -> String
-  fn err_kind(self : Self) -> String
-}
-
-///|
-pub impl RuleParserErrOut for RuleRecognizerError with fn text_range(
-  self : RuleRecognizerError,
-) -> TextRange {
+pub fn RuleRecognizerError::text_range(self : RuleRecognizerError) -> TextRange {
   match self {
     RuleRecognizerError::SyntaxError(_, pos) => TextRange::TextRange(pos, pos)
     RuleRecognizerError::BlankNodeOrIriError =>
@@ -292,14 +271,13 @@ pub impl RuleParserErrOut for RuleRecognizerError with fn text_range(
       TextRange::TextRange(TextPosition::default(), TextPosition::default())
     RuleRecognizerError::InvalidLanguageTag =>
       TextRange::TextRange(TextPosition::default(), TextPosition::default())
-
-      RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
-        TextRange::TextRange(TextPosition::default(), TextPosition::default())
+    RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
+      TextRange::TextRange(TextPosition::default(), TextPosition::default())
   }
 }
 
 ///|
-pub impl RuleParserErrOut for RuleRecognizerError with fn message(
+pub impl ErrOut for RuleRecognizerError with fn message(
   self : RuleRecognizerError,
 ) -> String {
   match self {
@@ -318,7 +296,7 @@ pub impl RuleParserErrOut for RuleRecognizerError with fn message(
 }
 
 ///|
-pub impl RuleParserErrOut for RuleRecognizerError with fn err_kind(
+pub impl ErrOut for RuleRecognizerError with fn err_kind(
   self : RuleRecognizerError,
 ) -> String {
   match self {

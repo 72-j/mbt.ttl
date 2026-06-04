@@ -4,9 +4,15 @@ pub struct LanguageTag {
   positions : TagElementsPositions
 } derive(Default, Hash, Eq)
 
-// Error types
-
 ///|
+enum SubtagType {
+  PrivateUseIntro // "x"
+  ExtensionIntro(Char) // 单字母扩展标识符
+  Alphabetic(Int) // 纯字母，带长度
+  Numeric(Int) // 纯数字，带长度
+  Alphanumeric(Int) // 字母数字混合，带长度
+  Invalid
+}
 
 ///|
 struct TagElementsPositions {
@@ -18,8 +24,6 @@ struct TagElementsPositions {
   extension_end : Int
 } derive(Default, Hash, Eq)
 
-// Public API
-
 ///|
 pub fn LanguageTag::parse(tag : StringView) -> Result[LanguageTag, TagParseErr] {
   match parse_language_tag(tag) {
@@ -30,11 +34,6 @@ pub fn LanguageTag::parse(tag : StringView) -> Result[LanguageTag, TagParseErr] 
 
 ///|
 pub fn LanguageTag::as_str(self : LanguageTag) -> String {
-  self.tag
-}
-
-///|
-pub fn LanguageTag::into_inner(self : LanguageTag) -> String {
   self.tag
 }
 
@@ -177,21 +176,10 @@ pub fn LanguageTag::parse_and_normalize(
   }
 }
 
-// Show for display
-// impl Show for LanguageTag with output( self : LanguageTag, logger : &Logger) -> Unit { self.tag.output(logger) }
-
 ///|
 impl Show for LanguageTag with fn to_string(self : LanguageTag) -> String {
   self.tag
 }
-
-// fn LanguageTag::from_str(tag : StringView) -> Result[LanguageTag, TagParseErr] {
-//   match LanguageTag::parse_and_normalize(tag.to_owned()) {
-//     Err(_e) => Err(_e)
-//     Ok(lang_tag) => Ok(lang_tag)
-//   }
-// }
-// FromStr for parsing using @string.FromStr
 
 ///|
 impl FromStr for LanguageTag with fn from_str(tag : StringView) -> LanguageTag {
@@ -200,8 +188,6 @@ impl FromStr for LanguageTag with fn from_str(tag : StringView) -> LanguageTag {
     Ok(lang_tag) => lang_tag
   }
 }
-
-// Helper functions
 
 ///|
 fn sub_string(s : String, start : Int, end : Int) -> String {
@@ -221,50 +207,11 @@ fn split_to_strings(s : String, delim : Char) -> Array[String] {
   if s.is_empty() {
     return []
   }
-  let arr = []
-  for part in s.split(String::from_array([delim])) {
-    arr.push(part.to_owned())
-  }
-  arr
+  s
+  .split(String::from_array([delim]))
+  .map(fn(part) { part.to_owned() })
+  .collect()
 }
-
-// Parsing functions
-
-///|
-
-///|
-// fn parse_language_tag(
-//   input : StringView,
-// ) -> Result[TagElementsPositions, TagParseErr] {
-//   // Check for grandfathered tags
-//   for record in grandfathereds {
-//     if eq_ignore_ascii_case(record, input) {
-//       // 修复: 祖父级标签也应该解析其内部结构
-//       return calculate_positions(input)
-//     }
-//   }
-
-//   // Private use
-//   if input.has_prefix("x-") || input.has_prefix("X-") {
-//     if !is_alphanumeric_or_dash(input) {
-//       return Err(TagParseErr::ForbiddenChar)
-//     }
-//     if input.length() == 2 {
-//       return Err(TagParseErr::EmptyPrivateUse)
-//     }
-//     let len = input.length()
-//     return Ok({
-//       language_end: len,
-//       extlang_end: len,
-//       script_end: len,
-//       region_end: len,
-//       variant_end: len,
-//       extension_end: len,
-//     })
-//   }
-
-//   calculate_positions(input)
-// }
 
 ///|
 fn parse_language_tag(
@@ -285,7 +232,6 @@ fn parse_language_tag(
     }
   }
 
-  // Private use
   if input.has_prefix("x-") || input.has_prefix("X-") {
     if !is_alphanumeric_or_dash(input) {
       return Err(TagParseErr::ForbiddenChar)
@@ -307,277 +253,7 @@ fn parse_language_tag(
   calculate_positions(input)
 }
 
-// fn parse_language_tag(
-//   input : StringView,
-// ) -> Result[TagElementsPositions, TagParseErr] {
-//   // Check for grandfathered tags
-//   for record in grandfathereds {
-//     if eq_ignore_ascii_case(record, input) {
-//       // 修复: 祖父级标签也应该解析其内部结构
-//       return calculate_positions(input)
-//     }
-//   }
-
-//   // Private use
-//   if input.has_prefix("x-") || input.has_prefix("X-") {
-//     if !is_alphanumeric_or_dash(input) {
-//       return Err(TagParseErr::ForbiddenChar)
-//     }
-//     if input.length() == 2 {
-//       return Err(TagParseErr::EmptyPrivateUse)
-//     }
-//     let len = input.length()
-//     return Ok({
-//       language_end: len,
-//       extlang_end: len,
-//       script_end: len,
-//       region_end: len,
-//       variant_end: len,
-//       extension_end: len,
-//     })
-//   }
-
-//   calculate_positions(input)
-// }
-
 ///|
-// fn calculate_positions(
-//   input : StringView,
-// ) -> Result[TagElementsPositions, TagParseErr] {
-//   let mut pos = 0
-//   let mut language_end = 0
-//   let mut extlang_end = 0
-//   let mut script_end = 0
-//   let mut region_end = 0
-//   let mut variant_end = 0
-//   let mut extension_end = 0
-//   let mut extlangs_count = 0
-//   let mut state = 0
-
-//   for subtag in input.split("-") {
-//     let subtag_str = subtag.to_owned()
-//     if subtag_str.is_empty() {
-//       return Err(TagParseErr::EmptySubtag)
-//     }
-//     if subtag_str.length() > 8 {
-//       return Err(TagParseErr::SubtagTooLong)
-//     }
-
-//     let prev_pos = pos
-//     pos = prev_pos + subtag_str.length() + 1
-
-//     if state == 0 {
-//       if subtag_str.length() < 2 || !is_alphabetic(subtag_str) {
-//         return Err(TagParseErr::InvalidLanguage)
-//       }
-//       language_end = pos - 1
-//       if subtag_str.length() < 4 {
-//         state = 1
-//       } else {
-//         state = 2
-//       }
-//     } else if subtag_str == "x" || subtag_str == "X" {
-//       if state == 5 {
-//         return Err(TagParseErr::EmptyExtension)
-//       }
-//       // extension_end 应该是 x 之前的位置
-//       extension_end = prev_pos - 1
-//       break
-//     } else if subtag_str.length() == 1 && is_alphanumeric(subtag_str) {
-//       if state == 5 {
-//         return Err(TagParseErr::EmptyExtension)
-//       }
-//       state = 5
-//     } else if state == 5 {
-//       extension_end = pos - 1
-//     } else if (state == 1 || state == 2) &&
-//       subtag_str.length() == 3 &&
-//       is_alphabetic(subtag_str) {
-//       extlangs_count += 1
-//       if extlangs_count > 3 {
-//         return Err(TagParseErr::TooManyExtlangs)
-//       }
-//       extlang_end = pos - 1
-//     } else if (state == 1 || state == 2) &&
-//       subtag_str.length() == 4 &&
-//       is_alphabetic(subtag_str) {
-//       script_end = pos - 1
-//       state = 3
-//     } else if (state == 1 || state == 2 || state == 3) &&
-//       (
-//         (subtag_str.length() == 2 && is_alphabetic(subtag_str)) ||
-//         (subtag_str.length() == 3 && is_numeric(subtag_str))
-//       ) {
-//       region_end = pos - 1
-//       state = 4
-//     } else if (state == 1 || state == 2 || state == 3 || state == 4) &&
-//       is_alphanumeric(subtag_str) &&
-//       (
-//         (
-//           subtag_str.length() >= 5 &&
-//           is_alphabetic(sub_string(subtag_str, 0, 1))
-//         ) ||
-//         (subtag_str.length() >= 4 && is_numeric(sub_string(subtag_str, 0, 1)))
-//       ) {
-//       variant_end = pos - 1
-//       state = 4
-//     } else {
-//       return Err(TagParseErr::InvalidSubtag)
-//     }
-//   }
-
-//   if extension_end == 0 {
-//     extension_end = input.length()
-//   }
-
-//   if extlang_end < language_end {
-//     extlang_end = language_end
-//   }
-//   if script_end < extlang_end {
-//     script_end = extlang_end
-//   }
-//   if region_end < script_end {
-//     region_end = script_end
-//   }
-//   if variant_end < region_end {
-//     variant_end = region_end
-//   }
-//   if extension_end < variant_end {
-//     extension_end = variant_end
-//   }
-
-//   Ok({
-//     language_end,
-//     extlang_end,
-//     script_end,
-//     region_end,
-//     variant_end,
-//     extension_end,
-//   })
-// }
-// fn calculate_positions(
-//   input : StringView,
-// ) -> Result[TagElementsPositions, TagParseErr] {
-//   let mut pos = 0
-//   let mut language_end = 0
-//   let mut extlang_end = 0
-//   let mut script_end = 0
-//   let mut region_end = 0
-//   let mut variant_end = 0
-//   let mut extension_end = 0
-//   let mut extlangs_count = 0
-//   let mut state = 0
-
-//   for subtag in input.split("-") {
-//     let subtag_str = subtag.to_owned()
-//     if subtag_str.is_empty() {
-//       return Err(TagParseErr::EmptySubtag)
-//     }
-//     if subtag_str.length() > 8 {
-//       return Err(TagParseErr::SubtagTooLong)
-//     }
-
-//     let prev_pos = pos
-//     pos = prev_pos + subtag_str.length() + 1
-
-//     if state == 0 {
-//       if subtag_str.length() < 2 || !is_alphabetic(subtag_str) {
-//         return Err(TagParseErr::InvalidLanguage)
-//       }
-//       language_end = pos - 1
-//       if subtag_str.length() < 4 {
-//         state = 1
-//       } else {
-//         state = 2
-//       }
-//     } else if subtag_str == "x" || subtag_str == "X" {
-//       // 修复: 遇到 x 时，extension_end 应该是 x 之前的位置
-//       // 此时 pos 已经增加了 subtag_str.length() + 1，即指向了 x 之后的位置
-//       // prev_pos 是 x 开始的位置。
-//       // extension_end 应该是 prev_pos - 1 (即上一个子标签的结束位置)
-//       if state == 5 {
-//         return Err(TagParseErr::EmptyExtension)
-//       }
-//       extension_end = prev_pos - 1
-//       // 注意：这里不 break，而是继续循环以消耗剩余部分，或者 break 但需正确处理 private use
-//       // 为了简化，我们 break，但必须确保 extension_end 正确
-//       break
-//     } else if subtag_str.length() == 1 && is_alphanumeric(subtag_str) {
-//       if state == 5 {
-//         return Err(TagParseErr::EmptyExtension)
-//       }
-//       state = 5
-//       // extension_end 会在后续子标签中更新，或者在循环结束后处理
-//     } else if state == 5 {
-//       extension_end = pos - 1
-//     } else if (state == 1 || state == 2) &&
-//       subtag_str.length() == 3 &&
-//       is_alphabetic(subtag_str) {
-//       extlangs_count += 1
-//       if extlangs_count > 3 {
-//         return Err(TagParseErr::TooManyExtlangs)
-//       }
-//       extlang_end = pos - 1
-//     } else if (state == 1 || state == 2) &&
-//       subtag_str.length() == 4 &&
-//       is_alphabetic(subtag_str) {
-//       script_end = pos - 1
-//       state = 3
-//     } else if (state == 1 || state == 2 || state == 3) &&
-//       (
-//         (subtag_str.length() == 2 && is_alphabetic(subtag_str)) ||
-//         (subtag_str.length() == 3 && is_numeric(subtag_str))
-//       ) {
-//       region_end = pos - 1
-//       state = 4
-//     } else if (state == 1 || state == 2 || state == 3 || state == 4) &&
-//       is_alphanumeric(subtag_str) &&
-//       (
-//         (
-//           subtag_str.length() >= 5 &&
-//           is_alphabetic(sub_string(subtag_str, 0, 1))
-//         ) ||
-//         (subtag_str.length() >= 4 && is_numeric(sub_string(subtag_str, 0, 1)))
-//       ) {
-//       variant_end = pos - 1
-//       state = 4
-//     } else {
-//       return Err(TagParseErr::InvalidSubtag)
-//     }
-//   }
-
-//   // 如果循环因为 break (遇到 x) 而提前结束，extension_end 已经设置
-//   // 如果循环正常结束，且 extension_end 仍为 0，则设置为 input.length()
-//   if extension_end == 0 {
-//     extension_end = input.length()
-//   }
-
-//   if extlang_end < language_end {
-//     extlang_end = language_end
-//   }
-//   if script_end < extlang_end {
-//     script_end = extlang_end
-//   }
-//   if region_end < script_end {
-//     region_end = script_end
-//   }
-//   if variant_end < region_end {
-//     variant_end = region_end
-//   }
-//   if extension_end < variant_end {
-//     extension_end = variant_end
-//   }
-
-//   Ok({
-//     language_end,
-//     extlang_end,
-//     script_end,
-//     region_end,
-//     variant_end,
-//     extension_end,
-//   })
-// }
-
 fn calculate_positions(
   input : StringView,
 ) -> Result[TagElementsPositions, TagParseErr] {
@@ -603,63 +279,232 @@ fn calculate_positions(
     let prev_pos = pos
     pos = prev_pos + subtag_str.length() + 1
 
-    if state == 0 {
-      if subtag_str.length() < 2 || !is_alphabetic(subtag_str) {
-        return Err(TagParseErr::InvalidLanguage)
+    // if state == 0 {
+    //   if subtag_str.length() < 2 || !is_alphabetic(subtag_str) {
+    //     return Err(TagParseErr::InvalidLanguage)
+    //   }
+    //   language_end = pos - 1
+    //   if subtag_str.length() < 4 {
+    //     state = 1
+    //   } else {
+    //     state = 2
+    //   }
+    // } else if subtag_str == "x" || subtag_str == "X" {
+    //   if state == 5 {
+    //     return Err(TagParseErr::EmptyExtension)
+    //   }
+    //   extension_end = input.length()
+    //   break
+    // } else if subtag_str.length() == 1 && is_alphanumeric(subtag_str) {
+    //   if state == 5 {
+    //     return Err(TagParseErr::EmptyExtension)
+    //   }
+    //   state = 5
+    // } else if state == 5 {
+    //   extension_end = pos - 1
+    // } else if state == 1 &&
+    //   subtag_str.length() == 3 &&
+    //   is_alphabetic(subtag_str) {
+    //   extlangs_count += 1
+    //   if extlangs_count > 3 {
+    //     return Err(TagParseErr::TooManyExtlangs)
+    //   }
+    //   extlang_end = pos - 1
+    //   state = 2
+    // } else if (state == 1 || state == 2) &&
+    //   subtag_str.length() == 4 &&
+    //   is_alphabetic(subtag_str) {
+    //   script_end = pos - 1
+    //   state = 3
+    // } else if (state == 1 || state == 2 || state == 3) &&
+    //   (
+    //     (subtag_str.length() == 2 && is_alphabetic(subtag_str)) ||
+    //     (subtag_str.length() == 3 && is_numeric(subtag_str))
+    //   ) {
+    //   region_end = pos - 1
+    //   state = 4
+    // } else if (state == 1 || state == 2 || state == 3 || state == 4) &&
+    //   is_alphanumeric(subtag_str) &&
+    //   (
+    //     (
+    //       subtag_str.length() >= 5 &&
+    //       is_alphabetic(sub_string(subtag_str, 0, 1))
+    //     ) ||
+    //     (subtag_str.length() >= 4 && is_numeric(sub_string(subtag_str, 0, 1)))
+    //   ) {
+    //   variant_end = pos - 1
+    //   state = 4
+    // } else {
+    //   return Err(TagParseErr::InvalidSubtag)
+    // }
+    // debug("Processing subtag: \{subtag_str}, State: \{state}")
+
+    // match classify_subtag(subtag_str) {
+    //   SubtagType::Invalid => return Err(TagParseErr::InvalidSubtag)
+    //   SubtagType::PrivateUseIntro => {
+    //     // 处理 x- 逻辑
+    //     if state == 5 { return Err(TagParseErr::EmptyExtension) }
+    //     extension_end = input.length()
+    //     break
+    //   }
+    //   SubtagType::ExtensionIntro(_c) => {
+    //     // 处理单字母扩展标识符
+    //     if state == 5 { return Err(TagParseErr::EmptyExtension) }
+    //     state = 5
+    //   }
+    //   SubtagType::Alphabetic(len) => {
+    //     // 根据 state 和 len 决定是语言、扩展语言、脚本还是变体
+    //     if state == 0 {
+    //       // 主语言逻辑
+    //       if len < 2 { return Err(TagParseErr::InvalidLanguage) }
+    //       language_end = pos - 1
+    //       state = if len < 4 { 1 } else { 2 }
+    //     } else if (state == 1 || state == 2) && len == 3 {
+    //       // 扩展语言
+    //       extlangs_count += 1
+    //       if extlangs_count > 3 { return Err(TagParseErr::TooManyExtlangs) }
+    //       extlang_end = pos - 1
+    //       state = 2
+    //     } else if (state == 1 || state == 2) && len == 4 {
+    //       // 脚本
+    //       script_end = pos - 1
+    //       state = 3
+    //     } else if (state >= 1 && state <= 4) && 
+    //           (
+    //     (subtag_str.length() == 2 && is_alphabetic(subtag_str)) || // <--- 旧代码在这里处理了 2 字母地区
+    //     (subtag_str.length() == 3 && is_numeric(subtag_str))
+    //   ){
+    //       // 变体 (以字母开头)
+    //       variant_end = pos - 1
+    //       state = 4
+    //     } else {
+    //       return Err(TagParseErr::InvalidSubtag)
+    //     }
+    //   }
+    //   SubtagType::Numeric(len) => {
+    //     // 处理数字子标签 (地区或变体)
+    //     if (state == 1 || state == 2 || state == 3) && len == 3 {
+    //       region_end = pos - 1
+    //       state = 4
+    //     } else if (state >= 1 && state <= 4) && len >= 4 {
+    //       variant_end = pos - 1
+    //       state = 4
+    //     } else {
+    //       return Err(TagParseErr::InvalidSubtag)
+    //     }
+    //   }
+    //   SubtagType::Alphanumeric(len) => {
+    //      // 处理混合子标签 (通常是变体)
+    //      // 注意：BCP47中变体可以是字母数字混合
+    //      if (state >= 1 && state <= 4) && (len >= 5 || (len >= 4 && is_numeric(subtag_str[0:1]))) {
+    //         variant_end = pos - 1
+    //         state = 4
+    //      } else {
+    //         return Err(TagParseErr::InvalidSubtag)
+    //      }
+    //   }
+    // }
+
+    match classify_subtag(subtag_str) {
+      SubtagType::Invalid => return Err(TagParseErr::InvalidSubtag)
+      SubtagType::PrivateUseIntro => {
+        if state == 0 {
+          return Err(TagParseErr::EmptyExtension)
+        }
+        if extension_end == variant_end && state == 5 {
+          return Err(TagParseErr::EmptyExtension)
+        }
+
+        // extension_end = input.length()
+        break
       }
-      language_end = pos - 1
-      if subtag_str.length() < 4 {
-        state = 1
-      } else {
-        state = 2
+      SubtagType::ExtensionIntro(_c) => {
+        if state == 0 {
+          return Err(TagParseErr::EmptyExtension)
+        }
+
+        if state == 5 {
+          extension_end = pos - 1
+          continue
+        }
+        state = 5
       }
-    } else if subtag_str == "x" || subtag_str == "X" {
-      if state == 5 {
-        return Err(TagParseErr::EmptyExtension)
+      SubtagType::Alphabetic(len) => {
+        if state == 5 {
+          extension_end = pos - 1
+
+          continue
+        }
+        if state == 0 {
+          // 1. 主语言 (Primary Language): 2-3 字母
+          if len < 2 {
+            return Err(TagParseErr::InvalidLanguage)
+          }
+          language_end = pos - 1
+          state = if len < 4 { 1 } else { 2 }
+        } else if (state == 1 || state == 2) && len == 3 {
+          // if state == 2 {
+          //   return Err(TagParseErr::InvalidSubtag)
+          // }
+
+          // 2. 扩展语言 (Extlang): 3 字母
+          extlangs_count += 1
+          if extlangs_count > 3 {
+            return Err(TagParseErr::TooManyExtlangs)
+          }
+          extlang_end = pos - 1
+          state = 2
+        } else if (state == 1 || state == 2) && len == 4 {
+          // 3. 脚本 (Script): 4 字母
+          script_end = pos - 1
+          state = 3
+        } else if (state == 1 || state == 2 || state == 3) && len == 2 {
+          // 4. 地区 (Region): 2 字母 (例如 MN, US)
+          region_end = pos - 1
+          state = 4
+        } else if (state >= 1 && state <= 4) && len >= 5 {
+          // 5. 变体 (Variant): 5+ 字母 (例如 nedis, boont)
+          variant_end = pos - 1
+          state = 4
+        } else {
+          return Err(TagParseErr::InvalidSubtag)
+        }
       }
-      extension_end = input.length()
-      break
-    } else if subtag_str.length() == 1 && is_alphanumeric(subtag_str) {
-      if state == 5 {
-        return Err(TagParseErr::EmptyExtension)
+      SubtagType::Numeric(len) => {
+        if state == 5 {
+          extension_end = pos - 1
+
+          continue
+        }
+        // 处理数字子标签 (地区或变体)
+        if (state == 1 || state == 2 || state == 3) && len == 3 {
+          // 6. 地区 (Region): 3 数字 (例如 419, 005)
+          region_end = pos - 1
+          state = 4
+        } else if (state >= 1 && state <= 4) && len >= 4 {
+          // 7. 变体 (Variant): 4+ 数字 (例如 1996)
+          variant_end = pos - 1
+          state = 4
+        } else {
+          return Err(TagParseErr::InvalidSubtag)
+        }
       }
-      state = 5
-    } else if state == 5 {
-      extension_end = pos - 1
-    } else if state == 1 &&
-      subtag_str.length() == 3 &&
-      is_alphabetic(subtag_str) {
-      extlangs_count += 1
-      if extlangs_count > 3 {
-        return Err(TagParseErr::TooManyExtlangs)
+      SubtagType::Alphanumeric(len) => {
+        if state == 5 {
+          extension_end = pos - 1
+
+          continue
+        }
+        // 8. 变体 (Variant): 字母数字混合 (通常以数字开头，长度>=4; 或以字母开头，长度>=5)
+        // 注意：classify_subtag 已经将纯字母和纯数字分离了，这里剩下的是混合类型
+        if (state >= 1 && state <= 4) &&
+          (len >= 5 || (len >= 4 && is_numeric(subtag_str[0:1]))) {
+          variant_end = pos - 1
+          state = 4
+        } else {
+          return Err(TagParseErr::InvalidSubtag)
+        }
       }
-      extlang_end = pos - 1
-      state = 2
-    } else if (state == 1 || state == 2) &&
-      subtag_str.length() == 4 &&
-      is_alphabetic(subtag_str) {
-      script_end = pos - 1
-      state = 3
-    } else if (state == 1 || state == 2 || state == 3) &&
-      (
-        (subtag_str.length() == 2 && is_alphabetic(subtag_str)) ||
-        (subtag_str.length() == 3 && is_numeric(subtag_str))
-      ) {
-      region_end = pos - 1
-      state = 4
-    } else if (state == 1 || state == 2 || state == 3 || state == 4) &&
-      is_alphanumeric(subtag_str) &&
-      (
-        (
-          subtag_str.length() >= 5 &&
-          is_alphabetic(sub_string(subtag_str, 0, 1))
-        ) ||
-        (subtag_str.length() >= 4 && is_numeric(sub_string(subtag_str, 0, 1)))
-      ) {
-      variant_end = pos - 1
-      state = 4
-    } else {
-      return Err(TagParseErr::InvalidSubtag)
     }
   }
 
@@ -693,59 +538,6 @@ fn calculate_positions(
 }
 
 ///|
-// fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
-//   for record in grandfathereds {
-//     if eq_ignore_ascii_case(record, input) {
-//       return Ok(input.to_owned())
-//     }
-//   }
-
-//   if input.has_prefix("x-") || input.has_prefix("X-") {
-//     if !is_alphanumeric_or_dash(input) {
-//       return Err(TagParseErr::ForbiddenChar)
-//     }
-//     if input.length() == 2 {
-//       return Err(TagParseErr::EmptyPrivateUse)
-//     }
-//     return Ok(String::to_lower(input.to_owned()))
-//   }
-
-//   let result = StringBuilder::new()
-//   let mut is_first = true
-
-//   for subtag in input.split("-") {
-//     let subtag_str = subtag.to_owned()
-//     if subtag_str.is_empty() {
-//       return Err(TagParseErr::EmptySubtag)
-//     }
-//     if subtag_str.length() > 8 {
-//       return Err(TagParseErr::SubtagTooLong)
-//     }
-
-//     if !is_first {
-//       result.write_string("-")
-//     }
-//     is_first = false
-
-//     if result.to_string().length() == 0 {
-//       result.write_string(String::to_lower(subtag_str))
-//     } else if subtag_str.length() == 3 && is_alphabetic(subtag_str) {
-//       result.write_string(String::to_lower(subtag_str))
-//     } else if subtag_str.length() == 4 && is_alphabetic(subtag_str) {
-//       result.write_string(to_title_case(subtag_str))
-//     } else if (subtag_str.length() == 2 && is_alphabetic(subtag_str)) ||
-//       (subtag_str.length() == 3 && is_numeric(subtag_str)) {
-//       result.write_string(String::to_upper(subtag_str))
-//     } else {
-//       result.write_string(String::to_lower(subtag_str))
-//     }
-//   }
-//   Ok(result.to_string())
-// }
-
-///|
-
-///|
 fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
   // 修复：祖父级标签应返回预定义列表中的规范形式，保持原有大小写
   for record in grandfathereds {
@@ -768,6 +560,7 @@ fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
   let result = StringBuilder::new()
   let mut is_first = true
   let mut is_private_use = false
+  let mut is_in_extension = false // <--- 新增：标记是否处于扩展部分
 
   for subtag in input.split("-") {
     let subtag_str = subtag.to_owned()
@@ -786,12 +579,25 @@ fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
     // 检查是否进入私有使用部分
     if !is_private_use && (subtag_str == "x" || subtag_str == "X") {
       is_private_use = true
+      is_in_extension = false // 私有使用开始，扩展结束
+
       result.write_string("x")
+      continue
+    }
+    if !is_private_use &&
+      !is_in_extension &&
+      subtag_str.length() == 1 &&
+      is_alphanumeric(subtag_str) {
+      is_in_extension = true
+      result.write_string(String::to_lower(subtag_str))
       continue
     }
 
     if is_private_use {
       // 私有子标签始终小写
+      result.write_string(String::to_lower(subtag_str))
+    } else if is_in_extension {
+      // 扩展子标签始终小写
       result.write_string(String::to_lower(subtag_str))
     } else if result.to_string().length() == 0 {
       // 主语言子标签：小写
@@ -814,18 +620,40 @@ fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
   Ok(result.to_string())
 }
 
-// Helper functions
-
 ///|
 struct ExtensionsIterator {
   input : String
 }
 
-// 修正构造函数，正确返回结构体实例
-
 ///|
 fn ExtensionsIterator::new(input : String) -> ExtensionsIterator {
   { input, }
+}
+
+///|
+fn classify_subtag(s : StringView) -> SubtagType {
+  if s == "x" || s == "X" {
+    return SubtagType::PrivateUseIntro
+  }
+  if s.length() == 1 && is_alphanumeric(s) {
+    return SubtagType::ExtensionIntro(StringView::get_char(s, 0).unwrap())
+  }
+
+  let is_alpha = is_alphabetic(s)
+  let is_num = is_numeric(s)
+  let len = s.length()
+
+  if is_alpha {
+    return SubtagType::Alphabetic(len)
+  }
+  if is_num {
+    return SubtagType::Numeric(len)
+  }
+  if is_alphanumeric(s) {
+    return SubtagType::Alphanumeric(len)
+  }
+
+  SubtagType::Invalid
 }
 
 ///|

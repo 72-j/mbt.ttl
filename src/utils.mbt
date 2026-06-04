@@ -122,9 +122,13 @@ fn memchr(target : Byte, data : BytesView) -> Int? {
 
 ///|
 fn is_alphabetic(s : StringView) -> Bool {
-  let chars = StringView::iter(s)
+  // let chars = StringView::iter(s)
+  if s.is_empty() {
+    return false
+  }
+
   let mut result = true
-  for c in chars {
+  for c in s {
     if !c.is_ascii_alphabetic() {
       result = false
       break
@@ -135,9 +139,13 @@ fn is_alphabetic(s : StringView) -> Bool {
 
 ///|
 fn is_numeric(s : StringView) -> Bool {
-  let chars = StringView::iter(s)
+  // let chars = StringView::iter(s)
+  if s.is_empty() {
+    return false
+  }
+
   let mut result = true
-  for c in chars {
+  for c in s {
     if !c.is_ascii_digit() {
       result = false
       break
@@ -147,10 +155,9 @@ fn is_numeric(s : StringView) -> Bool {
 }
 
 ///|
-fn is_alphanumeric(s : String) -> Bool {
-  let chars = String::iter(s)
+fn is_alphanumeric(s : StringView) -> Bool {
   let mut result = true
-  for c in chars {
+  for c in s {
     if !is_ascii_alphanumeric(c) {
       result = false
       break

@@ -5,6 +5,10 @@ pub struct Triple {
   object : Term
 } derive(Eq, Debug, Hash)
 
+// impl Show for Triple with to_string(self : Triple) -> String {
+
+// }
+
 ///|
 pub fn Triple::new(
   subject : NamedOrBlankNode,
@@ -31,6 +35,11 @@ pub fn Triple::in_graph(self : Triple, graph_name : GraphNameRef) -> Quad {
     object: self.object,
     graph_name: graph_name.into_owned(),
   }
+}
+
+///|
+pub fn Triple::into_enum(self : Triple) -> Term {
+  Term::Triple(self)
 }
 
 ///|

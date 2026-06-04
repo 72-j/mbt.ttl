@@ -5,6 +5,11 @@ struct Iri {
 } derive(Debug)
 
 ///|
+impl Show for Iri with fn to_string(self) {
+  self.base_iri
+}
+
+///|
 struct IriRef(Ref[Iri]) derive(Debug)
 
 ///|
@@ -16,27 +21,25 @@ pub struct IriPositions {
 } derive(Default, Debug)
 
 ///|
-fn IriRef::new(iri : Iri) -> IriRef {
-  IriRef(Ref::Ref(iri))
-}
-
-///|
-// fn IriRef::new_unchecked(iri : Iri) -> IriRef {
-//     guard !iri.base_iri.is_empty()
-
+// fn IriRef::of_ref(iri : Iri) -> IriRef {
 //   IriRef(Ref::Ref(iri))
 // }
 
 ///|
-fn IriRef::to_owned(iri_ref : IriRef) -> Iri {
+fn IriRef::new_unchecked(iri : Iri) -> IriRef {
+  // guard !iri.base_iri.is_empty()
+  IriRef(Ref::Ref(iri))
+}
+
+///|
+fn IriRef::into_owned(iri_ref : IriRef) -> Iri {
   { base_iri: iri_ref.val.base_iri, state: iri_ref.val.state }
 }
 
 ///|
 priv struct ParserState {
-  mut pos : Int // 当前解析位置（字节索引）
-  // 位置记录
-  positions : IriPositions
+  mut pos : Int // 当前解析位置（字节索引）  
+  positions : IriPositions // 位置记录
 } derive(Debug)
 
 ///|
@@ -74,9 +77,13 @@ pub fn Iri::Iri(base_iri : String) -> Iri {
 }
 
 ///|
-// 定义 CharMatch 类型
-
+fn Iri::as_ref(iri : Self) -> IriRef {
+  // IriRef(Ref::Ref(iri))
+  IriRef::new_unchecked(iri)
+}
 // 修复 peek_match - 只查看不消耗
+
+///|
 pub fn IriRef::peek_match(self : IriRef, pattern : CharMatch) -> Bool {
   let mut current_pos = self.val.state.pos
   let input_len = self.val.as_stringview().length()
@@ -99,8 +106,6 @@ pub fn IriRef::peek_match(self : IriRef, pattern : CharMatch) -> Bool {
 
   true
 }
-
-// 最常用的模式：尝试匹配并消费
 
 ///|
 pub fn IriRef::try_match_range(
@@ -182,7 +187,6 @@ pub fn IriRef::peek_match_range(
   // 返回消耗的字节数
   Some(current_pos - self.val.state.pos)
 }
-// 解析完整的 IRI
 
 ///|
 pub fn IriRef::parse(
@@ -585,11 +589,6 @@ pub fn Iri::remove_dot_segments(_self : Iri, path : StringView) -> String {
 }
 
 ///|
-// pub fn IriRef::as_str(self : IriRef) -> String {
-//   self.val.base_iri
-// }
-
-///|
 pub fn IriRef::validate(self : IriRef) -> Result[Unit, IriError] {
   // 保存原始状态
   let saved_state = self.val.state
@@ -616,8 +615,8 @@ pub fn IriRef::resolve(
   remove_dot_segments? : Bool = true,
 ) -> Result[Iri, IriError] {
   // 1. 解析参考 IRI (Relative Reference)
-  let ref_parser = Iri::Iri(ref_iri_str)
-  let ref_parser = IriRef::new(ref_parser)
+  let ref_parser = Iri::Iri(ref_iri_str).as_ref()
+  // let ref_parser = IriRef::of_ref(ref_parser)
   // 注意：parse 会修改内部 state，所以我们需要一个解析后的副本或者确保后续只读
   // 由于 parse 返回 Result[Iri, ...]，我们直接使用解析后的对象
   let parsed_ref = match ref_parser.parse(unchecked=false) {
@@ -633,8 +632,8 @@ pub fn IriRef::resolve(
 
   // 3. 解析 Base IRI (当前 self)
   // 注意：self 可能尚未解析，或者状态已脏。为了安全，重新解析 self
-  let base_parser = Iri::Iri(self.val.base_iri)
-  let base_parser = IriRef::new(base_parser)
+  let base_parser = Iri::Iri(self.val.base_iri).as_ref()
+  // let base_parser = IriRef::of_ref(base_parser)
   let parsed_base = match base_parser.parse(unchecked=false) {
     Ok(iri) => iri
     Err(e) => return Err(e)
@@ -678,7 +677,7 @@ pub fn IriRef::resolve(
         }
       } else if r_path.has_prefix("/") {
         // 如果参考路径是绝对的，直接使用，并去除点段
-        self.to_owned().remove_dot_segments(r_path)
+        self.into_owned().remove_dot_segments(r_path)
       } else {
         // 如果参考路径是相对的，需要与 Base 路径合并
         let merged_raw = match base_path {
@@ -710,7 +709,7 @@ pub fn IriRef::resolve(
             "/" + r_path
         }
         if remove_dot_segments {
-          self.to_owned().remove_dot_segments(merged_raw)
+          self.into_owned().remove_dot_segments(merged_raw)
         } else {
           merged_raw
         }
@@ -801,8 +800,8 @@ pub fn IriRef::resolve(
   let final_str = sb.to_string()
 
   // 7. 返回新的 Iri 对象
-  let final_parser = Iri::Iri(final_str)
-  let final_parser = IriRef::new(final_parser)
+  let final_parser = Iri::Iri(final_str).as_ref()
+  // let final_parser = IriRef::of_ref(final_parser)
   // 再次解析以确保内部状态一致，或者直接返回未解析但字符串正确的对象？
   // 通常 resolve 应该返回一个有效的 Iri 对象，所以再次 parse 是安全的
   final_parser.parse(unchecked=false)
@@ -815,12 +814,12 @@ pub fn IriRef::resolve_unchecked(
   remove_dot_segments? : Bool = true,
 ) -> Iri {
   // 1. 解析参考 IRI (Relative Reference) - Unchecked
-  let ref_parser = Iri::Iri(ref_iri_str)
-  let ref_parser = IriRef::new(ref_parser)
+  let ref_parser = Iri::Iri(ref_iri_str).as_ref()
+  // let ref_parser = IriRef::of_ref(ref_parser)
   // 忽略错误，如果解析失败，parsed_ref 将是一个处于初始状态或部分解析状态的对象
   let parsed_ref = match ref_parser.parse(unchecked=true) {
     Ok(iri) => iri
-    Err(_) => ref_parser.to_owned() // 使用原始 parser 作为 fallback，其 state.pos 可能为 0
+    Err(_) => ref_parser.into_owned() // 使用原始 parser 作为 fallback，其 state.pos 可能为 0
   }
 
   // 2. 如果参考 IRI 是绝对的，直接返回它 (Unchecked)
@@ -830,11 +829,11 @@ pub fn IriRef::resolve_unchecked(
   }
 
   // 3. 解析 Base IRI (当前 self) - Unchecked
-  let base_parser = Iri::Iri(self.val.base_iri)
-  let base_parser = IriRef::new(base_parser)
+  let base_parser = Iri::Iri(self.val.base_iri).as_ref()
+  // let base_parser = IriRef::of_ref(base_parser)
   let parsed_base = match base_parser.parse(unchecked=true) {
     Ok(iri) => iri
-    Err(_) => base_parser.to_owned()
+    Err(_) => base_parser.into_owned()
   }
 
   // 4. 提取组件
@@ -868,7 +867,7 @@ pub fn IriRef::resolve_unchecked(
     Some(r_path) =>
       if r_path.has_prefix("/") {
         // 绝对路径，去除点段
-        self.to_owned().remove_dot_segments(r_path)
+        self.into_owned().remove_dot_segments(r_path)
       } else {
         // 相对路径，与 Base 合并
         let merged_raw = match base_path {
@@ -888,7 +887,7 @@ pub fn IriRef::resolve_unchecked(
           None => "/" + r_path
         }
         if remove_dot_segments {
-          self.to_owned().remove_dot_segments(merged_raw)
+          self.into_owned().remove_dot_segments(merged_raw)
         } else {
           merged_raw
         }
@@ -956,88 +955,273 @@ pub fn IriRef::resolve_unchecked(
 }
 
 ///|
-// pub fn IriRef::resolve(
-//   self : IriRef,
-//   ref_iri : String,
-// ) -> Result[Iri, IriError] {
-//   // 1. 解析参考 IRI
-//   let ref_parser = IriRef::Iri(ref_iri)
-//   let parsed_ref = match ref_parser.parse(unchecked=false){
-//     Ok(iri) => iri
-//     Err(e) => return Err(e)
-//   }
+pub fn IriRef::resolve_into(
+  self : IriRef,
+  relative_ref : String,
+  buffer : StringBuilder,
+) -> Result[Unit, IriError] {
+  let relative_ref = Iri::Iri(relative_ref).as_ref()
+  // 1. 解析相对引用
+  let parsed_relative = match IriRef::parse(relative_ref) {
+    Ok(r) => r
+    Err(e) => return Err(e)
+  }
 
-//   // 如果参考 IRI 是绝对的，直接返回
-//   if parsed_ref.is_absolute() {
-//     return Ok(parsed_ref)
-//   }
+  // 2. 如果相对引用是绝对的（包含 scheme），直接将其写入 buffer
+  if parsed_relative.is_absolute() {
+    buffer.write_string(parsed_relative.into_string())
+    return Ok(())
+  }
 
-//   // 2. 解析 Base IRI
-//   let base_parser = IriRef::Iri(self.val.base_iri)
-//   let parsed_base = match base_parser.parse(unchecked=false){
-//     Ok(iri) => iri
-//     Err(e) => return Err(e)
-//   }
+  // 3. 处理相对路径合并
+  // 获取基础 IRI 的各个部分
+  let base_scheme = self.scheme()
+  let base_authority = self.authority()
+  let base_path = self.path().unwrap_or("")
 
-//   let sb = StringBuilder::new()
+  // 开始构建结果
+  // 写入 Scheme
+  match base_scheme {
+    Some(s) => {
+      buffer.write_string(s)
+      buffer.write_char(':')
+    }
+    None => ()
+  }
 
-//   // 提取 Base 的关键位置
-//   let b_scheme_end = parsed_base.state.positions.scheme_end
-//   let b_auth_end = parsed_base.state.positions.authority_end
-//   let b_path_end = parsed_base.state.positions.path_end
+  // 写入 Authority
+  match base_authority {
+    Some(a) => {
+      buffer.write_string("//")
+      buffer.write_string(a)
+    }
+    None => ()
+  }
 
-//   // 提取 Ref 的关键位置
-//   let r_path_end = parsed_ref.state.positions.path_end
-//   let r_query_end = parsed_ref.state.positions.query_end
-//   let r_len = parsed_ref.base_iri.length()
+  // 计算合并后的路径
+  let merged_path = if parsed_relative.path().is_some() &&
+    !parsed_relative.path().unwrap().is_empty() {
+    let rel_path = parsed_relative.path().unwrap()
+    if rel_path.has_prefix("/") {
+      // 如果相对路径以 / 开头，它替换基础路径
+      rel_path
+    } else {
+      // 否则，合并路径
+      // 找到基础路径的最后一个 /
+      let last_slash_idx = base_path.find("/")
+      match last_slash_idx {
+        Some(idx) => {
+          // 保留基础路径直到最后一个 /
+          let base_prefix = base_path[0:idx + 1]
+          "\{base_prefix}\{rel_path}"
+        }
+        None =>
+          // 基础路径没有 /，完全替换？或者根据 RFC 3986，如果基础路径没有 authority，行为可能不同。
+          // 简单实现：如果基础路径不包含 /，则相对路径替换它，除非基础路径为空
+          if base_path.is_empty() {
+            rel_path
+            // 通常如果 base 是 http://example.com/path, rel is "foo", result is http://example.com/foo
+            // 如果 base 是 http://example.com, rel is "foo", result is http://example.com/foo
+            // RFC 3986 Section 5.2.3:
+            // If the base URI has a defined authority component and an empty path,
+            // then return a string consisting of "/" concatenated with the reference's path;
+            // otherwise return a string consisting of the merged path components.
 
-//   // 3. 构建 Scheme 和 Authority (来自 Base)
-//   if b_scheme_end > 0 {
-//     sb.write(parsed_base.base_iri.sub(start=0, end=b_scheme_end))
-//     if b_auth_end > b_scheme_end {
-//       sb.write(parsed_base.base_iri.sub(start=b_scheme_end, end=b_auth_end))
-//     }
-//   }
+          } else if base_authority is Some(_) && base_path.is_empty() {
+            "/\{rel_path}"
+          } else {
+            // 移除基础路径的最后一段
+            let last_slash_idx_inner = base_path.find("/")
+            match last_slash_idx_inner {
+              Some(idx) => "\{base_path[0 : idx + 1]}\{rel_path}"
+              None => rel_path // 这种情况很少见，除非 base_path 没有 slash
+            }
+          }
+      }
+    }
+  } else {
+    // 相对引用没有路径，使用基础路径
+    base_path
+  }
 
-//   // 4. 构建 Path
-//   let ref_path = parsed_ref.base_iri.sub(start=0, end=r_path_end)
-//   let merged_path = StringBuilder::new()
+  // 写入路径
+  buffer.write_string(merged_path)
 
-//   if ref_path.has_prefix("/") {
-//     merged_path.write(ref_path.to_owned())
-//   } else {
-//     let base_path = parsed_base.base_iri.sub(start=b_auth_end, end=b_path_end)
-//     if base_path == "" && b_scheme_end > 0 && b_auth_end == b_scheme_end {
-//       merged_path.write("/") 
-//       merged_path.write(ref_path.to_owned())
-//     } else {
-//       let last_slash = base_path.find("/")
-//       let base_dir = match last_slash {
-//         Some(idx) => base_path.sub(start=0, end=idx + 1)
-//         None => ""
-//       }
-//       merged_path.write(base_dir)
-//       merged_path.write(ref_path.to_owned())
-//     }
-//   }
+  // 写入查询
+  match parsed_relative.query() {
+    Some(q) => {
+      buffer.write_char('?')
+      buffer.write_string(q)
+    }
+    None => ()
+  }
 
-//   // 移除 . 和 .. 并追加到 StringBuilder
-//   sb.write(self.val.remove_dot_segments(merged_path.to_string()))
+  // 如果相对引用没有 query，但我们有基础 query，且相对引用也没有覆盖它（即 relative.query() is None）
+  if parsed_relative.query() is None(_) {
+    match self.query() {
+      Some(q) => {
+        buffer.write_char('?')
+        buffer.write_string(q)
+      }
+      None => ()
+    }
+  }
 
-//   // 5. 构建 Query (仅当 Ref 存在时)
-//   if r_query_end > r_path_end {
-//     sb.write('?')
-//     sb.write(parsed_ref.base_iri.sub(start=r_path_end + 1, end=r_query_end))
-//   }
+  // 写入片段
+  match parsed_relative.fragment() {
+    Some(f) => {
+      buffer.write_char('#')
+      buffer.write_string(f)
+    }
+    None =>
+      // 同样，如果相对引用没有 fragment，保留基础的？
+      // RFC 5.2.2: "If the reference's fragment component is defined, it is used; otherwise, the base's is used."
+      if parsed_relative.fragment() is None(_) {
+        match self.fragment() {
+          Some(f) => {
+            buffer.write_char('#')
+            buffer.write_string(f)
+          }
+          None => ()
+        }
+      }
+  }
 
-//   // 6. 构建 Fragment (仅当 Ref 存在时)
-//   if r_query_end < r_len && StringView::get_char(parsed_ref.base_iri, r_query_end) == Some('#') {
-//     sb.write('#')
-//     sb.write(parsed_ref.base_iri.sub(start=r_query_end + 1, end=r_len))
-//   }
+  Ok(())
+}
 
-//   // 7. 返回最终结果
-//   let final_str = sb.to_string()
-//   let final_parser = IriRef::Iri(final_str)
-//   final_parser.parse(unchecked=false)
-// }
+///|
+pub fn IriRef::relativize(
+  base : IriRef,
+  target : IriRef,
+) -> Result[Iri, IriError] {
+  let base_scheme = base.scheme()
+  let target_scheme = target.scheme()
+
+  let base_authority = base.authority()
+  let target_authority = target.authority()
+
+  // 1. 如果 Scheme 或 Authority 不同，无法相对化，返回目标的字符串表示作为绝对 IRI
+  if base_scheme != target_scheme || base_authority != target_authority {
+    return IriRef::parse(target)
+  }
+
+  let base_path = base.path().unwrap_or("")
+  let target_path = target.path().unwrap_or("")
+
+  // 2. 计算相对路径
+  let relative_path = if target_path == base_path {
+    // 路径完全相同
+    ""
+  } else if target_path.has_prefix(base_path) {
+    // 目标是基础的子路径
+    // 确保我们是在目录边界上切割
+    // 例如 base: /a/b/, target: /a/b/c -> c
+    // base: /a/b, target: /a/bc -> 不应该匹配前缀，除非 base 是 /a/b/
+
+    // 简单处理：如果 base 以 / 结尾，或者 target 在 base 长度处的字符是 /
+    let is_prefix_valid = base_path.is_empty() ||
+      base_path.ends_with("/") ||
+      (
+        target_path.length() > base_path.length() &&
+        target_path.get_char(base_path.length()).unwrap() == '/'
+      )
+
+    if is_prefix_valid {
+      // 截取剩余部分
+      let suffix_start = if base_path.is_empty() {
+        0
+      } else {
+        base_path.length()
+      }
+      // 如果 base_path 不是空的且不以 / 结尾，我们需要跳过那个 /
+      // 但上面的 is_prefix_valid 检查确保了如果 base_path 不空且非 / 结尾，target 必须有 /
+
+      let rel_p = target_path[suffix_start:]
+
+      // 如果 base_path 是 /a/b 且 target 是 /a/b/c，suffix_start 是 4 (/a/b)，rel_p 是 /c? 
+      // 不，StringView slice 是字节索引还是字符索引？假设是标准的 substring。
+      // 如果 base_path = "/a/b", len=4. target="/a/b/c".
+      // target[4:] is "/c". We want "c".
+
+      if !base_path.is_empty() && !base_path.has_suffix("/") {
+        // 跳过前面的 /
+        if rel_p.has_prefix("/") {
+          rel_p[1:].to_owned()
+        } else {
+          rel_p.to_owned()
+        }
+      } else {
+        rel_p.to_owned()
+      }
+    } else {
+      // 前缀匹配但不是目录边界，无法相对化
+      return IriRef::parse(target)
+    }
+  } else {
+    // 路径没有公共前缀，或者目标不在基础之下
+    // 可以尝试计算 ../ 但为了简单起见，如果不在子目录下，通常返回绝对路径
+    // 或者实现简单的 ../ 逻辑
+
+    // 简单实现：返回绝对路径
+    return IriRef::parse(target)
+  }
+
+  // 3. 构建相对 IRI 字符串
+  let result = StringBuilder::new()
+
+  // 写入相对路径
+  if !relative_path.is_empty() {
+    result.write_string(relative_path)
+  } else {
+    // 如果路径相同，检查 query 和 fragment
+    // 如果也没有 query 和 fragment，结果是空字符串？
+    // 或者如果是 same document reference, 可能是 "" 或 "#fragment"
+    result.write_string("")
+  }
+
+  // 4. 处理 Query
+  let base_query = base.query()
+  let target_query = target.query()
+
+  if target_query != base_query {
+    match target_query {
+      Some(q) => {
+        result.write_char('?')
+        result.write_string(q)
+      }
+      None => ()
+      // 如果目标没有 query，但基础有，相对引用中不包含 query 意味着继承？
+      // 不，相对引用中省略 query 意味着解析时保留基础的 query。
+      // 所以如果我们要消除基础的 query，我们需要显式写 ? 吗？
+      // RFC 3986: If the reference's query component is empty, it means the resulting URI has no query.
+      // But our Option<String> doesn't distinguish empty vs undefined easily.
+      // Assuming None means undefined (inherit), Some("") means empty.
+      // If we want to REMOVE the base query, we should write "?"?
+      // Let's assume if target_query is None, we don't write anything (inherits).
+      // If target_query is Some(""), we write "?"?
+      // For simplicity, if they differ, and target has Some(q), we write it.
+    }
+  }
+
+  // 5. 处理 Fragment
+  let base_fragment = base.fragment()
+  let target_fragment = target.fragment()
+
+  if target_fragment != base_fragment {
+    match target_fragment {
+      Some(f) => {
+        result.write_char('#')
+        result.write_string(f)
+      }
+      None => ()
+    }
+  }
+
+  let final_str = result.to_string()
+
+  let final_iri = Iri::Iri(final_str).as_ref()
+  // 如果结果是空的，且没有 query/fragment，它可能是一个空字符串。
+  // parse 空字符串应该返回一个有效的相对 IriRef。
+  IriRef::parse(final_iri)
+}

@@ -1,7 +1,6 @@
 ///|
 pub(all) enum TokenOrLineJump[T] {
   Token(T)
-  // N3Token(T)
   LineJump
 } derive(Eq, Debug)
 

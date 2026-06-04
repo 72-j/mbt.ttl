@@ -20,8 +20,13 @@ impl TokenRecognizer for N3Lexer with fn recognize_next_token(
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let base_iri_opt = match options {
     Some(options) => {
+      let opts = match options {
+        LexerOptions::N3LexerOptions(n3_options) => n3_options.base_iri
+        _ => None
+      }
+
       // 假设 Iri::parse 返回 Result[Iri, Error]
-      let iri = IriRef::new(options.base_iri.unwrap())
+      let iri = opts.unwrap().as_ref()
       match IriRef::parse(iri) {
         Ok(iri) => Some(iri)
         Err(_) => None // 或者处理错误
@@ -29,7 +34,7 @@ impl TokenRecognizer for N3Lexer with fn recognize_next_token(
     }
     None => None
   }
-  let options = N3LexerOptions::new(base_iri_opt)
+  let options = N3LexerOptions::default(base_iri_opt)
   if data.is_empty() {
     return None
   }
@@ -225,7 +230,7 @@ fn N3Lexer::parse_iri(
   // 2. 解析或解析并合并 Base IRI
   let final_iri = if options.base_iri is Some(base_iri) {
     // 如果有 base_iri，尝试解析相对 IRI
-    let base_iri = IriRef::new(base_iri)
+    let base_iri = base_iri.as_ref()
     if self.lenient {
       // 宽松模式：直接合并，不检查有效性
       Ok(base_iri.resolve_unchecked(iri_str))
@@ -239,8 +244,8 @@ fn N3Lexer::parse_iri(
     }
   } else {
     // 没有 base_iri，直接解析绝对 IRI
-    let iri = Iri::Iri(iri_str)
-    let iri = IriRef::new(iri)
+    let iri = Iri::Iri(iri_str).as_ref()
+    // let iri = IriRef::of_ref(iri)
 
     if self.lenient {
       // 宽松模式：这里可能需要一个不检查错误的 parse，或者假设 iri_str 已经是合法的
@@ -619,151 +624,6 @@ fn N3Lexer::recognize_optional_pn_local(
     }
   }
 }
-// fn N3Lexer::recognize_optional_pn_local(
-//   self: N3Lexer, 
-//   data: BytesView, 
-//   is_ending: Bool
-// ) -> Option[(Int, Result[(String, Bool), TokenRecognizerError])] {
-//   let mut i = 0
-//   let mut buffer: Option[StringBuilder] = None
-//   let mut position_that_is_already_in_buffer = 0
-//   let mut might_be_invalid_iri = false
-//   let mut ends_with_unescaped_dot = 0
-
-//   for ;; {
-//     if N3Lexer::recognize_unicode_char(data[i:], i) is Some(r){
-//       match r {
-//         Ok((c, consumed)) => {
-//           if c == '%' {
-//             i += 1
-//             let a = Byte::to_char(data.get(i).unwrap())
-//             i += 1
-//             let b = Byte::to_char(data.get(i).unwrap())
-//             if !a.is_ascii_hexdigit() || !b.is_ascii_hexdigit() {
-//               return Some((
-//                 i + 1, 
-//                 Err(TokenRecognizerError::InvalidErrMessage(
-//                   data[i-2:i],
-//                   Range::Range(i-2, i),
-//                   "escapes in IRIs should be % followed by two hexadecimal characters, found '\{a}\{b}'"
-//                 ))
-//               ))
-//             }
-//             i += 1
-//             ends_with_unescaped_dot = 0
-//           } else if c == '\'' {
-//             i += 1
-//             let a = Byte::to_char(data.get(i).unwrap())
-//             if self.lenient || a == '_' || a == '~' || a == '.' || a == '-' || 
-//                a == '!' || a == '$' || a == '&' || a == '\'' || a == '(' || 
-//                a == ')' || a == '*' || a == '+' || a == ',' || a == ';' || a == '=' {
-//               // allowed
-//             } else {
-//               if a == '/' || a == '?' || a == '#' || a == '@' || a == '%' {
-//                 might_be_invalid_iri = true
-//               } else {
-//                 return Some((
-//                   i + 1,
-//                   Err(TokenRecognizerError::InvalidErrMessage(
-//                     data[i:i+1],
-//                     Range::Range(i, i+1),
-//                     "The character that are allowed to be escaped in IRIs are _~.-!$&'()*+,;=/?#@%, found '\{a}'"
-//                   ))
-//                 ))
-//               }
-//             }
-
-//             // let buffer_ref = buffer.get_or_insert_with(StringBuilder::new());
-//             if buffer is None {
-//   buffer = Some(StringBuilder::new())
-// }
-// // 安全地获取 StringBuilder 的引用，此时 buffer 必定是 Some
-// let buffer_ref = buffer.unwrap()
-
-//             if i - position_that_is_already_in_buffer > 1 {
-//               match str_from_utf8(data[position_that_is_already_in_buffer:i-1], 
-//                                   Range::Range(position_that_is_already_in_buffer, i-1)) {
-//                 Ok(data_str) => buffer_ref.write_string(data_str)
-//                 Err(e) => return Some((i, Err(e)))
-//               }
-//             }
-//             buffer_ref.write_char(a)
-//             i += 1
-//             position_that_is_already_in_buffer = i
-//             ends_with_unescaped_dot = 0
-//           } else {
-//             if i == 0 {
-//               if !(N3Lexer::is_possible_pn_chars_u(c) || c == ':' || c.is_ascii_digit()) {
-//                 return Some((0, Ok(("".to_string(), false))))
-//               }
-//               if !self.lenient {
-//                 might_be_invalid_iri = N3Lexer::is_possible_pn_chars_base_but_not_valid_iri(c) || c == ':'
-//               }
-//               i += consumed
-//             } else {
-//               if N3Lexer::is_possible_pn_chars(c) || c == ':' {
-//                 if !self.lenient {
-//                   might_be_invalid_iri = N3Lexer::is_possible_pn_chars_base_but_not_valid_iri(c) || c == ':'
-//                 }
-//                 i += consumed
-//                 ends_with_unescaped_dot = 0
-//               } else if c == '.' {
-//                 i += consumed
-//                 ends_with_unescaped_dot += 1
-//               } else {
-//                 let result = if buffer is Some(buffer_val) {
-//                   match str_from_utf8(data[position_that_is_already_in_buffer:i], 
-//                                        Range::Range(position_that_is_already_in_buffer, i)) {
-//                     Ok(data_str) => buffer_val.write_string(data_str)
-//                     Err(e) => return Some((i, Err(e)))
-//                   }
-//                   for _ in 0..<ends_with_unescaped_dot {
-//                     let _ = buffer_val.pop();
-//                   }
-//                   i -= ends_with_unescaped_dot
-//                   buffer_val
-//                 } else {
-//                   let mut data_str = match str_from_utf8(data[:i], Range::Range(0, i)) {
-//                     Ok(d) => d
-//                     Err(e) => return Some((i, Err(e)))
-//                   };
-//                   data_str = data_str[:data_str.length() - ends_with_unescaped_dot].to_owned();
-//                   i -= ends_with_unescaped_dot
-//                   data_str
-//                 };
-//                 return Some((i, Ok((result, might_be_invalid_iri))))
-//               }
-//             }
-//           }
-//         }
-//         Err(e) => return Some((e.location.end, Err(e)))
-//       }
-//     } else {
-//       if is_ending {
-//         let result = if let Some(mut buffer_val) = buffer {
-//           while buffer_val.has_suffix('.') {
-//             buffer_val.pop();
-//             i -= 1;
-//           }
-//           buffer_val
-//         } else {
-//           let mut data_str = match str_from_utf8(data[:i], Range::Range(0, i)) {
-//             Ok(d) => d
-//             Err(e) => return Some((i, Err(e)))
-//           };
-//           while data_str.has_suffix(".") {
-//             data_str = data_str[:data_str.length() - 1];
-//             i -= 1;
-//           }
-//           data_str
-//         };
-//         return Some((i, Ok((result, might_be_invalid_iri))))
-//       } else {
-//         return None
-//       }
-//     }
-//   }
-// }
 
 ///|
 fn N3Lexer::recognize_blank_node_label(
@@ -1658,22 +1518,22 @@ pub fn resolve_local_name(
   prefix : String,
   localx : String,
   might_be_invalid_iri : Bool,
-  prefixes : Map[String, Iri],
-) -> Result[NamedNode, String] {
+  prefixes : Map[String, IriRef],
+) -> Result[NamedNodeRef, String] {
   if prefixes.get(prefix) is Some(start) {
     let iri = "\{start.into_string()}\{localx}"
-    let iri = Iri::Iri(iri)
-    let iri = IriRef::new(iri)
-    if might_be_invalid_iri || start.path() is Some("") {
+    let iri = Iri::Iri(iri).as_ref()
+    // let iri = IriRef::of_ref(iri)
+    if might_be_invalid_iri || start.into_owned().path() is Some("") {
       if IriRef::parse(iri) is Err(e) {
         return Err(
-          "The prefixed name \{prefix}:\{localx} builds IRI \{iri.into_string()} that is invalid:}",
+          "The prefixed name \{prefix}:\{localx} builds IRI \{iri.into_string()} that is invalid:\{e.to_string()}",
         )
       }
     }
-    Ok(NamedNode::new_unchecked(iri.into_string()))
+    Ok(NamedNodeRef::new_unchecked(iri.into_string()))
   } else {
-    Err("The prefix {prefix}: has not been declared")
+    Err("The prefix \{prefix}: has not been declared")
   }
 }
 
@@ -1688,25 +1548,13 @@ fn str_from_utf8(
     Err(e) =>
       match e {
         @utf8.Malformed(invalid_bytes_view) =>
-          // 1. 获取无效字节的 Hex 表示
-          // let hex_str = invalid_bytes_view
-          //   .iter()
-          //   .map(fn(b) {
-          //     let h = Byte::to_hex(b)
-          //     if h.length() == 1 {
-          //       "0" + h
-          //     } else {
-          //       h
-          //     }
-          //   })
-          //   .join("")
 
           // 2. 构造错误消息
           return Err(
             TokenRecognizerError::InvalidErrMessage(
               invalid_bytes_view,
               range,
-              "Invalid UTF-8 sequence at position \{range.start}: \{range.end}",
+              "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
             ),
           )
       }
@@ -1731,7 +1579,7 @@ fn string_from_utf8(
             TokenRecognizerError::InvalidErrMessage(
               invalid_bytes_view,
               range,
-              "Invalid UTF-8 sequence at position \{range.start}: \{range.end}",
+              "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
             ),
           )
       }

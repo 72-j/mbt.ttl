@@ -1,7 +1,9 @@
 ///|
-pub struct LexerOptions {
- mut base_iri : Iri?
-} derive(Default)
+pub enum LexerOptions {
+  N3LexerOptions(N3LexerOptions)
+  TriGLexerOptions(TriGLexerOptions)
+  //  mut base_iri : Iri?
+} derive(Debug)
 
 ///|
 pub struct Lexer[TR] {

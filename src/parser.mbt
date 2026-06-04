@@ -1,20 +1,17 @@
-
 ///|
 pub(all) enum Context {
   TriGRecognizerContext(TriGRecognizerContext)
   NQuadsRecognizerContext(NQuadsRecognizerContext)
-  
 }
-
 
 ///|
 pub(all) enum LexOutput {
-  QuadRef(QuadRef)
+  Quad(Quad)
 }
 
 ///|
-pub fn LexOutput::new(quad : QuadRef) -> LexOutput {
-  QuadRef(quad)
+pub fn LexOutput::new(quad : Quad) -> LexOutput {
+  Quad(quad)
 }
 
 ///|
@@ -164,6 +161,6 @@ pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::nex
 }
 
 ///|
-pub(all) struct SliceIterator[RR] {
-  parser : Parser[Array[Byte], RR]
+pub(all) struct SliceIterator[TR, RR] {
+  parser : Parser[TR, RR]
 }

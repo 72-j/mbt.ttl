@@ -1,12 +1,12 @@
 ///|
 pub struct N3LexerOptions {
- base_iri : Iri?
-}
+  base_iri : Iri?
+} derive(Debug)
 
 // type N3LexerOptions = LexerOptions
 
 ///|
-fn N3LexerOptions::new(base_iri : Iri?) -> N3LexerOptions {
+fn N3LexerOptions::default(base_iri : Iri?) -> N3LexerOptions {
   { base_iri, }
 }
 
@@ -70,20 +70,12 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       // let TokenOrLineJump::Token(token) = token
       match token {
         TokenOrLineJump::Token(N3Token::Iri(s)) => {
-          self.subjects.push(
-            NamedOrBlankNodeRef::NamedNodeRef(
-              NamedNode::new_unchecked(s).as_ref(),
-            ),
-          )
+          self.subjects.push(NamedNodeRef::new_unchecked(s).into_enum())
           self.stack.push(NQuadsState::ExpectPredicate)
           self
         }
         TokenOrLineJump::Token(N3Token::BlankNodeLabel(s)) => {
-          self.subjects.push(
-            NamedOrBlankNodeRef::BlankNodeRef(
-              BlankNode::new_unchecked(s).as_ref(),
-            ),
-          )
+          self.subjects.push(BlankNodeRef::new_unchecked(s).into_enum())
           self.stack.push(NQuadsState::ExpectPredicate)
           self
         }
@@ -101,7 +93,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       // let TokenOrLineJump::Token(token) = token
       match token {
         TokenOrLineJump::Token(N3Token::Iri(p)) => {
-          self.predicates.push(NamedNode::new_unchecked(p).as_ref())
+          self.predicates.push(NamedNodeRef::new_unchecked(p))
           self.stack.push(NQuadsState::ExpectedObject)
           self
         }
@@ -119,15 +111,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       match token {
         TokenOrLineJump::Token(N3Token::Iri(o)) => {
           self.objects.push(
-            TermRef::NamedNodeRef(NamedNode::new_unchecked(o).as_ref()),
+            TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(o)),
           )
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
           self
         }
         TokenOrLineJump::Token(N3Token::BlankNodeLabel(o)) => {
-          self.objects.push(
-            TermRef::NamedNodeRef(NamedNode::new_unchecked(o).as_ref()),
-          )
+          self.objects.push(NamedNodeRef::new_unchecked(o).into_term())
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
           self
         }
@@ -153,7 +143,8 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       }
     NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~) =>
       match token {
-        TokenOrLineJump::Token(N3Token::LangTag(language~, direction~)) => {
+        TokenOrLineJump::Token(N3Token::LangTag(language~, direction~)) if direction
+          is Some(_) => {
           let dir = match direction {
             Some(d) => d // 假设有此类方法
             None => BaseDirection::Ltr
@@ -162,9 +153,33 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           match lang_tag {
             Ok(lang_tag) => {
               self.objects.push(
+                LiteralRef::new_directional_language_tagged_literal_unchecked(
+                  value, lang_tag, dir,
+                ).into_term(),
+              )
+              self.stack.push(
+                NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple,
+              )
+              self
+            }
+            Err(_e) => {
+              // 处理错误，例如推入错误信息并进入恢复状态
+              errors.push(RuleRecognizerError::InvalidLanguageTag) // 需确保此错误类型存在
+              self.error_recovery_state()
+            }
+          }
+        }
+        TokenOrLineJump::Token(N3Token::LangTag(language~, direction~)) if direction
+          is None => {
+          // self.objects.push(Literal::new_language_tagged_literal_unchecked(value, try? LanguageTag::from_str(language.to_lower())))
+          let lang_tag = try? LanguageTag::from_str(language.to_lower())
+          match lang_tag {
+            Ok(lang_tag) => {
+              self.objects.push(
                 TermRef::LiteralRef(
-                  Literal::new_directional_language_tagged_literal_unchecked(
-                    value, lang_tag, dir,
+                  Literal::new_language_tagged_literal_unchecked(
+                    value,
+                    lang_tag.to_string(),
                   ).as_ref(),
                 ),
               )
@@ -180,40 +195,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             }
           }
         }
-        // TokenOrLineJump::Token(N3Token::LangTag(language~, ..)) => {
-        //   // self.objects.push(Literal::new_language_tagged_literal_unchecked(value, try? LanguageTag::from_str(language.to_lower())))
-        //   let lang_tag =LanguageTag::from_str(language.to_lower())
-        //   match lang_tag {
-        //     Ok(lang_tag) => {
-        //       self.objects.push(
-        //         TermRef::LiteralRef(
-        //           Literal::new_language_tagged_literal_unchecked(
-        //             value,
-        //             lang_tag.to_string(),
-        //           ).as_ref(),
-        //         ),
-        //       )
-        //       self.stack.push(
-        //         NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple,
-        //       )
-        //       self
-        //     }
-        //     Err(_e) => {
-        //       // 处理错误，例如推入错误信息并进入恢复状态
-        //       errors.push(RuleRecognizerError::InvalidLanguageTag) // 需确保此错误类型存在
-        //       self.error_recovery_state()
-        //     }
-        //   }
-        // }
         TokenOrLineJump::Token(N3Token::Punctuation("^^")) => {
           self.stack.push(NQuadsState::ExpectLiteralDatatype(value~))
           self
         }
         _ => {
           self.objects.push(
-            TermRef::LiteralRef(
-              Literal::new_simple_literal(value).as_ref(),
-            ),
+            TermRef::LiteralRef(LiteralRef::new_simple_literal(value)),
           )
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
           self.recognize_next(
@@ -244,15 +232,10 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
               ),
             )
           }
-          let d=NamedNode::new_unchecked(d)
-          let data_value=d.as_ref().into_datatype(value)
+          let d = NamedNodeRef::new_unchecked(d)
+          let data_value = d.into_datatype(value)
           self.objects.push(
-            TermRef::LiteralRef(
-              Literal::new_typed_literal(
-                data_value,
-                d,
-              ).as_ref(),
-            ),
+            TermRef::LiteralRef(LiteralRef::new_typed_literal(data_value, d)),
           )
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
           self
@@ -270,17 +253,17 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       if self.stack.is_empty() {
         match token {
           TokenOrLineJump::Token(N3Token::Iri(g)) if context.with_graph_name => {
-            self.emit_quad(results, GraphName::new_unchecked(g).as_ref())
+            self.emit_quad(results, GraphNameRef::new_unchecked(g))
             self.stack.push(NQuadsState::ExpectDot)
             self
           }
           TokenOrLineJump::Token(N3Token::BlankNodeLabel(g)) if context.with_graph_name => {
-            self.emit_quad(results, GraphName::new_unchecked(g).as_ref())
+            self.emit_quad(results, GraphNameRef::new_unchecked(g))
             self.stack.push(NQuadsState::ExpectDot)
             self
           }
           _ => {
-            self.emit_quad(results, GraphName::DefaultGraph.as_ref())
+            self.emit_quad(results, GraphNameRef::DefaultGraph)
             self.stack.push(NQuadsState::ExpectDot)
             self.recognize_next(
               token,
@@ -378,8 +361,8 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
       errors.push(RuleRecognizerError::TripleMissingDot)
     }
     [NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~)] => {
-      let literal = Literal::new_simple_literal(value)
-      self.objects.push(TermRef::LiteralRef(literal.as_ref()))
+      let literal = LiteralRef::new_simple_literal(value)
+      self.objects.push(TermRef::LiteralRef(literal))
       self.emit_quad(results, GraphName::DefaultGraph.as_ref())
       errors.push(RuleRecognizerError::TripleMissingDot)
     }
@@ -469,5 +452,12 @@ fn NQuadsRecognizer::emit_quad(
   let object = self.objects.pop().unwrap()
 
   // 假设 LexOutput 有一个 Quad 变体，请根据实际 enum 定义调整变体名称
-  results.push(LexOutput::Quad({ subject: subject.into_owned(), predicate: predicate.into_owned(), object: object.into_owned(), graph_name: graph_name.into_owned() }))
+  results.push(
+    LexOutput::Quad({
+      subject: subject.into_owned(),
+      predicate: predicate.into_owned(),
+      object: object.into_owned(),
+      graph_name: graph_name.into_owned(),
+    }),
+  )
 }

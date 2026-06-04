@@ -103,11 +103,14 @@ pub fn[TR] LowLevelNQuadsParser::is_end(
 }
 
 ///|
-pub fn[TR : TokenRecognizer] LowLevelNQuadsParser::parse_next(
-  self : LowLevelNQuadsParser[TR],
-) -> Result[LexOutput, TurtleError]? {
-  self.parser.parse_next()
-}
+// pub fn[TR : TokenRecognizer] LowLevelNQuadsParser::parse_next(
+//   self : LowLevelNQuadsParser[TR],
+// ) -> Result[Quad, TurtleError]? {
+//   self.parser.parse_next().map(fn(res) {
+//     res.map(fn(lex_output) { Into::into(lex_output) })
+//        .map_err(fn(e) { Into::into(e) })
+//   })
+// }
 
 ///|
 pub struct NQuadsSerializer {} derive(Default)
@@ -206,6 +209,7 @@ pub fn LowLevelNQuadsSerializer::serialize_quad(
   // writeln(writer , "{} ." , q)
   let res = StringBuilder::new()
   res.write_object(q)
+  res.write_string("{}")
   res.write_string(" .\n")
   Ok(res.to_string())
 }

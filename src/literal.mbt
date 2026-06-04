@@ -2,36 +2,6 @@
 pub struct Literal(LiteralContent) derive(Eq, Debug, Hash)
 
 ///|
-// impl Show for Literal with fn output(self : Literal, f : &Logger) -> Unit {
-//   match self.0 {
-//     LiteralContent::String(value) => {
-//       f.write("\"")
-//       f.write_string(value)
-//       f.write("\"")
-//     }
-//     LiteralContent::LanguageTaggedString(value~, language~) => {
-//       f.write_string(value)
-//       f.write("@")
-//       f.write_string(language)
-//     }
-//     LiteralContent::DirectionalLanguageTaggedString(
-//       value~,
-//       language~,
-//       direction~
-//     ) => {
-//       f.write_string(value)
-//       f.write("@")
-//       f.write_string(language)
-//       f.write("^")
-//       f.write_string(direction.to_string())
-//     }
-//     LiteralContent::TypedLiteral(value~, datatype~) => {
-//       f.write_string(value.to_string())
-//       f.write("^^")
-//       f.write_string(datatype.as_ref().to_string())
-//     }
-//   }
-// }
 impl Show for Literal with fn to_string(self : Literal) -> String {
   let f = StringBuilder::new()
   match self.0 {
@@ -56,7 +26,7 @@ impl Show for Literal with fn to_string(self : Literal) -> String {
       f.to_string()
     }
     LiteralContent::TypedLiteral(value~, datatype~) => {
-      let _ = print_quoted_str(f, value.to_string())
+      let _ = print_quoted_str(f, value.into_value())
       f.write("^^")
       f.write(datatype)
       f.to_string()
@@ -82,22 +52,6 @@ pub fn Literal::new_simple_literal(value : String) -> Literal {
 }
 
 ///|
-pub fn Literal::new_typed_literal(
-  value : VarDataType,
-  datatype : NamedNode,
-) -> Literal {
-  let value = value
-  let datatype = datatype
-  Literal(
-    if datatype == lwSTRING {
-      LiteralContent::String(value.to_string())
-    } else {
-      LiteralContent::TypedLiteral(value~, datatype~)
-    },
-  )
-}
-
-///|
 pub fn Literal::new_language_tagged_literal(
   value : String,
   language : String,
@@ -109,10 +63,7 @@ pub fn Literal::new_language_tagged_literal(
       // 如果 LanguageTag 是一个 struct 且其原始字符串被保留，可能需要访问特定字段
       // 这里使用通用的 .to_string() 进行转换
       Ok(
-        Literal::new_language_tagged_literal_unchecked(
-          value,
-          lang_tag.into_inner(),
-        ),
+        Literal::new_language_tagged_literal_unchecked(value, lang_tag.as_str()),
       )
     Err(e) => Err(LanguageTagParseError::TagParseErr(e))
   }
@@ -156,7 +107,7 @@ pub fn Literal::new_directional_language_tagged_literal_unchecked(
 ) -> Literal {
   LiteralContent::DirectionalLanguageTaggedString(
     value~,
-    language=language.into_inner(),
+    language=language.as_str(),
     direction~,
   )
 }
@@ -171,28 +122,43 @@ pub fn Literal::value(self : Literal) -> String {
   match self.0 {
     LiteralContent::String(value)
     | LiteralContent::LanguageTaggedString(value~, ..) => value
-    LiteralContent::TypedLiteral(value~, ..) => value.to_string()
-    LiteralContent::DirectionalLanguageTaggedString(value~, ..) => value.to_owned()
+    LiteralContent::TypedLiteral(value~, ..) => value.into_value()
+    LiteralContent::DirectionalLanguageTaggedString(value~, ..) =>
+      value.to_owned()
   }
 }
 
 ///|
 pub fn Literal::language(self : Literal) -> String? {
-  self.language()
+  match self.0 {
+    LiteralContent::LanguageTaggedString(language~, ..) =>
+      // self.language()
+      Some(language)
+    LiteralContent::DirectionalLanguageTaggedString(language~, ..) =>
+      // self.language()
+      Some(language)
+    _ => None
+  }
+  // self.language()
 }
 
 ///|
 pub fn Literal::direction(self : Literal) -> BaseDirection? {
-  self.direction()
+  match self.0 {
+    LiteralContent::DirectionalLanguageTaggedString(direction~, ..) =>
+      // self.direction()
+      Some(direction)
+    _ => None
+  }
+  // self.direction()
 }
 
 ///|
 pub fn Literal::datatype(self : Literal) -> NamedNodeRef {
   match self.0 {
-    LiteralContent::LanguageTaggedString(..) => lwLANG_STRING.as_ref()
-    LiteralContent::DirectionalLanguageTaggedString(..) =>
-      lwDIR_LANG_STRING.as_ref()
-    LiteralContent::String(_) => lwSTRING.as_ref()
+    LiteralContent::LanguageTaggedString(..) => lwLANG_STRING
+    LiteralContent::DirectionalLanguageTaggedString(..) => lwDIR_LANG_STRING
+    LiteralContent::String(_) => lwSTRING
     LiteralContent::TypedLiteral(datatype~, ..) => datatype.as_ref()
   }
 }
@@ -215,10 +181,7 @@ pub fn Literal::as_ref(self : Literal) -> LiteralRef {
           direction~,
         )
       LiteralContent::TypedLiteral(value~, datatype~) =>
-        LiteralRefContent::TypedLiteral(
-          value~,
-          datatype=datatype.as_ref(),
-        )
+        LiteralRefContent::TypedLiteral(value~, datatype=datatype.as_ref())
     },
   )
 }
@@ -237,7 +200,7 @@ pub fn Literal::destruct(
       direction~
     ) => (value, None, Some(language), Some(direction))
     LiteralContent::TypedLiteral(value~, datatype~) =>
-      (value.to_string(), Some(datatype), None, None)
+      (value.into_value(), Some(datatype), None, None)
   }
 }
 
@@ -257,8 +220,23 @@ enum LiteralRefContent {
 } derive(Eq, Debug, Hash)
 
 ///|
+fn LiteralRef::into_value(self : LiteralRef) -> StringView {
+  match self.0 {
+    LiteralRefContent::String(s) => s
+    LiteralRefContent::LanguageTaggedString(value~, ..) => value
+    LiteralRefContent::DirectionalLanguageTaggedString(value~, ..) => value
+    LiteralRefContent::TypedLiteral(value~, ..) => value.into_value()
+  }
+}
+
+///|
 pub fn LiteralRef::new_simple_literal(value : StringView) -> LiteralRef {
   LiteralRef(LiteralRefContent::String(value))
+}
+
+///|
+pub fn LiteralRef::into_term(self : Self) -> TermRef {
+  TermRef::LiteralRef(self)
 }
 
 ///|
@@ -287,8 +265,8 @@ pub fn LiteralRef::new_typed_literal(
   datatype : NamedNodeRef,
 ) -> LiteralRef {
   LiteralRef(
-    if datatype == lwSTRING.as_ref() {
-      LiteralRefContent::String(value.to_string())
+    if datatype == lwSTRING {
+      LiteralRefContent::String(value.into_value())
     } else {
       LiteralRefContent::TypedLiteral(value~, datatype~)
     },
@@ -298,7 +276,7 @@ pub fn LiteralRef::new_typed_literal(
 ///|
 pub fn LiteralRef::new_language_tagged_literal_unchecked(
   value : String,
-  language : String,
+  language : StringView,
 ) -> LiteralRef {
   LiteralRef(LiteralRefContent::LanguageTaggedString(value~, language~))
 }
@@ -306,27 +284,16 @@ pub fn LiteralRef::new_language_tagged_literal_unchecked(
 ///|
 pub fn LiteralRef::new_directional_language_tagged_literal_unchecked(
   value : String,
-  language : String,
+  language : LanguageTag,
   direction : BaseDirection,
 ) -> LiteralRef {
   LiteralRef(
     LiteralRefContent::DirectionalLanguageTaggedString(
       value~,
-      language~,
+      language=language.as_str(),
       direction~,
     ),
   )
-}
-
-///|
-pub fn LiteralRef::into_value(self : LiteralRef) -> String {
-  match self.0 {
-    LiteralRefContent::String(v) => v.to_owned()
-    LiteralRefContent::LanguageTaggedString(value~, ..) => value
-    LiteralRefContent::TypedLiteral(value~, ..) => value.to_string()
-    LiteralRefContent::DirectionalLanguageTaggedString(value~, ..) =>
-      value.to_owned()
-  }
 }
 
 ///|
@@ -352,10 +319,9 @@ pub fn LiteralRef::direction(self : LiteralRef) -> BaseDirection? {
 ///|
 pub fn LiteralRef::datatype(self : LiteralRef) -> NamedNodeRef {
   match self.0 {
-    LiteralRefContent::String(_) => lwSTRING.as_ref()
-    LiteralRefContent::LanguageTaggedString(..) => lwLANG_STRING.as_ref()
-    LiteralRefContent::DirectionalLanguageTaggedString(..) =>
-      lwDIR_LANG_STRING.as_ref()
+    LiteralRefContent::String(_) => lwSTRING
+    LiteralRefContent::LanguageTaggedString(..) => lwLANG_STRING
+    LiteralRefContent::DirectionalLanguageTaggedString(..) => lwDIR_LANG_STRING
     LiteralRefContent::TypedLiteral(datatype~, ..) => datatype
   }
 }
@@ -412,7 +378,7 @@ impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
       f.to_string()
     }
     LiteralRefContent::TypedLiteral(value~, datatype~) => {
-      let _ = print_quoted_str(f, value.to_string())
+      let _ = print_quoted_str(f, value.into_value())
       f.write("^^")
       f.write(datatype)
       f.to_string()
