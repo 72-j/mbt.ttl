@@ -188,7 +188,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           TokenOrLineJump::Token(N3Token::Iri(iri)) => {
             self.stack.push(
               TriGState::WrappedGraphOrPredicateObjectList(
-                term=NamedNodeRef::new_unchecked(iri).into_enum(),
+                term=NamedNodeRef::new_unchecked(iri).as_enum(),
               ),
             )
             self
@@ -206,7 +206,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Ok(t) => {
                 self.stack.push(
                   TriGState::WrappedGraphOrPredicateObjectList(
-                    term=t.into_enum(),
+                    term=t.as_enum(),
                   ),
                 )
                 self
@@ -216,7 +216,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           TokenOrLineJump::Token(N3Token::BlankNodeLabel(label)) => {
             self.stack.push(
               TriGState::WrappedGraphOrPredicateObjectList(
-                term=NamedNodeRef::new_unchecked(label).into_enum(),
+                term=NamedNodeRef::new_unchecked(label).as_enum(),
               ),
             )
             self
@@ -265,12 +265,12 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         if token == TokenOrLineJump::Token(N3Token::Punctuation("]")) {
           self.stack.push(
             TriGState::WrappedGraphOrPredicateObjectList(
-              term=BlankNode::default().as_ref().into_enum(),
+              term=BlankNode::default().as_ref().as_enum(),
             ),
           )
           self
         } else {
-          self.cur_subject.push(BlankNode::default().as_ref().into_enum())
+          self.cur_subject.push(BlankNode::default().as_ref().as_enum())
           self.stack.push(TriGState::ExpectDot)
           self.stack.push(TriGState::SubjectBlankNodePropertyListEnd)
           self.stack.push(TriGState::PredicateObjectList)
@@ -316,7 +316,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       TriGState::SubjectCollectionBeginning =>
         if token is TokenOrLineJump::Token(N3Token::Punctuation(")")) {
-          self.cur_subject.push(lwNIL.into_enum())
+          self.cur_subject.push(lwNIL.as_enum())
           self
         } else {
           let root = NamedOrBlankNodeRef::BlankNodeRef(
@@ -344,7 +344,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Quad::new(
                 old.into_owned(),
                 lwREST.into_owned(),
-                lwNIL.into_owned().into_term(),
+                lwNIL.into_owned().as_term(),
                 self.cur_graph.into_owned(),
               ),
             ),
@@ -357,7 +357,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Quad::new(
                 old.into_owned(),
                 lwREST.into_owned(),
-                lwNIL.into_term().into_owned(),
+                lwNIL.as_term().into_owned(),
                 self.cur_graph.into_owned(),
               ),
             ),
@@ -420,7 +420,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             self
           }
           TokenOrLineJump::Token(N3Token::Iri(iri)) => {
-            self.cur_subject.push(NamedNodeRef::new_unchecked(iri).into_enum())
+            self.cur_subject.push(NamedNodeRef::new_unchecked(iri).as_enum())
             self.stack.push(TriGState::PredicateObjectList)
             self
           }
@@ -435,7 +435,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 context.prefixes,
               ) {
               Ok(t) => {
-                self.cur_subject.push(t.into_enum())
+                self.cur_subject.push(t.as_enum())
                 self.stack.push(TriGState::PredicateObjectList)
                 self
               }
@@ -630,7 +630,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               results.push(
                 LexOutput::Quad(
                   Quad::new(
-                    reifier.into_enum(),
+                    reifier.as_enum(),
                     lwREIFIES.into_owned(),
                     TermRef::TripleRef(
                       TripleRef::new(
@@ -643,7 +643,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   ),
                 ),
               )
-              reifier.into_enum().as_ref()
+              reifier.as_enum().as_ref()
             }
             self.cur_subject.push(reifier)
             self.stack.push(TriGState::AnnotationBlock(with_reifier~))
@@ -761,7 +761,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   LiteralRef::new_typed_literal(
                     VarDataType::IntVar(value),
                     lwINTEGER,
-                  ).into_term(),
+                  ).as_term(),
                 )
                 self.emit_quad(results)
                 self
@@ -777,7 +777,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   LiteralRef::new_typed_literal(
                     VarDataType::DecimalVar(value.to_string()),
                     lwDECIMAL,
-                  ).into_term(),
+                  ).as_term(),
                 )
                 self.emit_quad(results)
                 self
@@ -793,7 +793,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   LiteralRef::new_typed_literal(
                     VarDataType::DoubleVar(value),
                     lwDOUBLE,
-                  ).into_term(),
+                  ).as_term(),
                 )
                 self.emit_quad(results)
                 self
@@ -803,14 +803,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           }
           TokenOrLineJump::Token(N3Token::PlainKeyword("true")) => {
             self.cur_object.push(
-              LiteralRef::new_typed_literal(VarDataType::TrueVar, lwBOOLEAN).into_term(),
+              LiteralRef::new_typed_literal(VarDataType::TrueVar, lwBOOLEAN).as_term(),
             )
             self.emit_quad(results)
             self
           }
           TokenOrLineJump::Token(N3Token::PlainKeyword("false")) => {
             self.cur_object.push(
-              LiteralRef::new_typed_literal(VarDataType::FalseVar, lwBOOLEAN).into_term(),
+              LiteralRef::new_typed_literal(VarDataType::FalseVar, lwBOOLEAN).as_term(),
             )
             self.emit_quad(results)
             self
@@ -901,7 +901,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Quad::new(
                 old.into_owned(),
                 lwREST.into_owned(),
-                lwNIL.into_term().into_owned(),
+                lwNIL.as_term().into_owned(),
                 self.cur_graph.into_owned(),
               ),
             ),
@@ -914,7 +914,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Quad::new(
                 old.into_owned(),
                 lwREST.into_owned(),
-                lwNIL.into_term().into_owned(),
+                lwNIL.as_term().into_owned(),
                 self.cur_graph.into_owned(),
               ),
             ),
@@ -979,7 +979,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           }
           _ => {
             self.cur_object.push(
-              LiteralRef::new_simple_literal(value).into_term(),
+              LiteralRef::new_simple_literal(value).as_term(),
             )
             if emit {
               self.emit_quad(results)
@@ -1154,14 +1154,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           results.push(
             LexOutput::Quad(
               Quad::new(
-                reifier.into_enum(),
+                reifier.as_enum(),
                 lwREIFIES.into_owned(),
                 TermRef::TripleRef(triple).into_owned(),
                 self.cur_graph.into_owned(),
               ),
             ),
           )
-          self.cur_reifier.push(reifier.into_enum().as_ref())
+          self.cur_reifier.push(reifier.as_enum().as_ref())
           self.recognize_next(
             token,
             Context::TriGRecognizerContext(context),
@@ -1177,14 +1177,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             results.push(
               LexOutput::Quad(
                 Quad::new(
-                  reifier.into_enum().into_owned(),
+                  reifier.as_enum().into_owned(),
                   lwREIFIES.into_owned(),
-                  triple.into_enum(),
+                  triple.as_enum(),
                   self.cur_graph.into_owned(),
                 ),
               ),
             )
-            self.cur_reifier.push(reifier.into_enum())
+            self.cur_reifier.push(reifier.as_enum())
             self
           }
           TokenOrLineJump::Token(
@@ -1201,14 +1201,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 results.push(
                   LexOutput::Quad(
                     Quad::new(
-                      reifier.into_enum().into_owned(),
+                      reifier.as_enum().into_owned(),
                       lwREIFIES.into_owned(),
-                      triple.into_enum(),
+                      triple.as_enum(),
                       self.cur_graph.into_owned(),
                     ),
                   ),
                 )
-                self.cur_reifier.push(reifier.into_enum())
+                self.cur_reifier.push(reifier.as_enum())
                 self
               }
               Err(e) => {
@@ -1216,14 +1216,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 results.push(
                   LexOutput::Quad(
                     Quad::new(
-                      reifier.into_enum(),
+                      reifier.as_enum(),
                       lwREIFIES.into_owned(),
-                      triple.into_enum(),
+                      triple.as_enum(),
                       self.cur_graph.into_owned(),
                     ),
                   ),
                 )
-                self.cur_reifier.push(reifier.into_enum().as_ref())
+                self.cur_reifier.push(reifier.as_enum().as_ref())
                 self.error(errors, e)
               }
             }
@@ -1232,14 +1232,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             results.push(
               LexOutput::Quad(
                 Quad::new(
-                  reifier.into_enum().into_owned(),
+                  reifier.as_enum().into_owned(),
                   lwREIFIES.into_owned(),
-                  triple.into_enum(),
+                  triple.as_enum(),
                   self.cur_graph.into_owned(),
                 ),
               ),
             )
-            self.cur_reifier.push(reifier.into_enum())
+            self.cur_reifier.push(reifier.as_enum())
             self
           }
           _ => {
@@ -1247,14 +1247,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             results.push(
               LexOutput::Quad(
                 Quad::new(
-                  reifier.into_enum(),
+                  reifier.as_enum(),
                   lwREIFIES.into_owned(),
-                  triple.into_enum(),
+                  triple.as_enum(),
                   self.cur_graph.into_owned(),
                 ),
               ),
             )
-            self.cur_reifier.push(reifier.into_enum().as_ref())
+            self.cur_reifier.push(reifier.as_enum().as_ref())
             self.recognize_next(
               token,
               Context::TriGRecognizerContext(context),
@@ -1291,14 +1291,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 context.prefixes,
               ) {
               Ok(t) => {
-                self.cur_subject.push(t.into_enum())
+                self.cur_subject.push(t.as_enum())
                 self
               }
               Err(e) => self.error(errors, e)
             }
           TokenOrLineJump::Token(N3Token::BlankNodeLabel(label)) => {
             self.cur_subject.push(
-              NamedNodeRef::new_unchecked(label).into_enum(),
+              NamedNodeRef::new_unchecked(label).as_enum(),
             )
             self
           }
@@ -1341,13 +1341,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 context.prefixes,
               ) {
               Ok(t) => {
-                self.cur_object.push(t.into_term())
+                self.cur_object.push(t.as_term())
                 self
               }
               Err(e) => self.error(errors, e)
             }
           TokenOrLineJump::Token(N3Token::BlankNodeLabel(label)) => {
-            self.cur_object.push(BlankNodeRef::new_unchecked(label).into_term())
+            self.cur_object.push(BlankNodeRef::new_unchecked(label).as_term())
             self
           }
           TokenOrLineJump::Token(N3Token::String(value)) => {
@@ -1364,7 +1364,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   LiteralRef::new_typed_literal(
                     VarDataType::IntVar(value),
                     lwINTEGER,
-                  ).into_term(),
+                  ).as_term(),
                 )
                 self
               }
@@ -1379,7 +1379,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   LiteralRef::new_typed_literal(
                     VarDataType::DecimalVar(value.to_string()),
                     lwDECIMAL,
-                  ).into_term(),
+                  ).as_term(),
                 )
                 self.emit_quad(results)
                 self
@@ -1395,7 +1395,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   LiteralRef::new_typed_literal(
                     VarDataType::DoubleVar(value),
                     lwDOUBLE,
-                  ).into_term(),
+                  ).as_term(),
                 )
                 self.emit_quad(results)
                 self
@@ -1405,14 +1405,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           }
           TokenOrLineJump::Token(N3Token::PlainKeyword("true")) => {
             self.cur_object.push(
-              LiteralRef::new_typed_literal(VarDataType::TrueVar, lwBOOLEAN).into_term(),
+              LiteralRef::new_typed_literal(VarDataType::TrueVar, lwBOOLEAN).as_term(),
             )
             self.emit_quad(results)
             self
           }
           TokenOrLineJump::Token(N3Token::PlainKeyword("false")) => {
             self.cur_object.push(
-              LiteralRef::new_typed_literal(VarDataType::FalseVar, lwBOOLEAN).into_term(),
+              LiteralRef::new_typed_literal(VarDataType::FalseVar, lwBOOLEAN).as_term(),
             )
             self.emit_quad(results)
             self
@@ -1467,7 +1467,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
       debug_assert(() => self.cur_object.is_empty())
     }
     [.., TriGState::LiteralPossibleSuffix(value~, emit=true)] => {
-      self.cur_object.push(LiteralRef::new_simple_literal(value).into_term())
+      self.cur_object.push(LiteralRef::new_simple_literal(value).as_term())
       self.emit_quad(results)
       errors.push(
         RuleRecognizerError::SyntaxError(

@@ -43,7 +43,7 @@ pub fn NamedOrBlankNodeRef::into_graph(
 }
 
 ///|
-pub fn NamedOrBlankNodeRef::into_term(self : NamedOrBlankNodeRef) -> TermRef {
+pub fn NamedOrBlankNodeRef::as_term(self : NamedOrBlankNodeRef) -> TermRef {
   match self {
     NamedOrBlankNodeRef::NamedNodeRef(v) => TermRef::NamedNodeRef(v)
     NamedOrBlankNodeRef::BlankNodeRef(v) => TermRef::BlankNodeRef(v)
@@ -76,7 +76,7 @@ pub(all) enum NamedOrBlankNode {
 // }
 
 // ///|
-// pub fn NamedOrBlankNode::into_term(self : NamedOrBlankNode) -> Term {
+// pub fn NamedOrBlankNode::as_term(self : NamedOrBlankNode) -> Term {
 //   match self {
 //     NamedOrBlankNode::NamedNode(v) => Term::NamedNode(v)
 //     NamedOrBlankNode::BlankNode(v) => Term::BlankNode(v)
@@ -151,7 +151,7 @@ fn NamedNode::NamedNode(iri : String) -> NamedNode {
 // }
 
 ///|
-pub fn NamedNode::into_term(self : NamedNode) -> Term {
+pub fn NamedNode::as_term(self : NamedNode) -> Term {
   Term::NamedNode(self)
 }
 
@@ -161,12 +161,12 @@ pub(all) struct NamedNodeRef {
 } derive(Debug, Eq, Hash)
 
 ///|
-pub fn NamedNodeRef::into_term(self : NamedNodeRef) -> TermRef {
+pub fn NamedNodeRef::as_term(self : NamedNodeRef) -> TermRef {
   TermRef::NamedNodeRef(self)
 }
 
 ///|
-pub fn NamedNodeRef::into_enum(self : NamedNodeRef) -> NamedOrBlankNodeRef {
+pub fn NamedNodeRef::as_enum(self : NamedNodeRef) -> NamedOrBlankNodeRef {
   NamedOrBlankNodeRef::NamedNodeRef(self)
 }
 
@@ -198,24 +198,54 @@ pub fn NamedNode::as_ref(self : NamedNode) -> NamedNodeRef {
 ///|
 pub fn NamedNodeRef::into_datatype(
   self : NamedNodeRef,
-  value : StringView,
+  value : String,
 ) -> VarDataType {
-  if self.iri.has_suffix("integer") {
+  if self == lwINT {
     let parsed = try? @string.parse_int(value)
     match parsed {
       Ok(v) => IntVar(v)
       Err(_) => StringVar("NAN")
     }
-  } else if self.iri.has_suffix("double") {
+  } else if self == lwINTEGER {
+    let parsed = try? @string.parse_int64(value)
+    match parsed {
+      Ok(v) => IntegerVar(v)
+      Err(_) => StringVar("NAN")
+    }
+  } else if self == lwFLOAT {
     let parsed = try? @string.parse_double(value)
     match parsed {
       Ok(v) => DoubleVar(v)
       Err(_) => StringVar("NAN")
     }
-  } else if self.iri.has_suffix("decimal") {
+  } else if self == lwDECIMAL {
     let parsed = try? @string.parse_double(value)
     match parsed {
       Ok(v) => DecimalVar(v.to_string())
+      Err(_) => StringVar("NAN")
+    }
+  } else if self == lwDATE {
+    let parsed = parse_xsd_datetime(value)
+    match parsed {
+      Ok(v) => DateVar(v.to_string())
+      Err(_) => StringVar("NAN")
+    }
+  }else if self == lwTIME{
+    let parsed = try? @tempo.Time::parse(value)
+    match parsed {
+      Ok(v) => TimeVar(v.to_string())
+      Err(_) => StringVar("NAN")
+    }
+  } 
+  else if self == lwDATE_TIME {
+    let parsed = try? @tempo.DateTime::parse(value)
+    match parsed {
+      Ok(v) => DateTimeVar(v.to_string())
+      Err(_) => StringVar("NAN")
+    }
+  } else if self == lwDURATION {
+    match parse_duration(value) {
+      Ok(v) => DurationVar(v)
       Err(_) => StringVar("NAN")
     }
   } else {
@@ -224,7 +254,7 @@ pub fn NamedNodeRef::into_datatype(
 }
 
 ///|
-pub fn NamedNode::into_enum(self : NamedNode) -> NamedOrBlankNode {
+pub fn NamedNode::as_enum(self : NamedNode) -> NamedOrBlankNode {
   NamedOrBlankNode::NamedNode(self)
 }
 
@@ -237,12 +267,12 @@ pub(all) enum BlankNodeRef {
 } derive(Debug, Eq, Hash)
 
 ///|
-pub fn BlankNodeRef::into_enum(self : BlankNodeRef) -> NamedOrBlankNodeRef {
+pub fn BlankNodeRef::as_enum(self : BlankNodeRef) -> NamedOrBlankNodeRef {
   NamedOrBlankNodeRef::BlankNodeRef(self)
 }
 
 ///|
-pub fn BlankNodeRef::into_term(self : BlankNodeRef) -> TermRef {
+pub fn BlankNodeRef::as_term(self : BlankNodeRef) -> TermRef {
   TermRef::BlankNodeRef(self)
 }
 
@@ -300,7 +330,7 @@ pub fn BlankNode::as_ref(self : BlankNode) -> BlankNodeRef {
 }
 
 ///|
-pub fn BlankNode::into_enum(self : BlankNode) -> NamedOrBlankNode {
+pub fn BlankNode::as_enum(self : BlankNode) -> NamedOrBlankNode {
   NamedOrBlankNode::BlankNode(self)
 }
 
@@ -540,6 +570,6 @@ pub struct TryFromTermError {
 } derive(Debug)
 
 ///|
-pub fn TryFromTermError::into_term(self : TryFromTermError) -> Term {
+pub fn TryFromTermError::as_term(self : TryFromTermError) -> Term {
   self.term
 }

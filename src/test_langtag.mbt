@@ -1,8 +1,8 @@
 ///|
 /// Tests for langtag creation
 test "debug single" {
-  let res = LanguageTag::parse_and_normalize("fr")
-  debug("Result: \{res}")
+  let _res = LanguageTag::parse_and_normalize("fr")
+  // debug("Result: \{res}")
 }
 
 ///|

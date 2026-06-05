@@ -51,15 +51,36 @@ type CharMatchRule = (Char, Char?)
 ///|
 enum VarDataType {
   IntVar(Int)
+  IntegerVar(Int64)
   DoubleVar(Double)
   // FloatVar(Float)
-  StringVar(StringView)
+  StringVar(String)
   FalseVar
   TrueVar
   // UIntVar(UInt)
   DecimalVar(Decimal)
+  DateVar(String)
+  TimeVar(String)
+  DateTimeVar(String)
+  DurationVar(String)
+
 } derive(Debug, Eq, Hash)
 
+impl Show for VarDataType with fn output(self : VarDataType, logger: &Logger) -> Unit {
+  match self {
+    IntVar(i) => logger.write(i.to_string())
+    IntegerVar(i) => logger.write(i.to_string())
+    DoubleVar(d) => logger.write(d.to_string())
+    DecimalVar(d) => logger.write(d) // 假设 Decimal (StringView) 可直接写入或需转换
+    StringVar(s) => logger.write(s)
+    TrueVar => logger.write("true")
+    FalseVar => logger.write("false")
+    DateVar(v) => logger.write(v)
+    TimeVar(v) => logger.write(v)
+    DateTimeVar(v) => logger.write(v)
+    DurationVar(v) => logger.write(v)
+  }
+}
 ///|
 // fn VarDataType::to_type(self : VarDataType) -> String {
 //   match self {
@@ -78,11 +99,16 @@ enum VarDataType {
 fn VarDataType::into_value(self : VarDataType) -> String {
   match self {
     IntVar(value) => value.to_string()
+    IntegerVar(value) => value.to_string()
     DoubleVar(value) => value.to_string()
     DecimalVar(value) => value.to_owned()
-    StringVar(value) => value.to_owned()
+    StringVar(value) => value
     TrueVar => "true"
     FalseVar => "false"
+    DateVar(value) => value
+    TimeVar(value) => value
+    DateTimeVar(value) => value
+    DurationVar(value) => value
   }
 }
 

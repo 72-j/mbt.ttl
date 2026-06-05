@@ -21,7 +21,7 @@ impl Show for Literal with fn to_string(self : Literal) -> String {
       let _ = print_quoted_str(f, value)
       f.write("@")
       f.write(language)
-      f.write("^")
+      f.write("-")
       f.write(direction)
       f.to_string()
     }
@@ -235,29 +235,46 @@ pub fn LiteralRef::new_simple_literal(value : StringView) -> LiteralRef {
 }
 
 ///|
-pub fn LiteralRef::into_term(self : Self) -> TermRef {
+pub fn LiteralRef::as_term(self : Self) -> TermRef {
   TermRef::LiteralRef(self)
 }
 
 ///|
-pub fn LiteralRef::to_owned(self : LiteralRef) -> Literal {
-  match self.0 {
-    LiteralRefContent::String(v) => Literal::new_simple_literal(v.to_owned())
-    LiteralRefContent::LanguageTaggedString(value~, language~) =>
-      Literal::new_language_tagged_literal_unchecked(value, language.to_owned())
-    LiteralRefContent::DirectionalLanguageTaggedString(
-      value~,
-      language~,
-      direction~
-    ) =>
-      Literal::new_directional_language_tagged_literal_unchecked(
-        value.to_owned(),
-        LanguageTag::parse(language.to_owned()).unwrap(),
-        direction,
-      )
-    _ => panic()
-  }
-}
+// pub fn LiteralRef::to_owned(self : LiteralRef) -> Literal {
+//   match self.0 {
+//     LiteralRefContent::String(v) => Literal::new_simple_literal(v.to_owned())
+//     LiteralRefContent::LanguageTaggedString(value~, language~) =>
+//       Literal::new_language_tagged_literal_unchecked(value, language.to_owned())
+//     LiteralRefContent::DirectionalLanguageTaggedString(
+//       value~,
+//       language~,
+//       direction~
+//     ) =>
+//       Literal::new_directional_language_tagged_literal_unchecked(
+//         value.to_owned(),
+//         LanguageTag::parse(language.to_owned()).unwrap(),
+//         direction,
+//       )
+//     _ => panic()
+//   }
+// }
+
+// pub fn LiteralRef::destruct(
+//   self : LiteralRef,
+// ) -> (StringView, NamedNode?, String?, BaseDirection?) {
+//   match self.0 {
+//     LiteralRefContent::String(s) => (s, None, None, None)
+//     LiteralRefContent::LanguageTaggedString(value~, language~) =>
+//       (value, None, Some(language), None)
+//     LiteralRefContent::DirectionalLanguageTaggedString(
+//       value~,
+//       language~,
+//       direction~
+//     ) => (value, None, Some(language), Some(direction))
+//     LiteralRefContent::TypedLiteral(value~, datatype~) =>
+//       (value.into_value(), Some(datatype), None, None)
+//   }
+// }
 
 ///|
 pub fn LiteralRef::new_typed_literal(
@@ -404,5 +421,6 @@ pub fn print_quoted_str(f : StringBuilder, string : StringView) -> String {
       _ => f.write_char(c)
     }
   }
-  f.write('\"').to_string()
+   f.write('\"')
+   f.to_string()
 }

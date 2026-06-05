@@ -243,6 +243,251 @@ pub fn from_str_radix(s : String, radix : Int) -> Result[UInt, String] {
 
   Ok(result)
 }
+
+// 直接提取各个分量并返回格式化的 Duration 字符串
+
+///|
+fn parse_duration(s : String) -> Result[String, String] {
+  // 分别匹配各种可能的模式
+  match s {
+    // 纯时分秒：PT...H...M...S
+    _ if s.has_prefix("PT") => {
+      let inner = s[2:]
+      let hours = extract_number(inner, "H")
+      let minutes = extract_number(inner, "M")
+      let seconds : Double = extract_number(inner, "S").to_double()
+
+      let parts = []
+      if hours > 0 {
+        parts.push("\{hours}H")
+      }
+      if minutes > 0 {
+        parts.push("\{minutes}M")
+      }
+      if seconds > 0.0 {
+        parts.push("\{seconds}S")
+      }
+
+      Ok("PT" + parts.join(""))
+    }
+    // 含日期和时间：P...DT...H...M...S
+    _ if s.contains("T") => {
+      let parts = s.split("T").to_array()
+      let date_part = parts[0][1:] // 去掉 P
+      let time_part = parts[1]
+
+      let years = extract_number(date_part, "Y")
+      let months = extract_number(date_part, "M")
+      let days = extract_number(date_part, "D")
+      let hours = extract_number(time_part, "H")
+      let minutes = extract_number(time_part, "M")
+      let seconds : Double = extract_number(time_part, "S").to_double()
+
+      // 构建标准格式
+      let mut result = "P"
+      if years > 0 {
+        result += "\{years}Y"
+      }
+      if months > 0 {
+        result += "\{months}M"
+      }
+      if days > 0 {
+        result += "\{days}D"
+      }
+      if hours > 0 || minutes > 0 || seconds > 0.0 {
+        result += "T"
+        if hours > 0 {
+          result += "\{hours}H"
+        }
+        if minutes > 0 {
+          result += "\{minutes}M"
+        }
+        if seconds > 0.0 {
+          result += "\{seconds}S"
+        }
+      }
+
+      Ok(result)
+    }
+    // 纯日期：PnYnMnD
+    _ => {
+      let inner = s[1:]
+      let years = extract_number(inner, "Y")
+      let months = extract_number(inner, "M")
+      let days = extract_number(inner, "D")
+
+      let mut result = "P"
+      if years > 0 {
+        result += "\{years}Y"
+      }
+      if months > 0 {
+        result += "\{months}M"
+      }
+      if days > 0 {
+        result += "\{days}D"
+      }
+
+      Ok(result)
+    }
+  }
+}
+
+// 辅助函数：从字符串中提取指定字母前的数字
+
+///|
+fn extract_number(s : StringView, unit : String) -> Int64 {
+  let idx = s.find(unit).unwrap_or(-1)
+  if idx == -1 {
+    return 0
+  }
+
+  // 向前查找数字
+  let mut start = idx - 1
+  while start >= 0 {
+    // let c = Int::to_char(s[start].to_int()) // 确保转换为 Char
+    // 注意：String 的索引访问可能直接返回 Char 或 UInt16，视具体 MoonBit 版本而定。
+    // 如果 s[start] 返回 Char，则直接用 c.is_digit() || c == '.'
+    // 如果 s[start] 返回 UInt16，则需转换。
+    // 假设 s[start] 返回 UInt16 (根据报错推断):
+    let ch = UInt16::to_char(s[start]).unwrap()
+    if !(ch.is_digit(10) || ch == '.') {
+      break
+    }
+    start -= 1
+  }
+
+  let num_str = s[start + 1:idx]
+  let num_64 = try? @string.parse_int64(num_str)
+  match num_64 {
+    Ok(num) => num
+    Err(_) => 0
+  }
+}
+
+// 支持浮点数的提取
+
+///|
+fn extract_float(s : String, unit : String) -> Double {
+  let idx = s.find(unit).unwrap_or(-1)
+  if idx == -1 {
+    return 0.0
+  }
+
+  let mut start = idx - 1
+  while start >= 0 {
+    // let c = Int::to_char(s[start].to_int()) // 确保转换为 Char
+    // 注意：String 的索引访问可能直接返回 Char 或 UInt16，视具体 MoonBit 版本而定。
+    // 如果 s[start] 返回 Char，则直接用 c.is_digit() || c == '.'
+    // 如果 s[start] 返回 UInt16，则需转换。
+    // 假设 s[start] 返回 UInt16 (根据报错推断):
+    let ch = UInt16::to_char(s[start]).unwrap()
+    if !(ch.is_digit(10) || ch == '.') {
+      break
+    }
+    start -= 1
+  }
+  let num_str = s[start + 1:idx]
+  let num_64 = try? @string.parse_double(num_str)
+  match num_64 {
+    Ok(num) => num
+    Err(_) => 0
+  }
+}
+
+///|
+fn parse_xsd_datetime(s : String) -> Result[String, String] {
+  // 支持格式：YYYY-MM-DDThh:mm:ss[Z|±hh:mm]
+  let re = try? @string.Regex(
+    "^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})T([[:digit:]]{2}):([[:digit:]]{2}):([[:digit:]]{2})(?:[.][[:digit:]]+)?(Z|[+\\-][[:digit:]]{2}:[[:digit:]]{2})?$",
+  )
+
+  match re.unwrap().execute(s) {
+    Some(caps) => {
+      // 使用 .group(index) 获取捕获组，返回 BytesView?
+      // 注意：group(0)是完整匹配，group(1)是第一个捕获组
+      let year_str = caps.group(1).unwrap_or("")
+      let month_str = caps.group(2).unwrap_or("")
+      let day_str = caps.group(3).unwrap_or("")
+      let hour_str = caps.group(4).unwrap_or("")
+      let minute_str = caps.group(5).unwrap_or("")
+      let second_str = caps.group(6).unwrap_or("")
+      let tz = caps.group(7).unwrap_or("")
+
+      // 将 BytesView 转换为 String (如果 group 返回的是 BytesView)
+      // 假设 group 返回的是 BytesView，需要转为 String 才能调用 to_int()
+      // 如果 group 返回的是 String?，则直接使用
+      // 根据 regex.mbt，group 返回 BytesView?。BytesView 通常有 to_string() 方法
+
+      let year_val = try? @string.parse_int(year_str.to_owned())
+      let month_val = try? @string.parse_int(month_str.to_owned())
+      let day_val = try? @string.parse_int(day_str.to_owned())
+      let hour_val = try? @string.parse_int(hour_str.to_owned())
+      let minute_val = try? @string.parse_int(minute_str.to_owned())
+      let second_val = try? @string.parse_int(second_str.to_owned())
+      let year_val = match year_val {
+        Ok(val) => val
+        Err(_) => return Err("Invalid year")
+      }
+      let month_val = match month_val {
+        Ok(val) => val
+        Err(_) => return Err("Invalid month")
+      }
+      let day_val = match day_val {
+        Ok(val) => val
+        Err(_) => return Err("Invalid day")
+      }
+      let hour_val = match hour_val {
+        Ok(val) => val
+        Err(_) => return Err("Invalid hour")
+      }
+      let minute_val = match minute_val {
+        Ok(val) => val
+        Err(_) => return Err("Invalid minute")
+      }
+      let second_val = match second_val {
+        Ok(val) => val
+        Err(_) => return Err("Invalid second")
+      }
+
+      // 验证日期有效性
+      let date = try? @tempo.Date::new(year_val, month_val, day_val)
+      match date {
+        d => {
+          let d = match d {
+            Ok(d) => d
+            Err(_) => return Err("Invalid date")
+          }
+          if d.year != year_val || d.month != month_val || d.day != day_val {
+            return Err("Invalid date")
+          }
+
+          // 验证时间有效性
+          if hour_val >= 24 || minute_val >= 60 || second_val >= 60 {
+            return Err("Invalid time")
+          }
+
+          // 构建结果
+          let result = "\{d.to_string()}T\{pad(hour_val)}:\{pad(minute_val)}:\{pad(second_val)}"
+          if tz != "" {
+            Ok("\{result}\{tz}")
+          } else {
+            Ok(result)
+          }
+        }
+      }
+    }
+    None => Err("Invalid datetime format")
+  }
+}
+
+///|
+fn pad(n : Int) -> String {
+  if n < 10 {
+    "0\{n}"
+  } else {
+    n.to_string()
+  }
+}
 // fn make_ascii_lowercase(s : String) -> String {
 //   let mut result = s.clone()
 //   for i in 0; i < result.length(); i = i + 1 {

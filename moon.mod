@@ -5,6 +5,8 @@ version = "0.1.0"
 import {
   "tonyfettes/utf8@0.2.4",
   "moonbitlang/async@0.19.1",
+  "brickfrog/tempo@0.8.0",
+  "justjavac/itoa@0.2.2",
 }
 
 readme = "README.mbt.md"

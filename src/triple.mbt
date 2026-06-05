@@ -38,7 +38,7 @@ pub fn Triple::in_graph(self : Triple, graph_name : GraphNameRef) -> Quad {
 }
 
 ///|
-pub fn Triple::into_enum(self : Triple) -> Term {
+pub fn Triple::as_enum(self : Triple) -> Term {
   Term::Triple(self)
 }
 

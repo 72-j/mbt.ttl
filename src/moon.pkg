@@ -8,6 +8,8 @@ import {
   // "moonbitlang/async/socket",
   // "moonbitlang/async/fs",
   "tonyfettes/utf8",
+  "brickfrog/tempo" @tempo,
+  "justjavac/itoa" @itoa,
 }
 
 options(

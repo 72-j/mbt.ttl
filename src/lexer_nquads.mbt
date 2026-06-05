@@ -70,12 +70,12 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       // let TokenOrLineJump::Token(token) = token
       match token {
         TokenOrLineJump::Token(N3Token::Iri(s)) => {
-          self.subjects.push(NamedNodeRef::new_unchecked(s).into_enum())
+          self.subjects.push(NamedNodeRef::new_unchecked(s).as_enum())
           self.stack.push(NQuadsState::ExpectPredicate)
           self
         }
         TokenOrLineJump::Token(N3Token::BlankNodeLabel(s)) => {
-          self.subjects.push(BlankNodeRef::new_unchecked(s).into_enum())
+          self.subjects.push(BlankNodeRef::new_unchecked(s).as_enum())
           self.stack.push(NQuadsState::ExpectPredicate)
           self
         }
@@ -117,7 +117,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           self
         }
         TokenOrLineJump::Token(N3Token::BlankNodeLabel(o)) => {
-          self.objects.push(NamedNodeRef::new_unchecked(o).into_term())
+          self.objects.push(NamedNodeRef::new_unchecked(o).as_term())
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
           self
         }
@@ -155,7 +155,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
               self.objects.push(
                 LiteralRef::new_directional_language_tagged_literal_unchecked(
                   value, lang_tag, dir,
-                ).into_term(),
+                ).as_term(),
               )
               self.stack.push(
                 NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple,
