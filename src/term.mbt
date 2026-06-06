@@ -225,9 +225,9 @@ pub fn NamedNodeRef::into_datatype(
       Err(_) => StringVar("NAN")
     }
   } else if self == lwDATE {
-    let parsed = parse_xsd_datetime(value)
+    let parsed = parse_xsd_date(value)
     match parsed {
-      Ok(v) => DateVar(v.to_string())
+      Ok(v) =>{DateVar(v)}
       Err(_) => StringVar("NAN")
     }
   }else if self == lwTIME{

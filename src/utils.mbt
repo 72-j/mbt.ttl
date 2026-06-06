@@ -248,6 +248,13 @@ pub fn from_str_radix(s : String, radix : Int) -> Result[UInt, String] {
 
 ///|
 fn parse_duration(s : String) -> Result[String, String] {
+    if s.is_empty() {
+    return Err("Empty duration string")
+    }
+    let has_prefix = s.has_prefix("P") || s.has_prefix("-P")
+  if !has_prefix {
+    return Err("Duration must start with P or -P")
+  }
   // 分别匹配各种可能的模式
   match s {
     // 纯时分秒：PT...H...M...S
@@ -395,23 +402,26 @@ fn extract_float(s : String, unit : String) -> Double {
 }
 
 ///|
-fn parse_xsd_datetime(s : String) -> Result[String, String] {
+fn parse_xsd_date(s : String) -> Result[String, String] {
   // 支持格式：YYYY-MM-DDThh:mm:ss[Z|±hh:mm]
   let re = try? @string.Regex(
-    "^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})T([[:digit:]]{2}):([[:digit:]]{2}):([[:digit:]]{2})(?:[.][[:digit:]]+)?(Z|[+\\-][[:digit:]]{2}:[[:digit:]]{2})?$",
+    // "^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})T([[:digit:]]{2}):([[:digit:]]{2}):([[:digit:]]{2})(?:[.][[:digit:]]+)?(Z|[+\\-][[:digit:]]{2}:[[:digit:]]{2})?$",
+      "^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})$"
+
   )
 
   match re.unwrap().execute(s) {
     Some(caps) => {
+      debug(caps)
       // 使用 .group(index) 获取捕获组，返回 BytesView?
       // 注意：group(0)是完整匹配，group(1)是第一个捕获组
-      let year_str = caps.group(1).unwrap_or("")
-      let month_str = caps.group(2).unwrap_or("")
-      let day_str = caps.group(3).unwrap_or("")
-      let hour_str = caps.group(4).unwrap_or("")
-      let minute_str = caps.group(5).unwrap_or("")
-      let second_str = caps.group(6).unwrap_or("")
-      let tz = caps.group(7).unwrap_or("")
+      let year_str = caps.group(1).unwrap_or("0")
+      let month_str = caps.group(2).unwrap_or("0")
+      let day_str = caps.group(3).unwrap_or("0")
+      // let hour_str = caps.group(4).unwrap_or("0")
+      // let minute_str = caps.group(5).unwrap_or("0")
+      // let second_str = caps.group(6).unwrap_or("0")
+      // let tz = caps.group(7).unwrap_or("0")
 
       // 将 BytesView 转换为 String (如果 group 返回的是 BytesView)
       // 假设 group 返回的是 BytesView，需要转为 String 才能调用 to_int()
@@ -421,9 +431,9 @@ fn parse_xsd_datetime(s : String) -> Result[String, String] {
       let year_val = try? @string.parse_int(year_str.to_owned())
       let month_val = try? @string.parse_int(month_str.to_owned())
       let day_val = try? @string.parse_int(day_str.to_owned())
-      let hour_val = try? @string.parse_int(hour_str.to_owned())
-      let minute_val = try? @string.parse_int(minute_str.to_owned())
-      let second_val = try? @string.parse_int(second_str.to_owned())
+      // let hour_val = try? @string.parse_int(hour_str.to_owned())
+      // let minute_val = try? @string.parse_int(minute_str.to_owned())
+      // let second_val = try? @string.parse_int(second_str.to_owned())
       let year_val = match year_val {
         Ok(val) => val
         Err(_) => return Err("Invalid year")
@@ -436,18 +446,37 @@ fn parse_xsd_datetime(s : String) -> Result[String, String] {
         Ok(val) => val
         Err(_) => return Err("Invalid day")
       }
-      let hour_val = match hour_val {
-        Ok(val) => val
-        Err(_) => return Err("Invalid hour")
+      // let hour_val = match hour_val {
+      //   Ok(val) => val
+      //   Err(_) => return Err("Invalid hour")
+      // }
+      // let minute_val = match minute_val {
+      //   Ok(val) => val
+      //   Err(_) => return Err("Invalid minute")
+      // }
+      // let second_val = match second_val {
+      //   Ok(val) => val
+      //   Err(_) => return Err("Invalid second")
+      // }
+      if month_val < 1 || month_val > 12 {
+        return Err("Invalid month")
       }
-      let minute_val = match minute_val {
-        Ok(val) => val
-        Err(_) => return Err("Invalid minute")
+
+      // 基本的日期范围验证（先于 Date::new）
+      if day_val < 1 || day_val > 31 {
+        return Err("Invalid day")
       }
-      let second_val = match second_val {
-        Ok(val) => val
-        Err(_) => return Err("Invalid second")
-      }
+
+      // 验证时间范围
+      // if hour_val < 0 || hour_val > 23 {
+      //   return Err("Invalid hour")
+      // }
+      // if minute_val < 0 || minute_val > 59 {
+      //   return Err("Invalid minute")
+      // }
+      // if second_val < 0 || second_val > 59 {
+      //   return Err("Invalid second")
+      // }
 
       // 验证日期有效性
       let date = try? @tempo.Date::new(year_val, month_val, day_val)
@@ -462,17 +491,23 @@ fn parse_xsd_datetime(s : String) -> Result[String, String] {
           }
 
           // 验证时间有效性
-          if hour_val >= 24 || minute_val >= 60 || second_val >= 60 {
-            return Err("Invalid time")
-          }
+          // if hour_val >= 24 || minute_val >= 60 || second_val >= 60 {
+          //   return Err("Invalid time")
+          // }
 
           // 构建结果
-          let result = "\{d.to_string()}T\{pad(hour_val)}:\{pad(minute_val)}:\{pad(second_val)}"
-          if tz != "" {
-            Ok("\{result}\{tz}")
-          } else {
-            Ok(result)
-          }
+          let date_str = d.to_string()
+          return Ok(date_str)
+          // let hour_padded = pad(hour_val)
+          // let minute_padded = pad(minute_val)
+          // let second_padded = pad(second_val)
+
+        //  let result = "\{date_str}T\{hour_padded}:\{minute_padded}:\{second_padded}"
+
+          // match tz {
+          //   "" | "0" => Ok(result)
+          //   _ => Ok("\{result}\{tz}")
+          // }
         }
       }
     }
@@ -481,13 +516,19 @@ fn parse_xsd_datetime(s : String) -> Result[String, String] {
 }
 
 ///|
-fn pad(n : Int) -> String {
-  if n < 10 {
-    "0\{n}"
-  } else {
-    n.to_string()
-  }
-}
+// fn pad(n : Int) -> String {
+//   debug(n)
+
+//   if n < 10 {
+//     let r = "0\{n}"
+//     debug(r)
+//     r
+//   } else {
+//     let r = n.to_string()
+//     debug(r)
+//     r
+//   }
+// }
 // fn make_ascii_lowercase(s : String) -> String {
 //   let mut result = s.clone()
 //   for i in 0; i < result.length(); i = i + 1 {

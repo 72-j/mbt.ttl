@@ -1543,22 +1543,32 @@ fn str_from_utf8(
   range : Range,
 ) -> Result[String, TokenRecognizerError] {
   let s = try? @utf8.of_bytes(data.to_owned())
-  match s {
-    Ok(s) => Ok(@utf8.Utf8::to_string(s))
-    Err(e) =>
-      match e {
-        @utf8.Malformed(invalid_bytes_view) =>
-
-          // 2. 构造错误消息
-          return Err(
-            TokenRecognizerError::InvalidErrMessage(
-              invalid_bytes_view,
-              range,
-              "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
-            ),
-          )
-      }
+  guard s is Ok(s) else {
+    return Err(
+      TokenRecognizerError::InvalidErrMessage(
+        data[range.start:range.end],
+        range,
+        "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
+      ),
+    )
   }
+  Ok(@utf8.Utf8::to_string(s))
+  // match s {
+  // Ok(s) => Ok(@utf8.Utf8::to_string(s))
+  // Err(e) =>
+  //   match e {
+  //     @utf8.Malformed(invalid_bytes_view) =>
+
+  //       // 2. 构造错误消息
+  //       return Err(
+  //         TokenRecognizerError::InvalidErrMessage(
+  //           invalid_bytes_view,
+  //           range,
+  //           "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
+  //         ),
+  //       )
+  //   }
+  // }
 }
 
 ///|
@@ -1568,22 +1578,32 @@ fn string_from_utf8(
 ) -> Result[String, TokenRecognizerError] {
   let bytes = Bytes::from_array(data)
   let s = try? @utf8.of_bytes(bytes)
-  match s {
-    Ok(s) => Ok(@utf8.Utf8::to_string(s))
-    Err(e) =>
-      match e {
-        @utf8.Malformed(invalid_bytes_view) =>
-
-          // 2. 构造错误消息
-          return Err(
-            TokenRecognizerError::InvalidErrMessage(
-              invalid_bytes_view,
-              range,
-              "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
-            ),
-          )
-      }
+  guard s is Ok(s) else {
+    return Err(
+      TokenRecognizerError::InvalidErrMessage(
+        bytes[range.start:range.end],
+        range,
+        "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
+      ),
+    )
   }
+  Ok(@utf8.Utf8::to_string(s))
+  // match s {
+  //   Ok(s) => Ok(@utf8.Utf8::to_string(s))
+  //   Err(e) =>
+  //     match e {
+  //       @utf8.Malformed(invalid_bytes_view) =>
+
+  //         // 2. 构造错误消息
+  //         return Err(
+  //           TokenRecognizerError::InvalidErrMessage(
+  //             invalid_bytes_view,
+  //             range,
+  //             "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
+  //           ),
+  //         )
+  //     }
+  // }
 }
 
 // fn str_from_utf8(data : BytesView, range : Range) -> Result[String, TokenRecognizerError] {

@@ -159,17 +159,17 @@ test "VarDataType: pattern matching with all types" {
   
   for case in test_cases {
     match case {
-      IntVar(v) => println("Int: \{v}")
-      IntegerVar(v) => println("Integer: \{v}")
-      DoubleVar(v) => println("Double: \{v}")
-      StringVar(v) => println("String: \{v}")
-      TrueVar => println("Boolean: true")
-      FalseVar => println("Boolean: false")
-      DecimalVar(v) => println("Decimal: \{v}")
-      DateVar(v) => println("Date: \{v}")
-      TimeVar(v) => println("Time: \{v}")
-      DateTimeVar(v) => println("DateTime: \{v}")
-      DurationVar(v) => println("Duration: \{v}")
+      IntVar(v) => debug("Int: \{v}")
+      IntegerVar(v) => debug("Integer: \{v}")
+      DoubleVar(v) => debug("Double: \{v}")
+      StringVar(v) => debug("String: \{v}")
+      TrueVar => debug("Boolean: true")
+      FalseVar => debug("Boolean: false")
+      DecimalVar(v) => debug("Decimal: \{v}")
+      DateVar(v) => debug("Date: \{v}")
+      TimeVar(v) => debug("Time: \{v}")
+      DateTimeVar(v) => debug("DateTime: \{v}")
+      DurationVar(v) => debug("Duration: \{v}")
     }
   }
 }
@@ -183,12 +183,12 @@ test "VarDataType: from xsd conversion" {
     _ => fail("Expected IntVar")
   }
   
-  // let date_node = lwDATE
-  // let result2 = date_node.into_datatype("2024-3-15")
-  // match result2 {
-  //   DateVar(v) => debug(v)
-  //   _ => fail("Expected DateVar2")
-  // }
+  let date_node = lwDATE
+  let result2 = date_node.into_datatype("2024-03-15")
+  match result2 {
+    DateVar(v) => assert_eq(v, "2024-03-15")
+    _ => fail("Expected DateVar")
+  }
   
   let duration_node = lwDURATION
   let result3 = duration_node.into_datatype("PT1H30M")
@@ -208,16 +208,16 @@ test "VarDataType: from xsd conversion" {
 test "parse_duration simplified" {
   // 使用 match 进行简单验证
   match parse_duration("PT30M") {
-    Ok(v) => println("Pass: \{v}")
+    Ok(v) => debug("Pass: \{v}")
     Err(e) => fail(e)
   }
   
   match parse_duration("P1DT12H") {
-    Ok(v) => println("Pass: \{v}")
+    Ok(v) => debug("Pass: \{v}")
     Err(e) => fail(e)
   }
   
-  println("All duration tests passed!")
+  debug("All duration tests passed!")
 }
 
 test "into_datatype: duration types" {
@@ -236,12 +236,12 @@ test "into_datatype: duration types" {
     _ => fail("Expected DurationVar")
   }
   
-  // let result3 = duration_node.into_datatype("invalid")
-  // debug(result3);
-  // match result3 {
-  //   StringVar(v) => assert_eq(v, "NAN")
-  //   _ => fail("Expected StringVar for invalid input")
-  // }
+  let result3 = duration_node.into_datatype("invalid")
+  debug(result3);
+  match result3 {
+    StringVar(v) => assert_eq(v, "NAN")
+    _ => fail("Expected StringVar for invalid input")
+  }
 }
 
 test "VarDataType: TimeVar validation" {
@@ -264,7 +264,7 @@ test "VarDataType: DateVar validation" {
       guard regex.execute(v) is Some(m) else { fail("Expected match") }
       inspect(m.content(), content="2024-03-15")
     }
-    _ => fail("Expected DateVar3")
+    _ => fail("Expected DateVar")
   }
 }
 
@@ -405,9 +405,9 @@ test "VarDataType: pattern matching" {
       IntegerVar(v) => inspect(v.to_string(), content="100")
       DoubleVar(v) => inspect(v.to_string(), content="3.14")
       StringVar(v) => inspect(v.to_string(), content="test")
-      TrueVar => println("Boolean: true")
-      FalseVar => println("Boolean: false")
-      DecimalVar(v) => println("Decimal: \{v}")
+      TrueVar => debug("Boolean: true")
+      FalseVar => debug("Boolean: false")
+      DecimalVar(v) => debug("Decimal: \{v}")
       DateVar(v) => {
         let regex = @string.Regex("^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$")
         guard regex.execute(v) is Some(_) else { fail("Invalid date format") }
@@ -428,6 +428,7 @@ test "VarDataType: pattern matching" {
   }
 }
 
+
 test "VarDataType: from xsd conversion with validation" {
   // 测试从 XSD 类型转换的端到端流程
   let int_node = lwINT
@@ -437,16 +438,16 @@ test "VarDataType: from xsd conversion with validation" {
     _ => fail("Expected IntVar")
   }
   
-  // let date_node = lwDATE
-  // let result2 = date_node.into_datatype("2024-03-15")
-  // match result2 {
-  //   DateVar(v) => {
-  //     let regex = @string.Regex("^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$")
-  //     guard regex.execute(v) is Some(m) else { fail("Expected match") }
-  //     inspect(m.content(), content="2024-03-15")
-  //   }
-  //   _ => fail("Expected DateVar4")
-  // }
+  let date_node = lwDATE
+  let result2 = date_node.into_datatype("2024-03-15")
+  match result2 {
+    DateVar(v) => {
+      let regex = @string.Regex("^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$")
+      guard regex.execute(v) is Some(m) else { fail("Expected match") }
+      inspect(m.content(), content="2024-03-15")
+    }
+    _ => fail("Expected DateVar")
+  }
   
   let time_node = lwTIME
   let result3 = time_node.into_datatype("10:30:00")
