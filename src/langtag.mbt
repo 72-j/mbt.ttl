@@ -16,6 +16,14 @@ enum State {
   InPrivateUse(Bool) // true = 期待私有使用内容
 } derive(Hash, Eq)
 
+// 已知的遗留 3 字母变体 (RFC 5646 允许)
+
+///|
+let legacy_3letter_variants : Array[StringView] = [
+  "BIS", "NIS", "PIN", "SIN", "KNI", "QUI", "JAN", "FON", "SAA", "SBE", "SCO", "SGU",
+  "WUU",
+]
+
 ///|
 pub(all) enum SubtagType {
   PrivateUseIntro // "x"
@@ -45,7 +53,7 @@ pub fn LanguageTag::parse(tag : StringView) -> Result[LanguageTag, TagParseErr] 
 }
 
 ///|
-pub fn LanguageTag::as_str(self : LanguageTag) -> String {
+pub fn LanguageTag::into_str(self : LanguageTag) -> String {
   self.tag
 }
 
@@ -310,15 +318,20 @@ fn calculate_positions(
 
     match state {
       State::Start => {
-        // 主语言：2-3 字母
-        if subtag.length() < 2 || !is_alphabetic(subtag) {
+        // 主语言：2-3 字母 或 5-8 字母
+        let len = subtag.length()
+
+        // 修复：明确拒绝长度为 4 的主语言子标签
+        if len == 4 || len < 2 || !is_alphabetic(subtag) {
           return Err(TagParseErr::InvalidLanguage)
         }
+
         language_end = end
-        state = if subtag.length() < 4 {
+        // 2-3 字母后可能跟扩展语言，5-8 字母后直接跟脚本/地区等
+        state = if len < 4 {
           State::AfterLanguage
         } else {
-          State::AfterExtLang
+          State::AfterExtLang // 实际上 5-8 字母后不应有扩展语言，但状态机后续会校验
         }
       }
       State::InPrivateUse(_expected) => {
@@ -331,9 +344,23 @@ fn calculate_positions(
         state = State::InPrivateUse(false)
       }
       _ => {
-        // 检查私有使用引入
+        // 1. 扩展语言（排除旧式3字母变体）
+        if (state == State::AfterLanguage || state == State::AfterExtLang) &&
+          subtag.length() == 3 &&
+          is_alphabetic(subtag) {
+          if !legacy_3letter_variants.contains(subtag.to_lower()) {
+            extlangs_count += 1
+            if extlangs_count > 3 {
+              return Err(TagParseErr::TooManyExtlangs)
+            }
+            extlang_end = end
+            state = State::AfterExtLang
+            continue
+          }
+        }
+
+        // 2. 私有使用引入
         if subtag == "x" || subtag == "X" {
-          // 确保扩展不是期待内容状态
           if state is State::InExtension(true) {
             return Err(TagParseErr::EmptyExtension)
           }
@@ -341,7 +368,7 @@ fn calculate_positions(
           continue
         }
 
-        // 检查扩展引入（单字母）
+        // 3. 扩展引入（单字母）
         if subtag.length() == 1 && is_alphanumeric(subtag) {
           if state is State::InExtension(true) {
             return Err(TagParseErr::EmptyExtension)
@@ -350,7 +377,7 @@ fn calculate_positions(
           continue
         }
 
-        // 扩展内容
+        // 4. 扩展内容
         if state is State::InExtension(_) {
           if !is_alphanumeric(subtag) {
             return Err(TagParseErr::InvalidSubtag)
@@ -360,20 +387,7 @@ fn calculate_positions(
           continue
         }
 
-        // 扩展语言
-        if state == State::AfterLanguage &&
-          subtag.length() == 3 &&
-          is_alphabetic(subtag) {
-          extlangs_count += 1
-          if extlangs_count > 3 {
-            return Err(TagParseErr::TooManyExtlangs)
-          }
-          extlang_end = end
-          state = State::AfterExtLang
-          continue
-        }
-
-        // 脚本
+        // 5. 脚本
         if (state == State::AfterLanguage || state == State::AfterExtLang) &&
           subtag.length() == 4 &&
           is_alphabetic(subtag) {
@@ -382,7 +396,7 @@ fn calculate_positions(
           continue
         }
 
-        // 地区
+        // 6. 地区
         if (
             state == State::AfterLanguage ||
             state == State::AfterExtLang ||
@@ -397,7 +411,7 @@ fn calculate_positions(
           continue
         }
 
-        // 变体
+        // 7. 变体（包括旧式3字母变体）
         if (
             state == State::AfterLanguage ||
             state == State::AfterExtLang ||
@@ -407,7 +421,8 @@ fn calculate_positions(
           is_alphanumeric(subtag) &&
           (
             (subtag.length() >= 5 && is_alphabetic(subtag[0:1])) ||
-            (subtag.length() >= 4 && is_numeric(subtag[0:1]))
+            (subtag.length() >= 4 && is_numeric(subtag[0:1])) ||
+            legacy_3letter_variants.contains(subtag.to_lower())
           ) {
           variant_end = end
           state = State::AfterRegion

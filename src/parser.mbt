@@ -7,6 +7,7 @@ pub(all) enum Context {
 ///|
 pub(all) enum LexOutput {
   Quad(Quad)
+  Triple(Triple)
 }
 
 ///|
@@ -150,11 +151,11 @@ pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::nex
     if self.parser.parse_next() is Some(result) {
       // 修复：将 TurtleError 转换为 String
       return Some(
-        result.map_err(_e => LexerError::SyntaxError("Syntax Error: ")),
+        result.map_err(e => LexerError::SyntaxError("Syntax Error: \{e.to_string()}")),
       )
     }
-    if self.parser.lexer.extend_from_async_read(self.reader) is Err(_e) {
-      return Some(Err(LexerError::IoReadError("IO Read Error: ")))
+    if self.parser.lexer.extend_from_async_read(self.reader) is Err(e) {
+      return Some(Err(LexerError::IoReadError("IO Read Error: \{e.to_string()}")))
     }
   }
   None

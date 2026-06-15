@@ -63,7 +63,10 @@ pub fn Literal::new_language_tagged_literal(
       // 如果 LanguageTag 是一个 struct 且其原始字符串被保留，可能需要访问特定字段
       // 这里使用通用的 .to_string() 进行转换
       Ok(
-        Literal::new_language_tagged_literal_unchecked(value, lang_tag.as_str()),
+        Literal::new_language_tagged_literal_unchecked(
+          value,
+          lang_tag.into_str(),
+        ),
       )
     Err(e) => Err(LanguageTagParseError::TagParseErr(e))
   }
@@ -107,7 +110,7 @@ pub fn Literal::new_directional_language_tagged_literal_unchecked(
 ) -> Literal {
   LiteralContent::DirectionalLanguageTaggedString(
     value~,
-    language=language.as_str(),
+    language=language.into_str(),
     direction~,
   )
 }
@@ -307,7 +310,7 @@ pub fn LiteralRef::new_directional_language_tagged_literal_unchecked(
   LiteralRef(
     LiteralRefContent::DirectionalLanguageTaggedString(
       value~,
-      language=language.as_str(),
+      language=language.into_str(),
       direction~,
     ),
   )
@@ -421,6 +424,6 @@ pub fn print_quoted_str(f : StringBuilder, string : StringView) -> String {
       _ => f.write_char(c)
     }
   }
-   f.write('\"')
-   f.to_string()
+  f.write('\"')
+  f.to_string()
 }

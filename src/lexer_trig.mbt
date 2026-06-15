@@ -11,20 +11,20 @@ pub struct TriGRecognizer {
 
 ///|
 pub struct TriGRecognizerContext {
-  lexer_options : TriGLexerOptions
+  lexer_options : LexerOptions
   with_graph_name : Bool
   prefixes : Map[String, IriRef]
 }
 
 ///|
-pub struct TriGLexerOptions {
-  mut base_iri : Iri?
-} derive(Debug)
+// pub struct TriGLexerOptions {
+//   mut base_iri : Iri?
+// } derive(Debug)
 
 ///|
-fn TriGLexerOptions::TriGLexerOptions() -> TriGLexerOptions {
-  { base_iri: None }
-}
+// fn TriGLexerOptions::TriGLexerOptions() -> TriGLexerOptions {
+//   { base_iri: None }
+// }
 
 ///|
 pub fn TriGRecognizerContext::prefixes(
@@ -205,9 +205,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ) {
               Ok(t) => {
                 self.stack.push(
-                  TriGState::WrappedGraphOrPredicateObjectList(
-                    term=t.as_enum(),
-                  ),
+                  TriGState::WrappedGraphOrPredicateObjectList(term=t.as_enum()),
                 )
                 self
               }
@@ -754,7 +752,9 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             self
           }
           TokenOrLineJump::Token(N3Token::Integer(v)) => {
-            let v = try? @string.parse_int(v)
+            let v = try @string.parse_int(v) |> Ok catch {
+              e => Err(e)
+            }
             match v {
               Ok(value) => {
                 self.cur_object.push(
@@ -770,7 +770,9 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             }
           }
           TokenOrLineJump::Token(N3Token::Decimal(v)) => {
-            let v = try? @string.parse_double(v)
+            let v = try @string.parse_double(v) |> Ok catch {
+              e => Err(e)
+            }
             match v {
               Ok(value) => {
                 self.cur_object.push(
@@ -786,7 +788,9 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             }
           }
           TokenOrLineJump::Token(N3Token::Double(v)) => {
-            let v = try? @string.parse_double(v)
+            let v = try @string.parse_double(v) |> Ok catch {
+              e => Err(e)
+            }
             match v {
               Ok(value) => {
                 self.cur_object.push(
@@ -936,7 +940,11 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           TokenOrLineJump::Token(N3Token::LangTag(language~, direction~)) => {
             self.cur_object.push(
               if direction is Some(direction) {
-                let lang_tag = try? LanguageTag::from_str(language.to_lower())
+                let lang_tag = try
+                  LanguageTag::from_str(language.to_lower()) |> Ok
+                catch {
+                  e => Err(e)
+                }
 
                 TermRef::LiteralRef(
                   LiteralRef::new_directional_language_tagged_literal_unchecked(
@@ -1297,9 +1305,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Err(e) => self.error(errors, e)
             }
           TokenOrLineJump::Token(N3Token::BlankNodeLabel(label)) => {
-            self.cur_subject.push(
-              NamedNodeRef::new_unchecked(label).as_enum(),
-            )
+            self.cur_subject.push(NamedNodeRef::new_unchecked(label).as_enum())
             self
           }
           TokenOrLineJump::Token(N3Token::Punctuation("<<")) if is_reified => {
@@ -1357,7 +1363,9 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             self
           }
           TokenOrLineJump::Token(N3Token::Integer(v)) => {
-            let v = try? @string.parse_int(v)
+            let v = try @string.parse_int(v) |> Ok catch {
+              e => Err(e)
+            }
             match v {
               Ok(value) => {
                 self.cur_object.push(
@@ -1372,7 +1380,9 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             }
           }
           TokenOrLineJump::Token(N3Token::Decimal(v)) => {
-            let v = try? @string.parse_double(v)
+            let v = try @string.parse_double(v) |> Ok catch {
+              e => Err(e)
+            }
             match v {
               Ok(value) => {
                 self.cur_object.push(
@@ -1388,7 +1398,9 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             }
           }
           TokenOrLineJump::Token(N3Token::Double(v)) => {
-            let v = try? @string.parse_double(v)
+            let v = try @string.parse_double(v) |> Ok catch {
+              e => Err(e)
+            }
             match v {
               Ok(value) => {
                 self.cur_object.push(
@@ -1489,8 +1501,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
 ///|
 impl RuleRecognizer for TriGRecognizer with fn lexer_options(context : Context) -> LexerOptions? {
   let lexer_opts : LexerOptions? = match context {
-    Context::TriGRecognizerContext(ctx) =>
-      Some(LexerOptions::TriGLexerOptions(ctx.lexer_options))
+    Context::TriGRecognizerContext(ctx) => Some(ctx.lexer_options)
     _ => None
   }
   lexer_opts

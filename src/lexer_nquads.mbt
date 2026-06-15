@@ -1,16 +1,4 @@
 ///|
-pub struct N3LexerOptions {
-  base_iri : Iri?
-} derive(Debug)
-
-// type N3LexerOptions = LexerOptions
-
-///|
-fn N3LexerOptions::default(base_iri : Iri?) -> N3LexerOptions {
-  { base_iri, }
-}
-
-///|
 pub struct NQuadsRecognizer {
   stack : Array[NQuadsState]
   subjects : Array[NamedOrBlankNodeRef]
@@ -38,6 +26,77 @@ enum NQuadsState {
   RecoverToLineJump
   AfterQuotedTriple
 }
+
+
+///|
+// impl TokenRecognizer for NQuadsRecognizer with fn recognize_next_token(
+//   self : NQuadsRecognizer,
+//   data : BytesView,
+//   is_ending : Bool,
+//   options : LexerOptions?,
+// ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+//   let opts = match options {
+//     Some(opts) => opts
+//     None => LexerOptions::default(None)
+//   }
+  
+//   if data.is_empty() {
+//     return None
+//   }
+  
+//   match data[0] {
+//     b'<' => self.recognize_iri(data, opts)
+//     b'>' =>
+//       if data.get(1) == Some(b'>') {
+//         Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation(">>")))))
+//       } else {
+//         Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(">")))))
+//       }
+//     b'_' =>
+//       match data.get(1) {
+//         Some(b':') => NQuadsRecognizer::recognize_blank_node_label(data, is_ending)
+//         c =>
+//           Some((
+//             1,
+//             Err(TokenRecognizerError::InvalidToken([c.unwrap()], Range(1, 2))),
+//           ))
+//       }
+//     b'"' => self.recognize_string(data, b'"'),
+//     b'.' =>
+//       match data.get(1) {
+//         Some(b'0'..=b'9') => NQuadsRecognizer::recognize_number(data, is_ending)
+//         Some(_) =>
+//           Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(".")))))
+//         None =>
+//           if is_ending {
+//             Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(".")))))
+//           } else {
+//             None
+//           }
+//       }
+//     b'^' =>
+//       if data.get(1) == Some(b'^') {
+//         Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("^^")))))
+//       } else {
+//         Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("^")))))
+//       }
+//     b'(' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("(")))))
+//     b')' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(")")))))
+//     b'[' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("[")))))
+//     b']' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("]")))))
+//     b'{' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("{")))))
+//     b'}' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("}")))))
+//     b',' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(",")))))
+//     b';' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(";")))))
+//     b'!' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("!")))))
+//     b'|' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("|")))))
+//     b'=' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("=")))))
+//     b'~' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("~")))))
+//     b'0'..=b'9' | b'+' | b'-' => NQuadsRecognizer::recognize_number(data, is_ending)
+//     b'?' => self.recognize_variable(data, is_ending)
+//     _ => self.recognize_pname_or_keyword(data, is_ending)
+//   }
+// }
 
 ///|
 impl RuleRecognizer for NQuadsRecognizer with fn error_recovery_state(
@@ -149,7 +208,11 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             Some(d) => d // 假设有此类方法
             None => BaseDirection::Ltr
           }
-          let lang_tag = try? LanguageTag::from_str(language.to_lower())
+          let lang_tag = try
+            LanguageTag::from_str(language.to_lower()) |> Ok
+          catch {
+            e => Err(e)
+          }
           match lang_tag {
             Ok(lang_tag) => {
               self.objects.push(
@@ -172,7 +235,11 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         TokenOrLineJump::Token(N3Token::LangTag(language~, direction~)) if direction
           is None => {
           // self.objects.push(Literal::new_language_tagged_literal_unchecked(value, try? LanguageTag::from_str(language.to_lower())))
-          let lang_tag = try? LanguageTag::from_str(language.to_lower())
+          let lang_tag = try
+            LanguageTag::from_str(language.to_lower()) |> Ok
+          catch {
+            e => Err(e)
+          }
           match lang_tag {
             Ok(lang_tag) => {
               self.objects.push(

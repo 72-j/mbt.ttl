@@ -5,9 +5,11 @@ pub struct Triple {
   object : Term
 } derive(Eq, Debug, Hash)
 
-// impl Show for Triple with to_string(self : Triple) -> String {
-
-// }
+impl Show for Triple with output(self : Triple,logger: &Logger) -> Unit {
+// logger.write_fmt(format!("Triple {{ subject: {}, predicate: {}, object: {} }}",
+//   self.subject, self.predicate, self.object));
+logger.write_object(self);
+}
 
 ///|
 pub fn Triple::new(

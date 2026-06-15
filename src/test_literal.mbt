@@ -64,7 +64,11 @@ test "language-tagged literal case normalization" {
 test "language-tagged literal language extraction" {
   let lit = Literal::new_language_tagged_literal("hello", "en")
   match lit {
-    Ok(l) => assert_eq(l.language(), Some("en"))
+    Ok(l) =>
+      match l.language() {
+        Some(lang) => assert_eq(lang, "en")
+        None => fail("Expected language 'en', got None")
+      }
     Err(_) => fail("Failed")
   }
 }
@@ -82,7 +86,10 @@ test "language-tagged literal invalid tag" {
 test "language-tagged literal without direction" {
   let lit = LiteralRef::new_language_tagged_literal_unchecked("hello", "en")
   assert_eq(lit.into_owned().value(), "hello")
-  assert_eq(lit.language(), Some("en"))
+  match lit.language() {
+    Some(lang) => assert_eq(lang, "en")
+    None => fail("Expected language 'en', got None")
+  }
   assert_eq(lit.direction(), None)
 }
 
@@ -270,7 +277,7 @@ test "literalref typed literal with string normalizes to simple" {
 test "literalref language-tagged literal" {
   let literalref = Literal::new_language_tagged_literal_unchecked("hello", "en")
   assert_eq(literalref.as_ref().into_value(), "hello")
-  assert_eq((literalref.language()), Some("en".to_string()))
+  assert_eq(literalref.language(), Some("en".to_string()))
   assert_eq(literalref.datatype(), lwLANG_STRING)
 }
 
@@ -302,7 +309,10 @@ test "literalref to_owned" {
   )
   let owned = literalref.into_owned()
   assert_eq(owned.value(), "hello")
-  assert_eq(owned.language(), Some("en"))
+  match owned.language() {
+    Some(lang) => assert_eq(lang, "en")
+    None => fail("Expected language 'en', got None")
+  }
 }
 
 ///|

@@ -201,25 +201,33 @@ pub fn NamedNodeRef::into_datatype(
   value : String,
 ) -> VarDataType {
   if self == lwINT {
-    let parsed = try? @string.parse_int(value)
+    let parsed = try @string.parse_int(value) |> Ok catch {
+      e => Err(e)
+    }
     match parsed {
       Ok(v) => IntVar(v)
       Err(_) => StringVar("NAN")
     }
   } else if self == lwINTEGER {
-    let parsed = try? @string.parse_int64(value)
+    let parsed = try @string.parse_int64(value) |> Ok catch {
+      e => Err(e)
+    }
     match parsed {
       Ok(v) => IntegerVar(v)
       Err(_) => StringVar("NAN")
     }
   } else if self == lwFLOAT {
-    let parsed = try? @string.parse_double(value)
+    let parsed = try @string.parse_double(value) |> Ok catch {
+      e => Err(e)
+    }
     match parsed {
       Ok(v) => DoubleVar(v)
       Err(_) => StringVar("NAN")
     }
   } else if self == lwDECIMAL {
-    let parsed = try? @string.parse_double(value)
+    let parsed = try @string.parse_double(value) |> Ok catch {
+      e => Err(e)
+    }
     match parsed {
       Ok(v) => DecimalVar(v.to_string())
       Err(_) => StringVar("NAN")
@@ -227,18 +235,21 @@ pub fn NamedNodeRef::into_datatype(
   } else if self == lwDATE {
     let parsed = parse_xsd_date(value)
     match parsed {
-      Ok(v) =>{DateVar(v)}
+      Ok(v) => DateVar(v)
       Err(_) => StringVar("NAN")
     }
-  }else if self == lwTIME{
-    let parsed = try? @tempo.Time::parse(value)
+  } else if self == lwTIME {
+    let parsed = try @tempo.Time::parse(value) |> Ok catch {
+      e => Err(e)
+    }
     match parsed {
       Ok(v) => TimeVar(v.to_string())
       Err(_) => StringVar("NAN")
     }
-  } 
-  else if self == lwDATE_TIME {
-    let parsed = try? @tempo.DateTime::parse(value)
+  } else if self == lwDATE_TIME {
+    let parsed = try @tempo.DateTime::parse(value) |> Ok catch {
+      e => Err(e)
+    }
     match parsed {
       Ok(v) => DateTimeVar(v.to_string())
       Err(_) => StringVar("NAN")
@@ -363,6 +374,13 @@ pub(all) enum GraphName {
   BlankNode(BlankNode)
 } derive(Debug, Eq, Hash)
 
+impl Show for GraphName with fn to_string(self : GraphName) -> String {
+  match self {
+    GraphName::DefaultGraph => "".to_string()
+    GraphName::NamedNode(v) => v.to_string()
+    GraphName::BlankNode(v) => v.to_string()
+  }
+}
 ///|
 pub fn GraphName::into_owned(self : GraphName) -> GraphName {
   self
@@ -429,7 +447,7 @@ pub struct Quad {
   predicate : NamedNode
   object : Term
   graph_name : GraphName
-}
+} derive(Debug)
 
 ///|
 pub fn Quad::Quad(
@@ -440,7 +458,20 @@ pub fn Quad::Quad(
 ) -> Quad {
   { subject, predicate, object, graph_name }
 }
-
+impl Show for Quad with fn output(self : Quad, logger: &Logger) -> Unit {
+  logger.write_string(self.subject.to_string());
+  logger.write_string(" ");
+  logger.write_string(self.predicate.to_string());
+  logger.write_string(" ");
+  logger.write_string(self.object.to_string());
+  logger.write_string(" ");
+  logger.write_string(self.graph_name.to_string());
+  // if !self.graph_name.is_default_graph() {
+  //   logger.write_string(" ")
+  //   logger.write_string(self.graph_name.to_string())
+  // }
+  // logger.write_string("\n");
+}
 ///|
 pub struct QuadRef {
   subject : NamedOrBlankNodeRef
@@ -497,14 +528,14 @@ pub(all) enum Term {
   Triple(Triple)
 } derive(Debug, Eq, Hash)
 
-// impl Show for Term with to_string(self : Term) -> String {
-//   match self {
-//     Term::NamedNode(node) => node.to_string()
-//     Term::BlankNode(node) => node.to_string()
-//     Term::Literal(literal) => literal.to_string()
-//     Term::Triple(triple) => triple.to_string()
-//   }
-// }
+impl Show for Term with to_string(self : Term) -> String {
+  match self {
+    Term::NamedNode(node) => node.to_string()
+    Term::BlankNode(node) => node.to_string()
+    Term::Literal(literal) => literal.to_string()
+    Term::Triple(triple) => triple.to_string()
+  }
+}
 
 ///|
 pub fn Term::is_named_node(self : Term) -> Bool {

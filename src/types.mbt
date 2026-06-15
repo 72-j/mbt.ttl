@@ -13,7 +13,10 @@ type Decimal = StringView
 using @io {trait Reader}
 
 ///|
-using @io {trait Writer}
+using @io {trait Writer, type BufferedWriter}
+
+///|
+// type BuffeWriter = @io.BufferedWriter[&Writer]
 
 ///|
 pub using @ref {type Ref}
@@ -63,10 +66,10 @@ enum VarDataType {
   TimeVar(String)
   DateTimeVar(String)
   DurationVar(String)
-
 } derive(Debug, Eq, Hash)
 
-impl Show for VarDataType with fn output(self : VarDataType, logger: &Logger) -> Unit {
+///|
+impl Show for VarDataType with fn output(self : VarDataType, logger : &Logger) -> Unit {
   match self {
     IntVar(i) => logger.write(i.to_string())
     IntegerVar(i) => logger.write(i.to_string())
@@ -81,6 +84,7 @@ impl Show for VarDataType with fn output(self : VarDataType, logger: &Logger) ->
     DurationVar(v) => logger.write(v)
   }
 }
+
 ///|
 // fn VarDataType::to_type(self : VarDataType) -> String {
 //   match self {

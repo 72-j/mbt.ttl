@@ -337,6 +337,43 @@ pub(all) suberror TurtleError {
   InvalidCharacter(String)
   InvalidToken(TextPosition, String)
 }
+impl Show for TurtleError with fn output(self, logger : &Logger) -> Unit { 
+  match self {
+    TurtleError::TurtleParseError(msg, pos) => {
+      logger.write_string("Error: ")
+      logger.write_string("TurtleParseError")
+      logger.write_string(" - ")
+      logger.write_string(msg)
+      logger.write_string(" at ")
+      logger.write_string(pos.to_string())
+    }
+    TurtleError::TurtleSyntaxError(msg, pos) => {
+      logger.write_string("Error: ")
+      logger.write_string("TurtleSyntaxError")
+      logger.write_string(" - ")
+      logger.write_string(msg)
+    }
+    TurtleError::InvalidEscapeSequence => {
+      logger.write_string("Error: ")
+      logger.write_string("InvalidEscapeSequence")
+    }
+    TurtleError::InvalidCharacter(c) => {
+      logger.write_string("Error: ")
+      logger.write_string("InvalidCharacter")
+      logger.write_string(" - ")
+      logger.write_string(c)
+    }
+    TurtleError::InvalidToken(pos, token) => {
+      logger.write_string("Error: ")
+      logger.write_string("InvalidToken")
+      logger.write_string(" - ")
+      logger.write_string(token)
+      logger.write_string(" at ")
+      logger.write_string(pos.to_string())
+    }
+
+  }
+}
 
 ///|
 pub(all) suberror LexerError {
@@ -345,6 +382,28 @@ pub(all) suberror LexerError {
   SyntaxError(String)
 }
 
+impl Show for LexerError with fn output(self, logger : &Logger) -> Unit {
+  match self {
+    LexerError::OutOfMemory(msg) => {
+      logger.write_string("Error: ")
+      logger.write_string("OutOfMemory")
+      logger.write_string(" - ")
+      logger.write_string(msg)
+    }
+    LexerError::IoReadError(msg) => {
+      logger.write_string("Error: ")
+      logger.write_string("IoReadError")
+      logger.write_string(" - ")
+      logger.write_string(msg)
+    }
+    LexerError::SyntaxError(msg) => {
+      logger.write_string("Error: ")
+      logger.write_string("SyntaxError")
+      logger.write_string(" - ")
+      logger.write_string(msg)
+    }
+  }
+}
 ///|
 pub(all) suberror LanguageTagParseError {
   // LanguageTagParseError
@@ -384,5 +443,23 @@ impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
     TagParseErr::SubtagTooLong => logger.write_string("SubtagTooLong")
     TagParseErr::EmptySubtag => logger.write_string("EmptySubtag")
     TagParseErr::TooManyExtlangs => logger.write_string("TooManyExtlangs")
+  }
+}
+
+enum SerializationError {
+  FormatError(String)
+  IoError(String)
+}
+
+impl Show for SerializationError with fn output(self, logger : &Logger) -> Unit {
+  match self {
+    SerializationError::FormatError(msg) => {
+      logger.write_string("Serialization Error: ")
+      logger.write_string(msg)
+    }
+    SerializationError::IoError(msg) => {
+      logger.write_string("Serialization Error: ")
+      logger.write_string(msg)
+    }
   }
 }

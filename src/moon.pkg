@@ -5,11 +5,11 @@ import {
   "moonbitlang/core/ref",
   "moonbitlang/core/debug",
   "moonbitlang/async/io",
-  // "moonbitlang/async/socket",
+  "moonbitlang/async",
   // "moonbitlang/async/fs",
   "tonyfettes/utf8",
-  "brickfrog/tempo" @tempo,
-  "justjavac/itoa" @itoa,
+  "brickfrog/tempo",
+  // "justjavac/itoa",
 }
 
 options(

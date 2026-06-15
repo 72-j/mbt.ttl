@@ -29,9 +29,11 @@ pub fn NQuadsParser::for_async_reader(
 ) -> AsyncReaderNQuadsParser[N3Lexer] {
   { inner: self.low_level().parser.for_async_reader(reader) }
 }
-// pub fn NQuadsParser::for_slice(self : NQuadsParser, slice : _) -> SliceNQuadsParser {
-//   { inner: NQuadsRecognizer::new_parser(slice, true, true, self.lenient) }
-// }
+pub fn NQuadsParser::for_slice(self : NQuadsParser, slice : Bytes) -> SliceNQuadsParser[NQuadsRecognizer] {
+  
+  let parser = NQuadsRecognizer::new_parser(slice.to_array(), true, true, self.lenient)
+  { inner: { parser: parser } }   
+}
 // pub fn NQuadsParser::split_slice_for_parallel_parsing(self : NQuadsParser, slice : _, target_parallelism : Int) -> Array[SliceNQuadsParser] {
 //   let slice = slice
 //   let n_chunks = (slice.length() / MIN_PARALLEL_CHUNK_SIZE).clamp(1, target_parallelism)
@@ -72,9 +74,9 @@ pub async fn[TR : TokenRecognizer] AsyncReaderNQuadsParser::next(
   self.inner.next()
 }
 
-// pub struct SliceNQuadsParser {
-//   inner : SliceIterator[NQuadsRecognizer]
-// }
+pub struct SliceNQuadsParser[TR] {
+  inner : SliceIterator[N3Lexer,TR]
+}
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
@@ -103,113 +105,160 @@ pub fn[TR] LowLevelNQuadsParser::is_end(
 }
 
 ///|
-// pub fn[TR : TokenRecognizer] LowLevelNQuadsParser::parse_next(
-//   self : LowLevelNQuadsParser[TR],
-// ) -> Result[Quad, TurtleError]? {
-//   self.parser.parse_next().map(fn(res) {
-//     res.map(fn(lex_output) { Into::into(lex_output) })
-//        .map_err(fn(e) { Into::into(e) })
-//   })
-// }
+pub fn[TR : TokenRecognizer] LowLevelNQuadsParser::parse_next(
+  self : LowLevelNQuadsParser[TR],
+) -> Result[Quad, TurtleError]? {
+  self.parser
+  .parse_next()
+  .map(fn(res) {
+    res
+    .map(fn(lex_output) {
+      match lex_output {
+        LexOutput::Triple(triple) => Quad::new(triple.subject, triple.predicate, triple.object, GraphName::default())
+        LexOutput::Quad(quad) => quad
+      }
+    })
+    .map_err(fn(_e) { TurtleError::InvalidEscapeSequence })
+  })
+}
 
 ///|
 pub struct NQuadsSerializer {} derive(Default)
 
 ///|
+// impl Writer for NQuadsSerializer with fn write_once(
+//   self : NQuadsSerializer,
+//   bytes : Bytes,
+//   offset~,
+//   len~,
+// ) -> Int {
+//   ...
+// }
+
+///|
 pub fn NQuadsSerializer::new() -> NQuadsSerializer {
-  ...
+  NQuadsSerializer::default()
 }
 
 ///|
-pub fn NQuadsSerializer::for_writer(
+pub fn[W] NQuadsSerializer::for_writer(
   self : NQuadsSerializer,
-  writer : &Writer,
-) -> WriterNQuadsSerializer {
+  writer : W,
+) -> WriterNQuadsSerializer[W] {
   { writer, low_level_writer: self.low_level() }
 }
 
 ///|
-pub fn NQuadsSerializer::for_async_writer(
+pub fn[W] NQuadsSerializer::for_async_writer(
   self : NQuadsSerializer,
-  writer : &Writer,
-) -> AsyncWriterNQuadsSerializer {
-  { writer, low_level_writer: self.low_level(), buffer: [] }
+  buffer_writer : BufferedWriter[W],
+) -> AsyncWriterNQuadsSerializer[W] {
+  { buffer_writer, low_level_writer: self.low_level() }
 }
 
 ///|
 pub fn NQuadsSerializer::low_level(
-  self : NQuadsSerializer,
+  _self : NQuadsSerializer,
 ) -> LowLevelNQuadsSerializer {
-  ...
+  LowLevelNQuadsSerializer::default()
 }
 
 ///|
-pub struct WriterNQuadsSerializer {
-  writer : &Writer
+pub fn NQuadsSerializer::to_string(self : NQuadsSerializer, q : Quad) -> String {
+  self.low_level().serialize_quad(q).unwrap()
+}
+
+///|
+pub struct WriterNQuadsSerializer[W] {
+  writer : W
   low_level_writer : LowLevelNQuadsSerializer
 }
 
 ///|
-pub fn WriterNQuadsSerializer::serialize_quad(
-  self : WriterNQuadsSerializer,
-  q : StringBuilder,
+pub fn[W] WriterNQuadsSerializer::serialize_quad(
+  self : WriterNQuadsSerializer[W],
+  q : Quad,
 ) -> Result[String, Unit] {
-  self.low_level_writer.serialize_quad(q, self.writer)
+  self.low_level_writer.serialize_quad(q)
 }
 
 ///|
-pub fn WriterNQuadsSerializer::finish(self : WriterNQuadsSerializer) -> &Writer {
+pub fn[W] WriterNQuadsSerializer::finish(self : WriterNQuadsSerializer[W]) -> W {
   self.writer
 }
 
 ///|
-pub struct AsyncWriterNQuadsSerializer {
-  writer : &Writer
+pub struct AsyncWriterNQuadsSerializer[W] {
+  buffer_writer : BufferedWriter[W]
   low_level_writer : LowLevelNQuadsSerializer
-  buffer : Array[Byte]
+  // buffer : Array[Byte]
 }
 
 ///|
-pub fn AsyncWriterNQuadsSerializer::serialize_quad(
-  self : AsyncWriterNQuadsSerializer,
-  q : StringBuilder,
-) -> Result[Unit, Unit] {
-  // LowLevel 的 serialize_quad 实际上返回序列化的字符串，第二个参数 writer 在其内部未被使用
-  // 因此传入 self.writer 仅为了满足类型检查，实际数据从返回值获取
-  let serialized_str = self.low_level_writer
-    .serialize_quad(q, self.writer)
-    .unwrap()
+pub async fn[W : Writer] AsyncWriterNQuadsSerializer::serialize_quad(
+  self : AsyncWriterNQuadsSerializer[W],
+  q : Quad,
+) -> Result[AsyncWriterNQuadsSerializer[W], SerializationError] {
+  let serialized_str = match self.low_level_writer.serialize_quad(q) {
+    Ok(serialized_str) => serialized_str
+    Err(_) =>
+      return Err(SerializationError::FormatError("Serialization failed"))
+  }
+  let data_bytes = @utf8.encode(serialized_str)
+  // let buffer_writer =  self.buffer_writer.write(serialized_str);
+  let buffer_writer = self.buffer_writer
+  let mut written = 0
 
-  // 将序列化后的字符串字节追加到缓冲区
-  self.buffer.append(BytesView::to_array(@utf8.encode(serialized_str)))
+  while written < data_bytes.length() {
+    let n = buffer_writer.write_once(
+      data_bytes,
+      offset=written,
+      len=data_bytes.length() - written,
+    )
+    if n == 0 {
+      buffer_writer.flush()
+      continue
+    }
+    written += n
+  }
 
-  Ok(())
-  // self.low_level_writer.serialize_quad(q, self.buffer)
-  // self.writer.write_all(self.buffer)
-  // self.buffer.clear()
-  // Ok(())
+  // 返回更新后的结构体
+  Ok({ buffer_writer, low_level_writer: self.low_level_writer })
 }
 
 ///|
-pub fn AsyncWriterNQuadsSerializer::finish(
-  self : AsyncWriterNQuadsSerializer,
-) -> &Writer {
-  self.writer
+pub async fn[W : Writer] AsyncWriterNQuadsSerializer::finish(
+  self : AsyncWriterNQuadsSerializer[W],
+) -> Result[BufferedWriter[W], Unit] {
+  // 将缓冲区内容写入 writer
+  // if self.buffer.length() > 0 {
+  //   let data = Bytes::from_array(self.buffer)
+  //   self.writer.write(data)
+  // }
+  let buffer_writer = self.buffer_writer
+  buffer_writer.flush()
+  // let buffer = self.buffer
+
+  // if buffer.length() > 0 {
+  //   let data = Bytes::from_array(buffer)
+  //   writer.write(data) // 写入剩余数据
+  // }
+
+  Ok(buffer_writer)
 }
 
 ///|
-pub struct LowLevelNQuadsSerializer {}
+pub struct LowLevelNQuadsSerializer {} derive(Default)
 
 ///|
 pub fn LowLevelNQuadsSerializer::serialize_quad(
-  self : LowLevelNQuadsSerializer,
-  q : StringBuilder,
-  writer : &Writer,
+  _self : LowLevelNQuadsSerializer,
+  q : Quad,
 ) -> Result[String, Unit] {
   // writeln(writer , "{} ." , q)
   let res = StringBuilder::new()
-  res.write_object(q)
-  res.write_string("{}")
-  res.write_string(" .\n")
+  res.write_string(q.to_string())
+  res.write_string(".\n")
+
   Ok(res.to_string())
 }

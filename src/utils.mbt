@@ -248,10 +248,10 @@ pub fn from_str_radix(s : String, radix : Int) -> Result[UInt, String] {
 
 ///|
 fn parse_duration(s : String) -> Result[String, String] {
-    if s.is_empty() {
+  if s.is_empty() {
     return Err("Empty duration string")
-    }
-    let has_prefix = s.has_prefix("P") || s.has_prefix("-P")
+  }
+  let has_prefix = s.has_prefix("P") || s.has_prefix("-P")
   if !has_prefix {
     return Err("Duration must start with P or -P")
   }
@@ -364,7 +364,9 @@ fn extract_number(s : StringView, unit : String) -> Int64 {
   }
 
   let num_str = s[start + 1:idx]
-  let num_64 = try? @string.parse_int64(num_str)
+  let num_64 = try @string.parse_int64(num_str) |> Ok catch {
+    e => Err(e)
+  }
   match num_64 {
     Ok(num) => num
     Err(_) => 0
@@ -374,41 +376,45 @@ fn extract_number(s : StringView, unit : String) -> Int64 {
 // 支持浮点数的提取
 
 ///|
-fn extract_float(s : String, unit : String) -> Double {
-  let idx = s.find(unit).unwrap_or(-1)
-  if idx == -1 {
-    return 0.0
-  }
+// fn extract_float(s : String, unit : String) -> Double {
+//   let idx = s.find(unit).unwrap_or(-1)
+//   if idx == -1 {
+//     return 0.0
+//   }
 
-  let mut start = idx - 1
-  while start >= 0 {
-    // let c = Int::to_char(s[start].to_int()) // 确保转换为 Char
-    // 注意：String 的索引访问可能直接返回 Char 或 UInt16，视具体 MoonBit 版本而定。
-    // 如果 s[start] 返回 Char，则直接用 c.is_digit() || c == '.'
-    // 如果 s[start] 返回 UInt16，则需转换。
-    // 假设 s[start] 返回 UInt16 (根据报错推断):
-    let ch = UInt16::to_char(s[start]).unwrap()
-    if !(ch.is_digit(10) || ch == '.') {
-      break
-    }
-    start -= 1
-  }
-  let num_str = s[start + 1:idx]
-  let num_64 = try? @string.parse_double(num_str)
-  match num_64 {
-    Ok(num) => num
-    Err(_) => 0
-  }
-}
+//   let mut start = idx - 1
+//   while start >= 0 {
+//     // let c = Int::to_char(s[start].to_int()) // 确保转换为 Char
+//     // 注意：String 的索引访问可能直接返回 Char 或 UInt16，视具体 MoonBit 版本而定。
+//     // 如果 s[start] 返回 Char，则直接用 c.is_digit() || c == '.'
+//     // 如果 s[start] 返回 UInt16，则需转换。
+//     // 假设 s[start] 返回 UInt16 (根据报错推断):
+//     let ch = UInt16::to_char(s[start]).unwrap()
+//     if !(ch.is_digit(10) || ch == '.') {
+//       break
+//     }
+//     start -= 1
+//   }
+//   let num_str = s[start + 1:idx]
+//   let num_64 = try @string.parse_double(num_str)|> Ok catch {e =>Err(e)}
+//   match num_64 {
+//     Ok(num) => num
+//     Err(_) => 0
+//   }
+// }
 
 ///|
 fn parse_xsd_date(s : String) -> Result[String, String] {
   // 支持格式：YYYY-MM-DDThh:mm:ss[Z|±hh:mm]
-  let re = try? @string.Regex(
-    // "^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})T([[:digit:]]{2}):([[:digit:]]{2}):([[:digit:]]{2})(?:[.][[:digit:]]+)?(Z|[+\\-][[:digit:]]{2}:[[:digit:]]{2})?$",
-      "^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})$"
-
-  )
+  let re = try
+    @string.Regex(
+      // "^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})T([[:digit:]]{2}):([[:digit:]]{2}):([[:digit:]]{2})(?:[.][[:digit:]]+)?(Z|[+\\-][[:digit:]]{2}:[[:digit:]]{2})?$",
+      "^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})$",
+    )
+    |> Ok
+  catch {
+    e => Err(e)
+  }
 
   match re.unwrap().execute(s) {
     Some(caps) => {
@@ -428,9 +434,15 @@ fn parse_xsd_date(s : String) -> Result[String, String] {
       // 如果 group 返回的是 String?，则直接使用
       // 根据 regex.mbt，group 返回 BytesView?。BytesView 通常有 to_string() 方法
 
-      let year_val = try? @string.parse_int(year_str.to_owned())
-      let month_val = try? @string.parse_int(month_str.to_owned())
-      let day_val = try? @string.parse_int(day_str.to_owned())
+      let year_val = try @string.parse_int(year_str.to_owned()) |> Ok catch {
+        e => Err(e)
+      }
+      let month_val = try @string.parse_int(month_str.to_owned()) |> Ok catch {
+        e => Err(e)
+      }
+      let day_val = try @string.parse_int(day_str.to_owned()) |> Ok catch {
+        e => Err(e)
+      }
       // let hour_val = try? @string.parse_int(hour_str.to_owned())
       // let minute_val = try? @string.parse_int(minute_str.to_owned())
       // let second_val = try? @string.parse_int(second_str.to_owned())
@@ -479,7 +491,11 @@ fn parse_xsd_date(s : String) -> Result[String, String] {
       // }
 
       // 验证日期有效性
-      let date = try? @tempo.Date::new(year_val, month_val, day_val)
+      let date = try
+        @tempo.Date::new(year_val, month_val, day_val) |> Ok
+      catch {
+        e => Err(e)
+      }
       match date {
         d => {
           let d = match d {
@@ -502,7 +518,7 @@ fn parse_xsd_date(s : String) -> Result[String, String] {
           // let minute_padded = pad(minute_val)
           // let second_padded = pad(second_val)
 
-        //  let result = "\{date_str}T\{hour_padded}:\{minute_padded}:\{second_padded}"
+          //  let result = "\{date_str}T\{hour_padded}:\{minute_padded}:\{second_padded}"
 
           // match tz {
           //   "" | "0" => Ok(result)

@@ -20,13 +20,12 @@ impl TokenRecognizer for N3Lexer with fn recognize_next_token(
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let base_iri_opt = match options {
     Some(options) => {
-      let opts = match options {
-        LexerOptions::N3LexerOptions(n3_options) => n3_options.base_iri
-        _ => None
-      }
+      // let opts = match options {
+      //   LexerOptions(n3_options) => n3_options.base_iri
+      // }
 
       // 假设 Iri::parse 返回 Result[Iri, Error]
-      let iri = opts.unwrap().as_ref()
+      let iri = options.base_iri.unwrap().as_ref()
       match IriRef::parse(iri) {
         Ok(iri) => Some(iri)
         Err(_) => None // 或者处理错误
@@ -34,7 +33,7 @@ impl TokenRecognizer for N3Lexer with fn recognize_next_token(
     }
     None => None
   }
-  let options = N3LexerOptions::default(base_iri_opt)
+  let options = LexerOptions::default(base_iri_opt)
   if data.is_empty() {
     return None
   }
@@ -174,7 +173,7 @@ pub fn N3Lexer::new(mode : N3LexerMode, lenient : Bool) -> N3Lexer {
 fn N3Lexer::recognize_iri(
   self : N3Lexer,
   data : BytesView,
-  options : N3LexerOptions,
+  options : LexerOptions,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let string = []
   let mut i = 1
@@ -222,7 +221,7 @@ fn N3Lexer::parse_iri(
   self : N3Lexer,
   iri_bytes : Array[Byte],
   position : Range,
-  options : N3LexerOptions,
+  options : LexerOptions,
 ) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError] {
   // 1. 将字节数组转换为字符串，处理可能的 UTF-8 错误
   let iri_str = string_from_utf8(iri_bytes, position).unwrap()
@@ -1542,7 +1541,9 @@ fn str_from_utf8(
   data : BytesView,
   range : Range,
 ) -> Result[String, TokenRecognizerError] {
-  let s = try? @utf8.of_bytes(data.to_owned())
+  let s = try @utf8.of_bytes(data.to_owned()) |> Ok catch {
+    e => Err(e)
+  }
   guard s is Ok(s) else {
     return Err(
       TokenRecognizerError::InvalidErrMessage(
@@ -1577,7 +1578,9 @@ fn string_from_utf8(
   range : Range,
 ) -> Result[String, TokenRecognizerError] {
   let bytes = Bytes::from_array(data)
-  let s = try? @utf8.of_bytes(bytes)
+  let s = try @utf8.of_bytes(bytes) |> Ok catch {
+    e => Err(e)
+  }
   guard s is Ok(s) else {
     return Err(
       TokenRecognizerError::InvalidErrMessage(
