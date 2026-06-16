@@ -24,18 +24,18 @@ MoonTTL 是一个使用 MoonBit 语言编写的高性能 RDF 解析与序列化�
 }
 ```
 
-## License
+## 许可证
 
-This project is licensed under either of
+本项目采用以下任一许可证：
 
 * Apache License, Version 2.0, ([LICENSE-APACHE](../LICENSE-APACHE) or
   `<http://www.apache.org/licenses/LICENSE-2.0>`)
 * MIT license ([LICENSE-MIT](../LICENSE-MIT) or
   `<http://opensource.org/licenses/MIT>`)
 
-at your option.
+您可自行选择适用的许可证。
 
 
-### Contribution
+### 贡献
 
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in Oxigraph by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+除非您另有明确声明，否则您有意提交给 MoonTTL 的任何贡献（按 Apache-2.0 许可证的定义）均应按上述方式双重许可，不附加任何其他条款或条件。
