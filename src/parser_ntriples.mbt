@@ -18,7 +18,7 @@ pub fn NTriplesParser::lenient(self : NTriplesParser) -> NTriplesParser {
 pub fn NTriplesParser::for_reader(
   self : NTriplesParser,
   reader : &Reader,
-) -> ReaderNTriplesParser[N3Lexer] {
+) -> ReaderNTriplesParser[NxLexer] {
   { inner: self.low_level().parser.for_reader(reader) }
 }
 
@@ -26,12 +26,23 @@ pub fn NTriplesParser::for_reader(
 pub fn NTriplesParser::for_async_reader(
   self : NTriplesParser,
   reader : &Reader,
-) -> AsyncReaderNTriplesParser[N3Lexer] {
+) -> AsyncReaderNTriplesParser[NxLexer] {
   { inner: self.low_level().parser.for_async_reader(reader) }
 }
-pub fn NTriplesParser::for_slice(self : NTriplesParser, slice : Bytes) -> SliceNTriplesParser[NQuadsRecognizer] {
-  let parser = NQuadsRecognizer::new_parser(slice.to_array(), true, true, self.lenient)
-  { inner: { parser: parser } } }
+
+///|
+pub fn NTriplesParser::for_slice(
+  self : NTriplesParser,
+  slice : Bytes,
+) -> SliceNTriplesParser[NQuadsRecognizer] {
+  let parser = NQuadsRecognizer::new_parser(
+    slice.to_array(),
+    true,
+    true,
+    self.lenient,
+  )
+  { inner: { parser, } }
+}
 // pub fn NTriplesParser::split_slice_for_parallel_parsing(self : NTriplesParser, slice : _, target_parallelism : Int) -> Array[SliceNTriplesParser] {
 //   let slice = slice
 //   let n_chunks = (slice.length() / MIN_PARALLEL_CHUNK_SIZE).clamp(1, target_parallelism)
@@ -54,39 +65,42 @@ pub fn NTriplesParser::for_slice(self : NTriplesParser, slice : Bytes) -> SliceN
 ///|
 pub fn NTriplesParser::low_level(
   self : NTriplesParser,
-) -> LowLevelNTriplesParser[N3Lexer] {
+) -> LowLevelNTriplesParser[NxLexer] {
   { parser: NQuadsRecognizer::new_parser([], false, false, self.lenient) }
 }
 
 ///|
-pub struct ReaderNTriplesParser[TR] {
-  inner : ReaderIterator[TR, NQuadsRecognizer]
+pub struct ReaderNTriplesParser[LR] {
+  inner : ReaderIterator[LR, NQuadsRecognizer]
 }
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct AsyncReaderNTriplesParser[TR] {
-  inner : AsyncReaderIterator[TR, NQuadsRecognizer]
+pub struct AsyncReaderNTriplesParser[LR] {
+  inner : AsyncReaderIterator[LR, NQuadsRecognizer]
 }
-pub async fn[TR : TokenRecognizer] AsyncReaderNTriplesParser::next(self : AsyncReaderNTriplesParser[TR]) -> Result[LexOutput, LexerError]? {
+
+///|
+pub async fn[LR : TokenRecognizer] AsyncReaderNTriplesParser::next(
+  self : AsyncReaderNTriplesParser[LR],
+) -> Result[LexOutput, LexerError]? {
   self.inner.next()
 }
 
 ///|
-pub struct SliceNTriplesParser[TR] {
-  inner : SliceIterator[N3Lexer,TR]
+pub struct SliceNTriplesParser[LR] {
+  inner : SliceIterator[NxLexer, LR]
 }
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct LowLevelNTriplesParser[TR] {
-  parser : Parser[TR, NQuadsRecognizer]
+pub struct LowLevelNTriplesParser[LR] {
+  parser : Parser[LR, NQuadsRecognizer]
 }
-
 
 ///|
 pub fn LowLevelNTriplesParser::extend_from_slice(
-  self : LowLevelNTriplesParser[N3Lexer],
+  self : LowLevelNTriplesParser[NxLexer],
   other : Bytes,
 ) -> Unit {
   self.parser.extend_from_slice(other)
@@ -94,18 +108,22 @@ pub fn LowLevelNTriplesParser::extend_from_slice(
 
 ///|
 pub fn LowLevelNTriplesParser::end(
-  self : LowLevelNTriplesParser[N3Lexer],
+  self : LowLevelNTriplesParser[NxLexer],
 ) -> Unit {
   self.parser.end()
 }
 
 ///|
 pub fn LowLevelNTriplesParser::is_end(
-  self : LowLevelNTriplesParser[N3Lexer],
+  self : LowLevelNTriplesParser[NxLexer],
 ) -> Bool {
   self.parser.is_end()
 }
-pub fn[TR : TokenRecognizer] LowLevelNTriplesParser::parse_next(self : LowLevelNTriplesParser[TR]) ->Result[Triple, TurtleError]? {
+
+///|
+pub fn[LR : TokenRecognizer] LowLevelNTriplesParser::parse_next(
+  self : LowLevelNTriplesParser[LR],
+) -> Result[Triple, TurtleError]? {
   self.parser
   .parse_next()
   .map(fn(res) {
@@ -113,7 +131,22 @@ pub fn[TR : TokenRecognizer] LowLevelNTriplesParser::parse_next(self : LowLevelN
     .map(fn(lex_output) {
       match lex_output {
         LexOutput::Triple(t) => t
-        LexOutput::Quad(q) => Triple::new(q.subject, q.predicate, q.object)
+        LexOutput::Quad(q) => Triple::Triple(q.subject, q.predicate, q.object)
+        LexOutput::N3Quad(n3quad) =>
+          match n3quad.predicate.to_node() {
+            NamedNode(node) =>
+              Triple::Triple(
+                n3quad.subject.to_node(),
+                node,
+                n3quad.object.to_term(),
+              )
+            _ =>
+              Triple::Triple(
+                n3quad.subject.to_node(),
+                NamedNode::default(),
+                n3quad.object.to_term(),
+              )
+          }
       }
     })
     .map_err(fn(_e) { TurtleError::InvalidEscapeSequence })
@@ -139,9 +172,9 @@ pub fn[W] NTriplesSerializer::for_writer(
 ///|
 pub fn[W] NTriplesSerializer::for_async_writer(
   self : NTriplesSerializer,
-  buffer_writer :  BufferedWriter[W],
+  buffer_writer : BufferedWriter[W],
 ) -> AsyncWriterNTriplesSerializer[W] {
-  { buffer_writer, low_level_writer: self.low_level()}
+  { buffer_writer, low_level_writer: self.low_level() }
 }
 
 ///|
@@ -151,9 +184,14 @@ pub fn NTriplesSerializer::low_level(
   LowLevelNTriplesSerializer::default()
 }
 
-pub fn NTriplesSerializer::to_string(self : NTriplesSerializer, t : Triple) -> String {
+///|
+pub fn NTriplesSerializer::to_string(
+  self : NTriplesSerializer,
+  t : Triple,
+) -> String {
   self.low_level().serialize_triple(t).unwrap()
 }
+
 ///|
 pub struct WriterNTriplesSerializer[W] {
   writer : W
@@ -187,21 +225,19 @@ pub fn[W] AsyncWriterNTriplesSerializer::serialize_triple(
   t : Triple,
 ) -> Result[String, Unit] {
   self.low_level_writer.serialize_triple(t)
-
 }
 
 ///|
-pub async  fn[W: Writer] AsyncWriterNTriplesSerializer::finish(
+pub async fn[W : Writer] AsyncWriterNTriplesSerializer::finish(
   self : AsyncWriterNTriplesSerializer[W],
 ) -> Result[BufferedWriter[W], Unit] {
   let buffer_writer = self.buffer_writer
   buffer_writer.flush()
-    Ok(buffer_writer)
-
-  }
+  Ok(buffer_writer)
+}
 
 ///|
-pub struct LowLevelNTriplesSerializer {}derive(Default)
+pub struct LowLevelNTriplesSerializer {} derive(Default)
 
 ///|
 pub fn LowLevelNTriplesSerializer::serialize_triple(

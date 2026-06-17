@@ -18,7 +18,7 @@ pub fn NQuadsParser::lenient(self : NQuadsParser) -> NQuadsParser {
 pub fn NQuadsParser::for_reader(
   self : NQuadsParser,
   reader : &Reader,
-) -> ReaderNQuadsParser[N3Lexer] {
+) -> ReaderNQuadsParser[NxLexer] {
   { inner: self.low_level().parser.for_reader(reader) }
 }
 
@@ -26,13 +26,22 @@ pub fn NQuadsParser::for_reader(
 pub fn NQuadsParser::for_async_reader(
   self : NQuadsParser,
   reader : &Reader,
-) -> AsyncReaderNQuadsParser[N3Lexer] {
+) -> AsyncReaderNQuadsParser[NxLexer] {
   { inner: self.low_level().parser.for_async_reader(reader) }
 }
-pub fn NQuadsParser::for_slice(self : NQuadsParser, slice : Bytes) -> SliceNQuadsParser[NQuadsRecognizer] {
-  
-  let parser = NQuadsRecognizer::new_parser(slice.to_array(), true, true, self.lenient)
-  { inner: { parser: parser } }   
+
+///|
+pub fn NQuadsParser::for_slice(
+  self : NQuadsParser,
+  slice : Bytes,
+) -> SliceNQuadsParser[NQuadsRecognizer] {
+  let parser = NQuadsRecognizer::new_parser(
+    slice.to_array(),
+    true,
+    true,
+    self.lenient,
+  )
+  { inner: { parser, } }
 }
 // pub fn NQuadsParser::split_slice_for_parallel_parsing(self : NQuadsParser, slice : _, target_parallelism : Int) -> Array[SliceNQuadsParser] {
 //   let slice = slice
@@ -52,61 +61,62 @@ pub fn NQuadsParser::for_slice(self : NQuadsParser, slice : Bytes) -> SliceNQuad
 ///|
 pub fn NQuadsParser::low_level(
   self : NQuadsParser,
-) -> LowLevelNQuadsParser[N3Lexer] {
+) -> LowLevelNQuadsParser[NxLexer] {
   { parser: NQuadsRecognizer::new_parser([], false, true, self.lenient) }
 }
 
 ///|
-pub struct ReaderNQuadsParser[TR] {
-  inner : ReaderIterator[TR, NQuadsRecognizer]
+pub struct ReaderNQuadsParser[LR] {
+  inner : ReaderIterator[LR, NQuadsRecognizer]
 }
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct AsyncReaderNQuadsParser[TR] {
-  inner : AsyncReaderIterator[TR, NQuadsRecognizer]
+pub struct AsyncReaderNQuadsParser[LR] {
+  inner : AsyncReaderIterator[LR, NQuadsRecognizer]
 }
 
 ///|
-pub async fn[TR : TokenRecognizer] AsyncReaderNQuadsParser::next(
-  self : AsyncReaderNQuadsParser[TR],
+pub async fn[LR : TokenRecognizer] AsyncReaderNQuadsParser::next(
+  self : AsyncReaderNQuadsParser[LR],
 ) -> Result[LexOutput, LexerError]? {
   self.inner.next()
 }
 
-pub struct SliceNQuadsParser[TR] {
-  inner : SliceIterator[N3Lexer,TR]
+///|
+pub struct SliceNQuadsParser[LR] {
+  inner : SliceIterator[NxLexer, LR]
 }
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct LowLevelNQuadsParser[TR] {
-  parser : Parser[TR, NQuadsRecognizer]
+pub struct LowLevelNQuadsParser[LR] {
+  parser : Parser[LR, NQuadsRecognizer]
 }
 
 ///|
-pub fn[TR] LowLevelNQuadsParser::extend_from_slice(
-  self : LowLevelNQuadsParser[TR],
+pub fn[LR] LowLevelNQuadsParser::extend_from_slice(
+  self : LowLevelNQuadsParser[LR],
   other : Bytes,
 ) -> Unit {
   self.parser.extend_from_slice(other)
 }
 
 ///|
-pub fn[TR] LowLevelNQuadsParser::end(self : LowLevelNQuadsParser[TR]) -> Unit {
+pub fn[LR] LowLevelNQuadsParser::end(self : LowLevelNQuadsParser[LR]) -> Unit {
   self.parser.end()
 }
 
 ///|
-pub fn[TR] LowLevelNQuadsParser::is_end(
-  self : LowLevelNQuadsParser[TR],
+pub fn[LR] LowLevelNQuadsParser::is_end(
+  self : LowLevelNQuadsParser[LR],
 ) -> Bool {
   self.parser.is_end()
 }
 
 ///|
-pub fn[TR : TokenRecognizer] LowLevelNQuadsParser::parse_next(
-  self : LowLevelNQuadsParser[TR],
+pub fn[LR : TokenRecognizer] LowLevelNQuadsParser::parse_next(
+  self : LowLevelNQuadsParser[LR],
 ) -> Result[Quad, TurtleError]? {
   self.parser
   .parse_next()
@@ -114,8 +124,33 @@ pub fn[TR : TokenRecognizer] LowLevelNQuadsParser::parse_next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        LexOutput::Triple(triple) => Quad::new(triple.subject, triple.predicate, triple.object, GraphName::default())
+        LexOutput::Triple(triple) =>
+          Quad::Quad(
+            triple.subject,
+            triple.predicate,
+            triple.object,
+            GraphName::default(),
+          )
         LexOutput::Quad(quad) => quad
+        LexOutput::N3Quad(n3quad) =>
+          match n3quad.predicate.to_node() {
+            // 修复：使用 NamedNode(_) 忽略内部字段，消除警告
+            NamedNode(node) =>
+              Quad::Quad(
+                n3quad.subject.to_node(),
+                node,
+                n3quad.object.to_term(),
+                n3quad.graph_name,
+              )
+            // 建议：添加默认分支以处理其他可能的节点类型，避免运行时 panic 或未定义行为
+            _ =>
+              Quad::Quad(
+                n3quad.subject.to_node(),
+                NamedNode::default(),
+                n3quad.object.to_term(),
+                n3quad.graph_name,
+              )
+          }
       }
     })
     .map_err(fn(_e) { TurtleError::InvalidEscapeSequence })

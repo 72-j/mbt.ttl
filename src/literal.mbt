@@ -2,6 +2,11 @@
 pub struct Literal(LiteralContent) derive(Eq, Debug, Hash)
 
 ///|
+pub fn Literal::as_n3term(self : Literal) -> N3Term {
+  N3Term::Literal(self)
+}
+
+///|
 impl Show for Literal with fn to_string(self : Literal) -> String {
   let f = StringBuilder::new()
   match self.0 {
@@ -240,6 +245,13 @@ pub fn LiteralRef::new_simple_literal(value : StringView) -> LiteralRef {
 ///|
 pub fn LiteralRef::as_term(self : Self) -> TermRef {
   TermRef::LiteralRef(self)
+}
+
+///|
+pub fn LiteralRef::as_n3term(self : LiteralRef) -> N3Term {
+  match self {
+    LiteralRef(_) => N3Term::Literal(self.into_owned())
+  }
 }
 
 ///|

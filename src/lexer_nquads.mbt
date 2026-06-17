@@ -27,7 +27,6 @@ enum NQuadsState {
   AfterQuotedTriple
 }
 
-
 ///|
 // impl TokenRecognizer for NQuadsRecognizer with fn recognize_next_token(
 //   self : NQuadsRecognizer,
@@ -39,11 +38,11 @@ enum NQuadsState {
 //     Some(opts) => opts
 //     None => LexerOptions::default(None)
 //   }
-  
+
 //   if data.is_empty() {
 //     return None
 //   }
-  
+
 //   match data[0] {
 //     b'<' => self.recognize_iri(data, opts)
 //     b'>' =>
@@ -459,15 +458,15 @@ pub fn NQuadsRecognizer::new_parser(
   is_ending : Bool,
   with_graph_name : Bool,
   lenient : Bool,
-) -> Parser[N3Lexer, NQuadsRecognizer] {
+) -> Parser[NxLexer, NQuadsRecognizer] {
   let initial_context = NQuadsRecognizerContext::{
     with_graph_name,
     lexer_options: None,
   }
 
-  Parser::new(
-    Lexer::new(
-      N3Lexer::new(N3LexerMode::NTriples, lenient),
+  Parser::Parser(
+    Lexer::Lexer(
+      NxLexer::NxLexer(NxLexerMode::NTriples, lenient),
       data,
       is_ending,
       MIN_BUFFER_SIZE,

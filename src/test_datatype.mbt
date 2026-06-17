@@ -1,34 +1,34 @@
 ///|
 test "VarDataType: IntVar" {
-  let int_val = IntVar(42)
-  assert_eq(int_val, IntVar(42))
+  let int_val = IntVar("42")
+  assert_eq(int_val, IntVar("42"))
 
   // 测试匹配
   match int_val {
-    IntVar(v) => assert_eq(v, 42)
+    IntVar(v) => assert_eq(v, "42")
     _ => fail("Expected IntVar")
   }
 }
 
 ///|
 test "VarDataType: IntegerVar (Int64)" {
-  let large_int = IntegerVar(9223372036854775807L)
-  assert_eq(large_int, IntegerVar(9223372036854775807L))
+  let large_int = IntegerVar("9223372036854775807L")
+  assert_eq(large_int, IntegerVar("9223372036854775807L"))
 
   match large_int {
-    IntegerVar(v) => assert_eq(v, 9223372036854775807L)
+    IntegerVar(v) => assert_eq(v, "9223372036854775807L")
     _ => fail("Expected IntegerVar")
   }
 }
 
 ///|
 test "VarDataType: DoubleVar" {
-  let double_val = DoubleVar(3.14159)
-  assert_eq(double_val, DoubleVar(3.14159))
-  assert_not_eq(double_val, DoubleVar(2.71828))
+  let double_val = DoubleVar("3.14159")
+  assert_eq(double_val, DoubleVar("3.14159"))
+  assert_not_eq(double_val, DoubleVar("2.71828"))
 
   match double_val {
-    DoubleVar(v) => assert_eq(v, 3.14159)
+    DoubleVar(v) => assert_eq(v, "3.14159")
     _ => fail("Expected DoubleVar")
   }
 }
@@ -142,9 +142,9 @@ test "VarDataType: DurationVar" {
 
 ///|
 test "VarDataType: equality and hash" {
-  let val1 = IntVar(42)
-  let val2 = IntVar(42)
-  let val3 = IntVar(100)
+  let val1 = IntVar("42")
+  let val2 = IntVar("42")
+  let val3 = IntVar("100")
 
   assert_eq(val1, val2)
   assert_not_eq(val1, val3)
@@ -157,9 +157,9 @@ test "VarDataType: equality and hash" {
 ///|
 test "VarDataType: pattern matching with all types" {
   let test_cases : Array[VarDataType] = [
-    IntVar(42),
-    IntegerVar(100L),
-    DoubleVar(3.14),
+    IntVar("42"),
+    IntegerVar("100L"),
+    DoubleVar("3.14"),
     StringVar("test"),
     TrueVar,
     FalseVar,
@@ -193,7 +193,7 @@ test "VarDataType: from xsd conversion" {
   let int_node = lwINT
   let result = int_node.into_datatype("123")
   match result {
-    IntVar(v) => assert_eq(v, 123)
+    IntVar(v) => assert_eq(v, "123")
     _ => fail("Expected IntVar")
   }
 
@@ -334,7 +334,7 @@ test "VarDataType: DecimalVar validation" {
 
 ///|
 test "VarDataType: IntVar validation" {
-  let int_val = IntVar(42)
+  let int_val = IntVar("42")
   match int_val {
     IntVar(v) => inspect(v, content="42")
     _ => fail("Expected IntVar")
@@ -343,16 +343,16 @@ test "VarDataType: IntVar validation" {
 
 ///|
 test "VarDataType: IntegerVar (Int64) validation" {
-  let large_int = IntegerVar(9223372036854775807L)
+  let large_int = IntegerVar("9223372036854775807L")
   match large_int {
-    IntegerVar(v) => inspect(v, content="9223372036854775807")
+    IntegerVar(v) => inspect(v, content="9223372036854775807L")
     _ => fail("Expected IntegerVar")
   }
 }
 
 ///|
 test "VarDataType: DoubleVar validation" {
-  let double_val = DoubleVar(3.14159)
+  let double_val = DoubleVar("3.14159")
   match double_val {
     DoubleVar(v) => inspect(v, content="3.14159")
     _ => fail("Expected DoubleVar")
@@ -389,9 +389,9 @@ test "VarDataType: Boolean validation" {
 
 ///|
 test "VarDataType: equality" {
-  let val1 = IntVar(42)
-  let val2 = IntVar(42)
-  let val3 = IntVar(100)
+  let val1 = IntVar("42")
+  let val2 = IntVar("42")
+  let val3 = IntVar("100")
 
   assert_eq(val1, val2)
   assert_not_eq(val1, val3)
@@ -412,9 +412,9 @@ test "VarDataType: equality" {
 ///|
 test "VarDataType: pattern matching" {
   let test_cases = [
-    IntVar(42),
-    IntegerVar(100L),
-    DoubleVar(3.14),
+    IntVar("42"),
+    IntegerVar("100L"),
+    DoubleVar("3.14"),
     StringVar("test"),
     TrueVar,
     FalseVar,
@@ -428,7 +428,7 @@ test "VarDataType: pattern matching" {
   for case in test_cases {
     match case {
       IntVar(v) => inspect(v.to_string(), content="42")
-      IntegerVar(v) => inspect(v.to_string(), content="100")
+      IntegerVar(v) => inspect(v.to_string(), content="100L")
       DoubleVar(v) => inspect(v.to_string(), content="3.14")
       StringVar(v) => inspect(v.to_string(), content="test")
       TrueVar => debug("Boolean: true")

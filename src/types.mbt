@@ -53,9 +53,9 @@ type CharMatchRule = (Char, Char?)
 
 ///|
 enum VarDataType {
-  IntVar(Int)
-  IntegerVar(Int64)
-  DoubleVar(Double)
+  IntVar(String)
+  IntegerVar(String)
+  DoubleVar(String)
   // FloatVar(Float)
   StringVar(String)
   FalseVar
@@ -71,9 +71,9 @@ enum VarDataType {
 ///|
 impl Show for VarDataType with fn output(self : VarDataType, logger : &Logger) -> Unit {
   match self {
-    IntVar(i) => logger.write(i.to_string())
-    IntegerVar(i) => logger.write(i.to_string())
-    DoubleVar(d) => logger.write(d.to_string())
+    IntVar(i) => logger.write(i)
+    IntegerVar(i) => logger.write(i)
+    DoubleVar(d) => logger.write(d)
     DecimalVar(d) => logger.write(d) // 假设 Decimal (StringView) 可直接写入或需转换
     StringVar(s) => logger.write(s)
     TrueVar => logger.write("true")
@@ -102,9 +102,9 @@ impl Show for VarDataType with fn output(self : VarDataType, logger : &Logger) -
 ///|
 fn VarDataType::into_value(self : VarDataType) -> String {
   match self {
-    IntVar(value) => value.to_string()
-    IntegerVar(value) => value.to_string()
-    DoubleVar(value) => value.to_string()
+    IntVar(value) => value
+    IntegerVar(value) => value
+    DoubleVar(value) => value
     DecimalVar(value) => value.to_owned()
     StringVar(value) => value
     TrueVar => "true"

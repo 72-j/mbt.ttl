@@ -999,7 +999,7 @@ pub fn IriRef::resolve_into(
   }
 
   // 计算合并后的路径
-  let merged_path = if parsed_relative.path().is_some() &&
+  let merged_path = if parsed_relative.path() is Some(_) &&
     !parsed_relative.path().unwrap().is_empty() {
     let rel_path = parsed_relative.path().unwrap()
     if rel_path.has_prefix("/") {
@@ -1121,7 +1121,7 @@ pub fn IriRef::relativize(
 
     // 简单处理：如果 base 以 / 结尾，或者 target 在 base 长度处的字符是 /
     let is_prefix_valid = base_path.is_empty() ||
-      base_path.ends_with("/") ||
+      base_path.has_suffix("/") ||
       (
         target_path.length() > base_path.length() &&
         target_path.get_char(base_path.length()).unwrap() == '/'

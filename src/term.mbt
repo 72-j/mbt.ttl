@@ -56,6 +56,29 @@ pub(all) enum NamedOrBlankNode {
   BlankNode(BlankNode)
 } derive(Debug, Eq, Hash)
 
+// fn NamedOrBlankNode::to_node(self : NamedOrBlankNode) -> NamedNode {
+//   match self {
+//     NamedOrBlankNode::NamedNode(v) => v
+//     NamedOrBlankNode::BlankNode(_v) => NamedNode::default()
+//   }
+// }
+
+///|
+fn NamedOrBlankNode::as_term(self : NamedOrBlankNode) -> Term {
+  match self {
+    NamedOrBlankNode::NamedNode(v) => Term::NamedNode(v)
+    NamedOrBlankNode::BlankNode(v) => Term::BlankNode(v)
+  }
+}
+
+///|
+pub fn NamedOrBlankNode::as_n3term(self : NamedOrBlankNode) -> N3Term {
+  match self {
+    NamedOrBlankNode::NamedNode(node) => N3Term::NamedNode(node)
+    NamedOrBlankNode::BlankNode(node) => N3Term::BlankNode(node)
+  }
+}
+
 // fn NamedOrBlankNode::default() -> NamedOrBlankNode {
 //   NamedOrBlankNode::BlankNode(BlankNode::default())
 // }
@@ -156,6 +179,11 @@ pub fn NamedNode::as_term(self : NamedNode) -> Term {
 }
 
 ///|
+pub fn NamedNode::as_n3term(self : NamedNode) -> N3Term {
+  N3Term::NamedNode(self)
+}
+
+///|
 pub(all) struct NamedNodeRef {
   iri : StringView
 } derive(Debug, Eq, Hash)
@@ -163,6 +191,11 @@ pub(all) struct NamedNodeRef {
 ///|
 pub fn NamedNodeRef::as_term(self : NamedNodeRef) -> TermRef {
   TermRef::NamedNodeRef(self)
+}
+
+///|
+pub fn NamedNodeRef::as_n3term(self : NamedNodeRef) -> N3Term {
+  N3Term::NamedNode(self.into_owned())
 }
 
 ///|
@@ -205,7 +238,7 @@ pub fn NamedNodeRef::into_datatype(
       e => Err(e)
     }
     match parsed {
-      Ok(v) => IntVar(v)
+      Ok(v) => IntVar(v.to_string())
       Err(_) => StringVar("NAN")
     }
   } else if self == lwINTEGER {
@@ -213,7 +246,7 @@ pub fn NamedNodeRef::into_datatype(
       e => Err(e)
     }
     match parsed {
-      Ok(v) => IntegerVar(v)
+      Ok(v) => IntegerVar(v.to_string())
       Err(_) => StringVar("NAN")
     }
   } else if self == lwFLOAT {
@@ -221,7 +254,7 @@ pub fn NamedNodeRef::into_datatype(
       e => Err(e)
     }
     match parsed {
-      Ok(v) => DoubleVar(v)
+      Ok(v) => DoubleVar(v.to_string())
       Err(_) => StringVar("NAN")
     }
   } else if self == lwDECIMAL {
@@ -288,6 +321,11 @@ pub fn BlankNodeRef::as_term(self : BlankNodeRef) -> TermRef {
 }
 
 ///|
+pub fn BlankNodeRef::as_n3term(self : BlankNodeRef) -> N3Term {
+  N3Term::BlankNode(self.into_owned())
+}
+
+///|
 fn BlankNodeRef::into_owned(node : BlankNodeRef) -> BlankNode {
   match node {
     BlankNodeRef::Named(v) => BlankNode::Named(v.to_owned())
@@ -316,7 +354,7 @@ impl Show for BlankNode with fn to_string(self : BlankNode) -> String {
 
 ///|
 pub fn BlankNode::default() -> BlankNode {
-  BlankNode::new(BlankNode::Named("_:default"))
+  BlankNode::Named("_:default")
 }
 
 ///|
@@ -343,6 +381,11 @@ pub fn BlankNode::as_ref(self : BlankNode) -> BlankNodeRef {
 ///|
 pub fn BlankNode::as_enum(self : BlankNode) -> NamedOrBlankNode {
   NamedOrBlankNode::BlankNode(self)
+}
+
+///|
+pub fn BlankNode::as_n3term(self : BlankNode) -> N3Term {
+  N3Term::BlankNode(self)
 }
 
 ///|
@@ -374,6 +417,7 @@ pub(all) enum GraphName {
   BlankNode(BlankNode)
 } derive(Debug, Eq, Hash)
 
+///|
 impl Show for GraphName with fn to_string(self : GraphName) -> String {
   match self {
     GraphName::DefaultGraph => "".to_string()
@@ -381,6 +425,7 @@ impl Show for GraphName with fn to_string(self : GraphName) -> String {
     GraphName::BlankNode(v) => v.to_string()
   }
 }
+
 ///|
 pub fn GraphName::into_owned(self : GraphName) -> GraphName {
   self
@@ -417,6 +462,20 @@ pub fn GraphName::as_ref(self : GraphName) -> GraphNameRef {
     GraphName::NamedNode(node) => GraphNameRef::NamedNodeRef(node.as_ref())
     GraphName::BlankNode(node) => GraphNameRef::BlankNodeRef(node.as_ref())
     GraphName::DefaultGraph => GraphNameRef::DefaultGraph
+  }
+}
+
+///|
+pub fn GraphName::as_n3term(self : GraphName) -> N3Term {
+  match self {
+    GraphName::NamedNode(v) => N3Term::NamedNode(v)
+    GraphName::BlankNode(v) => N3Term::BlankNode(v)
+    GraphName::DefaultGraph =>
+      // DefaultGraph 不是一个标准的 RDF Term，无法直接转换为 N3Term。
+      // 这里根据具体业务逻辑处理，通常应避免在此处调用。
+      // 作为一种妥协，可以 panic 或返回一个特殊的 BlankNode。
+      // 假设项目中不允许将 DefaultGraph 转为 Term，这里抛出异常或断言失败。
+      panic()
   }
 }
 
@@ -458,20 +517,33 @@ pub fn Quad::Quad(
 ) -> Quad {
   { subject, predicate, object, graph_name }
 }
-impl Show for Quad with fn output(self : Quad, logger: &Logger) -> Unit {
-  logger.write_string(self.subject.to_string());
-  logger.write_string(" ");
-  logger.write_string(self.predicate.to_string());
-  logger.write_string(" ");
-  logger.write_string(self.object.to_string());
-  logger.write_string(" ");
-  logger.write_string(self.graph_name.to_string());
+
+///|
+pub fn Quad::as_n3quad(self : Quad) -> N3Quad {
+  N3Quad::N3Quad(
+    self.subject.as_n3term(),
+    self.predicate.as_n3term(),
+    self.object.as_n3term(),
+    self.graph_name,
+  )
+}
+
+///|
+impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
+  logger.write_string(self.subject.to_string())
+  logger.write_string(" ")
+  logger.write_string(self.predicate.to_string())
+  logger.write_string(" ")
+  logger.write_string(self.object.to_string())
+  logger.write_string(" ")
+  logger.write_string(self.graph_name.to_string())
   // if !self.graph_name.is_default_graph() {
   //   logger.write_string(" ")
   //   logger.write_string(self.graph_name.to_string())
   // }
   // logger.write_string("\n");
 }
+
 ///|
 pub struct QuadRef {
   subject : NamedOrBlankNodeRef
@@ -501,14 +573,14 @@ pub fn QuadRef::into_owned(self : QuadRef) -> Quad {
 }
 
 ///|
-pub fn Quad::new(
-  subject : NamedOrBlankNode,
-  predicate : NamedNode,
-  object : Term,
-  graph_name : GraphName,
-) -> Quad {
-  { subject, predicate, object, graph_name }
-}
+// pub fn Quad::new(
+//   subject : NamedOrBlankNode,
+//   predicate : NamedNode,
+//   object : Term,
+//   graph_name : GraphName,
+// ) -> Quad {
+//   { subject, predicate, object, graph_name }
+// }
 
 ///|
 pub fn Quad::as_ref(self : Quad) -> QuadRef {
@@ -528,7 +600,8 @@ pub(all) enum Term {
   Triple(Triple)
 } derive(Debug, Eq, Hash)
 
-impl Show for Term with to_string(self : Term) -> String {
+///|
+impl Show for Term with fn to_string(self : Term) -> String {
   match self {
     Term::NamedNode(node) => node.to_string()
     Term::BlankNode(node) => node.to_string()
@@ -564,6 +637,16 @@ pub fn Term::as_ref(self : Term) -> TermRef {
     Term::BlankNode(node) => TermRef::BlankNodeRef(node.as_ref())
     Term::Literal(literal) => TermRef::LiteralRef(literal.as_ref())
     Term::Triple(triple) => TermRef::TripleRef(triple.as_ref())
+  }
+}
+
+///|
+pub fn Term::as_n3term(self : Term) -> N3Term {
+  match self {
+    Term::NamedNode(node) => N3Term::NamedNode(node)
+    Term::BlankNode(node) => N3Term::BlankNode(node)
+    Term::Literal(literal) => N3Term::Literal(literal)
+    Term::Triple(triple) => N3Term::Triple(triple)
   }
 }
 

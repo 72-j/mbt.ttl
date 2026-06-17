@@ -34,7 +34,7 @@ test "typed literal with string datatype normalizes to simple" {
 ///|
 test "typed literal with integer datatype" {
   let lit = LiteralRef::new_typed_literal(
-    VarDataType::IntVar(42),
+    VarDataType::IntVar("42"),
     NamedNodeRef::NamedNodeRef(lwINTEGER.to_string()),
   )
   assert_eq(lit.into_owned().value(), "42")
@@ -152,7 +152,7 @@ test "literal value extraction for simple literal" {
 ///|
 test "literal value extraction for typed literal" {
   let lit = LiteralRef::new_typed_literal(
-    VarDataType::IntVar(123),
+    VarDataType::IntVar("123"),
     NamedNodeRef::NamedNodeRef(lwINTEGER.to_string()),
   )
   assert_eq(lit.into_owned().value(), "123")
@@ -211,7 +211,7 @@ test "destruct simple literal" {
 ///|
 test "destruct typed literal" {
   let lit = LiteralRef::new_typed_literal(
-    VarDataType::IntVar(42),
+    VarDataType::IntVar("42"),
     NamedNodeRef::NamedNodeRef(lwINTEGER.to_string()),
   )
   let (value, datatype, language, direction) = lit.into_owned().destruct()
@@ -380,7 +380,7 @@ test "literal show directional language-tagged" {
 ///|
 test "literal show typed literal" {
   let lit = LiteralRef::new_typed_literal(
-    VarDataType::IntVar(42),
+    VarDataType::IntVar("42"),
     NamedNodeRef::NamedNodeRef(lwINTEGER.to_string()),
   )
   assert_eq(lit.to_string(), "\"42\"^^http://www.w3.org/2001/XMLSchema#integer")

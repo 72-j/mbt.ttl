@@ -5,14 +5,15 @@ pub struct Triple {
   object : Term
 } derive(Eq, Debug, Hash)
 
-impl Show for Triple with output(self : Triple,logger: &Logger) -> Unit {
-// logger.write_fmt(format!("Triple {{ subject: {}, predicate: {}, object: {} }}",
-//   self.subject, self.predicate, self.object));
-logger.write_object(self);
+///|
+impl Show for Triple with fn output(self : Triple, logger : &Logger) -> Unit {
+  // logger.write_fmt(format!("Triple {{ subject: {}, predicate: {}, object: {} }}",
+  //   self.subject, self.predicate, self.object));
+  logger.write_object(self)
 }
 
 ///|
-pub fn Triple::new(
+pub fn Triple::Triple(
   subject : NamedOrBlankNode,
   predicate : NamedNode,
   object : Term,
@@ -53,6 +54,11 @@ pub fn Triple::as_ref(self : Triple) -> TripleRef {
   }
 }
 
+///|
+pub fn Triple::as_n3term(self : Triple) -> N3Term {
+  N3Term::Triple(self)
+}
+
 // impl fmt::Show for Triple with fmt(self : Triple, f : Formatter) -> Result {
 //   self.fmt(f)
 // }
@@ -65,7 +71,7 @@ pub struct TripleRef {
 } derive(Eq, Debug, Hash)
 
 ///|
-pub fn TripleRef::new(
+pub fn TripleRef::TripleRef(
   subject : NamedOrBlankNodeRef,
   predicate : NamedNodeRef,
   object : TermRef,

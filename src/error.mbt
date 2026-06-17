@@ -337,42 +337,37 @@ pub(all) suberror TurtleError {
   InvalidCharacter(String)
   InvalidToken(TextPosition, String)
 }
-impl Show for TurtleError with fn output(self, logger : &Logger) -> Unit { 
-  match self {
-    TurtleError::TurtleParseError(msg, pos) => {
-      logger.write_string("Error: ")
-      logger.write_string("TurtleParseError")
-      logger.write_string(" - ")
-      logger.write_string(msg)
-      logger.write_string(" at ")
-      logger.write_string(pos.to_string())
-    }
-    TurtleError::TurtleSyntaxError(msg, pos) => {
-      logger.write_string("Error: ")
-      logger.write_string("TurtleSyntaxError")
-      logger.write_string(" - ")
-      logger.write_string(msg)
-    }
-    TurtleError::InvalidEscapeSequence => {
-      logger.write_string("Error: ")
-      logger.write_string("InvalidEscapeSequence")
-    }
-    TurtleError::InvalidCharacter(c) => {
-      logger.write_string("Error: ")
-      logger.write_string("InvalidCharacter")
-      logger.write_string(" - ")
-      logger.write_string(c)
-    }
-    TurtleError::InvalidToken(pos, token) => {
-      logger.write_string("Error: ")
-      logger.write_string("InvalidToken")
-      logger.write_string(" - ")
-      logger.write_string(token)
-      logger.write_string(" at ")
-      logger.write_string(pos.to_string())
-    }
 
+///|
+pub impl ErrOut for TurtleError with fn message(self : TurtleError) -> String {
+  match self {
+    TurtleError::TurtleParseError(msg, _) => msg
+    TurtleError::TurtleSyntaxError(msg, _) => msg
+    TurtleError::InvalidEscapeSequence => "Invalid escape sequence"
+    TurtleError::InvalidCharacter(c) => "Invalid character: " + c
+    TurtleError::InvalidToken(_, token) => "Invalid token: " + token
   }
+}
+
+///|
+pub impl ErrOut for TurtleError with fn err_kind(self : TurtleError) -> String {
+  match self {
+    TurtleError::TurtleParseError(_, _) => "TurtleParseError"
+    TurtleError::TurtleSyntaxError(_, _) => "TurtleSyntaxError"
+    TurtleError::InvalidEscapeSequence => "InvalidEscapeSequence"
+    TurtleError::InvalidCharacter(_) => "InvalidCharacter"
+    TurtleError::InvalidToken(_, _) => "InvalidToken"
+  }
+}
+
+///|
+impl Show for TurtleError with fn output(self, logger : &Logger) -> Unit {
+  let msg = self.message()
+  let err_kind = self.err_kind()
+  logger.write_string("Error: ")
+  logger.write_string(err_kind)
+  logger.write_string(" - ")
+  logger.write_string(msg)
 }
 
 ///|
@@ -382,28 +377,34 @@ pub(all) suberror LexerError {
   SyntaxError(String)
 }
 
-impl Show for LexerError with fn output(self, logger : &Logger) -> Unit {
+///|
+pub impl ErrOut for LexerError with fn message(self : LexerError) -> String {
   match self {
-    LexerError::OutOfMemory(msg) => {
-      logger.write_string("Error: ")
-      logger.write_string("OutOfMemory")
-      logger.write_string(" - ")
-      logger.write_string(msg)
-    }
-    LexerError::IoReadError(msg) => {
-      logger.write_string("Error: ")
-      logger.write_string("IoReadError")
-      logger.write_string(" - ")
-      logger.write_string(msg)
-    }
-    LexerError::SyntaxError(msg) => {
-      logger.write_string("Error: ")
-      logger.write_string("SyntaxError")
-      logger.write_string(" - ")
-      logger.write_string(msg)
-    }
+    LexerError::OutOfMemory(msg) => msg
+    LexerError::IoReadError(msg) => msg
+    LexerError::SyntaxError(msg) => msg
   }
 }
+
+///|
+pub impl ErrOut for LexerError with fn err_kind(self : LexerError) -> String {
+  match self {
+    LexerError::OutOfMemory(_) => "OutOfMemory"
+    LexerError::IoReadError(_) => "IoReadError"
+    LexerError::SyntaxError(_) => "SyntaxError"
+  }
+}
+
+///|
+impl Show for LexerError with fn output(self, logger : &Logger) -> Unit {
+  let msg = self.message()
+  let err_kind = self.err_kind()
+  logger.write_string("Error: ")
+  logger.write_string(err_kind)
+  logger.write_string(" - ")
+  logger.write_string(msg)
+}
+
 ///|
 pub(all) suberror LanguageTagParseError {
   // LanguageTagParseError
@@ -414,7 +415,7 @@ pub(all) suberror LanguageTagParseError {
 impl Show for LanguageTagParseError with fn output(self, logger : &Logger) -> Unit {
   match self {
     LanguageTagParseError::TagParseErr(e) => {
-      logger.write_string("Language Tag Parse Error: ")
+      logger.write_string("Error: Language Tag Parse Error - ")
       logger.write_string(e.to_string())
     }
   }
@@ -446,11 +447,13 @@ impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
   }
 }
 
+///|
 enum SerializationError {
   FormatError(String)
   IoError(String)
 }
 
+///|
 impl Show for SerializationError with fn output(self, logger : &Logger) -> Unit {
   match self {
     SerializationError::FormatError(msg) => {

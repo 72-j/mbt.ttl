@@ -2,12 +2,14 @@
 pub(all) enum Context {
   TriGRecognizerContext(TriGRecognizerContext)
   NQuadsRecognizerContext(NQuadsRecognizerContext)
+  N3RecognizerContext(N3RecognizerContext)
 }
 
 ///|
 pub(all) enum LexOutput {
   Quad(Quad)
   Triple(Triple)
+  N3Quad(N3Quad)
 }
 
 ///|
@@ -25,7 +27,7 @@ pub struct Parser[TR, RR] {
 }
 
 ///|
-pub fn[TR, RR] Parser::new(
+pub fn[TR, RR] Parser::Parser(
   lexer : Lexer[TR],
   recognizer : RR,
   context : Context,
@@ -116,31 +118,31 @@ pub fn[TR, RR] Parser::extend_from_slice(
 }
 
 ///|
-pub fn[B, RR] Parser::for_reader(
-  self : Parser[B, RR],
+pub fn[TR, RR] Parser::for_reader(
+  self : Parser[TR, RR],
   reader : &Reader,
-) -> ReaderIterator[B, RR] {
+) -> ReaderIterator[TR, RR] {
   { reader, parser: self }
 }
 
 ///|
-pub fn[B, RR] Parser::for_async_reader(
-  self : Parser[B, RR],
+pub fn[TR, RR] Parser::for_async_reader(
+  self : Parser[TR, RR],
   reader : &Reader,
-) -> AsyncReaderIterator[B, RR] {
+) -> AsyncReaderIterator[TR, RR] {
   { reader, parser: self }
 }
 
 ///|
-pub struct ReaderIterator[B, RR] {
+pub struct ReaderIterator[TR, RR] {
   reader : &Reader
-  parser : Parser[B, RR]
+  parser : Parser[TR, RR]
 }
 
 ///|
-pub struct AsyncReaderIterator[B, RR] {
+pub struct AsyncReaderIterator[TR, RR] {
   reader : &Reader
-  parser : Parser[B, RR]
+  parser : Parser[TR, RR]
 }
 
 ///|
@@ -151,11 +153,15 @@ pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::nex
     if self.parser.parse_next() is Some(result) {
       // 修复：将 TurtleError 转换为 String
       return Some(
-        result.map_err(e => LexerError::SyntaxError("Syntax Error: \{e.to_string()}")),
+        result.map_err(e => {
+          LexerError::SyntaxError("Syntax Error: \{e.to_string()}")
+        }),
       )
     }
     if self.parser.lexer.extend_from_async_read(self.reader) is Err(e) {
-      return Some(Err(LexerError::IoReadError("IO Read Error: \{e.to_string()}")))
+      return Some(
+        Err(LexerError::IoReadError("IO Read Error: \{e.to_string()}")),
+      )
     }
   }
   None

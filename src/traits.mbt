@@ -241,6 +241,15 @@ pub trait RuleRecognizer {
   fn lexer_options(context : Context) -> LexerOptions?
 }
 
+// trait From {
+//   fn[T] from(self : Self, T) -> Self
+// }
+// impl From for N3Term with fn from(self : N3Term, node) -> N3Term {
+// match node {
+// N3Term::NamedNode(node) => N3Term::NamedNode(node)
+// _ => panic("Invalid N3Term")
+// }
+// }
 // trait AsRef {
 //  fn as_ref(self: Self) -> Ref[Self]
 // }

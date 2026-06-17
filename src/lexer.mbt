@@ -64,7 +64,7 @@ impl Show for TextPosition with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-pub fn[TR] Lexer::new(
+pub fn[TR] Lexer::Lexer(
   parser : TR,
   data : Array[Byte],
   is_ending : Bool,

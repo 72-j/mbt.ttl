@@ -13,7 +13,7 @@ pub struct TriGRecognizer {
 pub struct TriGRecognizerContext {
   lexer_options : LexerOptions
   with_graph_name : Bool
-  prefixes : Map[String, IriRef]
+  prefixes : Map[String, Iri]
 }
 
 ///|
@@ -29,7 +29,7 @@ pub struct TriGRecognizerContext {
 ///|
 pub fn TriGRecognizerContext::prefixes(
   self : TriGRecognizerContext,
-) -> Map[String, IriRef] {
+) -> Map[String, Iri] {
   self.prefixes
 }
 
@@ -167,7 +167,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       TriGState::PrefixExpectIri(name~) =>
         if token is TokenOrLineJump::Token(N3Token::Iri(iri)) {
-          let iri = Iri::Iri(iri).as_ref()
+          let iri = Iri::Iri(iri)
           context.prefixes.set(name, iri)
           self
         } else {
@@ -339,7 +339,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           let _ = self.cur_predicate.pop()
           results.push(
             LexOutput::Quad(
-              Quad::new(
+              Quad::Quad(
                 old.into_owned(),
                 lwREST.into_owned(),
                 lwNIL.into_owned().as_term(),
@@ -352,7 +352,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           let new = BlankNode::default()
           results.push(
             LexOutput::Quad(
-              Quad::new(
+              Quad::Quad(
                 old.into_owned(),
                 lwREST.into_owned(),
                 lwNIL.as_term().into_owned(),
@@ -611,7 +611,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             self.stack.push(TriGState::AnnotationBlock(with_reifier=true))
             self.stack.push(
               TriGState::Reifier(
-                triple=TripleRef::new(
+                triple=TripleRef::TripleRef(
                   self.cur_subject.last().unwrap(),
                   self.cur_predicate.last().unwrap(),
                   self.cur_object.last().unwrap(),
@@ -627,11 +627,11 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               let reifier = BlankNode::default()
               results.push(
                 LexOutput::Quad(
-                  Quad::new(
+                  Quad::Quad(
                     reifier.as_enum(),
                     lwREIFIES.into_owned(),
                     TermRef::TripleRef(
-                      TripleRef::new(
+                      TripleRef::TripleRef(
                         self.cur_subject.last().unwrap(),
                         self.cur_predicate.last().unwrap(),
                         self.cur_object.last().unwrap(),
@@ -759,7 +759,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Ok(value) => {
                 self.cur_object.push(
                   LiteralRef::new_typed_literal(
-                    VarDataType::IntVar(value),
+                    VarDataType::IntVar(value.to_string()),
                     lwINTEGER,
                   ).as_term(),
                 )
@@ -795,7 +795,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Ok(value) => {
                 self.cur_object.push(
                   LiteralRef::new_typed_literal(
-                    VarDataType::DoubleVar(value),
+                    VarDataType::DoubleVar(value.to_string()),
                     lwDOUBLE,
                   ).as_term(),
                 )
@@ -902,7 +902,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           let _ = self.cur_predicate.pop()
           results.push(
             LexOutput::Quad(
-              Quad::new(
+              Quad::Quad(
                 old.into_owned(),
                 lwREST.into_owned(),
                 lwNIL.as_term().into_owned(),
@@ -915,7 +915,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           let new = BlankNode::default()
           results.push(
             LexOutput::Quad(
-              Quad::new(
+              Quad::Quad(
                 old.into_owned(),
                 lwREST.into_owned(),
                 lwNIL.as_term().into_owned(),
@@ -1126,7 +1126,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       }
       TriGState::TripleTermEnd(emit~) => {
-        let triple = TripleRef::new(
+        let triple = TripleRef::TripleRef(
           self.cur_subject.pop().unwrap(),
           self.cur_predicate.pop().unwrap(),
           self.cur_object.pop().unwrap(),
@@ -1149,7 +1149,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       }
       TriGState::EndOfReifiedTripleBeforeReifier => {
-        let triple = TripleRef::new(
+        let triple = TripleRef::TripleRef(
           self.cur_subject.pop().unwrap(),
           self.cur_predicate.pop().unwrap(),
           self.cur_object.pop().unwrap(),
@@ -1161,7 +1161,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           let reifier = BlankNode::default()
           results.push(
             LexOutput::Quad(
-              Quad::new(
+              Quad::Quad(
                 reifier.as_enum(),
                 lwREIFIES.into_owned(),
                 TermRef::TripleRef(triple).into_owned(),
@@ -1184,7 +1184,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             let reifier = NamedNodeRef::new_unchecked(iri)
             results.push(
               LexOutput::Quad(
-                Quad::new(
+                Quad::Quad(
                   reifier.as_enum().into_owned(),
                   lwREIFIES.into_owned(),
                   triple.as_enum(),
@@ -1208,7 +1208,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Ok(reifier) => {
                 results.push(
                   LexOutput::Quad(
-                    Quad::new(
+                    Quad::Quad(
                       reifier.as_enum().into_owned(),
                       lwREIFIES.into_owned(),
                       triple.as_enum(),
@@ -1223,7 +1223,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 let reifier = BlankNode::default()
                 results.push(
                   LexOutput::Quad(
-                    Quad::new(
+                    Quad::Quad(
                       reifier.as_enum(),
                       lwREIFIES.into_owned(),
                       triple.as_enum(),
@@ -1239,7 +1239,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             let reifier = BlankNodeRef::new_unchecked(bnode)
             results.push(
               LexOutput::Quad(
-                Quad::new(
+                Quad::Quad(
                   reifier.as_enum().into_owned(),
                   lwREIFIES.into_owned(),
                   triple.as_enum(),
@@ -1254,7 +1254,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             let reifier = BlankNode::default()
             results.push(
               LexOutput::Quad(
-                Quad::new(
+                Quad::Quad(
                   reifier.as_enum(),
                   lwREIFIES.into_owned(),
                   triple.as_enum(),
@@ -1370,7 +1370,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Ok(value) => {
                 self.cur_object.push(
                   LiteralRef::new_typed_literal(
-                    VarDataType::IntVar(value),
+                    VarDataType::IntVar(value.to_string()),
                     lwINTEGER,
                   ).as_term(),
                 )
@@ -1405,7 +1405,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Ok(value) => {
                 self.cur_object.push(
                   LiteralRef::new_typed_literal(
-                    VarDataType::DoubleVar(value),
+                    VarDataType::DoubleVar(value.to_string()),
                     lwDOUBLE,
                   ).as_term(),
                 )
@@ -1514,11 +1514,11 @@ pub fn TriGRecognizer::new_parser(
   with_graph_name : Bool,
   lenient : Bool,
   base_iri : Iri?,
-  prefixes : Map[String, IriRef],
-) -> Parser[N3Lexer, TriGRecognizer] {
-  Parser::new(
-    Lexer::new(
-      N3Lexer::new(N3LexerMode::Turtle, lenient),
+  prefixes : Map[String, Iri],
+) -> Parser[NxLexer, TriGRecognizer] {
+  Parser::Parser(
+    Lexer::Lexer(
+      NxLexer::NxLexer(NxLexerMode::Turtle, lenient),
       data,
       is_ending,
       MIN_BUFFER_SIZE,
@@ -1564,7 +1564,7 @@ fn TriGRecognizer::emit_quad(
 ) -> Unit {
   results.push(
     LexOutput::Quad(
-      Quad::new(
+      Quad::Quad(
         self.cur_subject.last().unwrap().into_owned(),
         self.cur_predicate.last().unwrap().into_owned(),
         self.cur_object.last().unwrap().into_owned(),

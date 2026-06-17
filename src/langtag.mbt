@@ -159,8 +159,8 @@ pub fn LanguageTag::extension(self : LanguageTag) -> String? {
 ///|
 pub fn LanguageTag::extension_subtags(self : LanguageTag) -> ExtensionsIterator {
   match self.extension() {
-    Some(parts) => ExtensionsIterator::new(parts)
-    None => ExtensionsIterator::new("")
+    Some(parts) => ExtensionsIterator::ExtensionsIterator(parts)
+    None => ExtensionsIterator::ExtensionsIterator("")
   }
 }
 
@@ -563,7 +563,7 @@ struct ExtensionsIterator {
 }
 
 ///|
-fn ExtensionsIterator::new(input : String) -> ExtensionsIterator {
+fn ExtensionsIterator::ExtensionsIterator(input : String) -> ExtensionsIterator {
   { input, }
 }
 

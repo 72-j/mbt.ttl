@@ -532,6 +532,32 @@ fn parse_xsd_date(s : String) -> Result[String, String] {
 }
 
 ///|
+fn sort_prefixes(prefixes : Map[String, Iri]) -> Array[(String, String)] {
+  // 1. 将 Map 转换为可变数组
+  let prefix_array : Array[(String, String)] = []
+  for item in prefixes.iter() {
+    let k = item.0
+    let v = item.1
+    prefix_array.push((k, v.to_string()))
+  }
+  // 2. 使用 sort_unstable_by 进行降序排序
+  // 比较逻辑：如果 a 的长度 > b 的长度，返回 -1 (排在前面)
+  prefix_array.sort_by(fn(a, b) {
+    let len_a = a.1.length()
+    let len_b = b.1.length()
+    if len_a > len_b {
+      -1
+    } else if len_a < len_b {
+      1
+    } else {
+      0
+    }
+  })
+
+  prefix_array
+}
+
+///|
 // fn pad(n : Int) -> String {
 //   debug(n)
 

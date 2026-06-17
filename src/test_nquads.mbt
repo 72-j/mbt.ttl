@@ -57,12 +57,12 @@ test "sync serializer accumulation" {
 
   let sync_serializer = serializer.for_writer(w)
 
-    let subject = NamedNode::NamedNode("<http://example.org/s>").as_enum()
-    let predicate = NamedNode::NamedNode("<http://example.org/p>")
-    let object = NamedNode::NamedNode("<http://example.org/o>").as_term()
-    let graph = GraphName::default() // 或者使用 Option::None 如果 API 支持
+  let subject = NamedNode::NamedNode("<http://example.org/s>").as_enum()
+  let predicate = NamedNode::NamedNode("<http://example.org/p>")
+  let object = NamedNode::NamedNode("<http://example.org/o>").as_term()
+  let graph = GraphName::default() // 或者使用 Option::None 如果 API 支持
 
-    let q_sb = Quad::new(subject, predicate, object, graph)
+  let q_sb = Quad::Quad(subject, predicate, object, graph)
   // q_sb.write_string(
   //   "<http://example.org/s> <http://example.org/p> <http://example.org/o>",
   // )
@@ -134,7 +134,7 @@ test "sync serializer accumulation" {
 ///|
 async test "async serializer buffer accumulation" {
   let log = StringBuilder::new()
-    let serializer = NQuadsSerializer::new()
+  let serializer = NQuadsSerializer::new()
 
   @async.with_task_group() <| fn(root) {
     // 1. 写入者协程 (Producer)
@@ -146,13 +146,12 @@ async test "async serializer buffer accumulation" {
 
       let async_serializer = serializer.for_async_writer(buffered_w)
 
+      let subject = NamedNode::NamedNode("<http://example.org/s>").as_enum()
+      let predicate = NamedNode::NamedNode("<http://example.org/p>")
+      let object = NamedNode::NamedNode("<http://example.org/o>").as_term()
+      let graph = GraphName::default() // 或者使用 Option::None 如果 API 支持
 
-    let subject = NamedNode::NamedNode("<http://example.org/s>").as_enum()
-    let predicate = NamedNode::NamedNode("<http://example.org/p>")
-    let object = NamedNode::NamedNode("<http://example.org/o>").as_term()
-    let graph = GraphName::default() // 或者使用 Option::None 如果 API 支持
-
-    let q_sb = Quad::new(subject, predicate, object, graph)
+      let q_sb = Quad::Quad(subject, predicate, object, graph)
       // 必须 await 异步写入
       let res = async_serializer.serialize_quad(q_sb)
 
