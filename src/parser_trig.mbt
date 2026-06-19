@@ -158,7 +158,7 @@ pub async fn[LR : TokenRecognizer] AsyncReaderTriGParser::next(
           }
       }
     })
-    .map_err(fn(_e) { TurtleError::InvalidEscapeSequence }) // 根据实际错误类型调整
+    .map_err(fn(e) { TurtleError::InvalidCharacter(e.message()) }) // 根据实际错误类型调整
   })
 }
 
@@ -281,7 +281,7 @@ pub fn[LR : TokenRecognizer] LowLevelTriGParser::parse_next(
           }
       }
     })
-    .map_err(fn(_e) { TurtleError::InvalidEscapeSequence })
+    .map_err(fn(e) { TurtleError::InvalidCharacter(e.message()) }) // 根据实际错误类型调整
   })
 }
 

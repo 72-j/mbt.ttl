@@ -16,6 +16,9 @@ using @io {trait Reader}
 using @io {trait Writer, type BufferedWriter}
 
 ///|
+using @fs {type File}
+
+///|
 // type BuffeWriter = @io.BufferedWriter[&Writer]
 
 ///|

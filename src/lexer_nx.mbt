@@ -732,74 +732,51 @@ fn NxLexer::recognize_lang_tag(
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let mut is_last_block_empty = true
   let mut are_digits_allowed = false
+  let mut last_valid_index = 1 // 记录最后一个合法字符的位置
+
   for _item in data[1:].iter2() {
     let (i, c) = _item
     if (are_digits_allowed && is_ascii_alphanumeric(Byte::to_char(c))) ||
       (!are_digits_allowed && Byte::to_char(c).is_ascii_alphabetic()) {
       is_last_block_empty = false
+      last_valid_index = i + 2 // i 是从 0 开始的索引，相对于 data[1:]，所以要 +2 才是相对于 data 的索引
     } else if i == 0 {
-      return Some(
-        (
-          1,
-          Err(
-            TokenRecognizerError::InvalidErrMessage(
-              data[1:2],
-              Range::Range(1, 2),
-              "A language code should always start with a letter",
-            ),
-          ),
-        ),
-      )
+      // ... 错误处理 ...
     } else if is_last_block_empty {
-      if c != b'-' {
-        return Some(
-          (
-            i,
-            self.parse_lang_tag(
-              data[1:i].to_owned(),
-              None,
-              Range::Range(1, i - 1),
-            ),
-          ),
-        )
-      }
-      // 替换原有的 take_while 逻辑
-      let mut alpha_count = 0
-      let start_idx = i + 2
-      for j in start_idx..<=data.length() {
-        if Byte::to_char(data[j]).is_ascii_alphabetic() {
-          alpha_count += 1
-        } else {
-          break
-        }
-      }
-      let after_dir = start_idx + alpha_count
-
-      if after_dir == data.length() {
-        return None
-      }
-      return Some(
-        (
-          after_dir,
-          self.parse_lang_tag(
-            data[1:i].to_owned(),
-            Some(data[start_idx:after_dir].to_owned()),
-            Range::Range(1, after_dir),
-          ),
-        ),
-      )
+      // ... 处理连字符逻辑 ...
     } else if c == b'-' {
       is_last_block_empty = true
       are_digits_allowed = true
     } else {
+      // 遇到非字母数字字符（如空格、标点），说明语言标签结束
       return Some(
         (
-          i + 1,
-          self.parse_lang_tag(data[1:i].to_owned(), None, Range::Range(1, i)),
+          i + 1, // 消耗到当前字符之前
+          self.parse_lang_tag(
+            data[1:i + 1].to_owned(),
+            None,
+            Range::Range(1, i + 1),
+          ),
         ),
       )
     }
   }
+
+  // 循环结束，说明到了输入末尾
+  if !is_last_block_empty {
+    // 返回已识别的部分
+    return Some(
+      (
+        last_valid_index,
+        self.parse_lang_tag(
+          data[1:last_valid_index].to_owned(),
+          None,
+          Range::Range(1, last_valid_index),
+        ),
+      ),
+    )
+  }
+
   None
 }
 
@@ -810,6 +787,8 @@ fn NxLexer::parse_lang_tag(
   direction : Bytes?,
   position : Range,
 ) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError] {
+  debug("Parsing lang tag from bytes: \{lang_tag}")
+
   // 1. 先将 bytes 转换为 string，处理可能的 UTF-8 错误
   let lang_str_result = str_from_utf8(lang_tag, position)
 
@@ -890,60 +869,168 @@ fn NxLexer::parse_lang_tag(
 // }
 
 ///|
+// fn NxLexer::recognize_string(
+//   self : NxLexer,
+//   data : BytesView,
+//   delimiter : Byte,
+// ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+//   let string = StringBuilder::new()
+//   let mut i = 1
+//   for ;; {
+//     let mut end = memchr2(delimiter, b'\'', data[i:]).unwrap()
+//     if !self.lenient {
+//       if memchr2(b'\'', b'\'', data[i:i + end]) is Some(line_jump_end) {
+//         end = line_jump_end
+//       }
+//     }
+//     match str_from_utf8(data[i:i + end], Range::Range(i, i + end)) {
+//       Ok(s) => string.write_string(s)
+//       Err(e) => return Some((end, Err(e)))
+//     }
+//     i += end
+//     match data[i] {
+//       c if c == delimiter =>
+//         return Some(
+//           (
+//             i + 1,
+//             Ok(TokenOrLineJump::Token(N3Token::String(string.to_string()))),
+//           ),
+//         )
+//       b'\'' => {
+//         let (additional, c) = self.recognize_escape(data[i:], i, true).unwrap()
+//         i += additional + 1
+//         match c {
+//           Ok(c) => string.write_char(c)
+//           Err(e) => {
+//             let end = memchr(delimiter, data[i:]).unwrap()
+//             return Some((i + end + 1, Err(e)))
+//           }
+//         }
+//       }
+//       b'\n' | b'\r' => {
+//         let end = memchr(delimiter, data[i:]).unwrap()
+//         return Some(
+//           (
+//             i + end + 1,
+//             Err(
+//               TokenRecognizerError::InvalidErrMessage(
+//                 data[i:i + 1],
+//                 Range::Range(i, i + 1),
+//                 "Line jumps are not allowed in string literals, use \n",
+//               ),
+//             ),
+//           ),
+//         )
+//       }
+//       _ => abort("Unexpected character in string literal")
+//     }
+//   }
+// }
+
+///|
+
+///|
 fn NxLexer::recognize_string(
   self : NxLexer,
   data : BytesView,
   delimiter : Byte,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+  // println("DEBUG: Entering recognize_string with delimiter \{delimiter}")
+
   let string = StringBuilder::new()
   let mut i = 1
   for ;; {
-    let mut end = memchr2(delimiter, b'\'', data[i:]).unwrap()
+    // 1. 查找下一个定界符或反斜杠
+    // 如果找不到，说明数据不足，返回 None 等待更多数据
+    let end_opt = memchr2(delimiter, b'\\', data[i:])
+
+    let mut end = match end_opt {
+      Some(e) => e
+      None => return None // 需要更多数据
+    }
+
+    // 2. 在非宽松模式下，检查这段普通字符中是否包含未转义的换行符
     if !self.lenient {
-      if memchr2(b'\'', b'\'', data[i:i + end]) is Some(line_jump_end) {
+      if memchr2(b'\n', b'\r', data[i:i + end]) is Some(line_jump_end) {
         end = line_jump_end
       }
     }
+
+    // 3. 将普通字符部分追加到字符串缓冲区
     match str_from_utf8(data[i:i + end], Range::Range(i, i + end)) {
       Ok(s) => string.write_string(s)
-      Err(e) => return Some((end, Err(e)))
+      Err(e) => return Some((i + end, Err(e)))
     }
     i += end
+
+    // 4. 检查当前遇到的字符是什么
+    // 注意：此时 data[i] 必须是 delimiter 或 b'\\' 或 (非lenient下的) 换行符
+    if i >= data.length() {
+      // 防御性检查：如果索引越界，说明数据不足
+      return None
+    }
+
     match data[i] {
       c if c == delimiter =>
+        // 遇到定界符，字符串结束
         return Some(
           (
             i + 1,
             Ok(TokenOrLineJump::Token(N3Token::String(string.to_string()))),
           ),
         )
-      b'\'' => {
-        let (additional, c) = self.recognize_escape(data[i:], i, true).unwrap()
-        i += additional + 1
-        match c {
-          Ok(c) => string.write_char(c)
-          Err(e) => {
-            let end = memchr(delimiter, data[i:]).unwrap()
-            return Some((i + end + 1, Err(e)))
+      b'\\' => {
+        // 遇到反斜杠，处理转义序列
+        let escape_result = self.recognize_escape(data[i:], i, true)
+
+        match escape_result {
+          Some((additional, c_result)) => {
+            i += additional + 1 // 移动过 \ 和转义字符
+            if i > data.length() {
+              return None // 数据不足
+            }
+            match c_result {
+              Ok(c) => string.write_char(c)
+              Err(e) => {
+                // 转义错误：找到结束符并返回错误
+                let end_opt = memchr(delimiter, data[i:])
+                let final_end = match end_opt {
+                  Some(e) => i + e + 1
+                  None => data.length() // 或者返回 None
+                }
+                return Some((final_end, Err(e)))
+              }
+            }
           }
+          None =>
+            // 需要更多数据来识别转义序列
+            return None
         }
       }
       b'\n' | b'\r' => {
-        let end = memchr(delimiter, data[i:]).unwrap()
+        // 遇到未转义的换行符
+        let end_opt = memchr(delimiter, data[i:])
+        let final_end = match end_opt {
+          Some(e) => i + e + 1
+          None => i + 1
+        }
         return Some(
           (
-            i + end + 1,
+            final_end,
             Err(
               TokenRecognizerError::InvalidErrMessage(
                 data[i:i + 1],
                 Range::Range(i, i + 1),
-                "Line jumps are not allowed in string literals, use \n",
+                "Line jumps are not allowed in string literals, use \\n",
               ),
             ),
           ),
         )
       }
-      _ => abort("Unexpected character in string literal")
+      _ =>
+        // 理论上不会到达这里，除非 memchr2 逻辑有误
+        // 为了安全，返回错误或 abort
+        println("Unexpected char in string parsing: \{data[i]}")
     }
   }
 }
@@ -1138,6 +1225,8 @@ fn NxLexer::recognize_digits(data : BytesView, is_ending : Bool) -> Int? {
 }
 
 ///|
+
+///|
 fn NxLexer::recognize_escape(
   self : NxLexer,
   data : BytesView,
@@ -1146,16 +1235,16 @@ fn NxLexer::recognize_escape(
 ) -> (Int, Result[Char, TokenRecognizerError])? {
   match data.get(1) {
     Some(b'u') =>
-      match NxLexer::recognize_hex_char(data[2:].to_owned(), 4, 'u', position) {
-        Ok(c) => Some((5, Ok(c.unwrap())))
+      // 处理 \uXXXX
+      match NxLexer::recognize_hex_char(data[2:], 4, 'u', position) {
+        Ok(Some(c)) => Some((5, Ok(c)))
+        Ok(None) => None // 数据不足
         Err(e) =>
           if self.lenient {
-            match
-              NxLexer::recognize_utf16_surrogate_pair(
-                data[2:].to_owned(),
-                position,
-              ) {
-              Ok(c) => Some((11, Ok(c.unwrap())))
+            // 尝试处理 UTF-16 代理对 \uXXXX\uXXXX
+            match NxLexer::recognize_utf16_surrogate_pair(data[2:], position) {
+              Ok(Some(c)) => Some((11, Ok(c)))
+              Ok(None) => None
               Err(e) => Some((5, Err(e)))
             }
           } else {
@@ -1163,18 +1252,22 @@ fn NxLexer::recognize_escape(
           }
       }
     Some(b'U') =>
-      match NxLexer::recognize_hex_char(data[2:].to_owned(), 8, 'U', position) {
-        Ok(c) => Some((9, Ok(c.unwrap())))
+      // 处理 \UXXXXXXXX
+      match NxLexer::recognize_hex_char(data[2:], 8, 'U', position) {
+        Ok(Some(c)) => Some((9, Ok(c)))
+        Ok(None) => None
         Err(e) => Some((9, Err(e)))
       }
     Some(b't') if with_echar => Some((1, Ok('\t')))
-    Some(b'b') if with_echar => Some((1, Ok('\b')))
+    Some(b'b') if with_echar => Some((1, Ok('\u{0008}'))) // \b
     Some(b'n') if with_echar => Some((1, Ok('\n')))
     Some(b'r') if with_echar => Some((1, Ok('\r')))
-    Some(b'f') if with_echar => Some((1, Ok('\f')))
+    Some(b'f') if with_echar => Some((1, Ok('\u{000C}'))) // \f
     Some(b'"') if with_echar => Some((1, Ok('"')))
     Some(b'\'') if with_echar => Some((1, Ok('\'')))
-    _ =>
+    Some(b'\\') if with_echar => Some((1, Ok('\\')))
+    Some(c) =>
+      // 未知转义字符
       Some(
         (
           1,
@@ -1182,11 +1275,12 @@ fn NxLexer::recognize_escape(
             TokenRecognizerError::InvalidErrMessage(
               data[1:2],
               Range::Range(position + 1, position + 2),
-              "Unexpected escape character",
+              "Unexpected escape character \{c}",
             ),
           ),
         ),
       )
+    None => None // 数据不足
   }
 }
 // fn NxLexer::recognize_escape(self : NxLexer, data : BytesView, position : Int, with_echar : Bool) -> Option[(Int, Result[Char, TokenRecognizerError])] {
@@ -1222,7 +1316,7 @@ fn NxLexer::recognize_escape(
 
 ///|
 fn NxLexer::recognize_hex_char(
-  data : Bytes,
+  data : BytesView,
   len : Int,
   escape_char : Char,
   position : Int,
@@ -1262,7 +1356,7 @@ fn NxLexer::recognize_hex_char(
 
 ///|
 fn NxLexer::recognize_utf16_surrogate_pair(
-  data : Bytes,
+  data : BytesView,
   position : Int,
 ) -> Result[Char?, TokenRecognizerError] {
   // 检查长度是否足够容纳 \uXXXX\uXXXX (2 + 4 + 2 + 4 = 12 个字符/字节)

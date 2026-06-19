@@ -256,31 +256,34 @@ pub fn[TR : TokenRecognizer] Lexer::parse_next(
   self : Lexer[TR],
   options : LexerOptions?,
 ) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError]? {
-  if self.skip_whitespaces_and_comments().unwrap() {
-    self.previous_position = self.position
-    return Some(Ok(TokenOrLineJump::LineJump))
+  match self.skip_whitespaces_and_comments() {
+    Some(true) => {
+      self.previous_position = self.position
+      return Some(Ok(TokenOrLineJump::LineJump))
+    }
+    Some(false) => () // 继续执行后续逻辑
+    None => return None // 需要更多数据
   }
   self.previous_position = self.position
 
   // 获取当前剩余数据的视图
-  let view : BytesView = array_to_view(
-    self.data[self.position.buffer_offset:].to_owned(),
-  )
+  let view  =array_to_view(self.data[self.position.buffer_offset:].to_owned())
+  
 
   // 修复点：使用 match 完整处理 Option 返回值
   match
-    self.parser.recognize_next_token(view.to_owned(), self.is_ending, options) {
+    self.parser.recognize_next_token(view, self.is_ending, options) {
     Some((consumed, result)) => {
       // debug_assert(consumed > 0, "The lexer must consume at least one byte each time")
       // debug_assert(self.position.buffer_offset + consumed <= self.data.length(), "The lexer tried to consumed {consumed} bytes but only {} bytes are readable", self.data.length() - self.position.buffer_offset)
 
-      let consumed_view : BytesView = array_to_view(
+      let consumed_view  = 
         self.data[self.position.buffer_offset:self.position.buffer_offset +
-        consumed].to_owned(),
-      )
+        consumed]
+      
 
       let (new_line_jumps, new_line_start) = Lexer::find_number_of_line_jumps_and_start_of_last_line(
-        consumed_view.to_owned(),
+        consumed_view,
       )
       if new_line_jumps > 0 {
         self.position.line_start_buffer_offset = self.position.buffer_offset +
@@ -326,10 +329,9 @@ pub fn[TR] Lexer::location_from_buffer_offset_range(
   offset_range : Range,
 ) -> TextRange {
   let start_offset = self.previous_position.buffer_offset + offset_range.start
-  let view = array_to_view(
+  let view = 
     self.data[self.previous_position.buffer_offset:self.previous_position.buffer_offset +
-    start_offset].to_owned(),
-  )
+    start_offset]
   let (start_extra_line_jumps, start_line_start) = Lexer::find_number_of_line_jumps_and_start_of_last_line(
     view,
   )
@@ -339,10 +341,10 @@ pub fn[TR] Lexer::location_from_buffer_offset_range(
     self.previous_position.line_start_buffer_offset
   }
   let end_offset = self.previous_position.buffer_offset + offset_range.end
-  let view = array_to_view(
+  let view = 
     self.data[self.previous_position.buffer_offset:self.previous_position.buffer_offset +
-    end_offset].to_owned(),
-  )
+    end_offset]
+  
   let (end_extra_line_jumps, end_line_start) = Lexer::find_number_of_line_jumps_and_start_of_last_line(
     view,
   )
@@ -356,14 +358,14 @@ pub fn[TR] Lexer::location_from_buffer_offset_range(
     start: TextPosition::TextPosition(
       self.previous_position.global_line + start_extra_line_jumps,
       Lexer::column_from_bytes(
-        array_to_view(self.data[start_line_start:start_offset].to_owned()),
+        self.data[start_line_start:start_offset],
       ),
       self.previous_position.global_offset + Int::to_uint64(offset_range.start),
     ),
     end: TextPosition::TextPosition(
       self.previous_position.global_line + end_extra_line_jumps,
       Lexer::column_from_bytes(
-        array_to_view(self.data[end_line_start:end_offset].to_owned()),
+        self.data[end_line_start:end_offset],
       ),
       self.previous_position.global_offset + Int::to_uint64(offset_range.end),
     ),
@@ -391,9 +393,9 @@ fn[TR] Lexer::text_position_from_position(
   self : Lexer[TR],
   position : Position,
 ) -> TextPosition {
-  let view = array_to_view(
-    self.data[position.line_start_buffer_offset:position.buffer_offset].to_owned(),
-  )
+  let view = 
+    self.data[position.line_start_buffer_offset:position.buffer_offset]
+  
   {
     line: position.global_line,
     column: Lexer::column_from_bytes(view),
@@ -414,6 +416,100 @@ pub fn[TR] Lexer::is_end(self : Lexer[TR]) -> Bool {
 }
 
 ///|
+// fn[TR] Lexer::skip_whitespaces(self : Lexer[TR]) -> Bool? {
+//   let data = self.data
+//   let mut pos = self.position.buffer_offset
+//   let len = data.length()
+
+//   while pos < len {
+//     match data[pos] {
+//       b' ' | b'\t' => pos += 1
+//       b'\n' => {
+//         // 处理 LF 或 CRLF
+//         let incr = if pos + 1 < len && data[pos + 1] == b'\r' { 2 } else { 1 }
+//         self.position.buffer_offset = pos + incr
+//         self.position.line_start_buffer_offset = self.position.buffer_offset
+//         self.position.global_offset += incr.to_uint64()
+//         self.position.global_line += 1
+//         return Some(true)
+//       }
+//       b'\r' => {
+//         pos += 1
+//         self.position.buffer_offset = pos
+//         self.position.line_start_buffer_offset = pos
+//         self.position.global_offset += 1
+//         self.position.global_line += 1
+//         return Some(true)
+//       }
+//       _ => {
+//         self.position.buffer_offset = pos
+//         return Some(false)
+//       }
+//     }
+//   }
+
+//   self.position.buffer_offset = pos
+//   if self.is_ending {
+//     Some(false)
+//   } else {
+//     None
+//   }
+// }
+
+///|
+// fn[TR] Lexer::skip_whitespaces_and_comments(self : Lexer[TR]) -> Bool? {
+//   // 首先跳过空白字符
+//   match self.skip_whitespaces() {
+//     Some(true) => return Some(true)
+//     Some(false) => ()
+//     None => return None
+//   }
+
+//   // 检查是否有行注释
+//   match self.line_comment_start {
+//     Some(comment_start) => {
+//       let buf = array_to_view(
+//         self.data[self.position.buffer_offset:].to_owned(),
+//       )
+
+//       // 检查是否以注释开始
+//       if !buf.has_prefix(comment_start) {
+//         // 不是注释，但可能是不完整的注释开始
+//         if !self.is_ending && buf.length() < comment_start.length() {
+//           return None
+//         }
+//         return Some(false)
+//       }
+
+//       // 查找注释结束位置（换行符）
+//       let start_len = comment_start.length()
+//       let end_pos = Lexer::find_line_end(buf, start_len)
+
+//       match end_pos {
+//         Some(end) => {
+//           let comment_size = end + 1
+//           self.position.buffer_offset += comment_size
+//           self.position.line_start_buffer_offset = self.position.buffer_offset
+//           self.position.global_offset += comment_size.to_uint64()
+//           self.position.global_line += 1
+//           Some(true)
+//         }
+//         None =>
+//           if self.is_ending {
+//             self.position.buffer_offset = self.data.length()
+//             Some(false)
+//           } else {
+//             None
+//           }
+//       }
+//     }
+//     None => return Some(false)
+//   }
+// }
+
+///|
+
+///|
 fn[TR] Lexer::skip_whitespaces(self : Lexer[TR]) -> Bool? {
   let data = self.data
   let mut pos = self.position.buffer_offset
@@ -422,19 +518,28 @@ fn[TR] Lexer::skip_whitespaces(self : Lexer[TR]) -> Bool? {
   while pos < len {
     match data[pos] {
       b' ' | b'\t' => pos += 1
-      b'\n' => {
-        // 处理 LF 或 CRLF
-        let incr = if pos + 1 < len && data[pos + 1] == b'\r' { 2 } else { 1 }
+      b'\r' => {
+        // 处理 CR 或 CRLF
+        let mut incr = 1
+        if pos + 1 < len {
+          if data[pos + 1] == b'\n' {
+            incr = 2
+          }
+        } else if !self.is_ending {
+          // 如果后面可能还有数据，需要等待
+          return None
+        }
+
         self.position.buffer_offset = pos + incr
         self.position.line_start_buffer_offset = self.position.buffer_offset
         self.position.global_offset += incr.to_uint64()
         self.position.global_line += 1
         return Some(true)
       }
-      b'\r' => {
-        pos += 1
-        self.position.buffer_offset = pos
-        self.position.line_start_buffer_offset = pos
+      b'\n' => {
+        // 处理 LF
+        self.position.buffer_offset = pos + 1
+        self.position.line_start_buffer_offset = self.position.buffer_offset
         self.position.global_offset += 1
         self.position.global_line += 1
         return Some(true)
@@ -466,12 +571,12 @@ fn[TR] Lexer::skip_whitespaces_and_comments(self : Lexer[TR]) -> Bool? {
   // 检查是否有行注释
   match self.line_comment_start {
     Some(comment_start) => {
-      let buf = array_to_view(
-        self.data[self.position.buffer_offset:].to_owned(),
-      )
+      let buf = 
+        self.data[self.position.buffer_offset:]
+      
 
       // 检查是否以注释开始
-      if !buf.has_prefix(comment_start) {
+      if !Bytes::from_array(buf).has_prefix(comment_start) {
         // 不是注释，但可能是不完整的注释开始
         if !self.is_ending && buf.length() < comment_start.length() {
           return None
@@ -506,7 +611,7 @@ fn[TR] Lexer::skip_whitespaces_and_comments(self : Lexer[TR]) -> Bool? {
 }
 
 ///|
-fn Lexer::find_line_end(buf : Bytes, start : Int) -> Int? {
+fn Lexer::find_line_end(buf : ArrayView[Byte], start : Int) -> Int? {
   let mut i = start
   let len = buf.length()
 
@@ -529,7 +634,7 @@ fn Lexer::find_line_end(buf : Bytes, start : Int) -> Int? {
 
 ///|
 fn Lexer::find_number_of_line_jumps_and_start_of_last_line(
-  bytes : Bytes,
+  bytes : ArrayView[Byte],
 ) -> (UInt64, Int) {
   let mut jumps : UInt64 = 0
   let mut last_start : Int = 0
@@ -560,7 +665,7 @@ fn Lexer::find_number_of_line_jumps_and_start_of_last_line(
 }
 
 ///|
-fn Lexer::column_from_bytes(bytes : Bytes) -> UInt64 {
+fn Lexer::column_from_bytes(bytes : ArrayView[Byte]) -> UInt64 {
   let mut count : UInt64 = 0
   let mut i : Int = 0
   let len = bytes.length()

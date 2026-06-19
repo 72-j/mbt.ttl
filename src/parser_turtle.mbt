@@ -157,7 +157,7 @@ pub async fn[LR : TokenRecognizer] AsyncReaderTurtleParser::next(
         LexOutput::N3Quad(n3quad) => n3quad
       }
     })
-    .map_err(fn(_e) { TurtleError::InvalidEscapeSequence })
+    .map_err(fn(e) { TurtleError::InvalidCharacter(e.message()) })
   })
 }
 

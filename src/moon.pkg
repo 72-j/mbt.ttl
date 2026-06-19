@@ -6,7 +6,7 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/async/io",
   "moonbitlang/async",
-  // "moonbitlang/async/fs",
+  "moonbitlang/async/fs",
   "tonyfettes/utf8",
   "brickfrog/tempo",
   // "justjavac/itoa",

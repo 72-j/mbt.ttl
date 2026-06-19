@@ -397,3 +397,17 @@ test "literalref to_string" {
   assert_true(s.has_prefix("\""))
   assert_true(s.has_suffix("\""))
 }
+
+///|
+test "serialize literal with all punctuation marks" {
+  // 测试从对象创建字面量并序列化回 N-Triples 格式
+  let value = " !\"#$%&():;<=>?@[]^_`{|}~"
+  let lit = LiteralRef::new_simple_literal(value)
+
+  let serialized = lit.to_string()
+
+  // 序列化结果应该包含转义的双引号
+  let expected_serialized = "\" !\\\"#$%&():;<=>?@[]^_`{|}~\""
+  debug(serialized)
+  assert_eq(serialized, expected_serialized)
+}

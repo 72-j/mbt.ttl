@@ -153,7 +153,7 @@ pub fn[LR : TokenRecognizer] LowLevelNQuadsParser::parse_next(
           }
       }
     })
-    .map_err(fn(_e) { TurtleError::InvalidEscapeSequence })
+    .map_err(fn(e) { TurtleError::InvalidCharacter(e.message()) }) // 根据实际错误类型调整
   })
 }
 

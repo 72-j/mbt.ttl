@@ -51,7 +51,7 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
         Err(
           TurtleError::InvalidToken(
             self.lexer.last_token_location(),
-            "TOKEN is \{self.lexer.last_token_source()} is not allowed here",
+            "\{self.lexer.last_token_source()} TOKEN is not allowed here",
           ),
         ),
       )
@@ -73,13 +73,13 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
           })
           continue
         }
-        Err(_e) => {
+        Err(e) => {
           self.state = self.state.map(fn(s) { RR::error_recovery_state(s) })
           return Some(
             Err(
               TurtleError::InvalidToken(
                 self.lexer.last_token_location(),
-                "TOKEN is \{self.lexer.last_token_source()} is not allowed here",
+                "\{self.lexer.last_token_source()} \{e.message()} TOKEN is not allowed here.",
               ),
             ),
           )
@@ -140,6 +140,28 @@ pub struct ReaderIterator[TR, RR] {
 }
 
 ///|
+pub async fn[RR : RuleRecognizer] ReaderIterator::next(
+  self : ReaderIterator[NxLexer, RR],
+) -> Result[LexOutput, LexerError]? {
+  while !self.parser.is_end() {
+    if self.parser.parse_next() is Some(result) {
+      debug("Parser::parse_next: ")
+      return Some(
+        result.map_err(e => {
+          LexerError::SyntaxError("Syntax Error: \{e.to_string()}")
+        }),
+      )
+    }
+    if self.parser.lexer.extend_from_reader(self.reader) is Err(e) {
+      return Some(
+        Err(LexerError::IoReadError("IO Read Error: \{e.to_string()}")),
+      )
+    }
+  }
+  None
+}
+
+///|
 pub struct AsyncReaderIterator[TR, RR] {
   reader : &Reader
   parser : Parser[TR, RR]
@@ -170,4 +192,23 @@ pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::nex
 ///|
 pub(all) struct SliceIterator[TR, RR] {
   parser : Parser[TR, RR]
+}
+
+///|
+pub fn[TR : TokenRecognizer, RR : RuleRecognizer] SliceIterator::next(
+  self : SliceIterator[TR, RR],
+) -> Result[LexOutput, LexerError]? {
+  while !self.parser.is_end() {
+    if self.parser.parse_next() is Some(result) {
+      // 修复：将 TurtleError 转换为 String
+      return Some(
+        result.map_err(e => {
+          LexerError::SyntaxError("Syntax Error: \{e.to_string()}")
+        }),
+      )
+    }
+    // 对于 slice 迭代器，数据已经在 parser 中，不需要额外读取
+    break
+  }
+  None
 }

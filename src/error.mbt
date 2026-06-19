@@ -345,7 +345,7 @@ pub impl ErrOut for TurtleError with fn message(self : TurtleError) -> String {
     TurtleError::TurtleSyntaxError(msg, _) => msg
     TurtleError::InvalidEscapeSequence => "Invalid escape sequence"
     TurtleError::InvalidCharacter(c) => "Invalid character: " + c
-    TurtleError::InvalidToken(_, token) => "Invalid token: " + token
+    TurtleError::InvalidToken(_, token) => token
   }
 }
 

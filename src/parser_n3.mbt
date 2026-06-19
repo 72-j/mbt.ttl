@@ -276,7 +276,7 @@ pub async fn[TR : TokenRecognizer] AsyncReaderN3Parser::next(
         LexOutput::N3Quad(n3quad) => n3quad
       }
     })
-    .map_err(fn(_e) { TurtleError::InvalidEscapeSequence }) // 根据实际错误类型调整
+    .map_err(fn(e) { TurtleError::InvalidCharacter(e.message()) }) // 根据实际错误类型调整
   })
 }
 
