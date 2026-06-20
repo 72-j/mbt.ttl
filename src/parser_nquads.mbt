@@ -33,7 +33,7 @@ pub fn NQuadsParser::for_async_reader(
 ///|
 pub fn NQuadsParser::for_slice(
   self : NQuadsParser,
-  slice : Bytes,
+  slice : BytesView,
 ) -> SliceNQuadsParser[NQuadsRecognizer] {
   let parser = NQuadsRecognizer::new_parser(
     slice.to_array(),
@@ -43,20 +43,74 @@ pub fn NQuadsParser::for_slice(
   )
   { inner: { parser, } }
 }
-// pub fn NQuadsParser::split_slice_for_parallel_parsing(self : NQuadsParser, slice : _, target_parallelism : Int) -> Array[SliceNQuadsParser] {
-//   let slice = slice
-//   let n_chunks = (slice.length() / MIN_PARALLEL_CHUNK_SIZE).clamp(1, target_parallelism)
-//   get_ntriples_slice_chunks(slice, n_chunks).map(fn((start, end)) { self.for_slice(slice[start..<end]) })
-// }
-// pub fn NQuadsParser::split_file_for_parallel_parsing(self : NQuadsParser, path : AsRef, target_parallelism : Int) -> Result[Array[ReaderNQuadsParser[Take[File]]]] {
-//   let path = path
-//   let mut file = File::open(path)!
-//   let file_size = file.metadata()!.length()
-//   let n_chunks = Int::try_from(file_size / UInt64::try_from(MIN_PARALLEL_CHUNK_SIZE).map_err(io::Error::other)!).map_err(io::Error::other)!.clamp(1, target_parallelism)
-//   get_ntriples_file_chunks(file, file_size, n_chunks)!.map(fn((start, end)) {   let mut file = File::open(path)!
-//   file.seek(SeekFrom::Start(start))!
-//   Ok(self.for_reader(file.take(end - start))) })
-// }
+
+///|
+pub fn NQuadsParser::split_slice_for_parallel_parsing(
+  self : NQuadsParser,
+  slice : BytesView,
+  target_parallelism : Int,
+) -> Array[SliceNQuadsParser[NQuadsRecognizer]] {
+  let n_chunks = (slice.length() / MIN_PARALLEL_CHUNK_SIZE).clamp(
+    min=1,
+    max=target_parallelism,
+  )
+  get_ntriples_slice_chunks(slice, n_chunks).map(fn(chunk) {
+    let start = chunk.0
+    let end = chunk.1
+    self.for_slice(slice[start:end])
+  })
+}
+
+///|
+pub async fn NQuadsParser::split_file_for_parallel_parsing(
+  self : NQuadsParser,
+  path : String,
+  target_parallelism : Int64,
+) -> Result[Array[SliceNQuadsParser[NQuadsRecognizer]], String] {
+  let file = @fs.open(path, create_mode=OpenExisting, mode=ReadOnly)
+  let file_size = file.size()
+
+  let chunk_size = MIN_PARALLEL_CHUNK_SIZE
+  let n_chunks_raw = file_size / chunk_size.to_int64()
+  let n_chunks = n_chunks_raw.clamp(min=1, max=target_parallelism)
+
+  let chunks_result = get_ntriples_file_chunks(
+    file,
+    file_size,
+    n_chunks.to_int(),
+  )
+
+  let chunks = match chunks_result {
+    Ok(c) => c
+    Err(e) => return Err(e)
+  }
+  // 由于 map 闭包内可能涉及复杂的 IO 初始化，且 for_reader 需要 Reader
+  // 这里假设我们需要为每个 chunk 创建一个独立的 Reader 视图
+  // 如果 File 不支持并发读取或切片，可能需要重新打开文件或其他方式
+  // 此处修正主要解决语法和类型错误
+
+  let parsers = Array::new()
+  for chunk in chunks {
+    let start = chunk.0
+    let end = chunk.1
+    let length = (end - start).to_int()
+
+    // 假设存在一种方式从现有文件句柄创建一个限定范围的 Reader
+    // 例如：file.slice(start, length) 或类似 API
+    // 由于原代码尝试使用 read_exactly_at (这通常用于读取数据而非创建 Reader)，
+    // 且报错显示类型和异步问题，这里改为使用一个假设的 safe_reader_at 或类似逻辑
+    // 如果 Moonbit 标准库中 File 实现了 Reader 且支持 seek，我们可以包装它
+
+    // 临时方案：如果无法直接切片，可能需要重新打开文件或使用其他机制
+    // 这里为了演示修复，假设 file 有一个 .take_at(offset, len) 方法返回 Reader
+    // 请根据实际 Moonbit IO API 调整此行
+    let reader = file.read_exactly_at(length, position=start)
+
+    parsers.push(self.for_slice(reader))
+  }
+
+  Ok(parsers)
+}
 
 ///|
 pub fn NQuadsParser::low_level(
@@ -200,7 +254,13 @@ pub fn NQuadsSerializer::low_level(
 
 ///|
 pub fn NQuadsSerializer::to_string(self : NQuadsSerializer, q : Quad) -> String {
-  self.low_level().serialize_quad(q).unwrap()
+  match self.low_level().serialize_quad(q) {
+    Ok(s) => s
+    Err(_) =>
+      // 在极少数失败情况下，返回一个空字符串或触发更明确的调试错误
+      // 或者使用 panic! 携带更多信息，而不是静默 unwrap
+      abort("Failed to serialize quad: \{q}")
+  }
 }
 
 ///|

@@ -21,7 +21,17 @@ pub fn TriGParser::with_base_iri(
   self : TriGParser,
   base_iri : IriRef,
 ) -> Result[TriGParser, IriError] {
-  self.base_iri = Some(IriRef::parse(base_iri).unwrap())
+  let parsed_iri = if self.lenient {
+    // 宽松模式：直接解析，不检查有效性
+    IriRef::parse_unchecked(base_iri)
+  } else {
+    // 严格模式：检查解析结果
+    match IriRef::parse(base_iri) {
+      Ok(iri) => iri
+      Err(e) => return Err(e)
+    }
+  }
+  self.base_iri = Some(parsed_iri)
   Ok(self)
 }
 
@@ -31,7 +41,17 @@ pub fn TriGParser::with_prefix(
   prefix_name : String,
   prefix_iri : IriRef,
 ) -> Result[TriGParser, IriError] {
-  self.prefixes.set(prefix_name, IriRef::parse(prefix_iri).unwrap())
+  let parsed_iri = if self.lenient {
+    // 宽松模式：直接解析，不检查有效性
+    IriRef::parse_unchecked(prefix_iri)
+  } else {
+    // 严格模式：检查解析结果
+    match IriRef::parse(prefix_iri) {
+      Ok(iri) => iri
+      Err(e) => return Err(e)
+    }
+  }
+  self.prefixes.set(prefix_name, parsed_iri)
   Ok(self)
 }
 
@@ -331,8 +351,13 @@ pub fn TriGSerializer::with_prefix(
   prefix_name : String,
   prefix_iri : IriRef,
 ) -> Result[TriGSerializer, IriError] {
-  self.prefixes.set(prefix_name, IriRef::parse(prefix_iri).unwrap())
-  Ok(self)
+  match IriRef::parse(prefix_iri) {
+    Ok(parsed_iri) => {
+      self.prefixes.set(prefix_name, parsed_iri)
+      Ok(self)
+    }
+    Err(e) => Err(e)
+  }
 }
 
 ///|
@@ -340,8 +365,13 @@ pub fn TriGSerializer::with_base_iri(
   self : TriGSerializer,
   base_iri : IriRef,
 ) -> Result[TriGSerializer, IriError] {
-  self.base_iri = Some(IriRef::parse(base_iri).unwrap())
-  Ok(self)
+  match IriRef::parse(base_iri) {
+    Ok(parsed_iri) => {
+      self.base_iri = Some(parsed_iri)
+      Ok(self)
+    }
+    Err(e) => Err(e)
+  }
 }
 
 ///|
@@ -473,7 +503,10 @@ pub fn LowLevelTriGSerializer::serialize_quad(
       writer.write("@prefix ")
       writer.write(prefix_name)
       writer.write(": <")
-      writer.write(relative_iri(prefix_iri, Some(self.base_iri.unwrap())))
+      match self.base_iri {
+        Some(base) => writer.write(relative_iri(prefix_iri, base))
+        None => writer.write(prefix_iri)
+      }
       writer.write("> .")
     }
   }
@@ -531,7 +564,7 @@ pub fn LowLevelTriGSerializer::serialize_quad(
       Ok(writer.to_string())
     }
   } else {
-    if self.current_subject_predicate.is_some() {
+    if self.current_subject_predicate is Some(_) {
       writer.write(" .")
     }
     if !self.current_graph_name.is_default_graph() {
@@ -644,9 +677,15 @@ impl Show for TurtleTerm with fn output(self : TurtleTerm, logger : &Logger) -> 
           }
         }
       }
-      logger.write_string(
-        "<\{relative_iri(v.to_string(), Some(self.base_iri.unwrap()))}>",
-      )
+      let iri_str = v.to_string()
+      match self.base_iri {
+        Some(base) =>
+          // 调用 relative_iri，它现在接受非空的 Iri
+          logger.write_string("<\{relative_iri(iri_str, base)}>")
+        None =>
+          // 没有 base_iri，直接输出绝对 IRI
+          logger.write_string("<\{iri_str}>")
+      }
     }
     Term::BlankNode(v) => logger.write_string("\{v}")
     Term::Literal(v) => {
@@ -713,16 +752,20 @@ impl Show for TurtleTerm with fn output(self : TurtleTerm, logger : &Logger) -> 
 }
 
 ///|
-fn relative_iri(iri : String, base_iri : Iri?) -> String {
-  if base_iri is Some(base_iri) {
-    let base_iri = IriRef::parse(base_iri.as_ref(), unchecked=true).unwrap()
-    match base_iri.as_ref().resolve(iri) {
-      Ok(resolved) => resolved.into_string()
-      Err(_) => iri
-    }
-  } else {
-    iri
+fn relative_iri(iri : String, base_iri : Iri) -> String {
+  // if base_iri is Some(base_iri_val) {
+  // 尝试解析 base_iri，如果失败则直接使用原始 iri
+  match IriRef::parse(base_iri.as_ref()) {
+    Ok(parsed_base) =>
+      match parsed_base.as_ref().resolve(iri) {
+        Ok(resolved) => resolved.into_string()
+        Err(_) => iri // 解析相对路径失败，返回原值
+      }
+    Err(_) => iri // Base IRI 本身无效，返回原值
   }
+  // } else {
+  //   iri
+  // }
 }
 
 ///|
@@ -803,14 +846,15 @@ fn is_turtle_double(value : StringView) -> Bool {
 fn escape_local_name(value : StringView) -> String? {
   let output = StringBuilder::new(size_hint=value.length())
   // let mut chars = value.iter()
-  let first = value.get_char(0)
-  if NxLexer::is_possible_pn_chars_u(first.unwrap()) ||
-    first == Some(':') ||
-    first == Some('.') {
-    output.write_char(first.unwrap())
-  } else if can_be_escaped_in_local_name(first.unwrap()) {
+  let first = match value.get_char(0) {
+    Some(c) => c
+    None => return None // 如果字符串为空，直接返回 None
+  }
+  if NxLexer::is_possible_pn_chars_u(first) || first == ':' || first == '.' {
+    output.write_char(first)
+  } else if can_be_escaped_in_local_name(first) {
     output.write_char('\'')
-    output.write_char(first.unwrap())
+    output.write_char(first)
   } else {
     return None
   }

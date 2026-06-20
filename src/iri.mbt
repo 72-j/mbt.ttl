@@ -189,7 +189,25 @@ pub fn IriRef::peek_match_range(
 }
 
 ///|
-pub fn IriRef::parse(
+/// 严格解析 IRI。如果格式不符合规范，返回错误。
+pub fn IriRef::parse(self : IriRef) -> Result[Iri, IriError] {
+  self.parse_impl(unchecked=false)
+}
+
+///|
+/// 宽松解析 IRI。忽略非致命错误，尽力解析并返回结果。
+pub fn IriRef::parse_unchecked(self : IriRef) -> Iri {
+  match self.parse_impl(unchecked=true) {
+    Ok(iri) => iri
+    Err(_) =>
+      // 在 unchecked 模式下，parse_impl 理论上不应返回 Err，
+      // 但为了类型安全，如果发生意外错误，返回一个包含原始字符串的默认 Iri
+      self.into_owned()
+  }
+}
+
+///|
+fn IriRef::parse_impl(
   self : IriRef,
   unchecked? : Bool = false,
 ) -> Result[Iri, IriError] {
@@ -336,8 +354,10 @@ pub fn IriRef::parse_authority(self : IriRef) -> Result[Unit, IriError] {
   }
 
   // 解析 host
-  self.parse_host().unwrap()
-
+  match self.parse_host() {
+    Ok(_) => ()
+    Err(e) => return Err(e)
+  }
   // 解析 port (可选)
   if self.peek_match([':']) {
     self.val.state.pos += 1
@@ -511,9 +531,17 @@ pub fn IriRef::parse_percent_encoded(self : IriRef) -> Result[Char, IriError] {
 
   self.val.state.pos += 1 // 跳过 '%'
 
-  let c1 = self.peek().unwrap()
-  let c2 = self.peek_next().unwrap()
+  // 安全地获取第一个十六进制字符
+  let c1 = match self.peek() {
+    Some(c) => c
+    None => return Err(IriError::InvalidPercentEncoding(self.val.state.pos))
+  }
 
+  // 安全地获取第二个十六进制字符
+  let c2 = match self.peek_next() {
+    Some(c) => c
+    None => return Err(IriError::InvalidPercentEncoding(self.val.state.pos))
+  }
   if c1.is_ascii_hexdigit() && c2.is_ascii_hexdigit() {
     // 验证百分比编码，但不解码（保持原始形式）
     self.val.state.pos += 2 // 跳过两个十六进制字符
@@ -619,11 +647,7 @@ pub fn IriRef::resolve(
   // let ref_parser = IriRef::of_ref(ref_parser)
   // 注意：parse 会修改内部 state，所以我们需要一个解析后的副本或者确保后续只读
   // 由于 parse 返回 Result[Iri, ...]，我们直接使用解析后的对象
-  let parsed_ref = match ref_parser.parse(unchecked=false) {
-    Ok(iri) => iri
-    Err(e) => return Err(e)
-  }
-
+  let parsed_ref = ref_parser.parse_unchecked()
   // 2. 如果参考 IRI 是绝对的，直接返回它
   // 利用 trait 方法 is_absolute
   if parsed_ref.is_absolute() {
@@ -634,7 +658,7 @@ pub fn IriRef::resolve(
   // 注意：self 可能尚未解析，或者状态已脏。为了安全，重新解析 self
   let base_parser = Iri::Iri(self.val.base_iri).as_ref()
   // let base_parser = IriRef::of_ref(base_parser)
-  let parsed_base = match base_parser.parse(unchecked=false) {
+  let parsed_base = match base_parser.parse() {
     Ok(iri) => iri
     Err(e) => return Err(e)
   }
@@ -804,7 +828,7 @@ pub fn IriRef::resolve(
   // let final_parser = IriRef::of_ref(final_parser)
   // 再次解析以确保内部状态一致，或者直接返回未解析但字符串正确的对象？
   // 通常 resolve 应该返回一个有效的 Iri 对象，所以再次 parse 是安全的
-  final_parser.parse(unchecked=false)
+  final_parser.parse()
 }
 
 ///|
@@ -817,10 +841,7 @@ pub fn IriRef::resolve_unchecked(
   let ref_parser = Iri::Iri(ref_iri_str).as_ref()
   // let ref_parser = IriRef::of_ref(ref_parser)
   // 忽略错误，如果解析失败，parsed_ref 将是一个处于初始状态或部分解析状态的对象
-  let parsed_ref = match ref_parser.parse(unchecked=true) {
-    Ok(iri) => iri
-    Err(_) => ref_parser.into_owned() // 使用原始 parser 作为 fallback，其 state.pos 可能为 0
-  }
+  let parsed_ref = ref_parser.parse_unchecked()
 
   // 2. 如果参考 IRI 是绝对的，直接返回它 (Unchecked)
   // 注意：is_absolute 依赖于 scheme 的解析。如果 parse 失败，scheme 可能为空。
@@ -831,10 +852,7 @@ pub fn IriRef::resolve_unchecked(
   // 3. 解析 Base IRI (当前 self) - Unchecked
   let base_parser = Iri::Iri(self.val.base_iri).as_ref()
   // let base_parser = IriRef::of_ref(base_parser)
-  let parsed_base = match base_parser.parse(unchecked=true) {
-    Ok(iri) => iri
-    Err(_) => base_parser.into_owned()
-  }
+  let parsed_base = base_parser.parse_unchecked()
 
   // 4. 提取组件
   // 由于是 unchecked，这些方法应该能安全返回 Option[String]，即使内部状态不完全正确
@@ -999,49 +1017,45 @@ pub fn IriRef::resolve_into(
   }
 
   // 计算合并后的路径
-  let merged_path = if parsed_relative.path() is Some(_) &&
-    !parsed_relative.path().unwrap().is_empty() {
-    let rel_path = parsed_relative.path().unwrap()
-    if rel_path.has_prefix("/") {
-      // 如果相对路径以 / 开头，它替换基础路径
-      rel_path
-    } else {
-      // 否则，合并路径
-      // 找到基础路径的最后一个 /
-      let last_slash_idx = base_path.find("/")
-      match last_slash_idx {
-        Some(idx) => {
-          // 保留基础路径直到最后一个 /
-          let base_prefix = base_path[0:idx + 1]
-          "\{base_prefix}\{rel_path}"
-        }
-        None =>
-          // 基础路径没有 /，完全替换？或者根据 RFC 3986，如果基础路径没有 authority，行为可能不同。
-          // 简单实现：如果基础路径不包含 /，则相对路径替换它，除非基础路径为空
-          if base_path.is_empty() {
-            rel_path
-            // 通常如果 base 是 http://example.com/path, rel is "foo", result is http://example.com/foo
-            // 如果 base 是 http://example.com, rel is "foo", result is http://example.com/foo
-            // RFC 3986 Section 5.2.3:
-            // If the base URI has a defined authority component and an empty path,
-            // then return a string consisting of "/" concatenated with the reference's path;
-            // otherwise return a string consisting of the merged path components.
-
-          } else if base_authority is Some(_) && base_path.is_empty() {
-            "/\{rel_path}"
-          } else {
-            // 移除基础路径的最后一段
-            let last_slash_idx_inner = base_path.find("/")
-            match last_slash_idx_inner {
-              Some(idx) => "\{base_path[0 : idx + 1]}\{rel_path}"
-              None => rel_path // 这种情况很少见，除非 base_path 没有 slash
+  let merged_path = match parsed_relative.path() {
+    Some(rel_path) =>
+      if !rel_path.is_empty() {
+        if rel_path.has_prefix("/") {
+          // 如果相对路径以 / 开头，它替换基础路径
+          rel_path
+        } else {
+          // 否则，合并路径
+          // 找到基础路径的最后一个 /
+          let last_slash_idx = base_path.find("/") // 注意：通常找最后一个 slash 用 rfind，原代码用的是 find，这里保持原意或修正为 rfind
+          match last_slash_idx {
+            Some(idx) => {
+              // 保留基础路径直到最后一个 /
+              let base_prefix = base_path[0:idx + 1]
+              "\{base_prefix}\{rel_path}"
             }
+            None =>
+              // 基础路径没有 /，完全替换？或者根据 RFC 3986，如果基础路径没有 authority，行为可能不同。
+              // 简单实现：如果基础路径不包含 /，则相对路径替换它，除非基础路径为空
+              if base_path.is_empty() {
+                rel_path
+              } else if base_authority is Some(_) && base_path.is_empty() {
+                "/\{rel_path}"
+              } else {
+                // 移除基础路径的最后一段
+                // 注意：原代码这里逻辑有点重复，如果 last_slash_idx 是 None，说明没有 /
+                // 如果 base_path 不为空且没有 /，通常意味着 base_path 是一个文件名，应该被替换
+                rel_path
+              }
           }
+        }
+      } else {
+        // 相对引用路径为空字符串，使用基础路径
+        base_path
       }
-    }
-  } else {
-    // 相对引用没有路径，使用基础路径
-    base_path
+    None =>
+
+      // 相对引用没有路径，使用基础路径
+      base_path
   }
 
   // 写入路径
@@ -1120,12 +1134,21 @@ pub fn IriRef::relativize(
     // base: /a/b, target: /a/bc -> 不应该匹配前缀，除非 base 是 /a/b/
 
     // 简单处理：如果 base 以 / 结尾，或者 target 在 base 长度处的字符是 /
-    let is_prefix_valid = base_path.is_empty() ||
-      base_path.has_suffix("/") ||
-      (
-        target_path.length() > base_path.length() &&
-        target_path.get_char(base_path.length()).unwrap() == '/'
-      )
+    let is_base_empty = base_path.is_empty()
+    let is_base_suffix_slash = base_path.has_suffix("/")
+
+    let is_next_char_slash = if target_path.length() > base_path.length() {
+      match target_path.get_char(base_path.length()) {
+        Some(c) => c == '/'
+        None => false // 如果无法获取字符，视为前缀无效
+      }
+    } else {
+      false
+    }
+
+    let is_prefix_valid = is_base_empty ||
+      is_base_suffix_slash ||
+      is_next_char_slash
 
     if is_prefix_valid {
       // 截取剩余部分

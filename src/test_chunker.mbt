@@ -15,19 +15,19 @@ test "ntriples chunker: single line one chunk" {
 }
 
 ///|
-// test "ntriples chunker: two lines two chunks" {
-//   let line1 = "<s1> <p1> <o1> .\n"
-//   let line2 = "<s2> <p2> <o2> .\n"
-//   let content = line1 + line2
-//   let bytes = @utf8.encode(content)
+test "ntriples chunker: two lines two chunks" {
+  let line1 = "<s1> <p1> <o1> .\n"
+  let line2 = "<s2> <p2> <o2> .\n"
+  let content = line1 + line2
+  let bytes = @utf8.encode(content)
 
-//   let chunks = get_ntriples_slice_chunks(bytes[:], 2)
+  let chunks = get_ntriples_slice_chunks(bytes[:], 2)
 
-//   assert_eq(chunks.length(), 2)
-//   let end_pos1 = line1.length()
-//   assert_eq(chunks[0], (0, end_pos1))
-//   assert_eq(chunks[1], (end_pos1, content.length()))
-// }
+  assert_eq(chunks.length(), 2)
+  let end_pos1 = line1.length()
+  assert_eq(chunks[0], (0, end_pos1))
+  assert_eq(chunks[1], (end_pos1, content.length()))
+}
 
 ///|
 test "ntriples chunker: no trailing newline" {
@@ -80,90 +80,70 @@ test "ntriples chunker: split in middle of line extends to next newline" {
 // If get_turtle_slice_chunks requires a parser instance, adjust accordingly.
 
 ///|
-test "turtle chunker: basic split" {
-  let stmt1 = "@prefix ex: <http://example.org/> .\n"
-  let stmt2 = "ex:s ex:p ex:o ."
-  let content = stmt1 + stmt2
-  let bytes = @utf8.encode(content)
-
-  // Assuming get_turtle_slice_chunks takes (BytesView, Int, Parser) or similar
-  // If parser is stateless or created internally, adjust call signature
-  // let parser = TurtleParser::new() 
-  // let chunks = get_turtle_slice_chunks(bytes[:], 2, parser)
-
-  // Placeholder assertion based on expected behavior:
-  // assert_eq(chunks.length(), 2)
-  debug("Turtle test placeholder: implement with actual parser instance")
-}
-
-///|
-test "turtle chunker: no terminator in second half" {
-  let stmt1 = "@prefix ex: <http://example.org/> .\n"
-  let stmt2 = "ex:s ex:p ex:o" // Missing dot
-  let content = stmt1 + stmt2
-  let bytes = @utf8.encode(content)
-
-  // let parser = TurtleParser::new()
-  // let chunks = get_turtle_slice_chunks(bytes[:], 2, parser)
-
-  // If next_terminating_char returns None for the second part,
-  // it should merge into the last chunk or handle error depending on spec.
-  debug("Turtle no-terminator test placeholder")
-}
-
-///|
-test "ntriples chunker: empty input" {
-  let bytes = @utf8.encode("")
-  let chunks = get_ntriples_slice_chunks(bytes[:], 5)
-  assert_eq(chunks.length(), 0)
-}
-
-///|
-test "ntriples chunker: empty input" {
-  let bytes = @utf8.encode("")
-  let chunks = get_ntriples_slice_chunks(bytes[:], 5)
-  assert_eq(chunks.length(), 0)
-}
-
-///|
-test "ntriples chunker: single line one chunk" {
-  let content = "<s> <p> <o> .\n"
-  let bytes = @utf8.encode(content)
-  let chunks = get_ntriples_slice_chunks(bytes[:], 1)
-
-  // 验证基本属性：应该产生 1 个 chunk，且覆盖整个内容
-  assert_eq(chunks.length(), 1)
-  let (start, end) = chunks[0]
-  assert_eq(start, 0)
-  // 验证切片内容是否正确
-  let chunk_data = @utf8.decode_lossy(bytes[start:end])
-  assert_eq(chunk_data, content)
-}
-
-///|
-// test "ntriples chunker: two lines two chunks" {
-//   let line1 = "<s1> <p1> <o1> .\n"
-//   let line2 = "<s2> <p2> <o2> .\n"
-//   let content = line1 + line2
+// test "turtle chunker: basic split" {
+//   let stmt1 = "@prefix ex: <http://example.org/> .\n"
+//   let stmt2 = "ex:s ex:p ex:o ."
+//   let content = stmt1 + stmt2
 //   let bytes = @utf8.encode(content)
+//   debug("\{content}")
+//   // Assuming get_turtle_slice_chunks takes (BytesView, Int, Parser) or similar
+//   // If parser is stateless or created internally, adjust call signature
+//   let parser = TurtleParser::new()
+//   let chunks = get_turtle_slice_chunks(bytes[:], 2, parser)
 
-//   let chunks = get_ntriples_slice_chunks(bytes[:], 2)
-
+//   // Placeholder assertion based on expected behavior:
 //   assert_eq(chunks.length(), 2)
-
-//   // 验证第一个 chunk 是第一行
-//   let (start1, end1) = chunks[0]
-//   let chunk1_data = @utf8.decode_lossy(bytes[start1:end1])
-//   assert_eq(chunk1_data, line1)
-
-//   // 验证第二个 chunk 是第二行
-//   let (start2, end2) = chunks[1]
-//   let chunk2_data = @utf8.decode_lossy(bytes[start2:end2])
-//   assert_eq(chunk2_data, line2)
+//   debug("Turtle test placeholder: implement with actual parser instance")
 // }
 
 ///|
-test "ntriples chunker: no trailing newline" {
+// test "turtle chunker: no terminator in second half" {
+//   let stmt1 = "@prefix ex: <http://example.org/> .\n"
+//   let stmt2 = "ex:s ex:p ex:o" // Missing dot
+//   let content = stmt1 + stmt2
+//   let bytes = @utf8.encode(content)
+
+//   let parser = TurtleParser::new()
+//   let chunks = get_turtle_slice_chunks(bytes[:], 2, parser)
+
+//   // If next_terminating_char returns None for the second part,
+//   // it should merge into the last chunk or handle error depending on spec.
+//   debug("Turtle no-terminator test placeholder")
+// }
+
+///|
+test "ntriples chunker: empty input" {
+  let bytes = @utf8.encode("")
+  let chunks = get_ntriples_slice_chunks(bytes[:], 5)
+  assert_eq(chunks.length(), 0)
+}
+
+///|
+
+///|
+test "ntriples chunker: two lines two chunks 2" {
+  let line1 = "<s1> <p1> <o1> .\n"
+  let line2 = "<s2> <p2> <o2> .\n"
+  let content = line1 + line2
+  let bytes = @utf8.encode(content)
+
+  let chunks = get_ntriples_slice_chunks(bytes[:], 2)
+
+  assert_eq(chunks.length(), 2)
+
+  // 验证第一个 chunk 是第一行
+  let (start1, end1) = chunks[0]
+  let chunk1_data = @utf8.decode_lossy(bytes[start1:end1])
+  assert_eq(chunk1_data, line1)
+
+  // 验证第二个 chunk 是第二行
+  let (start2, end2) = chunks[1]
+  let chunk2_data = @utf8.decode_lossy(bytes[start2:end2])
+  assert_eq(chunk2_data, line2)
+}
+
+///|
+test "ntriples chunker: no trailing newline 2" {
   let line1 = "<s1> <p1> <o1> .\n"
   let line2 = "<s2> <p2> <o2> ." // No newline at end
   let content = line1 + line2
@@ -182,7 +162,7 @@ test "ntriples chunker: no trailing newline" {
 }
 
 ///|
-test "ntriples chunker: more chunks requested than data" {
+test "ntriples chunker: more chunks requested than data 2" {
   let content = "<s> <p> <o> .\n"
   let bytes = @utf8.encode(content)
   // Request 10 chunks for a single line
@@ -195,7 +175,7 @@ test "ntriples chunker: more chunks requested than data" {
 }
 
 ///|
-test "ntriples chunker: split in middle of line extends to next newline" {
+test "ntriples chunker: split in middle of line extends to next newline 2" {
   let line1 = "<s1> <p1> <o1> .\n"
   let line2 = "<s2> <p2> <o2> .\n"
   let content = line1 + line2

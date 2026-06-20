@@ -119,9 +119,10 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
 ) -> NQuadsRecognizer {
   // let Context::NQuadsRecognizerContext(context) = context
   //  let TokenOrLineJump::Token(token) = token
-  let context = match context {
+  let ctx = match context {
     Context::NQuadsRecognizerContext(c) => c
-    _ => panic()
+    // _ => panic()
+    _ => abort("Invalid context type")
   }
   match self.stack.pop().unwrap_or(NQuadsState::ExpectSubject) {
     NQuadsState::ExpectSubject =>
@@ -140,7 +141,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         // _ => self.error(context, results, errors, TokenOrLineJump::Token(token), "The subject of a triple must be an IRI or a blank node")
         _ =>
           self.error(
-            context,
+            ctx,
             results,
             errors,
             token,
@@ -157,7 +158,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         }
         _ =>
           self.error(
-            context,
+            ctx,
             results,
             errors,
             token,
@@ -192,7 +193,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         }
         _ =>
           self.error(
-            context,
+            ctx,
             results,
             errors,
             token,
@@ -272,7 +273,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
           self.recognize_next(
             token,
-            NQuadsRecognizerContext(context),
+            NQuadsRecognizerContext(ctx),
             results,
             errors,
           )
@@ -308,7 +309,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         }
         _ =>
           self.error(
-            context,
+            ctx,
             results,
             errors,
             token,
@@ -318,22 +319,22 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
     NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple =>
       if self.stack.is_empty() {
         match token {
-          TokenOrLineJump::Token(N3Token::Iri(g)) if context.with_graph_name => {
-            self.emit_quad(results, GraphNameRef::new_unchecked(g))
+          TokenOrLineJump::Token(N3Token::Iri(g)) if ctx.with_graph_name => {
+            self.emit_quad(results, errors, GraphNameRef::new_unchecked(g))
             self.stack.push(NQuadsState::ExpectDot)
             self
           }
-          TokenOrLineJump::Token(N3Token::BlankNodeLabel(g)) if context.with_graph_name => {
-            self.emit_quad(results, GraphNameRef::new_unchecked(g))
+          TokenOrLineJump::Token(N3Token::BlankNodeLabel(_g)) if ctx.with_graph_name => {
+            self.emit_quad(results, errors, GraphNameRef::DefaultGraph)
             self.stack.push(NQuadsState::ExpectDot)
             self
           }
           _ => {
-            self.emit_quad(results, GraphNameRef::DefaultGraph)
+            self.emit_quad(results, errors, GraphName::DefaultGraph.as_ref())
             self.stack.push(NQuadsState::ExpectDot)
             self.recognize_next(
               token,
-              Context::NQuadsRecognizerContext(context),
+              Context::NQuadsRecognizerContext(ctx),
               results,
               errors,
             )
@@ -343,7 +344,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         self
       } else {
         self.error(
-          context,
+          ctx,
           results,
           errors,
           token,
@@ -367,7 +368,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         )
         self.recognize_next(
           token,
-          Context::NQuadsRecognizerContext(context),
+          Context::NQuadsRecognizerContext(ctx),
           results,
           errors,
         )
@@ -382,26 +383,56 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       )
       self.recognize_next(
         token,
-        Context::NQuadsRecognizerContext(context),
+        Context::NQuadsRecognizerContext(ctx),
         results,
         errors,
       )
     }
     NQuadsState::AfterQuotedTriple => {
-      let triple : TripleRef = {
-        subject: self.subjects.pop().unwrap(),
-        predicate: self.predicates.pop().unwrap(),
-        object: self.objects.pop().unwrap(),
+      // 安全地弹出三元组的组成部分
+      let subject_opt = self.subjects.pop()
+      let predicate_opt = self.predicates.pop()
+      let object_opt = self.objects.pop()
+
+      match (subject_opt, predicate_opt, object_opt) {
+        (Some(subject), Some(predicate), Some(object)) => {
+          let triple : TripleRef = { subject, predicate, object }
+          self.objects.push(TermRef::TripleRef(triple))
+          self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
+          self.recognize_next(
+            token,
+            Context::NQuadsRecognizerContext(ctx),
+            results,
+            errors,
+          )
+        }
+        _ => {
+          // 如果栈中元素不足，说明内部状态不一致，报告错误并恢复
+          errors.push(
+            RuleRecognizerError::SyntaxError(
+              "Internal error: incomplete quoted triple on stack",
+              TextPosition::default(),
+            ),
+          )
+          self.error_recovery_state()
+        }
       }
-      self.objects.push(TermRef::TripleRef(triple))
-      self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
-      self.recognize_next(
-        token,
-        Context::NQuadsRecognizerContext(context),
-        results,
-        errors,
-      )
     }
+    // NQuadsState::AfterQuotedTriple => {
+    //   let triple : TripleRef = {
+    //     subject: self.subjects.pop().unwrap(),
+    //     predicate: self.predicates.pop().unwrap(),
+    //     object: self.objects.pop().unwrap(),
+    //   }
+    //   self.objects.push(TermRef::TripleRef(triple))
+    //   self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
+    //   self.recognize_next(
+    //     token,
+    //     Context::NQuadsRecognizerContext(ctx),
+    //     results,
+    //     errors,
+    //   )
+    // }
     NQuadsState::RecoverToLineJump => {
       if token != TokenOrLineJump::LineJump {
         self.stack.push(NQuadsState::RecoverToLineJump)
@@ -423,13 +454,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
     [NQuadsState::ExpectDot] =>
       errors.push(RuleRecognizerError::TripleMissingDot)
     [NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple] => {
-      self.emit_quad(results, GraphName::DefaultGraph.as_ref())
+      self.emit_quad(results, errors, GraphName::DefaultGraph.as_ref())
       errors.push(RuleRecognizerError::TripleMissingDot)
     }
     [NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~)] => {
       let literal = LiteralRef::new_simple_literal(value)
       self.objects.push(TermRef::LiteralRef(literal))
-      self.emit_quad(results, GraphName::DefaultGraph.as_ref())
+      self.emit_quad(results, errors, GraphName::DefaultGraph.as_ref())
       errors.push(RuleRecognizerError::TripleMissingDot)
     }
     _ =>
@@ -511,19 +542,32 @@ fn NQuadsRecognizer::error(
 fn NQuadsRecognizer::emit_quad(
   self : NQuadsRecognizer,
   results : Array[LexOutput],
+  errors : Array[RuleRecognizerError],
   graph_name : GraphNameRef,
 ) -> Unit {
-  let subject = self.subjects.pop().unwrap()
-  let predicate = self.predicates.pop().unwrap()
-  let object = self.objects.pop().unwrap()
+  let subject_opt = self.subjects.pop()
+  let predicate_opt = self.predicates.pop()
+  let object_opt = self.objects.pop()
 
-  // 假设 LexOutput 有一个 Quad 变体，请根据实际 enum 定义调整变体名称
-  results.push(
-    LexOutput::Quad({
-      subject: subject.into_owned(),
-      predicate: predicate.into_owned(),
-      object: object.into_owned(),
-      graph_name: graph_name.into_owned(),
-    }),
-  )
+  match (subject_opt, predicate_opt, object_opt) {
+    (Some(subject), Some(predicate), Some(object)) =>
+      results.push(
+        LexOutput::Quad({
+          subject: subject.into_owned(),
+          predicate: predicate.into_owned(),
+          object: object.into_owned(),
+          graph_name: graph_name.into_owned(),
+        }),
+      )
+    _ =>
+      // 栈中元素不足，记录内部错误
+      errors.push(
+        RuleRecognizerError::SyntaxError(
+          "Internal error: incomplete quad on stack during emission",
+          TextPosition::default(),
+        ),
+      )
+    // 可以选择在此处调用 self.error_recovery_state()，但这会改变 self
+    // 通常 emit_quad 不应改变 self 的状态除了 pop，所以仅记录错误
+  }
 }

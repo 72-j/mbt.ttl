@@ -159,7 +159,17 @@ pub fn N3Parser::with_base_iri(
   self : N3Parser,
   base_iri : IriRef,
 ) -> Result[N3Parser, IriError] {
-  self.base_iri = Some(IriRef::parse(base_iri).unwrap())
+  let parsed_iri = if self.lenient {
+    // 宽松模式：直接解析，不检查有效性
+    IriRef::parse_unchecked(base_iri)
+  } else {
+    // 严格模式：检查解析结果
+    match IriRef::parse(base_iri) {
+      Ok(iri) => iri
+      Err(e) => return Err(e)
+    }
+  }
+  self.base_iri = Some(parsed_iri)
   Ok(self)
 }
 
@@ -169,7 +179,17 @@ pub fn N3Parser::with_prefix(
   prefix_name : String,
   prefix_iri : IriRef,
 ) -> Result[N3Parser, IriError] {
-  self.prefixes.set(prefix_name, IriRef::parse(prefix_iri).unwrap())
+  let parsed_iri = if self.lenient {
+    // 宽松模式：直接解析，不检查有效性
+    IriRef::parse_unchecked(prefix_iri)
+  } else {
+    // 严格模式：检查解析结果
+    match IriRef::parse(prefix_iri) {
+      Ok(iri) => iri
+      Err(e) => return Err(e)
+    }
+  }
+  self.prefixes.set(prefix_name, parsed_iri)
   Ok(self)
 }
 
@@ -409,6 +429,11 @@ struct N3RecognizerContext {
 }
 
 ///|
+fn N3RecognizerContext::as_ctx(self : N3RecognizerContext) -> Context {
+  Context::N3RecognizerContext(self)
+}
+
+///|
 impl RuleRecognizer for N3Recognizer with fn error_recovery_state(
   self : N3Recognizer,
 ) -> N3Recognizer {
@@ -579,10 +604,44 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.stack.push(N3State::Path)
           }
           N3State::ObjectsListEnd => {
-            let object = self.terms.pop().unwrap()
-            let subject = self.terms.last().unwrap()
+            let object = match self.terms.pop() {
+              Some(o) => o
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: terms stack empty (object)",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+            let subject = match self.terms.last() {
+              Some(s) => s
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: terms stack empty (subject)",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+            let predicate_opt = match self.predicates.last() {
+              Some(p) => p
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: predicates stack empty",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
             results.push(
-              match self.predicates.last().unwrap() {
+              match predicate_opt {
                 Predicate::Regular(predicate) =>
                   LexOutput::N3Quad(self.quad(subject, predicate, object))
                 Predicate::Inverted(predicate) =>
@@ -651,16 +710,54 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 self.stack.push(N3State::Path)
               }
             }
-          N3State::AfterRegularVerb =>
-            self.predicates.push(Predicate::Regular(self.terms.pop().unwrap()))
-          N3State::AfterInvertedVerb =>
-            self.predicates.push(Predicate::Inverted(self.terms.pop().unwrap()))
+          N3State::AfterRegularVerb => {
+            let term = match self.terms.pop() {
+              Some(t) => t
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: terms stack empty in AfterRegularVerb",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+            self.predicates.push(Predicate::Regular(term))
+            return self
+          }
+          N3State::AfterInvertedVerb => {
+            let term = match self.terms.pop() {
+              Some(t) => t
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: terms stack empty in AfterInvertedVerb",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+            self.predicates.push(Predicate::Inverted(term))
+            return self
+          }
           N3State::AfterVerbIs =>
             return match token {
               TokenOrLineJump::Token(N3Token::PlainKeyword("of")) => {
-                self.predicates.push(
-                  Predicate::Inverted(self.terms.pop().unwrap()),
-                )
+                let term = match self.terms.pop() {
+                  Some(t) => t
+                  None => {
+                    errors.push(
+                      RuleRecognizerError::SyntaxError(
+                        "Internal error: terms stack empty in AfterVerbIs",
+                        TextPosition::default(),
+                      ),
+                    )
+                    return self
+                  }
+                }
+                self.predicates.push(Predicate::Inverted(term))
                 self
               }
               _ =>
@@ -691,8 +788,30 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               _ => ()
             }
           N3State::PathAfterIndicator(is_inverse~) => {
-            let predicate = self.terms.pop().unwrap()
-            let previous = self.terms.pop().unwrap()
+            let predicate = match self.terms.pop() {
+              Some(p) => p
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: terms stack empty (predicate) in PathAfterIndicator",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+            let previous = match self.terms.pop() {
+              Some(prev) => prev
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: terms stack empty (previous) in PathAfterIndicator",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
             let current = BlankNode::default().as_n3term()
             results.push(
               if is_inverse {
@@ -914,8 +1033,30 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               self.stack.push(N3State::Path)
             }
           N3State::CollectionPossibleEnd => {
-            let value = self.terms.pop().unwrap()
-            let old = self.terms.pop().unwrap()
+            let value = match self.terms.pop() {
+              Some(v) => v
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: terms stack empty (value) in CollectionPossibleEnd",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+            let old = match self.terms.pop() {
+              Some(o) => o
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: terms stack empty (old) in CollectionPossibleEnd",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
             results.push(
               LexOutput::N3Quad(self.quad(old, lwFIRST.as_n3term(), value)),
             )
@@ -1027,7 +1168,19 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
           N3State::FormulaContent =>
             match token {
               TokenOrLineJump::Token(N3Token::Punctuation("}")) => {
-                self.terms.push(self.contexts.pop().unwrap().as_n3term())
+                let ctx = match self.contexts.pop() {
+                  Some(c) => c
+                  None => {
+                    errors.push(
+                      RuleRecognizerError::SyntaxError(
+                        "Internal error: contexts stack empty in FormulaContent",
+                        TextPosition::default(),
+                      ),
+                    )
+                    return self
+                  }
+                }
+                self.terms.push(ctx.as_n3term())
                 return self
               }
               TokenOrLineJump::Token(N3Token::PlainKeyword(k)) if eq_ignore_ascii_case(
@@ -1066,7 +1219,19 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
           N3State::FormulaContentExpectDot =>
             match token {
               TokenOrLineJump::Token(N3Token::Punctuation("}")) => {
-                self.terms.push(self.contexts.pop().unwrap().as_n3term())
+                let ctx = match self.contexts.pop() {
+                  Some(c) => c
+                  None => {
+                    errors.push(
+                      RuleRecognizerError::SyntaxError(
+                        "Internal error: contexts stack empty in FormulaContentExpectDot",
+                        TextPosition::default(),
+                      ),
+                    )
+                    return self
+                  }
+                }
+                self.terms.push(ctx.as_n3term())
                 return self
               }
               TokenOrLineJump::Token(N3Token::Punctuation(".")) => {

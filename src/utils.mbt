@@ -44,10 +44,23 @@ pub fn remove_dot_segments_from_array(
 }
 
 ///|
-fn array_to_view(arr : Array[Byte]) -> Bytes {
+fn array_to_view(arr : ArrayView[Byte]) -> BytesView {
   let bytes : Bytes = Bytes::from_array(arr) // 假设有此 API，或者 Bytes::of_array_view
   // let view : BytesView = bytes.view() // 假设 Bytes 有 .view() 方法
   return bytes
+}
+
+///|
+pub fn array_view_has_prefix(data : ArrayView[Byte], prefix : Bytes) -> Bool {
+  if data.length() < prefix.length() {
+    return false
+  }
+  for i in 0..<prefix.length() {
+    if data[i] != prefix[i] {
+      return false
+    }
+  }
+  return true
 }
 
 ///|
@@ -108,6 +121,58 @@ fn memchr2(c1 : Byte, c2 : Byte, data : BytesView) -> Int? {
     }
   }
   None
+}
+
+///|
+pub fn array_view_memchr(target : Byte, data : ArrayView[Byte]) -> Int? {
+  for i in 0..<data.length() {
+    if data[i] == target {
+      return Some(i)
+    }
+  }
+  None
+}
+
+///|
+pub fn array_view_memchr2(c1 : Byte, c2 : Byte, data : ArrayView[Byte]) -> Int? {
+  let len = data.length()
+  for i in 0..<len {
+    let b = data[i]
+    if b == c1 || b == c2 {
+      return Some(i)
+    }
+  }
+  None
+}
+
+///|
+fn char_to_utf8_bytes(c : Char) -> ArrayView[Byte] {
+  let codepoint = Char::to_int(c)
+  if codepoint < 0x80 {
+    // 1 byte: 0xxxxxxx
+    [Int::to_byte(codepoint)]
+  } else if codepoint < 0x800 {
+    // 2 bytes: 110xxxxx 10xxxxxx
+    [
+      Int::to_byte(0xC0 | (codepoint >> 6)),
+      Int::to_byte(0x80 | (codepoint & 0x3F)),
+    ]
+  } else if codepoint < 0x10000 {
+    // 3 bytes: 1110xxxx 10xxxxxx 10xxxxxx
+    [
+      Int::to_byte(0xE0 | (codepoint >> 12)),
+      Int::to_byte(0x80 | ((codepoint >> 6) & 0x3F)),
+      Int::to_byte(0x80 | (codepoint & 0x3F)),
+    ]
+  } else {
+    // 4 bytes: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+    [
+      Int::to_byte(0xF0 | (codepoint >> 18)),
+      Int::to_byte(0x80 | ((codepoint >> 12) & 0x3F)),
+      Int::to_byte(0x80 | ((codepoint >> 6) & 0x3F)),
+      Int::to_byte(0x80 | (codepoint & 0x3F)),
+    ]
+  }
 }
 
 ///|

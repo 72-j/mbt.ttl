@@ -17,6 +17,11 @@ pub struct TriGRecognizerContext {
 }
 
 ///|
+fn TriGRecognizerContext::as_ctx(self : TriGRecognizerContext) -> Context {
+  Context::TriGRecognizerContext(self)
+}
+
+///|
 // pub struct TriGLexerOptions {
 //   mut base_iri : Iri?
 // } derive(Debug)
@@ -57,7 +62,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
   // let token = token
   let context = match context {
     Context::TriGRecognizerContext(c) => c
-    _ => panic()
+    _ => abort("Invalid context for TriGRecognizer")
   }
   if self.stack.pop() is Some(rule) {
     match rule {
@@ -148,8 +153,27 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
       }
       TriGState::BaseExpectIri =>
         if token is TokenOrLineJump::Token(N3Token::Iri(iri)) {
-          let iri = Iri::Iri(iri).as_ref()
-          context.lexer_options.base_iri = Some(IriRef::parse(iri).unwrap())
+          let iri_ref = Iri::Iri(iri).as_ref()
+          if self.lenient {
+            // 宽松模式：直接解析，不检查有效性
+            context.lexer_options.base_iri = Some(
+              IriRef::parse_unchecked(iri_ref),
+            )
+          } else {
+            // 严格模式：检查解析结果
+            match IriRef::parse(iri_ref) {
+              Ok(parsed_iri) =>
+                context.lexer_options.base_iri = Some(parsed_iri)
+              Err(e) =>
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Invalid BASE IRI: \{e.message()}",
+                    TextPosition::default(), // 如果有位置信息，应传入实际位置
+                  ),
+                )
+              // 可以选择保持原状或设为 None，这里选择不更新 base_iri
+            }
+          }
           self
         } else {
           self.error(errors, "The BASE keyword should be followed by an IRI")
@@ -333,7 +357,18 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           )
         }
       TriGState::SubjectCollectionPossibleEnd => {
-        let old = self.cur_subject.pop().unwrap()
+        let old = match self.cur_subject.pop() {
+          Some(node) => node
+          None => {
+            errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Internal error: subject stack is empty",
+                TextPosition::default(),
+              ),
+            )
+            return self
+          }
+        }
         let _ = self.cur_object.pop()
         if token is TokenOrLineJump::Token(N3Token::Punctuation(")")) {
           let _ = self.cur_predicate.pop()
@@ -608,21 +643,101 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             self
           }
           TokenOrLineJump::Token(N3Token::Punctuation("~")) => {
+            let cur_sub = match self.cur_subject.last() {
+              Some(s) => s
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: subject stack empty",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+            let cur_pred = match self.cur_predicate.last() {
+              Some(p) => p
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: predicate stack empty",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+            let cur_obj = match self.cur_object.last() {
+              Some(o) => o
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: object stack empty",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+
             self.stack.push(TriGState::AnnotationBlock(with_reifier=true))
             self.stack.push(
               TriGState::Reifier(
-                triple=TripleRef::TripleRef(
-                  self.cur_subject.last().unwrap(),
-                  self.cur_predicate.last().unwrap(),
-                  self.cur_object.last().unwrap(),
-                ).into_owned(),
+                triple=TripleRef::TripleRef(cur_sub, cur_pred, cur_obj).into_owned(),
               ),
             )
             self
           }
           TokenOrLineJump::Token(N3Token::Punctuation("{|")) => {
+            let cur_sub = match self.cur_subject.last() {
+              Some(s) => s
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: subject stack empty",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+            let cur_pred = match self.cur_predicate.last() {
+              Some(p) => p
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: predicate stack empty",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
+            let cur_obj = match self.cur_object.last() {
+              Some(o) => o
+              None => {
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "Internal error: object stack empty",
+                    TextPosition::default(),
+                  ),
+                )
+                return self
+              }
+            }
             let reifier = if with_reifier {
-              self.cur_reifier.last().unwrap()
+              match self.cur_reifier.last() {
+                Some(r) => r
+                None => {
+                  errors.push(
+                    RuleRecognizerError::SyntaxError(
+                      "Internal error: reifier stack empty",
+                      TextPosition::default(),
+                    ),
+                  )
+                  return self
+                }
+              }
             } else {
               let reifier = BlankNode::default()
               results.push(
@@ -631,11 +746,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     reifier.as_enum(),
                     lwREIFIES.into_owned(),
                     TermRef::TripleRef(
-                      TripleRef::TripleRef(
-                        self.cur_subject.last().unwrap(),
-                        self.cur_predicate.last().unwrap(),
-                        self.cur_object.last().unwrap(),
-                      ),
+                      TripleRef::TripleRef(cur_sub, cur_pred, cur_obj),
                     ).into_owned(),
                     self.cur_graph.into_owned(),
                   ),
@@ -858,11 +969,22 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       TriGState::ObjectBlankNodePropertyListEnd =>
         if token == TokenOrLineJump::Token(N3Token::Punctuation("]")) {
-          let subject = self.cur_subject.pop().unwrap()
+          let subject = match self.cur_subject.pop() {
+            Some(s) => s
+            None => {
+              errors.push(
+                RuleRecognizerError::SyntaxError(
+                  "Internal error: subject stack is empty",
+                  TextPosition::default(),
+                ),
+              )
+              return self
+            }
+          }
 
           let blank_ref = match subject {
             NamedOrBlankNodeRef::BlankNodeRef(b) => b
-            _ => panic()
+            _ => abort("subject should be a blank node")
           }
           self.cur_object.push(TermRef::BlankNodeRef(blank_ref))
           self.emit_quad(results)
@@ -896,7 +1018,18 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       TriGState::ObjectCollectionPossibleEnd => {
         // if token.is_eof() || token.is_dot() || token.is_rbracket() || token.is_rbrace() || token.is_comma() || token.is_semicolon() || token.is_newline() || token.is_eol() || token.is_eof() {
-        let old = self.cur_subject.pop().unwrap()
+        let old = match self.cur_subject.pop() {
+          Some(s) => s
+          None => {
+            errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Internal error: subject stack is empty",
+                TextPosition::default(),
+              ),
+            )
+            return self
+          }
+        }
         let _ = self.cur_object.pop()
         if token is TokenOrLineJump::Token(N3Token::Punctuation(")")) {
           let _ = self.cur_predicate.pop()
@@ -945,12 +1078,21 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 catch {
                   e => Err(e)
                 }
-
+                let resolved_lang_tag = match lang_tag {
+                  Ok(tag) => tag
+                  Err(e) => {
+                    errors.push(
+                      RuleRecognizerError::SyntaxError(
+                        e.to_string(),
+                        TextPosition::default(),
+                      ),
+                    )
+                    return self
+                  }
+                }
                 TermRef::LiteralRef(
                   LiteralRef::new_directional_language_tagged_literal_unchecked(
-                    value,
-                    lang_tag.unwrap(),
-                    direction,
+                    value, resolved_lang_tag, direction,
                   ),
                 )
               } else {
@@ -1083,7 +1225,19 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             )
         }
       TriGState::SubjectReifiedTripleEnd => {
-        self.cur_subject.push(self.cur_reifier.pop().unwrap())
+        let reifier = match self.cur_reifier.pop() {
+          Some(r) => r
+          None => {
+            errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Internal error: reifier stack empty",
+                TextPosition::default(),
+              ),
+            )
+            return self
+          }
+        }
+        self.cur_subject.push(reifier)
         if token == TokenOrLineJump::Token(N3Token::Punctuation(">>")) {
           self
         } else {
@@ -1100,11 +1254,22 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       }
       TriGState::ObjectReifiedTripleEnd(emit~) => {
-        let subject = self.cur_subject.pop().unwrap()
+        let subject = match self.cur_subject.pop() {
+          Some(s) => s
+          None => {
+            errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Internal error: subject stack is empty",
+                TextPosition::default(),
+              ),
+            )
+            return self
+          }
+        }
 
         let blank_ref = match subject {
           NamedOrBlankNodeRef::BlankNodeRef(b) => TermRef::BlankNodeRef(b)
-          _ => panic()
+          _ => abort("Subject must be a blank node")
         }
         self.cur_object.push(blank_ref)
         if emit {
@@ -1126,11 +1291,44 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       }
       TriGState::TripleTermEnd(emit~) => {
-        let triple = TripleRef::TripleRef(
-          self.cur_subject.pop().unwrap(),
-          self.cur_predicate.pop().unwrap(),
-          self.cur_object.pop().unwrap(),
-        )
+        let subject = match self.cur_subject.pop() {
+          Some(s) => s
+          None => {
+            errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Internal error: subject stack empty in TripleTermEnd",
+                TextPosition::default(),
+              ),
+            )
+            return self
+          }
+        }
+        let predicate = match self.cur_predicate.pop() {
+          Some(p) => p
+          None => {
+            errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Internal error: predicate stack empty in TripleTermEnd",
+                TextPosition::default(),
+              ),
+            )
+            return self
+          }
+        }
+        let object = match self.cur_object.pop() {
+          Some(o) => o
+          None => {
+            errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Internal error: object stack empty in TripleTermEnd",
+                TextPosition::default(),
+              ),
+            )
+            return self
+          }
+        }
+        let triple = TripleRef::TripleRef(subject, predicate, object)
+
         self.cur_object.push(TermRef::TripleRef(triple))
         if emit {
           self.emit_quad(results)
@@ -1149,11 +1347,44 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       }
       TriGState::EndOfReifiedTripleBeforeReifier => {
-        let triple = TripleRef::TripleRef(
-          self.cur_subject.pop().unwrap(),
-          self.cur_predicate.pop().unwrap(),
-          self.cur_object.pop().unwrap(),
-        )
+        let subject = match self.cur_subject.pop() {
+          Some(s) => s
+          None => {
+            errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Internal error: subject stack empty",
+                TextPosition::default(),
+              ),
+            )
+            return self
+          }
+        }
+        let predicate = match self.cur_predicate.pop() {
+          Some(p) => p
+          None => {
+            errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Internal error: predicate stack empty",
+                TextPosition::default(),
+              ),
+            )
+            return self
+          }
+        }
+        let object = match self.cur_object.pop() {
+          Some(o) => o
+          None => {
+            errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Internal error: object stack empty",
+                TextPosition::default(),
+              ),
+            )
+            return self
+          }
+        }
+        let triple = TripleRef::TripleRef(subject, predicate, object)
+
         if token == TokenOrLineJump::Token(N3Token::Punctuation("~")) {
           self.stack.push(TriGState::Reifier(triple=triple.into_owned()))
           self
@@ -1558,16 +1789,31 @@ fn TriGRecognizer::error(
 }
 
 ///|
+
+///|
 fn TriGRecognizer::emit_quad(
   self : TriGRecognizer,
   results : Array[LexOutput],
 ) -> Unit {
+  let subject = match self.cur_subject.last() {
+    Some(s) => s
+    None => return // 或者报错，例如: abort("Internal error: subject stack empty in emit_quad")
+  }
+  let predicate = match self.cur_predicate.last() {
+    Some(p) => p
+    None => return
+  }
+  let object = match self.cur_object.last() {
+    Some(o) => o
+    None => return
+  }
+
   results.push(
     LexOutput::Quad(
       Quad::Quad(
-        self.cur_subject.last().unwrap().into_owned(),
-        self.cur_predicate.last().unwrap().into_owned(),
-        self.cur_object.last().unwrap().into_owned(),
+        subject.into_owned(),
+        predicate.into_owned(),
+        object.into_owned(),
         self.cur_graph.into_owned(),
       ),
     ),

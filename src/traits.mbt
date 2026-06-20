@@ -215,7 +215,7 @@ pub impl StringRepr for IriRef with fn into_string(self : IriRef) -> String {
 pub trait TokenRecognizer {
   fn recognize_next_token(
     Self,
-    data : BytesView,
+    data : ArrayView[Byte],
     is_ending : Bool,
     options : LexerOptions?,
   ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])?

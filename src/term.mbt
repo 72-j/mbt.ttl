@@ -475,7 +475,9 @@ pub fn GraphName::as_n3term(self : GraphName) -> N3Term {
       // 这里根据具体业务逻辑处理，通常应避免在此处调用。
       // 作为一种妥协，可以 panic 或返回一个特殊的 BlankNode。
       // 假设项目中不允许将 DefaultGraph 转为 Term，这里抛出异常或断言失败。
-      panic()
+      abort("DefaultGraph cannot be converted to N3Term.")
+    // panic()
+
   }
 }
 

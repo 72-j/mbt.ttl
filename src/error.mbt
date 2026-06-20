@@ -99,16 +99,16 @@ impl Show for IriError with fn output(self : IriError, logger : &Logger) -> Unit
 ///|
 pub(all) suberror TokenRecognizerError {
   Invalid
-  InvalidFormat(BytesView, Range)
-  InvalidToken(BytesView, Range)
-  InvalidCharacter(BytesView, Range)
-  IncompleteEscapeSequence(BytesView, Range)
-  InvalidEscapeSequence(BytesView, Range)
-  UnsupportedFeature(BytesView, Range)
-  IriTruncated(BytesView, Range)
+  InvalidFormat(ArrayView[Byte], Range)
+  InvalidToken(ArrayView[Byte], Range)
+  InvalidCharacter(ArrayView[Byte], Range)
+  IncompleteEscapeSequence(ArrayView[Byte], Range)
+  InvalidEscapeSequence(ArrayView[Byte], Range)
+  UnsupportedFeature(ArrayView[Byte], Range)
+  IriTruncated(ArrayView[Byte], Range)
   IriParsingError(String, Range)
-  UnexpectedEndOfInput(BytesView, Range)
-  InvalidErrMessage(BytesView, Range, String)
+  UnexpectedEndOfInput(ArrayView[Byte], Range)
+  InvalidErrMessage(ArrayView[Byte], Range, String)
 }
 
 ///|
@@ -218,9 +218,9 @@ pub fn Range::Range(start : Int, end : Int) -> Range {
 }
 
 ///|
-pub fn Range::utf8_range(self : Range, data : BytesView) -> String {
+pub fn Range::utf8_range(self : Range, data : ArrayView[Byte]) -> String {
   let data = data[self.start:self.end]
-  let str = @utf8.decode_lossy(data)
+  let str = @utf8.decode_lossy(array_to_view(data))
   str
 }
 

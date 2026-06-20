@@ -256,8 +256,14 @@ pub fn[TR : TokenRecognizer] Lexer::parse_next(
   self : Lexer[TR],
   options : LexerOptions?,
 ) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError]? {
+  if self.is_ending && self.position.buffer_offset >= self.data.length() {
+    return None
+  }
+
   match self.skip_whitespaces_and_comments() {
     Some(true) => {
+      debug("DEBUG: Skipped line jump")
+
       self.previous_position = self.position
       return Some(Ok(TokenOrLineJump::LineJump))
     }
@@ -267,20 +273,17 @@ pub fn[TR : TokenRecognizer] Lexer::parse_next(
   self.previous_position = self.position
 
   // 获取当前剩余数据的视图
-  let view  =array_to_view(self.data[self.position.buffer_offset:].to_owned())
-  
+  let view = self.data[self.position.buffer_offset:]
 
   // 修复点：使用 match 完整处理 Option 返回值
-  match
-    self.parser.recognize_next_token(view, self.is_ending, options) {
+  match self.parser.recognize_next_token(view, self.is_ending, options) {
     Some((consumed, result)) => {
       // debug_assert(consumed > 0, "The lexer must consume at least one byte each time")
       // debug_assert(self.position.buffer_offset + consumed <= self.data.length(), "The lexer tried to consumed {consumed} bytes but only {} bytes are readable", self.data.length() - self.position.buffer_offset)
+      debug("Lexer returned: \{consumed}")
 
-      let consumed_view  = 
-        self.data[self.position.buffer_offset:self.position.buffer_offset +
+      let consumed_view = self.data[self.position.buffer_offset:self.position.buffer_offset +
         consumed]
-      
 
       let (new_line_jumps, new_line_start) = Lexer::find_number_of_line_jumps_and_start_of_last_line(
         consumed_view,
@@ -297,6 +300,7 @@ pub fn[TR : TokenRecognizer] Lexer::parse_next(
         result
         .map(t => t)
         .map_err(fn(e) {
+
           // 注意：此处原代码逻辑可能有误，e.location 通常需要转换为全局位置或保持原样
           // 这里保留原代码的占位逻辑，实际应根据 TokenRecognizerError 定义调整
           match e {
@@ -310,7 +314,10 @@ pub fn[TR : TokenRecognizer] Lexer::parse_next(
                   range.end,
                 ),
               )
-            _ => TokenRecognizerError::Invalid
+            e => {
+              debug("Lexer returned an error: \{e.err_kind()}")
+              TokenRecognizerError::Invalid
+            }
           }
           // TokenRecognizerError::InvalidToken(Range::new(0,0), "e.message")
         }),
@@ -329,8 +336,7 @@ pub fn[TR] Lexer::location_from_buffer_offset_range(
   offset_range : Range,
 ) -> TextRange {
   let start_offset = self.previous_position.buffer_offset + offset_range.start
-  let view = 
-    self.data[self.previous_position.buffer_offset:self.previous_position.buffer_offset +
+  let view = self.data[self.previous_position.buffer_offset:self.previous_position.buffer_offset +
     start_offset]
   let (start_extra_line_jumps, start_line_start) = Lexer::find_number_of_line_jumps_and_start_of_last_line(
     view,
@@ -341,10 +347,9 @@ pub fn[TR] Lexer::location_from_buffer_offset_range(
     self.previous_position.line_start_buffer_offset
   }
   let end_offset = self.previous_position.buffer_offset + offset_range.end
-  let view = 
-    self.data[self.previous_position.buffer_offset:self.previous_position.buffer_offset +
+  let view = self.data[self.previous_position.buffer_offset:self.previous_position.buffer_offset +
     end_offset]
-  
+
   let (end_extra_line_jumps, end_line_start) = Lexer::find_number_of_line_jumps_and_start_of_last_line(
     view,
   )
@@ -357,16 +362,12 @@ pub fn[TR] Lexer::location_from_buffer_offset_range(
   TextRange::{
     start: TextPosition::TextPosition(
       self.previous_position.global_line + start_extra_line_jumps,
-      Lexer::column_from_bytes(
-        self.data[start_line_start:start_offset],
-      ),
+      Lexer::column_from_bytes(self.data[start_line_start:start_offset]),
       self.previous_position.global_offset + Int::to_uint64(offset_range.start),
     ),
     end: TextPosition::TextPosition(
       self.previous_position.global_line + end_extra_line_jumps,
-      Lexer::column_from_bytes(
-        self.data[end_line_start:end_offset],
-      ),
+      Lexer::column_from_bytes(self.data[end_line_start:end_offset]),
       self.previous_position.global_offset + Int::to_uint64(offset_range.end),
     ),
   }
@@ -393,9 +394,8 @@ fn[TR] Lexer::text_position_from_position(
   self : Lexer[TR],
   position : Position,
 ) -> TextPosition {
-  let view = 
-    self.data[position.line_start_buffer_offset:position.buffer_offset]
-  
+  let view = self.data[position.line_start_buffer_offset:position.buffer_offset]
+
   {
     line: position.global_line,
     column: Lexer::column_from_bytes(view),
@@ -571,12 +571,10 @@ fn[TR] Lexer::skip_whitespaces_and_comments(self : Lexer[TR]) -> Bool? {
   // 检查是否有行注释
   match self.line_comment_start {
     Some(comment_start) => {
-      let buf = 
-        self.data[self.position.buffer_offset:]
-      
+      let buf = self.data[self.position.buffer_offset:]
 
       // 检查是否以注释开始
-      if !Bytes::from_array(buf).has_prefix(comment_start) {
+      if !array_view_has_prefix(buf, comment_start) {
         // 不是注释，但可能是不完整的注释开始
         if !self.is_ending && buf.length() < comment_start.length() {
           return None

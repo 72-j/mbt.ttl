@@ -14,23 +14,28 @@ pub struct NxLexer {
 ///|
 impl TokenRecognizer for NxLexer with fn recognize_next_token(
   self : NxLexer,
-  data : BytesView,
+  data : ArrayView[Byte],
   is_ending : Bool,
   options : LexerOptions?,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let base_iri_opt = match options {
-    Some(options) => {
-      // let opts = match options {
-      //   LexerOptions(n3_options) => n3_options.base_iri
-      // }
-
-      // 假设 Iri::parse 返回 Result[Iri, Error]
-      let iri = options.base_iri.unwrap().as_ref()
-      match IriRef::parse(iri) {
-        Ok(iri) => Some(iri)
-        Err(_) => None // 或者处理错误
+    Some(options) =>
+      match options.base_iri {
+        Some(iri_str) => {
+          let iri_ref = iri_str.as_ref()
+          if self.lenient {
+            // 宽松模式：使用 unchecked 解析，即使格式不完美也尝试使用
+            Some(IriRef::parse_unchecked(iri_ref))
+          } else {
+            // 严格模式：必须通过标准解析验证
+            match IriRef::parse(iri_ref) {
+              Ok(parsed_iri) => Some(parsed_iri)
+              Err(_) => None
+            }
+          }
+        }
+        None => None
       }
-    }
     None => None
   }
   let options = LexerOptions::default(base_iri_opt)
@@ -85,11 +90,18 @@ impl TokenRecognizer for NxLexer with fn recognize_next_token(
     b'_' =>
       match data.get(1) {
         Some(b':') => NxLexer::recognize_blank_node_label(data, is_ending)
-        c =>
+        Some(c) =>
+          Some((1, Err(TokenRecognizerError::InvalidToken([c], Range(1, 2)))))
+        None =>
           Some(
             (
               1,
-              Err(TokenRecognizerError::InvalidToken([c.unwrap()], Range(1, 2))),
+              Err(
+                TokenRecognizerError::UnexpectedEndOfInput(
+                  data[0:1],
+                  Range(0, 1),
+                ),
+              ),
             ),
           )
       }
@@ -97,15 +109,15 @@ impl TokenRecognizer for NxLexer with fn recognize_next_token(
       if self.mode != NxLexerMode::NTriples &&
         data.get(1) == Some(b'"') &&
         data.get(2) == Some(b'"') {
-        self.recognize_long_string(data, b'"')
+        self.recognize_long_string(data, b'"', is_ending)
       } else {
-        self.recognize_string(data, b'"')
+        self.recognize_string(data, b'"', is_ending)
       }
     b'\'' if self.mode != NxLexerMode::NTriples =>
       if data.get(1) == Some(b'\'') && data.get(2) == Some(b'\'') {
-        self.recognize_long_string(data, b'\'')
+        self.recognize_long_string(data, b'\'', is_ending)
       } else {
-        self.recognize_string(data, b'\'')
+        self.recognize_string(data, b'\'', is_ending)
       }
     b'@' => self.recognize_lang_tag(data)
     b'.' =>
@@ -170,22 +182,72 @@ pub fn NxLexer::NxLexer(mode : NxLexerMode, lenient : Bool) -> NxLexer {
 }
 
 ///|
+// fn NxLexer::recognize_iri(
+//   self : NxLexer,
+//   data : ArrayView[Byte],
+//   options : LexerOptions,
+// ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+//   let string = []
+//   let mut i = 1
+//   for ;; {
+//     let end_opt = array_view_memchr2(b'>', b'\'', data[i:])
+
+//     let end = match end_opt {
+//       Some(e) => e
+//       None =>
+//         // 如果未找到结束符，根据 N3 语法通常视为错误，或者取到末尾
+//         // 这里为了保持类型一致并避免崩溃，假设取剩余长度，但后续 match data[i] 可能会越界
+//         // 建议在此处检查并返回错误
+//         return Some(
+//           (
+//             data.length(),
+//             Err(
+//               TokenRecognizerError::IriTruncated(
+//                 data[i:],
+//                 Range(i, i + data.length()),
+//               ),
+//             ),
+//           ),
+//         )
+//     }
+//     string.append(data[i:i + end])
+//     i += end
+//     match data[i] {
+//       b'>' =>
+//         return Some((i + 1, self.parse_iri(string, Range(0, i + 1), options)))
+//       b'\'' => {
+//         let (additional, c) = self.recognize_escape(data[i:], i, false).unwrap()
+//         i += additional + 1
+//         match c {
+//           Ok(c) => string.append(char_to_utf8_bytes(c))
+//           // Ok(c) => string.append(@utf8.encode("\{c}").to_array())
+//           Err(e) => return Some((i, Err(e)))
+//         }
+//       }
+//       _ => panic()
+//     }
+//   }
+// }
+
+///|
 fn NxLexer::recognize_iri(
   self : NxLexer,
-  data : BytesView,
+  data : ArrayView[Byte],
   options : LexerOptions,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let string = []
   let mut i = 1
+
+  // 循环直到找到 '>'
   for ;; {
-    let end_opt = memchr2(b'>', b'\'', data[i:])
+    // 修复：只查找 '>'，不要查找 '\''。
+    // N-Triples/Turtle IRI 中不支持反斜杠转义，单引号是合法字符。
+    let end_opt = array_view_memchr(b'>', data[i:])
 
     let end = match end_opt {
       Some(e) => e
       None =>
-        // 如果未找到结束符，根据 N3 语法通常视为错误，或者取到末尾
-        // 这里为了保持类型一致并避免崩溃，假设取剩余长度，但后续 match data[i] 可能会越界
-        // 建议在此处检查并返回错误
+        // 未找到结束符，返回截断错误
         return Some(
           (
             data.length(),
@@ -198,21 +260,14 @@ fn NxLexer::recognize_iri(
           ),
         )
     }
-    string.append(Bytes::to_array(data[i:i + end].to_owned()))
+
+    // 将中间的所有字节（包括 %, ', (, ) 等）追加到 string
+    string.append(data[i:i + end])
     i += end
-    match data[i] {
-      b'>' =>
-        return Some((i + 1, self.parse_iri(string, Range(0, i + 1), options)))
-      b'\'' => {
-        let (additional, c) = self.recognize_escape(data[i:], i, false).unwrap()
-        i += additional + 1
-        match c {
-          Ok(c) => string.append(@utf8.encode("\{c}").to_array())
-          Err(e) => return Some((i, Err(e)))
-        }
-      }
-      _ => panic()
-    }
+
+    // 此时 data[i] 必须是 '>'
+    // 直接返回解析结果，不再处理任何转义逻辑
+    return Some((i + 1, self.parse_iri(string, Range(0, i + 1), options)))
   }
 }
 
@@ -224,8 +279,17 @@ fn NxLexer::parse_iri(
   options : LexerOptions,
 ) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError] {
   // 1. 将字节数组转换为字符串，处理可能的 UTF-8 错误
-  let iri_str = string_from_utf8(iri_bytes, position).unwrap()
-
+  let iri_str = match string_from_utf8(iri_bytes, position) {
+    Ok(s) => s
+    Err(e) => return Err(e) // 或者直接使用: let iri_str = string_from_utf8(iri_bytes, position)?;
+  }
+  if iri_str.contains("\\") {
+    return Err(
+      TokenRecognizerError::InvalidErrMessage(
+        iri_bytes, position, "IRIs in N-Triples cannot contain backslashes",
+      ),
+    )
+  }
   // 2. 解析或解析并合并 Base IRI
   let final_iri = if options.base_iri is Some(base_iri) {
     // 如果有 base_iri，尝试解析相对 IRI
@@ -251,12 +315,10 @@ fn NxLexer::parse_iri(
       // 如果 Iri 模块没有 unchecked_parse，可能需要借用严格模式的结果或自定义逻辑
       // 假设 lenient 模式下如果没有 base_iri 也至少要是合法格式，或者使用 try_parse
 
-      IriRef::parse(iri).map_err(fn(e) {
-        TokenRecognizerError::IriParsingError(e.message(), position)
-      })
+      Ok(IriRef::parse_unchecked(iri))
     } else {
       // 严格模式
-      IriRef::parse(iri, unchecked=true).map_err(fn(e) {
+      IriRef::parse(iri).map_err(fn(e) {
         TokenRecognizerError::IriParsingError(e.message(), position)
       })
     }
@@ -275,7 +337,7 @@ fn NxLexer::parse_iri(
 ///|
 fn NxLexer::recognize_pname_or_keyword(
   self : NxLexer,
-  data : BytesView,
+  data : ArrayView[Byte],
   is_ending : Bool,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let mut i = 0
@@ -308,7 +370,7 @@ fn NxLexer::recognize_pname_or_keyword(
           i += consumed
         } else {
           // 遇到无效字符，作为 PlainKeyword 返回
-          while data[:i].has_suffix(b".") {
+          while array_view_has_prefix(data[:i], b".") {
             i -= 1
           }
           return Some(
@@ -324,7 +386,7 @@ fn NxLexer::recognize_pname_or_keyword(
       None =>
         // 没有更多字符可解析
         if is_ending {
-          while data[:i].has_suffix(b".") {
+          while array_view_has_prefix(data[:i], b".") {
             i -= 1
           }
           return Some(
@@ -399,7 +461,7 @@ fn NxLexer::recognize_pname_or_keyword(
 ///|
 fn NxLexer::recognize_variable(
   self : NxLexer,
-  data : BytesView,
+  data : ArrayView[Byte],
   is_ending : Bool,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   if data.is_empty() || data[0] != b'?' {
@@ -434,7 +496,7 @@ fn NxLexer::recognize_variable(
 ///|
 fn NxLexer::recognize_optional_pn_local(
   self : NxLexer,
-  data : BytesView,
+  data : ArrayView[Byte],
   is_ending : Bool,
 ) -> (Int, Result[(String, Bool), TokenRecognizerError])? {
   let mut i = 0
@@ -449,81 +511,108 @@ fn NxLexer::recognize_optional_pn_local(
         Ok((c, consumed)) =>
           if c == '%' {
             i += 1
-            let a = Byte::to_char(data.get(i).unwrap())
-            i += 1
-            let b = Byte::to_char(data.get(i).unwrap())
-            if !a.is_ascii_hexdigit() || !b.is_ascii_hexdigit() {
-              return Some(
-                (
-                  i + 1,
-                  Err(
-                    TokenRecognizerError::InvalidErrMessage(
-                      data[i - 2:i],
-                      Range::Range(i - 2, i),
-                      "escapes in IRIs should be % followed by two hexadecimal characters, found '\{a}\{b}'",
+            match (data.get(i), data.get(i + 1)) {
+              (Some(byte_a), Some(byte_b)) => {
+                let a = Byte::to_char(byte_a)
+                i += 1
+                let b = Byte::to_char(byte_b)
+                if !a.is_ascii_hexdigit() || !b.is_ascii_hexdigit() {
+                  return Some(
+                    (
+                      i + 1,
+                      Err(
+                        TokenRecognizerError::InvalidErrMessage(
+                          data[i - 2:i],
+                          Range::Range(i - 2, i),
+                          "escapes in IRIs should be % followed by two hexadecimal characters, found '\{a}\{b}'",
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              )
+                  )
+                }
+                i += 1
+                ends_with_unescaped_dot = 0
+              }
+              _ =>
+                // 数据不足，等待更多输入
+                return None
             }
-            i += 1
-            ends_with_unescaped_dot = 0
           } else if c == '\'' {
             i += 1
-            let a = Byte::to_char(data.get(i).unwrap())
-            if self.lenient ||
-              a == '_' ||
-              a == '~' ||
-              a == '.' ||
-              a == '-' ||
-              a == '!' ||
-              a == '$' ||
-              a == '&' ||
-              a == '\'' ||
-              a == '(' ||
-              a == ')' ||
-              a == '*' ||
-              a == '+' ||
-              a == ',' ||
-              a == ';' ||
-              a == '=' {
-              // allowed
-            } else if a == '/' || a == '?' || a == '#' || a == '@' || a == '%' {
-              might_be_invalid_iri = true
-            } else {
-              return Some(
-                (
-                  i + 1,
-                  Err(
-                    TokenRecognizerError::InvalidErrMessage(
-                      data[i:i + 1],
-                      Range::Range(i, i + 1),
-                      "The character that are allowed to be escaped in IRIs are _~.-!$&'()*+,;=/?#@%, found '\{a}'",
+            match data.get(i) {
+              Some(next_byte) => {
+                let a = Byte::to_char(next_byte)
+
+                if self.lenient ||
+                  a == '_' ||
+                  a == '~' ||
+                  a == '.' ||
+                  a == '-' ||
+                  a == '!' ||
+                  a == '$' ||
+                  a == '&' ||
+                  a == '\'' ||
+                  a == '(' ||
+                  a == ')' ||
+                  a == '*' ||
+                  a == '+' ||
+                  a == ',' ||
+                  a == ';' ||
+                  a == '=' {
+                  // allowed
+                } else if a == '/' ||
+                  a == '?' ||
+                  a == '#' ||
+                  a == '@' ||
+                  a == '%' {
+                  might_be_invalid_iri = true
+                } else {
+                  return Some(
+                    (
+                      i + 1,
+                      Err(
+                        TokenRecognizerError::InvalidErrMessage(
+                          data[i:i + 1],
+                          Range::Range(i, i + 1),
+                          "The character that are allowed to be escaped in IRIs are _~.-!$&'()*+,;=/?#@%, found '\{a}'",
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              )
-            }
+                  )
+                }
 
-            if buffer is None {
-              buffer = Some(StringBuilder::new())
-            }
-            let buffer_ref = buffer.unwrap()
-
-            if i - position_that_is_already_in_buffer > 1 {
-              match
-                str_from_utf8(
-                  data[position_that_is_already_in_buffer:i - 1],
-                  Range::Range(position_that_is_already_in_buffer, i - 1),
-                ) {
-                Ok(data_str) => buffer_ref.write_stringview(data_str)
-                Err(e) => return Some((i, Err(e)))
+                if buffer is None {
+                  buffer = Some(StringBuilder::new())
+                }
+                match buffer {
+                  Some(b) => {
+                    if i - position_that_is_already_in_buffer > 1 {
+                      match
+                        str_from_utf8(
+                          data[position_that_is_already_in_buffer:i - 1],
+                          Range::Range(
+                            position_that_is_already_in_buffer,
+                            i - 1,
+                          ),
+                        ) {
+                        Ok(data_str) => b.write_stringview(data_str)
+                        Err(e) => return Some((i, Err(e)))
+                      }
+                    }
+                    b.write_char(a)
+                    i += 1
+                    position_that_is_already_in_buffer = i
+                    ends_with_unescaped_dot = 0
+                  }
+                  None => abort(" cannot happen")
+                  // 理论上不可达，因为上面已经初始化了
+                  // 可以留空或添加 debug assert
+                }
               }
+              None =>
+                // 数据不足，等待更多输入
+                return None
             }
-            buffer_ref.write_char(a)
-            i += 1
-            position_that_is_already_in_buffer = i
-            ends_with_unescaped_dot = 0
           } else if i == 0 {
             if !(NxLexer::is_possible_pn_chars_u(c) ||
               c == ':' ||
@@ -626,7 +715,7 @@ fn NxLexer::recognize_optional_pn_local(
 
 ///|
 fn NxLexer::recognize_blank_node_label(
-  data : BytesView,
+  data : ArrayView[Byte],
   is_ending : Bool,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let mut i = 2
@@ -728,7 +817,7 @@ fn NxLexer::recognize_blank_node_label(
 ///|
 fn NxLexer::recognize_lang_tag(
   self : NxLexer,
-  data : BytesView,
+  data : ArrayView[Byte],
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let mut is_last_block_empty = true
   let mut are_digits_allowed = false
@@ -783,7 +872,7 @@ fn NxLexer::recognize_lang_tag(
 ///|
 fn NxLexer::parse_lang_tag(
   self : NxLexer,
-  lang_tag : BytesView,
+  lang_tag : ArrayView[Byte],
   direction : Bytes?,
   position : Range,
 ) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError] {
@@ -831,7 +920,7 @@ fn NxLexer::parse_lang_tag(
           } else {
             Err(
               TokenRecognizerError::InvalidErrMessage(
-                dir_bytes,
+                dir_bytes.to_array(),
                 Range::Range(position.end - dir_bytes.length(), position.end),
                 "The allowed base directions are --ltr and --rtl, found --" +
                 @utf8.decode_lossy(dir_bytes),
@@ -932,26 +1021,54 @@ fn NxLexer::parse_lang_tag(
 ///|
 fn NxLexer::recognize_string(
   self : NxLexer,
-  data : BytesView,
+  data : ArrayView[Byte],
   delimiter : Byte,
+  is_ending : Bool,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
-  // println("DEBUG: Entering recognize_string with delimiter \{delimiter}")
+  debug("DEBUG: Entering recognize_string with delimiter \{delimiter}")
 
   let string = StringBuilder::new()
   let mut i = 1
+  let mut loop_count = 0
+
   for ;; {
+    loop_count += 1
+    if loop_count > 100 {
+      debug("Infinite loop detected in recognize_string")
+    }
     // 1. 查找下一个定界符或反斜杠
     // 如果找不到，说明数据不足，返回 None 等待更多数据
-    let end_opt = memchr2(delimiter, b'\\', data[i:])
+    let end_opt = array_view_memchr2(delimiter, b'\\', data[i:])
 
     let mut end = match end_opt {
-      Some(e) => e
-      None => return None // 需要更多数据
+      Some(e) => {
+        debug("DEBUG: Found end of string literal at index \{i + e}")
+        e
+      }
+      None => {
+        debug("DEBUG: No end of string literal found")
+        if is_ending {
+          return Some(
+            (
+              data.length(),
+              Err(
+                TokenRecognizerError::UnexpectedEndOfInput(
+                  data[i:],
+                  Range::Range(i, data.length()),
+                ),
+              ),
+            ),
+          )
+        } else {
+          return None
+        }
+      }
     }
 
     // 2. 在非宽松模式下，检查这段普通字符中是否包含未转义的换行符
     if !self.lenient {
-      if memchr2(b'\n', b'\r', data[i:i + end]) is Some(line_jump_end) {
+      if array_view_memchr2(b'\n', b'\r', data[i:i + end])
+        is Some(line_jump_end) {
         end = line_jump_end
       }
     }
@@ -971,7 +1088,10 @@ fn NxLexer::recognize_string(
     }
 
     match data[i] {
-      c if c == delimiter =>
+      c if c == delimiter => {
+        debug(
+          "Returning String Token: '\{string.to_string()}', Consumed: \{i + 1}",
+        )
         // 遇到定界符，字符串结束
         return Some(
           (
@@ -979,6 +1099,7 @@ fn NxLexer::recognize_string(
             Ok(TokenOrLineJump::Token(N3Token::String(string.to_string()))),
           ),
         )
+      }
       b'\\' => {
         // 遇到反斜杠，处理转义序列
         let escape_result = self.recognize_escape(data[i:], i, true)
@@ -993,7 +1114,7 @@ fn NxLexer::recognize_string(
               Ok(c) => string.write_char(c)
               Err(e) => {
                 // 转义错误：找到结束符并返回错误
-                let end_opt = memchr(delimiter, data[i:])
+                let end_opt = array_view_memchr(delimiter, data[i:])
                 let final_end = match end_opt {
                   Some(e) => i + e + 1
                   None => data.length() // 或者返回 None
@@ -1009,7 +1130,7 @@ fn NxLexer::recognize_string(
       }
       b'\n' | b'\r' => {
         // 遇到未转义的换行符
-        let end_opt = memchr(delimiter, data[i:])
+        let end_opt = array_view_memchr(delimiter, data[i:])
         let final_end = match end_opt {
           Some(e) => i + e + 1
           None => i + 1
@@ -1030,7 +1151,18 @@ fn NxLexer::recognize_string(
       _ =>
         // 理论上不会到达这里，除非 memchr2 逻辑有误
         // 为了安全，返回错误或 abort
-        println("Unexpected char in string parsing: \{data[i]}")
+        return Some(
+          (
+            i + 1,
+            Err(
+              TokenRecognizerError::InvalidErrMessage(
+                data[i:i + 1],
+                Range::Range(i, i + 1),
+                "Unexpected character in string literal",
+              ),
+            ),
+          ),
+        )
     }
   }
 }
@@ -1038,13 +1170,44 @@ fn NxLexer::recognize_string(
 ///|
 fn NxLexer::recognize_long_string(
   self : NxLexer,
-  data : BytesView,
+  data : ArrayView[Byte],
   delimiter : Byte,
+  is_ending : Bool,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let string = StringBuilder::new()
   let mut i = 3
   for ;; {
-    let end = memchr2(delimiter, b'\'', data[i:]).unwrap()
+    let end_opt = array_view_memchr2(delimiter, b'\\', data[i:])
+
+    let mut end = match end_opt {
+      Some(e) => e
+      None =>
+        return if is_ending {
+          return Some(
+            (
+              data.length(),
+              Err(
+                TokenRecognizerError::UnexpectedEndOfInput(
+                  data[i:],
+                  Range::Range(i, data.length()),
+                ),
+              ),
+            ),
+          )
+        } else {
+          return None // 需要更多数据
+        }
+    } // 需要更多数据
+
+    // 2. 在非宽松模式下，检查这段普通字符中是否包含未转义的换行符
+    if !self.lenient {
+      if array_view_memchr2(b'\n', b'\r', data[i:i + end])
+        is Some(line_jump_end) {
+        end = line_jump_end
+      }
+    }
+
+    // let end = array_view_memchr2(delimiter, b'\'', data[i:]).unwrap()
     match str_from_utf8(data[i:i + end], Range::Range(i, i + end)) {
       Ok(s) => string.write_string(s)
       Err(e) => return Some((end, Err(e)))
@@ -1066,22 +1229,43 @@ fn NxLexer::recognize_long_string(
         i += 1
         string.write_char(Byte::to_char(delimiter))
       }
-      b'\'' => {
-        let (additional, c) = self.recognize_escape(data[i:], i, true).unwrap()
-        i += additional + 1
-        match c {
-          Ok(c) => string.write_char(c)
-          Err(e) => return Some((i, Err(e)))
+      b'\'' =>
+        match self.recognize_escape(data[i:], i, true) {
+          Some((additional, c_result)) => {
+            i += additional + 1
+            // 防御性检查：确保索引未越界（虽然 recognize_escape 通常只消耗固定长度，但安全起见）
+            if i > data.length() {
+              return None
+            }
+            match c_result {
+              Ok(c) => string.write_char(c)
+              Err(e) => return Some((i, Err(e)))
+            }
+          }
+          None =>
+            // 数据不足，需要更多输入来完整解析转义序列
+            return None
         }
-      }
-      _ => abort("Unexpected character in long string literal")
+      _ =>
+        return Some(
+          (
+            i + 1,
+            Err(
+              TokenRecognizerError::InvalidErrMessage(
+                data[i:i + 1],
+                Range::Range(i, i + 1),
+                "Unexpected character in long string literal",
+              ),
+            ),
+          ),
+        )
     }
   }
 }
 
 ///|
 fn NxLexer::recognize_number(
-  data : BytesView,
+  data : ArrayView[Byte],
   is_ending : Bool,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let mut i = 0
@@ -1092,7 +1276,10 @@ fn NxLexer::recognize_number(
       // 如果数据为空，根据具体逻辑决定是返回 None 还是错误
       return None
   }
-  let count_before = NxLexer::recognize_digits(data[i:], is_ending).unwrap()
+  let count_before = match NxLexer::recognize_digits(data[i:], is_ending) {
+    Some(count) => count
+    None => return None // 数据不足
+  }
   i += count_before
   let c = if data.get(i) is Some(c) {
     Some(c)
@@ -1103,7 +1290,10 @@ fn NxLexer::recognize_number(
   }
   let count_after = if c == Some(b'.') {
     i += 1
-    let count_after = NxLexer::recognize_digits(data[i:], is_ending).unwrap()
+    let count_after = match NxLexer::recognize_digits(data[i:], is_ending) {
+      Some(count) => count
+      None => return None // 数据不足
+    }
     i += count_after
     Some(count_after)
   } else {
@@ -1128,7 +1318,10 @@ fn NxLexer::recognize_number(
     if c is Some(b'+' | b'-') {
       i += 1
     }
-    let count_exp = NxLexer::recognize_digits(data[i:], is_ending).unwrap()
+    let count_exp = match NxLexer::recognize_digits(data[i:], is_ending) {
+      Some(count) => count
+      None => return None // 数据不足
+    }
     i += count_exp
     Some(
       (
@@ -1210,7 +1403,7 @@ fn NxLexer::recognize_number(
 }
 
 ///|
-fn NxLexer::recognize_digits(data : BytesView, is_ending : Bool) -> Int? {
+fn NxLexer::recognize_digits(data : ArrayView[Byte], is_ending : Bool) -> Int? {
   for _item in data.iter2() {
     let (i, c) = _item
     if !Byte::to_char(c).is_ascii_digit() {
@@ -1229,7 +1422,7 @@ fn NxLexer::recognize_digits(data : BytesView, is_ending : Bool) -> Int? {
 ///|
 fn NxLexer::recognize_escape(
   self : NxLexer,
-  data : BytesView,
+  data : ArrayView[Byte],
   position : Int,
   with_echar : Bool,
 ) -> (Int, Result[Char, TokenRecognizerError])? {
@@ -1316,7 +1509,7 @@ fn NxLexer::recognize_escape(
 
 ///|
 fn NxLexer::recognize_hex_char(
-  data : BytesView,
+  data : ArrayView[Byte],
   len : Int,
   escape_char : Char,
   position : Int,
@@ -1325,7 +1518,7 @@ fn NxLexer::recognize_hex_char(
     return Ok(None)
   }
   let mut codepoint = 0
-  for i in 0..<=len {
+  for i in 0..<len {
     let c = data[i]
     // let c_char = Byte::to_char(c)
 
@@ -1336,7 +1529,7 @@ fn NxLexer::recognize_hex_char(
           b'a'..=b'f' => Byte::to_char(c - b'a' + 10)
           b'A'..=b'F' => Byte::to_char(c - b'A' + 10)
           _ => {
-            let val = @utf8.decode_lossy(data[:len])
+            let val = @utf8.decode_lossy(array_to_view(data[:len]))
             return Err(
               TokenRecognizerError::InvalidErrMessage(
                 data[position + i + 2:position + i + 3],
@@ -1356,7 +1549,7 @@ fn NxLexer::recognize_hex_char(
 
 ///|
 fn NxLexer::recognize_utf16_surrogate_pair(
-  data : BytesView,
+  data : ArrayView[Byte],
   position : Int,
 ) -> Result[Char?, TokenRecognizerError] {
   // 检查长度是否足够容纳 \uXXXX\uXXXX (2 + 4 + 2 + 4 = 12 个字符/字节)
@@ -1480,14 +1673,17 @@ fn NxLexer::recognize_utf16_surrogate_pair(
 
 ///|
 fn NxLexer::recognize_unicode_char(
-  data : BytesView,
+  data : ArrayView[Byte],
   position : Int,
 ) -> Result[(Char, Int), TokenRecognizerError]? {
   let mut code_point : UInt = 0
   let mut bytes_needed : Int = 0
   let mut lower_boundary = 0x80
   let mut upper_boundary = 0xBF
-  let byte = data.get(0).unwrap()
+  let byte = match data.get(0) {
+    Some(b) => b
+    None => return None // 数据不足
+  }
   match byte {
     0x00..=0x7F => return Some(Ok((Byte::to_char(byte), 1)))
     0xC2..=0xDF => {
@@ -1526,8 +1722,11 @@ fn NxLexer::recognize_unicode_char(
       )
   }
   for i in 1..<=bytes_needed {
-    let byte = data.get(i).unwrap()
-    if byte < Int::to_byte(lower_boundary) ||
+    let next_byte = match data.get(i) {
+      Some(b) => b
+      None => return None // 数据不足，需要更多输入
+    }
+    if next_byte < Int::to_byte(lower_boundary) ||
       upper_boundary < Byte::to_int(byte) {
       return Some(
         Err(
@@ -1632,75 +1831,73 @@ pub fn resolve_local_name(
 
 ///|
 fn str_from_utf8(
-  data : BytesView,
+  data : ArrayView[Byte],
   range : Range,
 ) -> Result[String, TokenRecognizerError] {
-  let s = try @utf8.of_bytes(data.to_owned()) |> Ok catch {
-    e => Err(e)
-  }
-  guard s is Ok(s) else {
-    return Err(
-      TokenRecognizerError::InvalidErrMessage(
-        data[range.start:range.end],
-        range,
-        "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
-      ),
-    )
-  }
-  Ok(@utf8.Utf8::to_string(s))
-  // match s {
-  // Ok(s) => Ok(@utf8.Utf8::to_string(s))
-  // Err(e) =>
-  //   match e {
-  //     @utf8.Malformed(invalid_bytes_view) =>
+  let view = array_to_view(data)
 
-  //       // 2. 构造错误消息
-  //       return Err(
-  //         TokenRecognizerError::InvalidErrMessage(
-  //           invalid_bytes_view,
-  //           range,
-  //           "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
-  //         ),
-  //       )
-  //   }
-  // }
+  let s = try @utf8.decode(view.to_owned()) |> Ok() catch {
+    _e => {
+      let error_start = range.start
+      let error_end = Int::min(range.end, error_start + 4)
+
+      return Err(
+        TokenRecognizerError::InvalidErrMessage(
+          data[error_start:error_end],
+          Range::Range(error_start, error_end),
+          "Invalid UTF-8 sequence",
+        ),
+      )
+    }
+  }
+
+  s
 }
+
+// 2. 使用 decode_lossy 直接获取 String
+// 注意：decode_lossy 通常不返回 Result，而是直接返回 String
+// match @utf8.decode_lossy(view) {
+//   Ok(s) => s
+//   Err(e) =>
+//     return Err(
+//       TokenRecognizerError::InvalidErrMessage(
+//         data[range.start:range.end],
+//         range,
+//         "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
+//       ),
+//     )
+
+// }
+
+// 3. 如果你仍然希望检测严重的 UTF-8 错误并报错，
+//    你需要手动检查或者保留 decode。
+//    但如果目的是“尽可能解析”，直接返回即可：
+// catch {
+//   _e =>
+//     return Err(
+//       TokenRecognizerError::InvalidErrMessage(
+//         data[range.start:range.end],
+//         range,
+//         "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
+//       ),
+//     )
+// }
+// guard s is Ok(s) else {
+//   return Err(
+//     TokenRecognizerError::InvalidErrMessage(
+//       data[range.start:range.end],
+//       range,
+//       "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
+//     ),
+//   )
+// }
 
 ///|
 fn string_from_utf8(
   data : Array[Byte],
   range : Range,
 ) -> Result[String, TokenRecognizerError] {
-  let bytes = Bytes::from_array(data)
-  let s = try @utf8.of_bytes(bytes) |> Ok catch {
-    e => Err(e)
-  }
-  guard s is Ok(s) else {
-    return Err(
-      TokenRecognizerError::InvalidErrMessage(
-        bytes[range.start:range.end],
-        range,
-        "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
-      ),
-    )
-  }
-  Ok(@utf8.Utf8::to_string(s))
-  // match s {
-  //   Ok(s) => Ok(@utf8.Utf8::to_string(s))
-  //   Err(e) =>
-  //     match e {
-  //       @utf8.Malformed(invalid_bytes_view) =>
-
-  //         // 2. 构造错误消息
-  //         return Err(
-  //           TokenRecognizerError::InvalidErrMessage(
-  //             invalid_bytes_view,
-  //             range,
-  //             "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
-  //           ),
-  //         )
-  //     }
-  // }
+  str_from_utf8(data[:], range)
 }
 
 // fn str_from_utf8(data : BytesView, range : Range) -> Result[String, TokenRecognizerError] {
