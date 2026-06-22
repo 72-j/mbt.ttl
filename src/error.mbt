@@ -1,6 +1,6 @@
 ///|
 pub(all) suberror IriError {
-  NoScheme(Int)
+  NoScheme
   Expected(Char, Int)
   InvalidIriCodePoint(Char, Int)
   InvalidPercentEncoding(Int)
@@ -22,7 +22,7 @@ pub trait ErrOut {
 ///|
 pub fn IriError::position(self : IriError) -> Int {
   match self {
-    IriError::NoScheme(pos) => pos
+    IriError::NoScheme => 0
     IriError::Expected(_, pos) => pos
     IriError::RelativePathSegment(_, pos) => pos
     IriError::InvalidHostCharacter(_, pos) => pos
@@ -112,10 +112,6 @@ pub(all) suberror TokenRecognizerError {
 }
 
 ///|
-struct Range {
-  start : Int
-  end : Int
-}
 
 ///|
 pub fn TokenRecognizerError::range(self : TokenRecognizerError) -> Range {
@@ -165,7 +161,7 @@ impl ErrOut for TokenRecognizerError with fn err_kind(
   match self {
     TokenRecognizerError::Invalid => "Invalid"
     TokenRecognizerError::InvalidFormat(_, _) => "InvalidFormat"
-    TokenRecognizerError::InvalidToken(_, _) => "InvalidToken"
+    TokenRecognizerError::InvalidToken(_, _) => "InvalidRecognizerToken"
     TokenRecognizerError::InvalidCharacter(_, _) => "InvalidCharacter"
     TokenRecognizerError::IncompleteEscapeSequence(_, _) =>
       "IncompleteEscapeSequence"
@@ -213,20 +209,10 @@ pub impl Show for Range with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-pub fn Range::Range(start : Int, end : Int) -> Range {
-  { start, end }
-}
-
-///|
-pub fn Range::utf8_range(self : Range, data : ArrayView[Byte]) -> String {
-  let data = data[self.start:self.end]
-  let str = @utf8.decode_lossy(array_to_view(data))
-  str
-}
 
 ///|
 pub(all) suberror RuleRecognizerError {
-  SyntaxError(String, TextPosition)
+  SyntaxError(String, SourcePosition)
   BlankNodeOrIriError
   PredicateNotAnIRI
   LiteralDatatypeError
@@ -236,20 +222,43 @@ pub(all) suberror RuleRecognizerError {
   //  UnexpectedToken(UnexpectedToken)
   // RecoveryError(RecoveryError)
 }
+struct Range {
+  start : Int
+  end : Int
+} derive(Debug, Default)
 
+pub fn Range::Range(start : Int, end : Int) -> Range {
+  { start, end }
+}
+pub fn Range::single(pos : Int) -> Range {
+  { start:pos, end:pos }
+}
+  pub fn  Range::length(self: Self) -> Int {
+    self.end - self.start
+  }
+  pub fn Range::contains(self: Self, pos: Int) -> Bool {
+    pos >= self.start && pos < self.end
+  }
 ///|
-pub(all) struct TextRange {
-  start : TextPosition
-  end : TextPosition
+pub fn Range::utf8_range(self : Range, data : ArrayView[Byte]) -> String {
+  let data = data[self.start:self.end]
+  let str = @utf8.decode_lossy(array_to_view(data))
+  str
 }
 
 ///|
-fn TextRange::TextRange(start : TextPosition, end : TextPosition) -> TextRange {
+pub(all) struct SourceRange {
+  start : SourcePosition
+  end : SourcePosition
+}derive(Debug)
+
+///|
+fn SourceRange::SourceRange(start : SourcePosition, end : SourcePosition) -> SourceRange {
   { start, end }
 }
 
 ///|
-impl Show for TextRange with fn output(self, logger : &Logger) -> Unit {
+impl Show for SourceRange with fn output(self, logger : &Logger) -> Unit {
   logger.write_string("[")
   logger.write_string(self.start.to_string())
   logger.write_string(":")
@@ -258,21 +267,21 @@ impl Show for TextRange with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-pub fn RuleRecognizerError::text_range(self : RuleRecognizerError) -> TextRange {
+pub fn RuleRecognizerError::text_range(self : RuleRecognizerError) -> SourceRange {
   match self {
-    RuleRecognizerError::SyntaxError(_, pos) => TextRange::TextRange(pos, pos)
+    RuleRecognizerError::SyntaxError(_, pos) => SourceRange::SourceRange(pos, pos)
     RuleRecognizerError::BlankNodeOrIriError =>
-      TextRange::TextRange(TextPosition::default(), TextPosition::default())
+      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
     RuleRecognizerError::PredicateNotAnIRI =>
-      TextRange::TextRange(TextPosition::default(), TextPosition::default())
+      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
     RuleRecognizerError::TripleMissingDot =>
-      TextRange::TextRange(TextPosition::default(), TextPosition::default())
+      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
     RuleRecognizerError::LiteralDatatypeError =>
-      TextRange::TextRange(TextPosition::default(), TextPosition::default())
+      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
     RuleRecognizerError::InvalidLanguageTag =>
-      TextRange::TextRange(TextPosition::default(), TextPosition::default())
+      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
     RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
-      TextRange::TextRange(TextPosition::default(), TextPosition::default())
+      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
   }
 }
 
@@ -331,11 +340,11 @@ pub impl Show for RuleRecognizerError with fn output(
 
 ///|
 pub(all) suberror TurtleError {
-  TurtleParseError(String, TextPosition)
-  TurtleSyntaxError(String, TextPosition)
+  TurtleParseError(String, SourcePosition)
+  TurtleSyntaxError(String, SourcePosition)
   InvalidEscapeSequence
   InvalidCharacter(String)
-  InvalidToken(TextPosition, String)
+  InvalidToken(SourcePosition, String)
 }
 
 ///|
@@ -356,7 +365,7 @@ pub impl ErrOut for TurtleError with fn err_kind(self : TurtleError) -> String {
     TurtleError::TurtleSyntaxError(_, _) => "TurtleSyntaxError"
     TurtleError::InvalidEscapeSequence => "InvalidEscapeSequence"
     TurtleError::InvalidCharacter(_) => "InvalidCharacter"
-    TurtleError::InvalidToken(_, _) => "InvalidToken"
+    TurtleError::InvalidToken(_, _) => "InvalidTurtleToken"
   }
 }
 

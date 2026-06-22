@@ -59,7 +59,7 @@ pub fn TriGParser::with_prefix(
 pub fn TriGParser::for_reader(
   self : TriGParser,
   reader : &Reader,
-) -> ReaderTriGParser[NxLexer] {
+) -> ReaderTriGParser[RdfLexer] {
   { inner: self.low_level().parser.for_reader(reader) }
 }
 
@@ -67,7 +67,7 @@ pub fn TriGParser::for_reader(
 pub fn TriGParser::for_async_reader(
   self : TriGParser,
   reader : &Reader,
-) -> AsyncReaderTriGParser[NxLexer] {
+) -> AsyncReaderTriGParser[RdfLexer] {
   { inner: self.low_level().parser.for_async_reader(reader) }
 }
 
@@ -88,7 +88,7 @@ pub fn TriGParser::for_slice(
 }
 
 ///|
-pub fn TriGParser::low_level(self : TriGParser) -> LowLevelTriGParser[NxLexer] {
+pub fn TriGParser::low_level(self : TriGParser) -> LowLevelTriGParser[RdfLexer] {
   {
     parser: TriGRecognizer::new_parser(
       [],
@@ -102,16 +102,16 @@ pub fn TriGParser::low_level(self : TriGParser) -> LowLevelTriGParser[NxLexer] {
 }
 
 ///|
-pub struct ReaderTriGParser[LR] {
-  inner : ReaderIterator[LR, TriGRecognizer]
+pub struct ReaderTriGParser[RL] {
+  inner : ReaderIterator[RL, TriGRecognizer]
 }
 
 ///|
-pub fn[LR] ReaderTriGParser::prefixes(
-  self : ReaderTriGParser[LR],
+pub fn[RL] ReaderTriGParser::prefixes(
+  self : ReaderTriGParser[RL],
 ) -> TriGPrefixesIter {
   match self.inner.parser.context {
-    Context::TriGRecognizerContext(ctx) =>
+    RdfContext::TriGRecognizerContext(ctx) =>
       // 假设 ctx 有一个 prefixes 字段，且是 Map[String, Iri]
       // 如果 prefixes 是其他类型，请调整 .iter() 的调用
       { inner: ctx.prefixes.iter() }
@@ -124,9 +124,9 @@ pub fn[LR] ReaderTriGParser::prefixes(
 }
 
 ///|
-pub fn[LR] ReaderTriGParser::base_iri(self : ReaderTriGParser[LR]) -> String? {
+pub fn[RL] ReaderTriGParser::base_iri(self : ReaderTriGParser[RL]) -> String? {
   match self.inner.parser.context {
-    Context::TriGRecognizerContext(ctx) =>
+    RdfContext::TriGRecognizerContext(ctx) =>
       ctx.lexer_options.base_iri.map(fn(iri) { iri.to_string() })
     _ => None
   }
@@ -135,13 +135,13 @@ pub fn[LR] ReaderTriGParser::base_iri(self : ReaderTriGParser[LR]) -> String? {
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct AsyncReaderTriGParser[LR] {
-  inner : AsyncReaderIterator[LR, TriGRecognizer]
+pub struct AsyncReaderTriGParser[RL] {
+  inner : AsyncReaderIterator[RL, TriGRecognizer]
 }
 
 ///|
-pub async fn[LR : TokenRecognizer] AsyncReaderTriGParser::next(
-  self : AsyncReaderTriGParser[LR],
+pub async fn[RL : TokenRecognizer] AsyncReaderTriGParser::next(
+  self : AsyncReaderTriGParser[RL],
 ) -> Result[Quad, TurtleError]? {
   self.inner
   .next()
@@ -149,15 +149,15 @@ pub async fn[LR : TokenRecognizer] AsyncReaderTriGParser::next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        LexOutput::Triple(triple) =>
+        RdfStatement::Triple(triple) =>
           Quad::Quad(
             triple.subject,
             triple.predicate,
             triple.object,
             GraphName::default(),
           )
-        LexOutput::Quad(quad) => quad
-        LexOutput::N3Quad(n3quad) =>
+        RdfStatement::Quad(quad) => quad
+        RdfStatement::N3Quad(n3quad) =>
           match n3quad.predicate.to_node() {
             // 修复：使用 NamedNode(_) 忽略内部字段，消除警告
             NamedNode(node) =>
@@ -183,11 +183,11 @@ pub async fn[LR : TokenRecognizer] AsyncReaderTriGParser::next(
 }
 
 ///|
-pub fn[LR] AsyncReaderTriGParser::prefixes(
-  self : AsyncReaderTriGParser[LR],
+pub fn[RL] AsyncReaderTriGParser::prefixes(
+  self : AsyncReaderTriGParser[RL],
 ) -> TriGPrefixesIter {
   match self.inner.parser.context {
-    Context::TriGRecognizerContext(ctx) =>
+    RdfContext::TriGRecognizerContext(ctx) =>
       // 假设 ctx.prefixes 是 Map[String, IriRef] 或类似可迭代结构
       { inner: ctx.prefixes.iter() }
     _ =>
@@ -198,27 +198,27 @@ pub fn[LR] AsyncReaderTriGParser::prefixes(
 }
 
 ///|
-pub fn[LR] AsyncReaderTriGParser::base_iri(
-  self : AsyncReaderTriGParser[LR],
+pub fn[RL] AsyncReaderTriGParser::base_iri(
+  self : AsyncReaderTriGParser[RL],
 ) -> String? {
   match self.inner.parser.context {
-    Context::TriGRecognizerContext(ctx) =>
+    RdfContext::TriGRecognizerContext(ctx) =>
       ctx.lexer_options.base_iri.map(fn(iri) { iri.to_string() })
     _ => None
   }
 }
 
 ///|
-pub struct SliceTriGParser[LR] {
-  inner : SliceIterator[NxLexer, LR]
+pub struct SliceTriGParser[RL] {
+  inner : SliceIterator[RdfLexer, RL]
 }
 
 ///|
 pub fn SliceTriGParser::prefixes(
-  self : SliceTriGParser[NxLexer],
+  self : SliceTriGParser[RdfLexer],
 ) -> TriGPrefixesIter {
   match self.inner.parser.context {
-    Context::TriGRecognizerContext(ctx) =>
+    RdfContext::TriGRecognizerContext(ctx) =>
       // 假设 ctx.prefixes 是 Map[String, IriRef] 或类似结构
       { inner: ctx.prefixes.iter() }
     _ =>
@@ -229,9 +229,9 @@ pub fn SliceTriGParser::prefixes(
 }
 
 ///|
-pub fn SliceTriGParser::base_iri(self : SliceTriGParser[NxLexer]) -> String? {
+pub fn SliceTriGParser::base_iri(self : SliceTriGParser[RdfLexer]) -> String? {
   match self.inner.parser.context {
-    Context::TriGRecognizerContext(ctx) =>
+    RdfContext::TriGRecognizerContext(ctx) =>
       ctx.lexer_options.base_iri.map(fn(iri) { iri.to_string() })
     _ => None
   }
@@ -240,31 +240,31 @@ pub fn SliceTriGParser::base_iri(self : SliceTriGParser[NxLexer]) -> String? {
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct LowLevelTriGParser[LR] {
-  parser : Parser[LR, TriGRecognizer]
+pub struct LowLevelTriGParser[RL] {
+  parser : Parser[RL, TriGRecognizer]
 }
 
 ///|
-pub fn[LR] LowLevelTriGParser::extend_from_slice(
-  self : LowLevelTriGParser[LR],
+pub fn[RL] LowLevelTriGParser::extend_from_slice(
+  self : LowLevelTriGParser[RL],
   other : Bytes,
 ) -> Unit {
   self.parser.extend_from_slice(other)
 }
 
 ///|
-pub fn[LR] LowLevelTriGParser::end(self : LowLevelTriGParser[LR]) -> Unit {
+pub fn[RL] LowLevelTriGParser::end(self : LowLevelTriGParser[RL]) -> Unit {
   self.parser.end()
 }
 
 ///|
-pub fn[LR] LowLevelTriGParser::is_end(self : LowLevelTriGParser[LR]) -> Bool {
+pub fn[RL] LowLevelTriGParser::is_end(self : LowLevelTriGParser[RL]) -> Bool {
   self.parser.is_end()
 }
 
 ///|
-pub fn[LR : TokenRecognizer] LowLevelTriGParser::parse_next(
-  self : LowLevelTriGParser[LR],
+pub fn[RL : TokenRecognizer] LowLevelTriGParser::parse_next(
+  self : LowLevelTriGParser[RL],
 ) -> Result[Quad, TurtleError]? {
   self.parser
   .parse_next()
@@ -272,15 +272,15 @@ pub fn[LR : TokenRecognizer] LowLevelTriGParser::parse_next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        LexOutput::Triple(triple) =>
+        RdfStatement::Triple(triple) =>
           Quad::Quad(
             triple.subject,
             triple.predicate,
             triple.object,
             GraphName::default(),
           )
-        LexOutput::Quad(quad) => quad
-        LexOutput::N3Quad(n3quad) =>
+        RdfStatement::Quad(quad) => quad
+        RdfStatement::N3Quad(n3quad) =>
           match n3quad.predicate.to_node() {
             // 修复：使用 NamedNode(_) 忽略内部字段，消除警告
             NamedNode(node) =>
@@ -306,11 +306,11 @@ pub fn[LR : TokenRecognizer] LowLevelTriGParser::parse_next(
 }
 
 ///|
-pub fn[LR] LowLevelTriGParser::prefixes(
-  self : LowLevelTriGParser[LR],
+pub fn[RL] LowLevelTriGParser::prefixes(
+  self : LowLevelTriGParser[RL],
 ) -> TriGPrefixesIter {
   match self.parser.context {
-    Context::TriGRecognizerContext(ctx) => { inner: ctx.prefixes.iter() }
+    RdfContext::TriGRecognizerContext(ctx) => { inner: ctx.prefixes.iter() }
     _ =>
       // 假设存在一个空的 Map 或数组可以生成匹配的 Iter2[String, IriRef]
       { inner: {}.iter() }
@@ -318,11 +318,11 @@ pub fn[LR] LowLevelTriGParser::prefixes(
 }
 
 ///|
-pub fn[LR] LowLevelTriGParser::base_iri(
-  self : LowLevelTriGParser[LR],
+pub fn[RL] LowLevelTriGParser::base_iri(
+  self : LowLevelTriGParser[RL],
 ) -> String? {
   match self.parser.context {
-    Context::TriGRecognizerContext(ctx) =>
+    RdfContext::TriGRecognizerContext(ctx) =>
       ctx.lexer_options.base_iri.map(fn(iri) { iri.to_string() })
     _ => None
   }
@@ -850,7 +850,7 @@ fn escape_local_name(value : StringView) -> String? {
     Some(c) => c
     None => return None // 如果字符串为空，直接返回 None
   }
-  if NxLexer::is_possible_pn_chars_u(first) || first == ':' || first == '.' {
+  if RdfLexer::is_possible_pn_chars_u(first) || first == ':' || first == '.' {
     output.write_char(first)
   } else if can_be_escaped_in_local_name(first) {
     output.write_char('\'')
@@ -859,7 +859,7 @@ fn escape_local_name(value : StringView) -> String? {
     return None
   }
   for c in value {
-    if NxLexer::is_possible_pn_chars(c) ||
+    if RdfLexer::is_possible_pn_chars(c) ||
       c == ':' ||
       (c == '.' && !value.is_empty()) {
       output.write_char(c)

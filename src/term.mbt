@@ -510,6 +510,21 @@ pub struct Quad {
   graph_name : GraphName
 } derive(Debug)
 
+impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
+  // 输出 N-Quads 风格: subject predicate object graphName .
+  self.subject.output(logger)
+  logger.write(" ")
+  self.predicate.output(logger)
+  logger.write(" ")
+  self.object.output(logger)
+  
+  // 如果是默认图，某些规范可能省略，但为了调试清晰，这里保留输出
+  // 如果希望严格遵循 N-Quads，默认图可能输出为 "<>" 或省略，具体取决于你的 Logger/Show 约定
+  if !self.graph_name.is_default_graph() {
+    logger.write(" ")
+    self.graph_name.output(logger)
+  }
+}
 ///|
 pub fn Quad::Quad(
   subject : NamedOrBlankNode,
@@ -528,22 +543,6 @@ pub fn Quad::as_n3quad(self : Quad) -> N3Quad {
     self.object.as_n3term(),
     self.graph_name,
   )
-}
-
-///|
-impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
-  logger.write_string(self.subject.to_string())
-  logger.write_string(" ")
-  logger.write_string(self.predicate.to_string())
-  logger.write_string(" ")
-  logger.write_string(self.object.to_string())
-  logger.write_string(" ")
-  logger.write_string(self.graph_name.to_string())
-  // if !self.graph_name.is_default_graph() {
-  //   logger.write_string(" ")
-  //   logger.write_string(self.graph_name.to_string())
-  // }
-  // logger.write_string("\n");
 }
 
 ///|

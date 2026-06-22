@@ -223,22 +223,25 @@ pub trait TokenRecognizer {
 
 ///|
 pub trait RuleRecognizer {
-  // asContextEnum(Self) -> Context
+  // asContextEnum(Self) -> RdfContext 
   fn error_recovery_state(Self) -> Self
   fn recognize_next(
     Self,
     token : TokenOrLineJump[N3Token],
-    context : Context,
-    results : Array[LexOutput],
+    context : RdfContext,
+    results : Array[RdfStatement],
     errors : Array[RuleRecognizerError],
   ) -> Self
   fn recognize_end(
     Self,
-    context : Context,
-    results : Array[LexOutput],
+    context : RdfContext,
+    results : Array[RdfStatement],
     errors : Array[RuleRecognizerError],
   ) -> Unit
-  fn lexer_options(context : Context) -> LexerOptions?
+  fn lexer_options(context : RdfContext) -> LexerOptions?
+  fn[DL: DebugLogger] debug_logger(Self, debug_logger: DL) ->  Unit
+
+
 }
 
 // trait From {

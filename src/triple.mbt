@@ -9,7 +9,17 @@ pub struct Triple {
 impl Show for Triple with fn output(self : Triple, logger : &Logger) -> Unit {
   // logger.write_fmt(format!("Triple {{ subject: {}, predicate: {}, object: {} }}",
   //   self.subject, self.predicate, self.object));
-  logger.write_object(self)
+  logger.write("Triple")
+  logger.write(" {")
+  logger.write(" subject: ")
+  self.subject.output(logger)
+  logger.write(", ")
+  logger.write(" predicate: ")
+  self.predicate.output(logger)
+  logger.write(", ")
+  logger.write(" object: ")
+  self.object.output(logger)
+  logger.write(" }")
 }
 
 ///|

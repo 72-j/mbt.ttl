@@ -183,11 +183,11 @@ fn VarDataType::into_value(self : VarDataType) -> String {
 // }
 
 // trait AsEnumContext {
-//   fn as_ctx(self : Self) -> Context
+//   fn as_ctx(self : Self) -> RdfContext 
 // }
 
 ///|
-// impl AsEnumContext for Context with fn as_ctx(self : Context) -> Context {
+// impl AsEnumContext for RdfContext with fn as_ctx(self : RdfContext ) -> RdfContext {
 //   match self {
 //     TriGRecognizerContext(c) => TriGRecognizerContext(c)
 //     NQuadsRecognizerContext(c) => NQuadsRecognizerContext(c)

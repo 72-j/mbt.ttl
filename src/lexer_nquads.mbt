@@ -5,6 +5,7 @@ pub struct NQuadsRecognizer {
   predicates : Array[NamedNodeRef]
   objects : Array[TermRef]
   lenient : Bool
+ mut debug_logger : &DebugLogger
 }
 
 ///|
@@ -28,76 +29,6 @@ enum NQuadsState {
 }
 
 ///|
-// impl TokenRecognizer for NQuadsRecognizer with fn recognize_next_token(
-//   self : NQuadsRecognizer,
-//   data : BytesView,
-//   is_ending : Bool,
-//   options : LexerOptions?,
-// ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
-//   let opts = match options {
-//     Some(opts) => opts
-//     None => LexerOptions::default(None)
-//   }
-
-//   if data.is_empty() {
-//     return None
-//   }
-
-//   match data[0] {
-//     b'<' => self.recognize_iri(data, opts)
-//     b'>' =>
-//       if data.get(1) == Some(b'>') {
-//         Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation(">>")))))
-//       } else {
-//         Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(">")))))
-//       }
-//     b'_' =>
-//       match data.get(1) {
-//         Some(b':') => NQuadsRecognizer::recognize_blank_node_label(data, is_ending)
-//         c =>
-//           Some((
-//             1,
-//             Err(TokenRecognizerError::InvalidToken([c.unwrap()], Range(1, 2))),
-//           ))
-//       }
-//     b'"' => self.recognize_string(data, b'"'),
-//     b'.' =>
-//       match data.get(1) {
-//         Some(b'0'..=b'9') => NQuadsRecognizer::recognize_number(data, is_ending)
-//         Some(_) =>
-//           Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(".")))))
-//         None =>
-//           if is_ending {
-//             Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(".")))))
-//           } else {
-//             None
-//           }
-//       }
-//     b'^' =>
-//       if data.get(1) == Some(b'^') {
-//         Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("^^")))))
-//       } else {
-//         Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("^")))))
-//       }
-//     b'(' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("(")))))
-//     b')' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(")")))))
-//     b'[' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("[")))))
-//     b']' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("]")))))
-//     b'{' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("{")))))
-//     b'}' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("}")))))
-//     b',' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(",")))))
-//     b';' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(";")))))
-//     b'!' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("!")))))
-//     b'|' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("|")))))
-//     b'=' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("=")))))
-//     b'~' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("~")))))
-//     b'0'..=b'9' | b'+' | b'-' => NQuadsRecognizer::recognize_number(data, is_ending)
-//     b'?' => self.recognize_variable(data, is_ending)
-//     _ => self.recognize_pname_or_keyword(data, is_ending)
-//   }
-// }
-
-///|
 impl RuleRecognizer for NQuadsRecognizer with fn error_recovery_state(
   self : NQuadsRecognizer,
 ) -> NQuadsRecognizer {
@@ -108,19 +39,25 @@ impl RuleRecognizer for NQuadsRecognizer with fn error_recovery_state(
   self.objects.clear()
   self
 }
+impl RuleRecognizer for NQuadsRecognizer with fn[DL: DebugLogger] debug_logger(
+  self : NQuadsRecognizer,
+  debug_logger : DL,
+) {
+  self.debug_logger = debug_logger
+}
 
 ///|
 impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
   self : NQuadsRecognizer,
   token : TokenOrLineJump[N3Token],
-  context : Context,
-  results : Array[LexOutput],
+  context : RdfContext,
+  results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> NQuadsRecognizer {
-  // let Context::NQuadsRecognizerContext(context) = context
+  // let RdfContext ::NQuadsRecognizerContext(context) = context
   //  let TokenOrLineJump::Token(token) = token
   let ctx = match context {
-    Context::NQuadsRecognizerContext(c) => c
+    RdfContext::NQuadsRecognizerContext(c) => c
     // _ => panic()
     _ => abort("Invalid context type")
   }
@@ -271,12 +208,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             TermRef::LiteralRef(LiteralRef::new_simple_literal(value)),
           )
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
-          self.recognize_next(
-            token,
-            NQuadsRecognizerContext(ctx),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   NQuadsRecognizerContext(ctx),
+          //   results,
+          //   errors,
+          // )
         }
       }
     NQuadsState::ExpectLiteralDatatype(value~) =>
@@ -287,7 +225,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "The datatype of a literal without a language tag must not be rdf:langString",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
           }
@@ -295,7 +233,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "The datatype of a literal without a base direction must not be rdf:dirLangString",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
           }
@@ -334,7 +272,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             self.stack.push(NQuadsState::ExpectDot)
             self.recognize_next(
               token,
-              Context::NQuadsRecognizerContext(ctx),
+              RdfContext::NQuadsRecognizerContext(ctx),
               results,
               errors,
             )
@@ -350,7 +288,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           token,
           RuleRecognizerError::SyntaxError(
             "Expecting the end of a quoted triple ')>>'",
-            TextPosition::default(),
+            SourcePosition::default(),
           ),
         )
       }
@@ -363,30 +301,32 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         errors.push(
           RuleRecognizerError::SyntaxError(
             "Quads must be followed by a dot",
-            TextPosition::default(),
+            SourcePosition::default(),
           ),
         )
-        self.recognize_next(
-          token,
-          Context::NQuadsRecognizerContext(ctx),
-          results,
-          errors,
-        )
+        self
+        // self.recognize_next(
+        //   token,
+        //   RdfContext ::NQuadsRecognizerContext(ctx),
+        //   results,
+        //   errors,
+        // )
       }
     NQuadsState::ExpectLineJump => {
       // let TokenOrLineJump::Token(token) = token
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Only a single triple or quad can be written in a line, found \{token.to_string()}",
-          TextPosition::default(),
+          SourcePosition::default(),
         ),
       )
-      self.recognize_next(
-        token,
-        Context::NQuadsRecognizerContext(ctx),
-        results,
-        errors,
-      )
+      self
+      // self.recognize_next(
+      //   token,
+      //   RdfContext ::NQuadsRecognizerContext(ctx),
+      //   results,
+      //   errors,
+      // )
     }
     NQuadsState::AfterQuotedTriple => {
       // 安全地弹出三元组的组成部分
@@ -399,19 +339,20 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           let triple : TripleRef = { subject, predicate, object }
           self.objects.push(TermRef::TripleRef(triple))
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
-          self.recognize_next(
-            token,
-            Context::NQuadsRecognizerContext(ctx),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::NQuadsRecognizerContext(ctx),
+          //   results,
+          //   errors,
+          // )
         }
         _ => {
           // 如果栈中元素不足，说明内部状态不一致，报告错误并恢复
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: incomplete quoted triple on stack",
-              TextPosition::default(),
+              SourcePosition::default(),
             ),
           )
           self.error_recovery_state()
@@ -428,7 +369,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
     //   self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
     //   self.recognize_next(
     //     token,
-    //     Context::NQuadsRecognizerContext(ctx),
+    //     RdfContext ::NQuadsRecognizerContext(ctx),
     //     results,
     //     errors,
     //   )
@@ -445,8 +386,8 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
 ///|
 impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
   self : NQuadsRecognizer,
-  _context : Context,
-  results : Array[LexOutput],
+  _context : RdfContext,
+  results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> Unit {
   match self.stack {
@@ -467,7 +408,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Unexpected end",
-          TextPosition::default(),
+          SourcePosition::default(),
         ),
       )
   }
@@ -475,10 +416,10 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
 
 ///|
 impl RuleRecognizer for NQuadsRecognizer with fn lexer_options(
-  context : Context,
+  context : RdfContext,
 ) -> LexerOptions? {
   match context {
-    Context::NQuadsRecognizerContext(ctx) => ctx.lexer_options
+    RdfContext::NQuadsRecognizerContext(ctx) => ctx.lexer_options
     _ => None // 或者 panic!("Unexpected context type")
   }
 }
@@ -489,7 +430,9 @@ pub fn NQuadsRecognizer::new_parser(
   is_ending : Bool,
   with_graph_name : Bool,
   lenient : Bool,
-) -> Parser[NxLexer, NQuadsRecognizer] {
+  debug_logger? : &DebugLogger = make_mute_logger(),
+
+) -> Parser[RdfLexer, NQuadsRecognizer] {
   let initial_context = NQuadsRecognizerContext::{
     with_graph_name,
     lexer_options: None,
@@ -497,12 +440,15 @@ pub fn NQuadsRecognizer::new_parser(
 
   Parser::Parser(
     Lexer::Lexer(
-      NxLexer::NxLexer(NxLexerMode::NTriples, lenient),
+      RdfLexer::RdfLexer(RdfLexerMode::NTriples, lenient),
       data,
       is_ending,
       MIN_BUFFER_SIZE,
       MAX_BUFFER_SIZE,
       Some(b"#"),
+      0,
+      0
+
     ),
     {
       stack: [NQuadsState::ExpectSubject],
@@ -510,8 +456,9 @@ pub fn NQuadsRecognizer::new_parser(
       predicates: [],
       objects: [],
       lenient,
+      debug_logger, // 修复：包装为 Option 类型
     },
-    Context::NQuadsRecognizerContext(initial_context),
+    RdfContext::NQuadsRecognizerContext(initial_context),
   )
 }
 
@@ -519,7 +466,7 @@ pub fn NQuadsRecognizer::new_parser(
 fn NQuadsRecognizer::error(
   self : NQuadsRecognizer,
   context : NQuadsRecognizerContext,
-  results : Array[LexOutput],
+  results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
   token : TokenOrLineJump[N3Token],
   msg : RuleRecognizerError,
@@ -531,7 +478,7 @@ fn NQuadsRecognizer::error(
     TokenOrLineJump::LineJump =>
       this.recognize_next(
         token,
-        Context::NQuadsRecognizerContext(context),
+        RdfContext::NQuadsRecognizerContext(context),
         results,
         errors,
       )
@@ -541,7 +488,7 @@ fn NQuadsRecognizer::error(
 ///|
 fn NQuadsRecognizer::emit_quad(
   self : NQuadsRecognizer,
-  results : Array[LexOutput],
+  results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
   graph_name : GraphNameRef,
 ) -> Unit {
@@ -552,7 +499,7 @@ fn NQuadsRecognizer::emit_quad(
   match (subject_opt, predicate_opt, object_opt) {
     (Some(subject), Some(predicate), Some(object)) =>
       results.push(
-        LexOutput::Quad({
+        RdfStatement::Quad({
           subject: subject.into_owned(),
           predicate: predicate.into_owned(),
           object: object.into_owned(),
@@ -564,7 +511,7 @@ fn NQuadsRecognizer::emit_quad(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: incomplete quad on stack during emission",
-          TextPosition::default(),
+          SourcePosition::default(),
         ),
       )
     // 可以选择在此处调用 self.error_recovery_state()，但这会改变 self

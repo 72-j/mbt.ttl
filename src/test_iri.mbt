@@ -1,7 +1,7 @@
 ///|
 test "parse_unchecked: basic absolute IRI" {
   let iri = "https://example.com/path?query#fragment"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
   // let iri = IriRef::of_ref(iri)
   assert_eq(iri.into_string(), "https://example.com/path?query#fragment")
   let parsed = IriRef::parse_unchecked(iri)
@@ -9,11 +9,11 @@ test "parse_unchecked: basic absolute IRI" {
   //   Ok(parsed) => {
   assert_eq(parsed.as_stringview(), iri.into_string())
   assert_true(parsed.is_absolute())
-  assert_eq(parsed.scheme(), Some("https"))
-  assert_eq(parsed.authority(), Some("example.com"))
-  assert_eq(parsed.path(), Some("/path"))
-  assert_eq(parsed.query(), Some("query"))
-  assert_eq(parsed.fragment(), Some("fragment"))
+  assert_eq(parsed.scheme().unwrap(), "https")
+  assert_eq(parsed.authority().unwrap(), "example.com")
+  assert_eq(parsed.path().unwrap(), "/path")
+  assert_eq(parsed.query().unwrap(), "query")
+  assert_eq(parsed.fragment().unwrap(), "fragment")
   //   }
   //   Err(e) => fail("Expected Ok, got Err: \{e}")
   // }
@@ -22,7 +22,7 @@ test "parse_unchecked: basic absolute IRI" {
 ///|
 test "parse absolute IRI" {
   let iri = "<scheme:!$%25&'()*+,-./0123456789:/@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~?#>"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
   // let iri = IriRef::of_ref(iri)
   assert_eq(
     iri.into_string(),
@@ -44,7 +44,7 @@ test "parse absolute IRI" {
 ///|
 test "parse: basic absolute IRI" {
   let iri = "https://example.com/path?query#fragment"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   assert_eq(iri.into_string(), "https://example.com/path?query#fragment")
   let result = IriRef::parse(iri)
@@ -52,11 +52,11 @@ test "parse: basic absolute IRI" {
     Ok(parsed) => {
       assert_eq(parsed.into_string(), iri.into_string())
       assert_true(parsed.is_absolute())
-      assert_eq(parsed.scheme(), Some("https"))
-      assert_eq(parsed.authority(), Some("example.com"))
-      assert_eq(parsed.path(), Some("/path"))
-      assert_eq(parsed.query(), Some("query"))
-      assert_eq(parsed.fragment(), Some("fragment"))
+      assert_eq(parsed.scheme().unwrap(), "https")
+      assert_eq(parsed.authority().unwrap(), "example.com")
+      assert_eq(parsed.path().unwrap(), "/path")
+      assert_eq(parsed.query().unwrap(), "query")
+      assert_eq(parsed.fragment().unwrap(), "fragment")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
@@ -65,7 +65,7 @@ test "parse: basic absolute IRI" {
 ///|
 test "parse: relative IRI (absolute path)" {
   let iri = "/path/to/resource"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let result = IriRef::parse(iri)
 
@@ -75,7 +75,7 @@ test "parse: relative IRI (absolute path)" {
       assert_false(parsed.is_absolute()) // No scheme
       assert_eq(parsed.scheme(), None)
       assert_eq(parsed.authority(), None)
-      assert_eq(parsed.path(), Some("/path/to/resource"))
+      assert_eq(parsed.path().unwrap(), "/path/to/resource")
       assert_eq(parsed.query(), None)
       assert_eq(parsed.fragment(), None)
     }
@@ -86,13 +86,13 @@ test "parse: relative IRI (absolute path)" {
 ///|
 test "parse: relative path (relative-path reference)" {
   let iri = "path/to/resource"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let result = IriRef::parse(iri)
 
   match result {
     Ok(parsed) => {
-      assert_eq(parsed.path(), Some("path/to/resource"))
+      assert_eq(parsed.path().unwrap(), "path/to/resource")
       assert_false(parsed.is_absolute())
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
@@ -102,14 +102,14 @@ test "parse: relative path (relative-path reference)" {
 ///|
 test "parse: query only" {
   let iri = "https://example.com?query=value"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let result = IriRef::parse(iri)
 
   match result {
     Ok(parsed) => {
-      assert_eq(parsed.path(), Some(""))
-      assert_eq(parsed.query(), Some("query=value"))
+      assert_eq(parsed.path().unwrap(), "")
+      assert_eq(parsed.query().unwrap(), "query=value")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
@@ -118,12 +118,12 @@ test "parse: query only" {
 ///|
 test "parse: fragment only" {
   let iri = "https://example.com#fragment"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let result = IriRef::parse(iri)
 
   match result {
-    Ok(parsed) => assert_eq(parsed.fragment(), Some("fragment"))
+    Ok(parsed) => assert_eq(parsed.fragment().unwrap(), "fragment")
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
 }
@@ -141,8 +141,8 @@ test "parse: error on invalid scheme format" {
   let result = IriRef::parse(iri)
 
   match result {
-    Ok(parsed) => assert_eq(parsed.scheme(), Some("invalid"))
-    Err(IriError::NoScheme) => fail("Unexpected NoScheme for 'invalid:iri'")
+    Ok(parsed) => assert_eq(parsed.scheme().unwrap(), "invalid")
+    Err(IriError::NoScheme) => fail("Unexpected NoScheme for 'invalid:iri' ")
     Err(e) => fail("Expected Ok or specific error, got \{e}")
   }
 }
@@ -150,14 +150,14 @@ test "parse: error on invalid scheme format" {
 ///|
 test "parse_unchecked: basic functionality" {
   let iri = "https://example.com/path"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let parsed = IriRef::parse_unchecked(iri)
   // match parsed {
   //   Ok(parsed) => {
   assert_eq(parsed.into_string(), iri.into_string())
   assert_true(parsed.is_absolute())
-  assert_eq(parsed.scheme(), Some("https"))
+  assert_eq(parsed.scheme().unwrap(), "https")
   //   }
   //   Err(e) => fail("Expected Ok, got Err: \{e}")
   // }
@@ -174,7 +174,7 @@ test "parse_unchecked: empty string" {
   assert_false(parsed.is_absolute()) // Empty string has no scheme
   assert_eq(parsed.scheme(), None)
   assert_eq(parsed.authority(), None)
-  assert_eq(parsed.path(), Some(""))
+  assert_eq(parsed.path().unwrap(), "")
   //   }
   //   Err(e) => fail("Expected Ok, got Err: \{e}")
   // }
@@ -183,15 +183,15 @@ test "parse_unchecked: empty string" {
 ///|
 test "parse_unchecked: Unicode IRI" {
   let iri = "https://例子.测试/路径"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let parsed = IriRef::parse_unchecked(iri)
   // match parsed {
   //   Ok(parsed) => {
   assert_eq(parsed.into_string(), "https://例子.测试/路径")
-  assert_eq(parsed.scheme(), Some("https"))
-  assert_eq(parsed.authority(), Some("例子.测试"))
-  assert_eq(parsed.path(), Some("/路径"))
+  assert_eq(parsed.scheme().unwrap(), "https")
+  assert_eq(parsed.authority().unwrap(), "例子.测试")
+  assert_eq(parsed.path().unwrap(), "/路径")
   //   }
   //   Err(e) => fail("Expected Ok, got Err: \{e}")
   // }
@@ -200,10 +200,10 @@ test "parse_unchecked: Unicode IRI" {
 ///|
 test "parse_unchecked: percent encoding preserved" {
   let iri = "https://example.com/path%20with%20spaces"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let parsed = IriRef::parse_unchecked(iri)
-  assert_eq(parsed.path(), Some("/path%20with%20spaces"))
+  assert_eq(parsed.path().unwrap(), "/path%20with%20spaces")
   // match parsed {
   //   Ok(parsed) => assert_eq(parsed.path(), Some("/path%20with%20spaces"))
   //   Err(e) => fail("Expected Ok, got Err: \{e}")
@@ -215,7 +215,7 @@ test "parse_unchecked: percent encoding preserved" {
 ///|
 test "resolve: relative to absolute base" {
   let iri = "https://example.com/base/path"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
   let relative = "relative/path"
 
   // 先解析 base，处理可能的解析错误
@@ -240,7 +240,7 @@ test "resolve: relative to absolute base" {
 ///|
 test "resolve: absolute reference overrides base" {
   let iri = "https://example.com/base/"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   // let base = IriRef::parse_unchecked(iri)
   let absolute = "http://other.com/path"
@@ -248,8 +248,8 @@ test "resolve: absolute reference overrides base" {
   match iri.resolve(absolute) {
     Ok(resolved) => {
       assert_eq(resolved.into_string(), "http://other.com/path")
-      assert_eq(resolved.scheme(), Some("http"))
-      assert_eq(resolved.authority(), Some("other.com"))
+      assert_eq(resolved.scheme().unwrap(), "http")
+      assert_eq(resolved.authority().unwrap(), "other.com")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
@@ -258,7 +258,7 @@ test "resolve: absolute reference overrides base" {
 ///|
 test "resolve: path starting with slash" {
   let iri = "https://example.com/base/path"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
   let base = IriRef::parse_unchecked(iri)
   // match IriRef::parse_unchecked(iri) {
   //   Ok(base) => {
@@ -277,7 +277,7 @@ test "resolve: path starting with slash" {
 ///|
 test "resolve: query and fragment replacement" {
   let iri = "https://example.com/path"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let base = IriRef::parse_unchecked(iri)
   let relative = "?query=value#fragment"
@@ -287,8 +287,8 @@ test "resolve: query and fragment replacement" {
         resolved.into_string(),
         "https://example.com/path?query=value#fragment",
       )
-      assert_eq(resolved.query(), Some("query=value"))
-      assert_eq(resolved.fragment(), Some("fragment"))
+      assert_eq(resolved.query().unwrap(), "query=value")
+      assert_eq(resolved.fragment().unwrap(), "fragment")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
@@ -297,7 +297,7 @@ test "resolve: query and fragment replacement" {
 ///|
 test "resolve: dot segments (preserved as per simple impl)" {
   let iri = "https://example.com/a/b/c/"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let base = IriRef::parse_unchecked(iri)
   let relative = "../d/e"
@@ -312,7 +312,7 @@ test "resolve: dot segments (preserved as per simple impl)" {
 ///|
 test "resolve: sequence of resolutions" {
   let iri = "https://example.com/a/b/c/"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let base1 = IriRef::parse_unchecked(iri)
   match base1.as_ref().resolve("d") {
@@ -331,7 +331,7 @@ test "resolve: sequence of resolutions" {
 ///|
 test "resolve_into: write to buffer" {
   let iri = "https://example.com/"
-  let iri = Iri::Iri(iri).as_ref()
+  let iri = Iri::new(iri)
 
   let base = IriRef::parse_unchecked(iri)
   let buffer = StringBuilder::new(size_hint=100)
@@ -350,7 +350,7 @@ test "relativize: simple child path" {
   let base_iri = Iri::Iri(base_iri).as_ref()
 
   let abs_iri = "https://example.com/a/b/c/d/e"
-  let abs_iri = Iri::Iri(abs_iri).as_ref()
+  let abs_iri = Iri::new(abs_iri)
 
   let base_parsed = IriRef::parse_unchecked(base_iri)
   let abs_parsed = IriRef::parse_unchecked(abs_iri)
@@ -367,7 +367,7 @@ test "relativize: different scheme returns absolute" {
   let base_iri = Iri::Iri(base_iri).as_ref()
 
   let abs_iri = "http://example.com/path"
-  let abs_iri = Iri::Iri(abs_iri).as_ref()
+  let abs_iri = Iri::new(abs_iri)
 
   let base_parsed = IriRef::parse_unchecked(base_iri)
   let abs_parsed = IriRef::parse_unchecked(abs_iri)
@@ -384,7 +384,7 @@ test "relativize: different authority returns absolute" {
   let base_iri = Iri::Iri(base_iri).as_ref()
 
   let abs_iri = "https://different.com/path"
-  let abs_iri = Iri::Iri(abs_iri).as_ref()
+  let abs_iri = Iri::new(abs_iri)
 
   let base_parsed = IriRef::parse_unchecked(base_iri)
   let abs_parsed = IriRef::parse_unchecked(abs_iri)
@@ -402,7 +402,7 @@ test "relativize: parent directory navigation" {
   let base_iri = Iri::Iri(base_iri).as_ref()
 
   let abs_iri = "https://example.com/a/b/e/f"
-  let abs_iri = Iri::Iri(abs_iri).as_ref()
+  let abs_iri = Iri::new(abs_iri)
 
   let base_parsed = IriRef::parse_unchecked(base_iri)
   let abs_parsed = IriRef::parse_unchecked(abs_iri)
@@ -417,7 +417,7 @@ test "relativize: parent directory navigation" {
 // ///|
 // test "resolve: query and fragment replacement" {
 //   let iri = "https://example.com/path"
-//   let iri = Iri::Iri(iri).as_ref()
+//   let iri = Iri::new(iri)
 
 //   match IriRef::parse_unchecked(iri) {
 //     Ok(base) => {
@@ -442,7 +442,7 @@ test "relativize: parent directory navigation" {
 // ///|
 // test "resolve: dot segments (preserved as per simple impl)" {
 //   let iri = "https://example.com/a/b/c/"
-//   let iri = Iri::Iri(iri).as_ref()
+//   let iri = Iri::new(iri)
 
 //   match IriRef::parse_unchecked(iri) {
 //     Ok(base) => {
@@ -461,7 +461,7 @@ test "relativize: parent directory navigation" {
 // ///|
 // test "resolve: sequence of resolutions" {
 //   let iri = "https://example.com/a/b/c/"
-//   let iri = Iri::Iri(iri).as_ref()
+//   let iri = Iri::new(iri)
 
 //   match IriRef::parse_unchecked(iri) {
 //     Ok(base1) =>
@@ -483,7 +483,7 @@ test "relativize: parent directory navigation" {
 // ///|
 // test "resolve_into: write to buffer" {
 //   let iri = "https://example.com/"
-//   let iri = Iri::Iri(iri).as_ref()
+//   let iri = Iri::new(iri)
 
 //   match IriRef::parse_unchecked(iri) {
 //     Ok(base) => {
@@ -507,7 +507,7 @@ test "relativize: parent directory navigation" {
 //   // let base_iri = IriRef::of_ref(base_iri)
 
 //   let abs_iri = "https://example.com/a/b/c/d/e"
-//   let abs_iri = Iri::Iri(abs_iri).as_ref()
+//   let abs_iri = Iri::new(abs_iri)
 //   // let abs_iri = IriRef::of_ref(abs_iri)
 
 //   match IriRef::parse(base_iri, unchecked=true) {
@@ -532,7 +532,7 @@ test "relativize: parent directory navigation" {
 //   // let base_iri = IriRef::of_ref(base_iri)
 
 //   let abs_iri = "http://example.com/path"
-//   let abs_iri = Iri::Iri(abs_iri).as_ref()
+//   let abs_iri = Iri::new(abs_iri)
 //   // let abs_iri = IriRef::of_ref(abs_iri)
 
 //   match IriRef::parse(base_iri, unchecked=true) {
@@ -557,7 +557,7 @@ test "relativize: parent directory navigation" {
 //   // let base_iri = IriRef::of_ref(base_iri)
 
 //   let abs_iri = "https://different.com/path"
-//   let abs_iri = Iri::Iri(abs_iri).as_ref()
+//   let abs_iri = Iri::new(abs_iri)
 //   // let abs_iri = IriRef::of_ref(abs_iri)
 
 //   match IriRef::parse(base_iri, unchecked=true) {
@@ -582,7 +582,7 @@ test "relativize: parent directory navigation" {
 //   // let base_iri = IriRef::of_ref(base_iri)
 
 //   let abs_iri = "https://example.com/a/b/e/f"
-//   let abs_iri = Iri::Iri(abs_iri).as_ref()
+//   let abs_iri = Iri::new(abs_iri)
 //   // let abs_iri = IriRef::of_ref(abs_iri)
 
 //   match IriRef::parse(base_iri, unchecked=true) {

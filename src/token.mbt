@@ -5,6 +5,55 @@ pub(all) enum TokenOrLineJump[T] {
 } derive(Eq, Debug)
 
 ///|
+
+///|
+/// 带位置的 N3Token
+pub struct LocatedN3Token[T] {
+  token : T
+  range : Range
+} derive(Debug)
+impl Show for LocatedN3Token[N3Token] with fn output(
+  self : LocatedN3Token[N3Token],
+  f : &Logger,
+) -> Unit {
+  self.token.output(f)
+
+}
+///|
+/// 带位置的 TokenOrLineJump
+pub enum LocatedTokenOrLineJump[T] {
+  Token(LocatedN3Token[T])
+  LineJump(Int) // 换行位置
+  End // 文件结束位置
+} derive(Debug)
+
+fn [T] LocatedTokenOrLineJump::into_token(self : LocatedTokenOrLineJump[T]) -> LocatedN3Token[T]? {
+  match self {
+    LocatedTokenOrLineJump::Token(t) => Some(t)
+    LocatedTokenOrLineJump::LineJump(_) => None
+    LocatedTokenOrLineJump::End => None
+  }
+} 
+
+
+fn [T] LocatedTokenOrLineJump::range(self : LocatedTokenOrLineJump[T]) -> Range? {
+    match self {
+      Token(t) => Some(t.range)
+      LineJump(pos) => Some(Range::{ start: pos, end: pos })
+      End => None
+    }
+}
+impl Show for LocatedTokenOrLineJump[N3Token] with fn output(
+  self : LocatedTokenOrLineJump[N3Token],
+  f : &Logger,
+) -> Unit {
+  match self {
+    LocatedTokenOrLineJump::Token(t) => t.output(f)
+    LocatedTokenOrLineJump::LineJump(pos) => pos.output(f)
+    LocatedTokenOrLineJump::End => f.write_string("EOF")
+  }
+}
+///|
 impl Show for TokenOrLineJump[N3Token] with fn output(
   self : TokenOrLineJump[N3Token],
   f : &Logger,
@@ -112,8 +161,8 @@ pub(all) enum N3Token {
 ///|
 pub impl Show for N3Token with fn output(self : N3Token, f : &Logger) -> Unit {
   match self {
-    Iri(iri) => f.write(iri)
-    PrefixedName(prefix~, localx~, might_be_invalid_iri~) => {
+    N3Token::Iri(iri) => f.write(iri)
+    N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~) => {
       f.write(prefix)
       f.write(":")
       f.write(localx)
@@ -121,8 +170,30 @@ pub impl Show for N3Token with fn output(self : N3Token, f : &Logger) -> Unit {
         f.write(" (invalid IRI)")
       }
     }
-    Punctuation(punct) => f.write(punct)
-    PlainKeyword(keyword) => f.write(keyword)
-    _ => ()
+    N3Token::Variable(v) => {
+      f.write("?")
+      f.write(v)
+    }
+    N3Token::BlankNodeLabel(v) => {
+      f.write("_:")
+      f.write(v)
+    }
+    N3Token::String(v) | N3Token::LongString(v) => {
+      f.write("\"")
+      f.write(v) // 注意：如果 v 包含引号，可能需要转义，但调试用通常直接写
+      f.write("\"")
+    }
+    N3Token::Integer(v) | N3Token::Decimal(v) | N3Token::Double(v) => f.write(v)
+    N3Token::LangTag(language~, direction~) => {
+      f.write("@")
+      f.write(language)
+      match direction {
+        Some(BaseDirection::Ltr) => f.write(";ltr")
+        Some(BaseDirection::Rtl) => f.write(";rtl")
+        None => ()
+      }
+    }
+    N3Token::Punctuation(punct) => f.write(punct)
+    N3Token::PlainKeyword(keyword) => f.write(keyword)
   }
 }

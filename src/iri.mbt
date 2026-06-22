@@ -77,6 +77,11 @@ pub fn Iri::Iri(base_iri : String) -> Iri {
 }
 
 ///|
+pub fn Iri::new(base_iri : String) -> IriRef {
+  Iri::Iri(base_iri).as_ref()
+}
+
+///|
 fn Iri::as_ref(iri : Self) -> IriRef {
   // IriRef(Ref::Ref(iri))
   IriRef::new_unchecked(iri)
@@ -643,7 +648,7 @@ pub fn IriRef::resolve(
   remove_dot_segments? : Bool = true,
 ) -> Result[Iri, IriError] {
   // 1. 解析参考 IRI (Relative Reference)
-  let ref_parser = Iri::Iri(ref_iri_str).as_ref()
+  let ref_parser = Iri::new(ref_iri_str)
   // let ref_parser = IriRef::of_ref(ref_parser)
   // 注意：parse 会修改内部 state，所以我们需要一个解析后的副本或者确保后续只读
   // 由于 parse 返回 Result[Iri, ...]，我们直接使用解析后的对象
@@ -656,7 +661,7 @@ pub fn IriRef::resolve(
 
   // 3. 解析 Base IRI (当前 self)
   // 注意：self 可能尚未解析，或者状态已脏。为了安全，重新解析 self
-  let base_parser = Iri::Iri(self.val.base_iri).as_ref()
+  let base_parser = Iri::new(self.val.base_iri)
   // let base_parser = IriRef::of_ref(base_parser)
   let parsed_base = match base_parser.parse() {
     Ok(iri) => iri
@@ -824,7 +829,7 @@ pub fn IriRef::resolve(
   let final_str = sb.to_string()
 
   // 7. 返回新的 Iri 对象
-  let final_parser = Iri::Iri(final_str).as_ref()
+  let final_parser = Iri::new(final_str)
   // let final_parser = IriRef::of_ref(final_parser)
   // 再次解析以确保内部状态一致，或者直接返回未解析但字符串正确的对象？
   // 通常 resolve 应该返回一个有效的 Iri 对象，所以再次 parse 是安全的
@@ -838,7 +843,7 @@ pub fn IriRef::resolve_unchecked(
   remove_dot_segments? : Bool = true,
 ) -> Iri {
   // 1. 解析参考 IRI (Relative Reference) - Unchecked
-  let ref_parser = Iri::Iri(ref_iri_str).as_ref()
+  let ref_parser = Iri::new(ref_iri_str)
   // let ref_parser = IriRef::of_ref(ref_parser)
   // 忽略错误，如果解析失败，parsed_ref 将是一个处于初始状态或部分解析状态的对象
   let parsed_ref = ref_parser.parse_unchecked()
@@ -850,7 +855,7 @@ pub fn IriRef::resolve_unchecked(
   }
 
   // 3. 解析 Base IRI (当前 self) - Unchecked
-  let base_parser = Iri::Iri(self.val.base_iri).as_ref()
+  let base_parser = Iri::new(self.val.base_iri)
   // let base_parser = IriRef::of_ref(base_parser)
   let parsed_base = base_parser.parse_unchecked()
 
@@ -978,7 +983,7 @@ pub fn IriRef::resolve_into(
   relative_ref : String,
   buffer : StringBuilder,
 ) -> Result[Unit, IriError] {
-  let relative_ref = Iri::Iri(relative_ref).as_ref()
+  let relative_ref = Iri::new(relative_ref)
   // 1. 解析相对引用
   let parsed_relative = match IriRef::parse(relative_ref) {
     Ok(r) => r
@@ -1243,7 +1248,7 @@ pub fn IriRef::relativize(
 
   let final_str = result.to_string()
 
-  let final_iri = Iri::Iri(final_str).as_ref()
+  let final_iri = Iri::new(final_str)
   // 如果结果是空的，且没有 query/fragment，它可能是一个空字符串。
   // parse 空字符串应该返回一个有效的相对 IriRef。
   IriRef::parse(final_iri)

@@ -1,19 +1,19 @@
 ///|
-pub enum NxLexerMode {
+pub enum RdfLexerMode {
   NTriples
   Turtle
   N3
 } derive(Eq)
 
 ///|
-pub struct NxLexer {
-  mode : NxLexerMode
+pub struct RdfLexer {
+  mode : RdfLexerMode
   lenient : Bool
 }
 
 ///|
-impl TokenRecognizer for NxLexer with fn recognize_next_token(
-  self : NxLexer,
+impl TokenRecognizer for RdfLexer with fn recognize_next_token(
+  self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
   options : LexerOptions?,
@@ -51,7 +51,7 @@ impl TokenRecognizer for NxLexer with fn recognize_next_token(
           } else {
             Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("<<")))))
           }
-        Some(b'=') if self.mode == NxLexerMode::N3 =>
+        Some(b'=') if self.mode == RdfLexerMode::N3 =>
           if self.recognize_iri(data, options) is Some((consumed, result)) {
             Some(
               if result is Ok(result) {
@@ -65,7 +65,7 @@ impl TokenRecognizer for NxLexer with fn recognize_next_token(
           } else {
             None
           }
-        Some(b'-') if self.mode == NxLexerMode::N3 =>
+        Some(b'-') if self.mode == RdfLexerMode::N3 =>
           if self.recognize_iri(data, options) is Some((consumed, result)) {
             Some(
               if result is Ok(result) {
@@ -89,7 +89,7 @@ impl TokenRecognizer for NxLexer with fn recognize_next_token(
       }
     b'_' =>
       match data.get(1) {
-        Some(b':') => NxLexer::recognize_blank_node_label(data, is_ending)
+        Some(b':') => RdfLexer::recognize_blank_node_label(data, is_ending)
         Some(c) =>
           Some((1, Err(TokenRecognizerError::InvalidToken([c], Range(1, 2)))))
         None =>
@@ -106,14 +106,14 @@ impl TokenRecognizer for NxLexer with fn recognize_next_token(
           )
       }
     b'"' =>
-      if self.mode != NxLexerMode::NTriples &&
+      if self.mode != RdfLexerMode::NTriples &&
         data.get(1) == Some(b'"') &&
         data.get(2) == Some(b'"') {
         self.recognize_long_string(data, b'"', is_ending)
       } else {
         self.recognize_string(data, b'"', is_ending)
       }
-    b'\'' if self.mode != NxLexerMode::NTriples =>
+    b'\'' if self.mode != RdfLexerMode::NTriples =>
       if data.get(1) == Some(b'\'') && data.get(2) == Some(b'\'') {
         self.recognize_long_string(data, b'\'', is_ending)
       } else {
@@ -122,7 +122,7 @@ impl TokenRecognizer for NxLexer with fn recognize_next_token(
     b'@' => self.recognize_lang_tag(data)
     b'.' =>
       match data.get(1) {
-        Some(b'0'..=b'9') => NxLexer::recognize_number(data, is_ending)
+        Some(b'0'..=b'9') => RdfLexer::recognize_number(data, is_ending)
         Some(_) =>
           Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(".")))))
         None =>
@@ -170,20 +170,20 @@ impl TokenRecognizer for NxLexer with fn recognize_next_token(
         Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("=")))))
       }
     b'~' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("~")))))
-    b'0'..=b'9' | b'+' | b'-' => NxLexer::recognize_number(data, is_ending)
+    b'0'..=b'9' | b'+' | b'-' => RdfLexer::recognize_number(data, is_ending)
     b'?' => self.recognize_variable(data, is_ending)
     _ => self.recognize_pname_or_keyword(data, is_ending)
   }
 }
 
 ///|
-pub fn NxLexer::NxLexer(mode : NxLexerMode, lenient : Bool) -> NxLexer {
+pub fn RdfLexer::RdfLexer(mode : RdfLexerMode, lenient : Bool) -> RdfLexer {
   { mode, lenient }
 }
 
 ///|
-// fn NxLexer::recognize_iri(
-//   self : NxLexer,
+// fn RdfLexer::recognize_iri(
+//   self : RdfLexer,
 //   data : ArrayView[Byte],
 //   options : LexerOptions,
 // ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
@@ -230,8 +230,8 @@ pub fn NxLexer::NxLexer(mode : NxLexerMode, lenient : Bool) -> NxLexer {
 // }
 
 ///|
-fn NxLexer::recognize_iri(
-  self : NxLexer,
+fn RdfLexer::recognize_iri(
+  self : RdfLexer,
   data : ArrayView[Byte],
   options : LexerOptions,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
@@ -272,8 +272,8 @@ fn NxLexer::recognize_iri(
 }
 
 ///|
-fn NxLexer::parse_iri(
-  self : NxLexer,
+fn RdfLexer::parse_iri(
+  self : RdfLexer,
   iri_bytes : Array[Byte],
   position : Range,
   options : LexerOptions,
@@ -307,7 +307,7 @@ fn NxLexer::parse_iri(
     }
   } else {
     // 没有 base_iri，直接解析绝对 IRI
-    let iri = Iri::Iri(iri_str).as_ref()
+    let iri = Iri::new(iri_str)
     // let iri = IriRef::of_ref(iri)
 
     if self.lenient {
@@ -335,8 +335,8 @@ fn NxLexer::parse_iri(
 }
 
 ///|
-fn NxLexer::recognize_pname_or_keyword(
-  self : NxLexer,
+fn RdfLexer::recognize_pname_or_keyword(
+  self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
@@ -344,13 +344,13 @@ fn NxLexer::recognize_pname_or_keyword(
 
   // 解析前缀部分，直到遇到 ':'
   for ;; {
-    match NxLexer::recognize_unicode_char(data[i:], i) {
+    match RdfLexer::recognize_unicode_char(data[i:], i) {
       Some(Ok((c, consumed))) =>
         if c == ':' {
           i += consumed
         } else if i == 0 {
           // 第一个字符必须符合 base 规则
-          if !NxLexer::is_possible_pn_chars_base(c) {
+          if !RdfLexer::is_possible_pn_chars_base(c) {
             return Some(
               (
                 consumed,
@@ -366,7 +366,7 @@ fn NxLexer::recognize_pname_or_keyword(
           }
           i += consumed
           // 后续字符可以是 pn_chars 或 '.'
-        } else if NxLexer::is_possible_pn_chars(c) || c == '.' {
+        } else if RdfLexer::is_possible_pn_chars(c) || c == '.' {
           i += consumed
         } else {
           // 遇到无效字符，作为 PlainKeyword 返回
@@ -459,8 +459,8 @@ fn NxLexer::recognize_pname_or_keyword(
 }
 
 ///|
-fn NxLexer::recognize_variable(
-  self : NxLexer,
+fn RdfLexer::recognize_variable(
+  self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
@@ -494,8 +494,8 @@ fn NxLexer::recognize_variable(
 }
 
 ///|
-fn NxLexer::recognize_optional_pn_local(
-  self : NxLexer,
+fn RdfLexer::recognize_optional_pn_local(
+  self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
 ) -> (Int, Result[(String, Bool), TokenRecognizerError])? {
@@ -506,7 +506,7 @@ fn NxLexer::recognize_optional_pn_local(
   let mut ends_with_unescaped_dot = 0
 
   for ;; {
-    if NxLexer::recognize_unicode_char(data[i:], i) is Some(r) {
+    if RdfLexer::recognize_unicode_char(data[i:], i) is Some(r) {
       match r {
         Ok((c, consumed)) =>
           if c == '%' {
@@ -614,21 +614,21 @@ fn NxLexer::recognize_optional_pn_local(
                 return None
             }
           } else if i == 0 {
-            if !(NxLexer::is_possible_pn_chars_u(c) ||
+            if !(RdfLexer::is_possible_pn_chars_u(c) ||
               c == ':' ||
               c.is_ascii_digit()) {
               return Some((0, Ok(("".to_string(), false))))
             }
             if !self.lenient {
-              might_be_invalid_iri = NxLexer::is_possible_pn_chars_base_but_not_valid_iri(
+              might_be_invalid_iri = RdfLexer::is_possible_pn_chars_base_but_not_valid_iri(
                   c,
                 ) ||
                 c == ':'
             }
             i += consumed
-          } else if NxLexer::is_possible_pn_chars(c) || c == ':' {
+          } else if RdfLexer::is_possible_pn_chars(c) || c == ':' {
             if !self.lenient {
-              might_be_invalid_iri = NxLexer::is_possible_pn_chars_base_but_not_valid_iri(
+              might_be_invalid_iri = RdfLexer::is_possible_pn_chars_base_but_not_valid_iri(
                   c,
                 ) ||
                 c == ':'
@@ -714,21 +714,21 @@ fn NxLexer::recognize_optional_pn_local(
 }
 
 ///|
-fn NxLexer::recognize_blank_node_label(
+fn RdfLexer::recognize_blank_node_label(
   data : ArrayView[Byte],
   is_ending : Bool,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let mut i = 2
   while true {
-    match NxLexer::recognize_unicode_char(data[i:], i) {
+    match RdfLexer::recognize_unicode_char(data[i:], i) {
       Some(c) =>
         match c {
           Ok((c, consumed)) => {
             if (
                 i == 2 &&
-                (NxLexer::is_possible_pn_chars_u(c) || c.is_ascii_digit())
+                (RdfLexer::is_possible_pn_chars_u(c) || c.is_ascii_digit())
               ) ||
-              (i > 2 && NxLexer::is_possible_pn_chars(c)) {
+              (i > 2 && RdfLexer::is_possible_pn_chars(c)) {
 
             } else if i == 2 {
               return Some(
@@ -815,8 +815,8 @@ fn NxLexer::recognize_blank_node_label(
 }
 
 ///|
-fn NxLexer::recognize_lang_tag(
-  self : NxLexer,
+fn RdfLexer::recognize_lang_tag(
+  self : RdfLexer,
   data : ArrayView[Byte],
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
   let mut is_last_block_empty = true
@@ -870,8 +870,8 @@ fn NxLexer::recognize_lang_tag(
 }
 
 ///|
-fn NxLexer::parse_lang_tag(
-  self : NxLexer,
+fn RdfLexer::parse_lang_tag(
+  self : RdfLexer,
   lang_tag : ArrayView[Byte],
   direction : Bytes?,
   position : Range,
@@ -941,7 +941,7 @@ fn NxLexer::parse_lang_tag(
     }
   }
 }
-// fn NxLexer::parse_lang_tag(self : NxLexer, lang_tag : Bytes, direction : Option[Bytes], position : Range) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError] {
+// fn RdfLexer::parse_lang_tag(self : RdfLexer, lang_tag : Bytes, direction : Option[Bytes], position : Range) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError] {
 //   if direction is Some(direction) {
 //     return Err(TokenRecognizerError::InvalidErrMessage(lang_tag[position.end - direction.length():position.end],Range::Range(position.end - direction.length(),position.end), "Literal base direction are only allowed in RDF 1.2"))
 //   }
@@ -958,8 +958,8 @@ fn NxLexer::parse_lang_tag(
 // }
 
 ///|
-// fn NxLexer::recognize_string(
-//   self : NxLexer,
+// fn RdfLexer::recognize_string(
+//   self : RdfLexer,
 //   data : BytesView,
 //   delimiter : Byte,
 // ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
@@ -1019,8 +1019,8 @@ fn NxLexer::parse_lang_tag(
 ///|
 
 ///|
-fn NxLexer::recognize_string(
-  self : NxLexer,
+fn RdfLexer::recognize_string(
+  self : RdfLexer,
   data : ArrayView[Byte],
   delimiter : Byte,
   is_ending : Bool,
@@ -1168,8 +1168,8 @@ fn NxLexer::recognize_string(
 }
 
 ///|
-fn NxLexer::recognize_long_string(
-  self : NxLexer,
+fn RdfLexer::recognize_long_string(
+  self : RdfLexer,
   data : ArrayView[Byte],
   delimiter : Byte,
   is_ending : Bool,
@@ -1264,7 +1264,7 @@ fn NxLexer::recognize_long_string(
 }
 
 ///|
-fn NxLexer::recognize_number(
+fn RdfLexer::recognize_number(
   data : ArrayView[Byte],
   is_ending : Bool,
 ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
@@ -1276,7 +1276,7 @@ fn NxLexer::recognize_number(
       // 如果数据为空，根据具体逻辑决定是返回 None 还是错误
       return None
   }
-  let count_before = match NxLexer::recognize_digits(data[i:], is_ending) {
+  let count_before = match RdfLexer::recognize_digits(data[i:], is_ending) {
     Some(count) => count
     None => return None // 数据不足
   }
@@ -1290,7 +1290,7 @@ fn NxLexer::recognize_number(
   }
   let count_after = if c == Some(b'.') {
     i += 1
-    let count_after = match NxLexer::recognize_digits(data[i:], is_ending) {
+    let count_after = match RdfLexer::recognize_digits(data[i:], is_ending) {
       Some(count) => count
       None => return None // 数据不足
     }
@@ -1318,7 +1318,7 @@ fn NxLexer::recognize_number(
     if c is Some(b'+' | b'-') {
       i += 1
     }
-    let count_exp = match NxLexer::recognize_digits(data[i:], is_ending) {
+    let count_exp = match RdfLexer::recognize_digits(data[i:], is_ending) {
       Some(count) => count
       None => return None // 数据不足
     }
@@ -1403,7 +1403,7 @@ fn NxLexer::recognize_number(
 }
 
 ///|
-fn NxLexer::recognize_digits(data : ArrayView[Byte], is_ending : Bool) -> Int? {
+fn RdfLexer::recognize_digits(data : ArrayView[Byte], is_ending : Bool) -> Int? {
   for _item in data.iter2() {
     let (i, c) = _item
     if !Byte::to_char(c).is_ascii_digit() {
@@ -1420,8 +1420,8 @@ fn NxLexer::recognize_digits(data : ArrayView[Byte], is_ending : Bool) -> Int? {
 ///|
 
 ///|
-fn NxLexer::recognize_escape(
-  self : NxLexer,
+fn RdfLexer::recognize_escape(
+  self : RdfLexer,
   data : ArrayView[Byte],
   position : Int,
   with_echar : Bool,
@@ -1429,13 +1429,13 @@ fn NxLexer::recognize_escape(
   match data.get(1) {
     Some(b'u') =>
       // 处理 \uXXXX
-      match NxLexer::recognize_hex_char(data[2:], 4, 'u', position) {
+      match RdfLexer::recognize_hex_char(data[2:], 4, 'u', position) {
         Ok(Some(c)) => Some((5, Ok(c)))
         Ok(None) => None // 数据不足
         Err(e) =>
           if self.lenient {
             // 尝试处理 UTF-16 代理对 \uXXXX\uXXXX
-            match NxLexer::recognize_utf16_surrogate_pair(data[2:], position) {
+            match RdfLexer::recognize_utf16_surrogate_pair(data[2:], position) {
               Ok(Some(c)) => Some((11, Ok(c)))
               Ok(None) => None
               Err(e) => Some((5, Err(e)))
@@ -1446,7 +1446,7 @@ fn NxLexer::recognize_escape(
       }
     Some(b'U') =>
       // 处理 \UXXXXXXXX
-      match NxLexer::recognize_hex_char(data[2:], 8, 'U', position) {
+      match RdfLexer::recognize_hex_char(data[2:], 8, 'U', position) {
         Ok(Some(c)) => Some((9, Ok(c)))
         Ok(None) => None
         Err(e) => Some((9, Err(e)))
@@ -1476,12 +1476,12 @@ fn NxLexer::recognize_escape(
     None => None // 数据不足
   }
 }
-// fn NxLexer::recognize_escape(self : NxLexer, data : BytesView, position : Int, with_echar : Bool) -> Option[(Int, Result[Char, TokenRecognizerError])] {
+// fn RdfLexer::recognize_escape(self : RdfLexer, data : BytesView, position : Int, with_echar : Bool) -> Option[(Int, Result[Char, TokenRecognizerError])] {
 //   match data.get(1) is Some(_c) {
-//     b'u' => match NxLexer::recognize_hex_char(data[2:].to_owned(), 4, 'u', position) {
+//     b'u' => match RdfLexer::recognize_hex_char(data[2:].to_owned(), 4, 'u', position) {
 //       Ok(c) => Some((5, Ok(c)))
 //       Err(e) =>       if self.lenient {
-//         match NxLexer::recognize_utf16_surrogate_pair(data[2:], position) {
+//         match RdfLexer::recognize_utf16_surrogate_pair(data[2:], position) {
 //           Ok(c) => Some((11, Ok(c!)))
 //           Err(e) => Some((5, Err(e)))
 //         }
@@ -1489,7 +1489,7 @@ fn NxLexer::recognize_escape(
 //         Some((5, Err(e)))
 //       }
 //     }
-//     b'U' => match NxLexer::recognize_hex_char(data[2:], 8, 'U', position) {
+//     b'U' => match RdfLexer::recognize_hex_char(data[2:], 8, 'U', position) {
 //       Ok(c) => Some((9, Ok(c!)))
 //       Err(e) => Some((9, Err(e)))
 //     }
@@ -1508,7 +1508,7 @@ fn NxLexer::recognize_escape(
 // }
 
 ///|
-fn NxLexer::recognize_hex_char(
+fn RdfLexer::recognize_hex_char(
   data : ArrayView[Byte],
   len : Int,
   escape_char : Char,
@@ -1548,7 +1548,7 @@ fn NxLexer::recognize_hex_char(
 }
 
 ///|
-fn NxLexer::recognize_utf16_surrogate_pair(
+fn RdfLexer::recognize_utf16_surrogate_pair(
   data : ArrayView[Byte],
   position : Int,
 ) -> Result[Char?, TokenRecognizerError] {
@@ -1650,7 +1650,7 @@ fn NxLexer::recognize_utf16_surrogate_pair(
       )
   }
 }
-// fn NxLexer::recognize_utf16_surrogate_pair(data : Bytes, position : Int) -> Result[Option[Char], TokenRecognizerError] {
+// fn RdfLexer::recognize_utf16_surrogate_pair(data : Bytes, position : Int) -> Result[Option[Char], TokenRecognizerError] {
 //   let Some(val_high_slice) = data.get(4)
 //   let val_high = str_from_utf8(val_high_slice, position:position + 6)
 //   let surrogate_high = UInt::from_str_radix(val_high, 16).map_err(fn(e) {   (position:position + 6, "The escape sequence '\u{val_high}' is not a valid hexadecimal string: {e}") })
@@ -1672,7 +1672,7 @@ fn NxLexer::recognize_utf16_surrogate_pair(
 // }
 
 ///|
-fn NxLexer::recognize_unicode_char(
+fn RdfLexer::recognize_unicode_char(
   data : ArrayView[Byte],
   position : Int,
 ) -> Result[(Char, Int), TokenRecognizerError]? {
@@ -1764,7 +1764,7 @@ fn NxLexer::recognize_unicode_char(
 }
 
 ///|
-fn NxLexer::is_possible_pn_chars_base(c : Char) -> Bool {
+fn RdfLexer::is_possible_pn_chars_base(c : Char) -> Bool {
   c
   is ('A'..='Z'
   | 'a'..='z'
@@ -1783,13 +1783,13 @@ fn NxLexer::is_possible_pn_chars_base(c : Char) -> Bool {
 }
 
 ///|
-pub fn NxLexer::is_possible_pn_chars_u(c : Char) -> Bool {
-  NxLexer::is_possible_pn_chars_base(c) || c == '_'
+pub fn RdfLexer::is_possible_pn_chars_u(c : Char) -> Bool {
+  RdfLexer::is_possible_pn_chars_base(c) || c == '_'
 }
 
 ///|
-pub fn NxLexer::is_possible_pn_chars(c : Char) -> Bool {
-  NxLexer::is_possible_pn_chars_u(c) ||
+pub fn RdfLexer::is_possible_pn_chars(c : Char) -> Bool {
+  RdfLexer::is_possible_pn_chars_u(c) ||
   c
   is ('-'
   | '0'..='9'
@@ -1799,7 +1799,7 @@ pub fn NxLexer::is_possible_pn_chars(c : Char) -> Bool {
 }
 
 ///|
-fn NxLexer::is_possible_pn_chars_base_but_not_valid_iri(c : Char) -> Bool {
+fn RdfLexer::is_possible_pn_chars_base_but_not_valid_iri(c : Char) -> Bool {
   c is ('\u{FFF0}'..='\u{FFFD}') ||
   Char::to_int(c) % Char::to_int('\u{FFFE}') == 0 ||
   Char::to_int(c) % Char::to_int('\u{FFFF}') == 0

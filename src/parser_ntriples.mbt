@@ -18,7 +18,15 @@ pub fn NTriplesParser::lenient(self : NTriplesParser) -> NTriplesParser {
 pub fn NTriplesParser::for_reader(
   self : NTriplesParser,
   reader : &Reader,
-) -> ReaderNTriplesParser[NxLexer] {
+) -> ReaderNTriplesParser[RdfLexer] {
+  //   let parser = NQuadsRecognizer::new_parser(
+  //   [],        // 空初始缓冲区
+  //   true,      // skip_whitespace: true
+  //   true,      // allow_comments/lenient_features: true
+  //   self.lenient,
+  // )
+  // 调用 parser.mbt 中的 Parser::for_reader
+  // { inner: parser.for_reader(reader) }
   { inner: self.low_level().parser.for_reader(reader) }
 }
 
@@ -26,7 +34,14 @@ pub fn NTriplesParser::for_reader(
 pub fn NTriplesParser::for_async_reader(
   self : NTriplesParser,
   reader : &Reader,
-) -> AsyncReaderNTriplesParser[NxLexer] {
+) -> AsyncReaderNTriplesParser[RdfLexer] {
+  //   let parser = NQuadsRecognizer::new_parser(
+  //   [],
+  //   true,
+  //   true,
+  //   self.lenient,
+  // )
+  // { inner: parser.for_async_reader(reader) }
   { inner: self.low_level().parser.for_async_reader(reader) }
 }
 
@@ -115,42 +130,42 @@ pub async fn NTriplesParser::split_file_for_parallel_parsing(
 ///|
 pub fn NTriplesParser::low_level(
   self : NTriplesParser,
-) -> LowLevelNTriplesParser[NxLexer] {
+) -> LowLevelNTriplesParser[RdfLexer] {
   { parser: NQuadsRecognizer::new_parser([], false, false, self.lenient) }
 }
 
 ///|
-pub struct ReaderNTriplesParser[LR] {
-  inner : ReaderIterator[LR, NQuadsRecognizer]
+pub struct ReaderNTriplesParser[RL] {
+  inner : ReaderIterator[RL, NQuadsRecognizer]
 }
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct AsyncReaderNTriplesParser[LR] {
-  inner : AsyncReaderIterator[LR, NQuadsRecognizer]
+pub struct AsyncReaderNTriplesParser[RL] {
+  inner : AsyncReaderIterator[RL, NQuadsRecognizer]
 }
 
 ///|
-pub async fn[LR : TokenRecognizer] AsyncReaderNTriplesParser::next(
-  self : AsyncReaderNTriplesParser[LR],
-) -> Result[LexOutput, LexerError]? {
+pub async fn[RL : TokenRecognizer] AsyncReaderNTriplesParser::next(
+  self : AsyncReaderNTriplesParser[RL],
+) -> Result[RdfStatement, LexerError]? {
   self.inner.next()
 }
 
 ///|
-pub struct SliceNTriplesParser[LR] {
-  inner : SliceIterator[NxLexer, LR]
+pub struct SliceNTriplesParser[RL] {
+  inner : SliceIterator[RdfLexer, RL]
 }
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct LowLevelNTriplesParser[LR] {
-  parser : Parser[LR, NQuadsRecognizer]
+pub struct LowLevelNTriplesParser[RL] {
+  parser : Parser[RL, NQuadsRecognizer]
 }
 
 ///|
 pub fn LowLevelNTriplesParser::extend_from_slice(
-  self : LowLevelNTriplesParser[NxLexer],
+  self : LowLevelNTriplesParser[RdfLexer],
   other : Bytes,
 ) -> Unit {
   self.parser.extend_from_slice(other)
@@ -158,21 +173,21 @@ pub fn LowLevelNTriplesParser::extend_from_slice(
 
 ///|
 pub fn LowLevelNTriplesParser::end(
-  self : LowLevelNTriplesParser[NxLexer],
+  self : LowLevelNTriplesParser[RdfLexer],
 ) -> Unit {
   self.parser.end()
 }
 
 ///|
 pub fn LowLevelNTriplesParser::is_end(
-  self : LowLevelNTriplesParser[NxLexer],
+  self : LowLevelNTriplesParser[RdfLexer],
 ) -> Bool {
   self.parser.is_end()
 }
 
 ///|
-pub fn[LR : TokenRecognizer] LowLevelNTriplesParser::parse_next(
-  self : LowLevelNTriplesParser[LR],
+pub fn[RL : TokenRecognizer] LowLevelNTriplesParser::parse_next(
+  self : LowLevelNTriplesParser[RL],
 ) -> Result[Triple, TurtleError]? {
   self.parser
   .parse_next()
@@ -180,9 +195,10 @@ pub fn[LR : TokenRecognizer] LowLevelNTriplesParser::parse_next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        LexOutput::Triple(t) => t
-        LexOutput::Quad(q) => Triple::Triple(q.subject, q.predicate, q.object)
-        LexOutput::N3Quad(n3quad) =>
+        RdfStatement::Triple(t) => t
+        RdfStatement::Quad(q) =>
+          Triple::Triple(q.subject, q.predicate, q.object)
+        RdfStatement::N3Quad(n3quad) =>
           match n3quad.predicate.to_node() {
             NamedNode(node) =>
               Triple::Triple(
@@ -200,7 +216,7 @@ pub fn[LR : TokenRecognizer] LowLevelNTriplesParser::parse_next(
       }
     })
     .map_err(fn(e) {
-      TurtleError::InvalidToken(TextPosition::default(), e.to_string())
+      TurtleError::InvalidToken(SourcePosition::default(), e.to_string())
     }) // 根据实际错误类型调整
   })
 }

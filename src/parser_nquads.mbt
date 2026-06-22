@@ -18,7 +18,7 @@ pub fn NQuadsParser::lenient(self : NQuadsParser) -> NQuadsParser {
 pub fn NQuadsParser::for_reader(
   self : NQuadsParser,
   reader : &Reader,
-) -> ReaderNQuadsParser[NxLexer] {
+) -> ReaderNQuadsParser[RdfLexer] {
   { inner: self.low_level().parser.for_reader(reader) }
 }
 
@@ -26,7 +26,7 @@ pub fn NQuadsParser::for_reader(
 pub fn NQuadsParser::for_async_reader(
   self : NQuadsParser,
   reader : &Reader,
-) -> AsyncReaderNQuadsParser[NxLexer] {
+) -> AsyncReaderNQuadsParser[RdfLexer] {
   { inner: self.low_level().parser.for_async_reader(reader) }
 }
 
@@ -115,62 +115,62 @@ pub async fn NQuadsParser::split_file_for_parallel_parsing(
 ///|
 pub fn NQuadsParser::low_level(
   self : NQuadsParser,
-) -> LowLevelNQuadsParser[NxLexer] {
+) -> LowLevelNQuadsParser[RdfLexer] {
   { parser: NQuadsRecognizer::new_parser([], false, true, self.lenient) }
 }
 
 ///|
-pub struct ReaderNQuadsParser[LR] {
-  inner : ReaderIterator[LR, NQuadsRecognizer]
+pub struct ReaderNQuadsParser[RL] {
+  inner : ReaderIterator[RL, NQuadsRecognizer]
 }
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct AsyncReaderNQuadsParser[LR] {
-  inner : AsyncReaderIterator[LR, NQuadsRecognizer]
+pub struct AsyncReaderNQuadsParser[RL] {
+  inner : AsyncReaderIterator[RL, NQuadsRecognizer]
 }
 
 ///|
-pub async fn[LR : TokenRecognizer] AsyncReaderNQuadsParser::next(
-  self : AsyncReaderNQuadsParser[LR],
-) -> Result[LexOutput, LexerError]? {
+pub async fn[RL : TokenRecognizer] AsyncReaderNQuadsParser::next(
+  self : AsyncReaderNQuadsParser[RL],
+) -> Result[RdfStatement, LexerError]? {
   self.inner.next()
 }
 
 ///|
-pub struct SliceNQuadsParser[LR] {
-  inner : SliceIterator[NxLexer, LR]
+pub struct SliceNQuadsParser[RL] {
+  inner : SliceIterator[RdfLexer, RL]
 }
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct LowLevelNQuadsParser[LR] {
-  parser : Parser[LR, NQuadsRecognizer]
+pub struct LowLevelNQuadsParser[RL] {
+  parser : Parser[RL, NQuadsRecognizer]
 }
 
 ///|
-pub fn[LR] LowLevelNQuadsParser::extend_from_slice(
-  self : LowLevelNQuadsParser[LR],
+pub fn[RL] LowLevelNQuadsParser::extend_from_slice(
+  self : LowLevelNQuadsParser[RL],
   other : Bytes,
 ) -> Unit {
   self.parser.extend_from_slice(other)
 }
 
 ///|
-pub fn[LR] LowLevelNQuadsParser::end(self : LowLevelNQuadsParser[LR]) -> Unit {
+pub fn[RL] LowLevelNQuadsParser::end(self : LowLevelNQuadsParser[RL]) -> Unit {
   self.parser.end()
 }
 
 ///|
-pub fn[LR] LowLevelNQuadsParser::is_end(
-  self : LowLevelNQuadsParser[LR],
+pub fn[RL] LowLevelNQuadsParser::is_end(
+  self : LowLevelNQuadsParser[RL],
 ) -> Bool {
   self.parser.is_end()
 }
 
 ///|
-pub fn[LR : TokenRecognizer] LowLevelNQuadsParser::parse_next(
-  self : LowLevelNQuadsParser[LR],
+pub fn[RL : TokenRecognizer] LowLevelNQuadsParser::parse_next(
+  self : LowLevelNQuadsParser[RL],
 ) -> Result[Quad, TurtleError]? {
   self.parser
   .parse_next()
@@ -178,15 +178,15 @@ pub fn[LR : TokenRecognizer] LowLevelNQuadsParser::parse_next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        LexOutput::Triple(triple) =>
+        RdfStatement::Triple(triple) =>
           Quad::Quad(
             triple.subject,
             triple.predicate,
             triple.object,
             GraphName::default(),
           )
-        LexOutput::Quad(quad) => quad
-        LexOutput::N3Quad(n3quad) =>
+        RdfStatement::Quad(quad) => quad
+        RdfStatement::N3Quad(n3quad) =>
           match n3quad.predicate.to_node() {
             // 修复：使用 NamedNode(_) 忽略内部字段，消除警告
             NamedNode(node) =>

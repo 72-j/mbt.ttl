@@ -59,7 +59,7 @@ pub fn TurtleParser::with_prefix(
 pub fn TurtleParser::for_reader(
   self : TurtleParser,
   reader : &Reader,
-) -> ReaderTurtleParser[NxLexer] {
+) -> ReaderTurtleParser[RdfLexer] {
   { inner: self.low_level().parser.for_reader(reader) }
 }
 
@@ -67,7 +67,7 @@ pub fn TurtleParser::for_reader(
 pub fn TurtleParser::for_async_reader(
   self : TurtleParser,
   reader : &Reader,
-) -> AsyncReaderTurtleParser[NxLexer] {
+) -> AsyncReaderTurtleParser[RdfLexer] {
   { inner: self.low_level().parser.for_async_reader(reader) }
 }
 
@@ -125,7 +125,7 @@ pub fn TurtleParser::split_slice_for_parallel_parsing(
 ///|
 pub fn TurtleParser::low_level(
   self : TurtleParser,
-) -> LowLevelTurtleParser[NxLexer] {
+) -> LowLevelTurtleParser[RdfLexer] {
   {
     parser: TriGRecognizer::new_parser(
       [],
@@ -139,16 +139,16 @@ pub fn TurtleParser::low_level(
 }
 
 ///|
-pub struct ReaderTurtleParser[TR] {
-  inner : ReaderIterator[TR, TriGRecognizer]
+pub struct ReaderTurtleParser[RL] {
+  inner : ReaderIterator[RL, TriGRecognizer]
 }
 
 ///|
-pub fn[TR] ReaderTurtleParser::prefixes(
-  self : ReaderTurtleParser[TR],
+pub fn[RL] ReaderTurtleParser::prefixes(
+  self : ReaderTurtleParser[RL],
 ) -> TurtlePrefixesIter {
   match self.inner.parser.context {
-    Context::N3RecognizerContext(ctx) =>
+    RdfContext::N3RecognizerContext(ctx) =>
       // 假设 ctx 有一个 prefixes 字段，且是 Map[String, Iri]
       // 如果 prefixes 是其他类型，请调整 .iter() 的调用
       { inner: ctx.prefixes.iter() }
@@ -161,11 +161,11 @@ pub fn[TR] ReaderTurtleParser::prefixes(
 }
 
 ///|
-pub fn[TR] ReaderTurtleParser::base_iri(
-  self : ReaderTurtleParser[TR],
+pub fn[RL] ReaderTurtleParser::base_iri(
+  self : ReaderTurtleParser[RL],
 ) -> String? {
   match self.inner.parser.context {
-    Context::N3RecognizerContext(ctx) =>
+    RdfContext::N3RecognizerContext(ctx) =>
       ctx.lexer_options.base_iri.map(fn(iri) { iri.to_string() })
     _ => None
   }
@@ -174,13 +174,13 @@ pub fn[TR] ReaderTurtleParser::base_iri(
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct AsyncReaderTurtleParser[TR] {
-  inner : AsyncReaderIterator[TR, TriGRecognizer]
+pub struct AsyncReaderTurtleParser[RL] {
+  inner : AsyncReaderIterator[RL, TriGRecognizer]
 }
 
 ///|
-pub async fn[TR : TokenRecognizer] AsyncReaderTurtleParser::next(
-  self : AsyncReaderTurtleParser[TR],
+pub async fn[RL : TokenRecognizer] AsyncReaderTurtleParser::next(
+  self : AsyncReaderTurtleParser[RL],
 ) -> Result[N3Quad, TurtleError]? {
   self.inner
   .next()
@@ -188,15 +188,15 @@ pub async fn[TR : TokenRecognizer] AsyncReaderTurtleParser::next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        LexOutput::Triple(triple) =>
+        RdfStatement::Triple(triple) =>
           Quad::Quad(
             triple.subject,
             triple.predicate,
             triple.object,
             GraphName::default(),
           ).as_n3quad()
-        LexOutput::Quad(quad) => quad.as_n3quad()
-        LexOutput::N3Quad(n3quad) => n3quad
+        RdfStatement::Quad(quad) => quad.as_n3quad()
+        RdfStatement::N3Quad(n3quad) => n3quad
       }
     })
     .map_err(fn(e) { TurtleError::InvalidCharacter(e.message()) })
@@ -204,11 +204,11 @@ pub async fn[TR : TokenRecognizer] AsyncReaderTurtleParser::next(
 }
 
 ///|
-pub fn[TR] AsyncReaderTurtleParser::prefixes(
-  self : AsyncReaderTurtleParser[TR],
+pub fn[RL] AsyncReaderTurtleParser::prefixes(
+  self : AsyncReaderTurtleParser[RL],
 ) -> TurtlePrefixesIter {
   match self.inner.parser.context {
-    Context::N3RecognizerContext(ctx) =>
+    RdfContext::N3RecognizerContext(ctx) =>
       // 假设 ctx.prefixes 是 Map[String, IriRef] 或类似可迭代结构
       { inner: ctx.prefixes.iter() }
     _ =>
@@ -219,27 +219,27 @@ pub fn[TR] AsyncReaderTurtleParser::prefixes(
 }
 
 ///|
-pub fn[TR] AsyncReaderTurtleParser::base_iri(
-  self : AsyncReaderTurtleParser[TR],
+pub fn[RL] AsyncReaderTurtleParser::base_iri(
+  self : AsyncReaderTurtleParser[RL],
 ) -> String? {
   match self.inner.parser.context {
-    Context::N3RecognizerContext(ctx) =>
+    RdfContext::N3RecognizerContext(ctx) =>
       ctx.lexer_options.base_iri.map(fn(iri) { iri.to_string() })
     _ => None
   }
 }
 
 ///|
-pub struct SliceTurtleParser[TR] {
-  inner : SliceIterator[NxLexer, TR]
+pub struct SliceTurtleParser[RL] {
+  inner : SliceIterator[RdfLexer, RL]
 }
 
 ///|
-pub fn[TR] SliceTurtleParser::prefixes(
-  self : SliceTurtleParser[TR],
+pub fn[RL] SliceTurtleParser::prefixes(
+  self : SliceTurtleParser[RL],
 ) -> TurtlePrefixesIter {
   match self.inner.parser.context {
-    Context::N3RecognizerContext(ctx) =>
+    RdfContext::N3RecognizerContext(ctx) =>
       // 假设 ctx 有一个 prefixes 字段，且是 Map[String, Iri]
       // 如果 prefixes 是其他类型，请调整 .iter() 的调用
       { inner: ctx.prefixes.iter() }
@@ -252,9 +252,9 @@ pub fn[TR] SliceTurtleParser::prefixes(
 }
 
 ///|
-pub fn[TR] SliceTurtleParser::base_iri(self : SliceTurtleParser[TR]) -> String? {
+pub fn[RL] SliceTurtleParser::base_iri(self : SliceTurtleParser[RL]) -> String? {
   match self.inner.parser.context {
-    Context::N3RecognizerContext(ctx) =>
+    RdfContext::N3RecognizerContext(ctx) =>
       ctx.lexer_options.base_iri.map(fn(iri) { iri.to_string() })
     _ => None
   }
@@ -263,43 +263,43 @@ pub fn[TR] SliceTurtleParser::base_iri(self : SliceTurtleParser[TR]) -> String? 
 // Iterator impl converted: use .iter() method or for-in loop
 
 ///|
-pub struct LowLevelTurtleParser[TR] {
-  parser : Parser[TR, TriGRecognizer]
+pub struct LowLevelTurtleParser[RL] {
+  parser : Parser[RL, TriGRecognizer]
 }
 
 ///|
-pub fn[TR] LowLevelTurtleParser::extend_from_slice(
-  self : LowLevelTurtleParser[TR],
+pub fn[RL] LowLevelTurtleParser::extend_from_slice(
+  self : LowLevelTurtleParser[RL],
   other : Bytes,
 ) -> Unit {
   self.parser.extend_from_slice(other)
 }
 
 ///|
-pub fn[TR] LowLevelTurtleParser::end(self : LowLevelTurtleParser[TR]) -> Unit {
+pub fn[RL] LowLevelTurtleParser::end(self : LowLevelTurtleParser[RL]) -> Unit {
   self.parser.end()
 }
 
 ///|
-pub fn[TR] LowLevelTurtleParser::is_end(
-  self : LowLevelTurtleParser[TR],
+pub fn[RL] LowLevelTurtleParser::is_end(
+  self : LowLevelTurtleParser[RL],
 ) -> Bool {
   self.parser.is_end()
 }
 
 ///|
-pub fn[TR : TokenRecognizer] LowLevelTurtleParser::parse_next(
-  self : LowLevelTurtleParser[TR],
-) -> Result[LexOutput, TurtleError]? {
+pub fn[RL : TokenRecognizer] LowLevelTurtleParser::parse_next(
+  self : LowLevelTurtleParser[RL],
+) -> Result[RdfStatement, TurtleError]? {
   self.parser.parse_next()
 }
 
 ///|
-pub fn[TR] LowLevelTurtleParser::prefixes(
-  self : LowLevelTurtleParser[TR],
+pub fn[RL] LowLevelTurtleParser::prefixes(
+  self : LowLevelTurtleParser[RL],
 ) -> TurtlePrefixesIter {
   match self.parser.context {
-    Context::N3RecognizerContext(ctx) => { inner: ctx.prefixes.iter() }
+    RdfContext::N3RecognizerContext(ctx) => { inner: ctx.prefixes.iter() }
     _ =>
       // 假设存在一个空的 Map 或数组可以生成匹配的 Iter2[String, IriRef]
       { inner: {}.iter() }
@@ -307,11 +307,11 @@ pub fn[TR] LowLevelTurtleParser::prefixes(
 }
 
 ///|
-pub fn[TR] LowLevelTurtleParser::base_iri(
-  self : LowLevelTurtleParser[TR],
+pub fn[RL] LowLevelTurtleParser::base_iri(
+  self : LowLevelTurtleParser[RL],
 ) -> String? {
   match self.parser.context {
-    Context::N3RecognizerContext(ctx) =>
+    RdfContext::N3RecognizerContext(ctx) =>
       ctx.lexer_options.base_iri.map(fn(iri) { iri.to_string() })
     _ => None
   }

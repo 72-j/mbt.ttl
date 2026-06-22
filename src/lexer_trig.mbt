@@ -1,12 +1,156 @@
 ///|
 pub struct TriGRecognizer {
-  stack : Array[TriGState]
+  mut stack : Array[TriGState]
   cur_subject : Array[NamedOrBlankNodeRef]
   cur_predicate : Array[NamedNodeRef]
   cur_object : Array[TermRef]
   mut cur_graph : GraphNameRef
   cur_reifier : Array[NamedOrBlankNodeRef]
   lenient : Bool
+  mut debug_logger : &DebugLogger
+  mut in_collection : Bool
+}
+
+///|
+impl Show for TriGRecognizer with fn output(self, logger : &Logger) -> Unit {
+  logger.write("TriGRecognizer:\n")
+
+  // 1. 打印栈状态 (增加分隔符和更全的匹配)
+  logger.write("  Stack: [")
+  for i = 0; i < self.stack.length(); i = i + 1 {
+    if i > 0 {
+      logger.write(", ")
+    }
+    match self.stack[i] {
+      TriGState::TriGDoc => logger.write("TriGDoc")
+      TriGState::ExpectDot => logger.write("ExpectDot")
+      TriGState::BaseExpectIri => logger.write("BaseExpectIri")
+      TriGState::PrefixExpectPrefix => logger.write("PrefixExpectPrefix")
+      TriGState::PrefixExpectIri(name~) =>
+        logger.write("PrefixExpectIri(\{name})")
+      TriGState::VersionExpectVersion => logger.write("VersionExpectVersion")
+      TriGState::TriplesOrGraph => logger.write("TriplesOrGraph")
+      TriGState::WrappedGraph => logger.write("WrappedGraph")
+      TriGState::WrappedGraphPossibleEnd =>
+        logger.write("WrappedGraphPossibleEnd")
+      TriGState::GraphName => logger.write("GraphName")
+      TriGState::ExpectAtKeyword => logger.write("ExpectAtKeyword")
+      TriGState::PredicateObjectList => logger.write("PredicateObjectList")
+      TriGState::PredicateObjectListEnd =>
+        logger.write("PredicateObjectListEnd")
+      TriGState::ObjectsList => logger.write("ObjectsList")
+      TriGState::Object => logger.write("Object")
+      TriGState::Verb => logger.write("Verb")
+      TriGState::LiteralPossibleSuffix(value~, emit~) =>
+        logger.write("LiteralPossibleSuffix(\{value} emit=\{emit})")
+      TriGState::SubjectCollectionBeginning =>
+        logger.write("SubjectCollectionBeginning")
+      TriGState::ObjectCollectionBeginning =>
+        logger.write("ObjectCollectionBeginning")
+      TriGState::WrappedGraphOrPredicateObjectList(_) =>
+        logger.write("WrappedGraphOrPredicateObjectList")
+      TriGState::AnnotationBlock(_) => logger.write("AnnotationBlock")
+      TriGState::Reifier(_) => logger.write("Reifier")
+      TriGState::ReifiedTripleSubject(_) => logger.write("ReifiedTripleSubject")
+      TriGState::ReifiedTripleObject(_) => logger.write("ReifiedTripleObject")
+      TriGState::ObjectReifiedTripleEnd(_) =>
+        logger.write("ObjectReifiedTripleEnd")
+      TriGState::SubjectReifiedTripleEnd =>
+        logger.write("SubjectReifiedTripleEnd")
+      TriGState::EndOfReifiedTripleBeforeReifier =>
+        logger.write("EndOfReifiedTripleBeforeReifier")
+      TriGState::MaybePredicateObjectList =>
+        logger.write("MaybePredicateObjectList")
+      TriGState::PredicateObjectListPossibleContinuation =>
+        logger.write("PredicateObjectListPossibleContinuation")
+      TriGState::ObjectBlankNodePropertyListCurrent =>
+        logger.write("ObjectBlankNodePropertyListCurrent")
+      TriGState::ObjectBlankNodePropertyListEnd =>
+        logger.write("ObjectBlankNodePropertyListEnd")
+      TriGState::ObjectCollectionPossibleEnd =>
+        logger.write("ObjectCollectionPossibleEnd")
+      TriGState::SubjectBlankNodePropertyListEnd =>
+        logger.write("SubjectBlankNodePropertyListEnd")
+      TriGState::SubjectBlankNodePropertyListAfter =>
+        logger.write("SubjectBlankNodePropertyListAfter")
+      TriGState::WrappedGraphBlankNodePropertyListCurrent =>
+        logger.write("WrappedGraphBlankNodePropertyListCurrent")
+      TriGState::Triples => logger.write("Triples")
+      TriGState::TriplesBlankNodePropertyListCurrent =>
+        logger.write("TriplesBlankNodePropertyListCurrent")
+      TriGState::GraphNameAnonEnd => logger.write("GraphNameAnonEnd")
+      TriGState::QuotedAnonEnd => logger.write("QuotedAnonEnd")
+      TriGState::AnnotationEnd(_) => logger.write("AnnotationEnd")
+      TriGState::LiteralExpectDatatype(..) =>
+        logger.write("LiteralExpectDatatype")
+      TriGState::TripleTermEnd(_) => logger.write("TripleTermEnd")
+      TriGState::SubjectCollectionPossibleEnd =>
+        logger.write("SubjectCollectionPossibleEnd")
+      _ => logger.write("UnknownState")
+    }
+  }
+  logger.write("]\n")
+
+  // 2. 打印 Subject (增加分隔符，处理 BlankNode 显示)
+  logger.write("  Subject: [")
+  for i = 0; i < self.cur_subject.length(); i = i + 1 {
+    if i > 0 {
+      logger.write(", ")
+    }
+    match self.cur_subject[i] {
+      NamedOrBlankNodeRef::NamedNodeRef(n) => logger.write(n.to_string())
+      NamedOrBlankNodeRef::BlankNodeRef(b) => logger.write("_:b") // 或者 b.to_string() 如果有实现
+    }
+  }
+  logger.write("]\n")
+
+  // 3. 打印 Predicate
+  logger.write("  Predicate: [")
+  for i = 0; i < self.cur_predicate.length(); i = i + 1 {
+    if i > 0 {
+      logger.write(", ")
+    }
+    // 假设 NamedNodeRef 实现了 Show 或者有 to_string
+    logger.write(self.cur_predicate[i].to_string())
+  }
+  logger.write("]\n")
+
+  // 4. 打印 Object
+  logger.write("  Object: [")
+  for i = 0; i < self.cur_object.length(); i = i + 1 {
+    if i > 0 {
+      logger.write(", ")
+    }
+    match self.cur_object[i] {
+      TermRef::NamedNodeRef(n) => logger.write(n.to_string())
+      TermRef::BlankNodeRef(b) => logger.write("_:b")
+      TermRef::LiteralRef(l) => logger.write(l.to_string())
+      TermRef::TripleRef(t) => logger.write("<<...>>") // 简化显示，避免递归过深
+    }
+  }
+  logger.write("]\n")
+
+  // 5. 打印 Reifier
+  logger.write("  Reifier: [")
+  for i = 0; i < self.cur_reifier.length(); i = i + 1 {
+    if i > 0 {
+      logger.write(", ")
+    }
+    match self.cur_reifier[i] {
+      NamedOrBlankNodeRef::NamedNodeRef(n) => logger.write(n.to_string())
+      NamedOrBlankNodeRef::BlankNodeRef(b) => logger.write("_:b")
+    }
+  }
+  logger.write("]\n")
+
+  // 6. 打印当前图
+  logger.write("  Graph: ")
+  match self.cur_graph {
+    GraphNameRef::DefaultGraph => logger.write("DEFAULT")
+    GraphNameRef::NamedNodeRef(n) => logger.write(n.to_string())
+    GraphNameRef::BlankNodeRef(b) => logger.write("_:b")
+  }
+  logger.write("\n")
 }
 
 ///|
@@ -17,9 +161,9 @@ pub struct TriGRecognizerContext {
 }
 
 ///|
-fn TriGRecognizerContext::as_ctx(self : TriGRecognizerContext) -> Context {
-  Context::TriGRecognizerContext(self)
-}
+// fn TriGRecognizerContext::as_ctx(self : TriGRecognizerContext) -> RdfContext {
+//   RdfContext ::TriGRecognizerContext(self)
+// }
 
 ///|
 // pub struct TriGLexerOptions {
@@ -52,16 +196,28 @@ impl RuleRecognizer for TriGRecognizer with fn error_recovery_state(
 }
 
 ///|
+impl RuleRecognizer for TriGRecognizer with fn[DL : DebugLogger] debug_logger(
+  self : TriGRecognizer,
+  debug_logger : DL,
+) {
+  self.debug_logger = debug_logger
+}
+
+///|
 impl RuleRecognizer for TriGRecognizer with fn recognize_next(
   self : TriGRecognizer,
   token : TokenOrLineJump[N3Token],
-  context : Context,
-  results : Array[LexOutput],
+  context : RdfContext,
+  results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   // let token = token
+  // debug(" Token: \{token}")
+  self.debug_logger.info("Stack Depth: \{self.stack.length()}")
+  // debug("Stack content: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
   let context = match context {
-    Context::TriGRecognizerContext(c) => c
+    RdfContext::TriGRecognizerContext(c) => c
     _ => abort("Invalid context for TriGRecognizer")
   }
   if self.stack.pop() is Some(rule) {
@@ -119,41 +275,80 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           }
           TokenOrLineJump::Token(N3Token::Punctuation("{")) if context.with_graph_name => {
             self.stack.push(TriGState::WrappedGraph)
-            self.recognize_next(
-              token,
-              Context::TriGRecognizerContext(context),
-              results,
-              errors,
-            )
+            self
+            // self.recognize_next(
+            //   token,
+            //   RdfContext ::TriGRecognizerContext(context),
+            //   results,
+            //   errors,
+            // )
           }
           _ => {
+            // 对于普通三元组，我们进入 TriplesOrGraph 状态
+            // 注意：不要 push 后递归，而是直接改变栈顶
+            // if self.stack.is_empty() {
             self.stack.push(TriGState::TriplesOrGraph)
-            self.recognize_next(
-              token,
-              Context::TriGRecognizerContext(context),
-              results,
-              errors,
-            )
+            // } else {
+            //   // 如果栈顶是 TriGDoc，我们可能需要替换它，或者在它上面压入新状态
+            //   // 取决于你的设计。通常 TriGDoc 应该始终在栈底。
+            //   self.stack.push(TriGState::TriplesOrGraph)
+            // }
+            self
+            // self.stack.push(TriGState::TriplesOrGraph)
+            // self
+            // self.recognize_next(
+            //   token,
+            //   RdfContext ::TriGRecognizerContext(context),
+            //   results,
+            //   errors,
+            // )
           }
         }
       }
-      TriGState::ExpectDot => {
-        let _ = self.cur_subject.pop()
+      TriGState::ExpectDot =>
         if token == TokenOrLineJump::Token(N3Token::Punctuation(".")) {
+          // 【关键修复】清空栈，只保留 TriGDoc
+          let new_stack = []
+          new_stack.push(TriGState::TriGDoc)
+          self.stack = new_stack
+
+          // 清空缓冲区
+          self.cur_subject.clear()
+          self.cur_predicate.clear()
+          self.cur_object.clear()
+          self.cur_reifier.clear()
           self
         } else {
+          // 错误处理：期待句号但未得到
           errors.push(RuleRecognizerError::TripleMissingDot)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          // 恢复：重置到 TriGDoc
+          let new_stack = []
+          new_stack.push(TriGState::TriGDoc)
+          self.stack = new_stack
+          self.cur_subject.clear()
+          self.cur_predicate.clear()
+          self.cur_object.clear()
+          self
         }
-      }
+      // TriGState::ExpectDot =>
+      //   // let _ = self.cur_subject.pop()
+      //   if token == TokenOrLineJump::Token(N3Token::Punctuation(".")) {
+      //     // 【核心修复】语句结束，清空状态栈，只保留 TriGDoc
+      //     self.stack.clear()
+      //     self.stack.push(TriGState::TriGDoc)
+      //     self
+      //   } else {
+      //     errors.push(RuleRecognizerError::TripleMissingDot)
+      //     self.recognize_next(
+      //       token,
+      //       RdfContext ::TriGRecognizerContext(context),
+      //       results,
+      //       errors,
+      //     )
+      //   }
       TriGState::BaseExpectIri =>
         if token is TokenOrLineJump::Token(N3Token::Iri(iri)) {
-          let iri_ref = Iri::Iri(iri).as_ref()
+          let iri_ref = Iri::new(iri)
           if self.lenient {
             // 宽松模式：直接解析，不检查有效性
             context.lexer_options.base_iri = Some(
@@ -168,12 +363,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Invalid BASE IRI: \{e.message()}",
-                    TextPosition::default(), // 如果有位置信息，应传入实际位置
+                    SourcePosition::default(), // 如果有位置信息，应传入实际位置
                   ),
                 )
               // 可以选择保持原状或设为 None，这里选择不更新 base_iri
             }
           }
+          // 【修复】解析完 Base IRI 后，必须期待一个句号
+          self.stack.push(TriGState::ExpectDot)
           self
         } else {
           self.error(errors, "The BASE keyword should be followed by an IRI")
@@ -182,6 +379,29 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         match token {
           TokenOrLineJump::Token(N3Token::PrefixedName(prefix~, localx~, ..)) if localx.is_empty() => {
             self.stack.push(TriGState::PrefixExpectIri(name=prefix))
+            self
+          }
+          // 情况 2: 某些 Lexer 可能将 p: 解析为 IRI (如果它看起来像相对 IRI)
+          // 尝试提取前缀部分 (去掉末尾的 :)
+          TokenOrLineJump::Token(N3Token::Iri(iri_str)) if iri_str.has_suffix(
+              ":",
+            ) => {
+            let prefix = iri_str[0:iri_str.length() - 1]
+            // 简单检查前缀是否合法 (仅包含字母数字等)
+            self.debug_logger.info(
+              "PrefixExpectPrefix: Matched Iri as prefix '\{prefix}:'",
+            )
+            self.stack.push(TriGState::PrefixExpectIri(name=prefix.to_owned()))
+            self
+          }
+
+          // 情况 3: 兼容处理，如果 Token 是 PlainKeyword 且以 : 结尾 (极少见，但防错)
+          TokenOrLineJump::Token(N3Token::PlainKeyword(k)) if k.has_suffix(":") => {
+            let prefix = k[0:k.length() - 1]
+            self.debug_logger.info(
+              "PrefixExpectPrefix: Matched Keyword as prefix '\{prefix}:'",
+            )
+            self.stack.push(TriGState::PrefixExpectIri(name=prefix.to_owned()))
             self
           }
           _ =>
@@ -193,6 +413,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         if token is TokenOrLineJump::Token(N3Token::Iri(iri)) {
           let iri = Iri::Iri(iri)
           context.prefixes.set(name, iri)
+          self.stack.push(TriGState::ExpectDot)
           self
         } else {
           self.error(
@@ -201,6 +422,8 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       TriGState::VersionExpectVersion =>
         if token is TokenOrLineJump::Token(N3Token::String(_)) {
+          // 【修复】解析完 Version 后，必须期待一个句号
+          self.stack.push(TriGState::ExpectDot)
           self
         } else {
           self.error(
@@ -210,6 +433,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
       TriGState::TriplesOrGraph =>
         match token {
           TokenOrLineJump::Token(N3Token::Iri(iri)) => {
+            self.cur_subject.push(NamedNodeRef::new_unchecked(iri).as_enum())
             self.stack.push(
               TriGState::WrappedGraphOrPredicateObjectList(
                 term=NamedNodeRef::new_unchecked(iri).as_enum(),
@@ -228,6 +452,8 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 context.prefixes,
               ) {
               Ok(t) => {
+                self.cur_subject.push(t.as_enum())
+
                 self.stack.push(
                   TriGState::WrappedGraphOrPredicateObjectList(term=t.as_enum()),
                 )
@@ -254,7 +480,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             self
           }
           TokenOrLineJump::Token(N3Token::Punctuation("<<")) => {
-            self.stack.push(TriGState::ExpectDot)
+            // self.stack.push(TriGState::ExpectDot)
             self.stack.push(TriGState::MaybePredicateObjectList)
             self.stack.push(TriGState::SubjectReifiedTripleEnd)
             self.stack.push(TriGState::EndOfReifiedTripleBeforeReifier)
@@ -263,25 +489,129 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             self.stack.push(TriGState::ReifiedTripleSubject(is_reified=true))
             self
           }
-          _ => self.error(errors, "TOKEN is not a valid subject or graph name")
+          _ =>
+            // println("Unhandled token in TriplesOrGraph: \{token}")
+            self.error(errors, "TOKEN is not a valid subject or graph name")
         }
+      // TriGState::WrappedGraphOrPredicateObjectList(term~) => {
+      //   if token == TokenOrLineJump::Token(N3Token::Punctuation("{")) &&
+      //     context.with_graph_name {
+      //     self.cur_graph = term.into_graph()
+
+      //     self.stack.push(TriGState::WrappedGraph)
+      //   } else {
+      //     self.cur_graph = term.into_graph()
+      //     self.stack.push(TriGState::ExpectDot)
+      //     self.stack.push(TriGState::PredicateObjectList)
+      //   }
+      //   self
+      //   // self.recognize_next(
+      //   //   token,
+      //   //   RdfContext ::TriGRecognizerContext(context),
+      //   //   results,
+      //   //   errors,
+      //   // )
+      // }
       TriGState::WrappedGraphOrPredicateObjectList(term~) => {
+        self.debug_logger.info(
+          "Entering WrappedGraphOrPredicateObjectList with token: \{token}",
+        )
+        self.debug_logger.info("=== Stack before: \{self.stack.to_string()}")
+
+        // 1. 检查是否是命名图语法 { ... }
         if token == TokenOrLineJump::Token(N3Token::Punctuation("{")) &&
           context.with_graph_name {
+          self.debug_logger.info(
+            "WrappedGraphOrPredicateObjectList: Graph branch",
+          )
+          self.cur_graph = term.into_graph()
+          self.stack.push(TriGState::WrappedGraph)
+          self.debug_logger.info(
+            "Graph branch, stack after: \{self.stack.to_string()}",
+          )
+          self
+        } else {
+          self.debug_logger.info(
+            "WrappedGraphOrPredicateObjectList: Predicate branch",
+          )
           self.cur_graph = term.into_graph()
 
-          self.stack.push(TriGState::WrappedGraph)
-        } else {
-          self.cur_graph = term.into_graph()
-          self.stack.push(TriGState::ExpectDot)
-          self.stack.push(TriGState::PredicateObjectList)
+          // 2. 匹配谓词
+          match token {
+            TokenOrLineJump::Token(N3Token::PlainKeyword("a")) => {
+              self.debug_logger.info(
+                "WrappedGraphOrPredicateObjectList: 'a' predicate",
+              )
+              self.cur_predicate.push(lwTYPE)
+              self.stack.push(TriGState::ObjectsList)
+              self.debug_logger.info(
+                "After push ObjectsList, stack: \{self.stack.to_string()}",
+              )
+              self
+            }
+            TokenOrLineJump::Token(N3Token::Iri(iri)) => {
+              self.debug_logger.info(
+                "WrappedGraphOrPredicateObjectList: IRI predicate: \{iri}",
+              )
+              self.cur_predicate.push(NamedNodeRef::new_unchecked(iri))
+              self.stack.push(TriGState::ObjectsList)
+              self.debug_logger.info(
+                "After push ObjectsList, stack: \{self.stack.to_string()}",
+              )
+              self
+            }
+            TokenOrLineJump::Token(
+              N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~)
+            ) =>
+              match
+                resolve_local_name(
+                  prefix,
+                  localx,
+                  might_be_invalid_iri,
+                  context.prefixes,
+                ) {
+                Ok(t) => {
+                  self.cur_predicate.push(t)
+                  self.stack.push(TriGState::ObjectsList)
+                  self
+                }
+                Err(e) => self.error(errors, e)
+              }
+
+            // 【新增】处理非法谓词 Token（如直接出现的对象字面量）
+            // 这通常意味着语法错误，例如 <s> <o> . (缺失谓词) 或 <s> 1 .
+            _ => {
+              self.debug_logger.info(
+                "WrappedGraphOrPredicateObjectList: Invalid predicate token: \{token}",
+              )
+              // self.error(errors, "Expected a predicate (IRI or 'a') but found: \{token}")
+
+              // 【容错处理】：如果当前 Token 看起来像是一个对象（如整数、字符串等），
+              // 我们可以尝试跳过错误的谓词阶段，直接进入 Object 状态，以便解析器能继续消费后续 Token
+              // 注意：这是一种激进的容错，标准解析器应直接报错停止
+              match token {
+                TokenOrLineJump::Token(
+                  N3Token::Integer(_)
+                  | N3Token::Decimal(_)
+                  | N3Token::Double(_)
+                  | N3Token::String(_)
+                  | N3Token::LongString(_)
+                  | N3Token::Punctuation("[" | "(" | "<<")
+                ) => {
+                  self.stack.push(TriGState::ObjectsList)
+                  // 递归调用，让 ObjectsList -> Object 处理当前的 Token
+                  self.recognize_next(
+                    token,
+                    RdfContext::TriGRecognizerContext(context),
+                    results,
+                    errors,
+                  )
+                }
+                _ => self
+              }
+            }
+          }
         }
-        self.recognize_next(
-          token,
-          Context::TriGRecognizerContext(context),
-          results,
-          errors,
-        )
       }
       TriGState::WrappedGraphBlankNodePropertyListCurrent =>
         if token == TokenOrLineJump::Token(N3Token::Punctuation("]")) {
@@ -296,12 +626,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           self.stack.push(TriGState::ExpectDot)
           self.stack.push(TriGState::SubjectBlankNodePropertyListEnd)
           self.stack.push(TriGState::PredicateObjectList)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       TriGState::SubjectBlankNodePropertyListEnd =>
         if token == TokenOrLineJump::Token(N3Token::Punctuation("]")) {
@@ -312,29 +643,32 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             RuleRecognizerError::BlankNodePropertyListMissingEndBracket,
           )
           self.stack.push(TriGState::SubjectBlankNodePropertyListAfter)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       TriGState::SubjectBlankNodePropertyListAfter =>
         if token is TokenOrLineJump::Token(N3Token::Punctuation("." | "}")) {
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         } else {
           self.stack.push(TriGState::PredicateObjectList)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       TriGState::SubjectCollectionBeginning =>
         if token is TokenOrLineJump::Token(N3Token::Punctuation(")")) {
@@ -349,12 +683,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           self.cur_predicate.push(lwFIRST)
           self.stack.push(TriGState::SubjectCollectionPossibleEnd)
           self.stack.push(TriGState::Object)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       TriGState::SubjectCollectionPossibleEnd => {
         let old = match self.cur_subject.pop() {
@@ -363,7 +698,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: subject stack is empty",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
             return self
@@ -373,7 +708,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         if token is TokenOrLineJump::Token(N3Token::Punctuation(")")) {
           let _ = self.cur_predicate.pop()
           results.push(
-            LexOutput::Quad(
+            RdfStatement::Quad(
               Quad::Quad(
                 old.into_owned(),
                 lwREST.into_owned(),
@@ -386,7 +721,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         } else {
           let new = BlankNode::default()
           results.push(
-            LexOutput::Quad(
+            RdfStatement::Quad(
               Quad::Quad(
                 old.into_owned(),
                 lwREST.into_owned(),
@@ -398,12 +733,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           self.cur_subject.push(NamedOrBlankNodeRef::BlankNodeRef(new.as_ref()))
           self.stack.push(TriGState::ObjectCollectionPossibleEnd)
           self.stack.push(TriGState::Object)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       }
       TriGState::WrappedGraph =>
@@ -416,8 +752,8 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors, "The GRAPH keyword should be followed by a graph name and a value in '{'",
           )
         }
-      TriGState::WrappedGraphPossibleEnd => {
-        let _ = self.cur_subject.pop()
+      TriGState::WrappedGraphPossibleEnd =>
+        // let _ = self.cur_subject.pop()
         match token {
           TokenOrLineJump::Token(N3Token::Punctuation("}")) => self
           TokenOrLineJump::Token(N3Token::Punctuation(".")) => {
@@ -427,29 +763,30 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           }
           _ => {
             errors.push(RuleRecognizerError::TripleMissingDot)
-            self.recognize_next(
-              token,
-              Context::TriGRecognizerContext(context),
-              results,
-              errors,
-            )
+            self
+            // self.recognize_next(
+            //   token,
+            //   RdfContext ::TriGRecognizerContext(context),
+            //   results,
+            //   errors,
+            // )
           }
         }
-      }
       TriGState::Triples =>
         match token {
-          TokenOrLineJump::Token(N3Token::Punctuation("}")) =>
-            self.recognize_next(
-              token,
-              Context::TriGRecognizerContext(context),
-              results,
-              errors,
-            )
+          TokenOrLineJump::Token(N3Token::Punctuation("}")) => self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
           TokenOrLineJump::Token(N3Token::Punctuation("[")) => {
             self.cur_subject.push(
               NamedOrBlankNodeRef::BlankNodeRef(BlankNode::default().as_ref()),
             )
-            self.stack.push(TriGState::TriplesBlankNodePropertyListCurrent)
+            // self.stack.push(TriGState::TriplesBlankNodePropertyListCurrent)
+            self.stack.push(TriGState::PredicateObjectList) // <-- 添加这行
             self
           }
           TokenOrLineJump::Token(N3Token::Iri(iri)) => {
@@ -506,12 +843,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         } else {
           self.stack.push(TriGState::SubjectBlankNodePropertyListEnd)
           self.stack.push(TriGState::PredicateObjectList)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       TriGState::GraphName =>
         match token {
@@ -544,7 +882,11 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             self
           }
           TokenOrLineJump::Token(N3Token::Punctuation("[")) => {
-            self.stack.push(TriGState::GraphNameAnonEnd)
+            // 创建匿名空白节点作为主语
+            self.cur_subject.push(
+              NamedOrBlankNodeRef::BlankNodeRef(BlankNode::default().as_ref()),
+            )
+            self.stack.push(TriGState::PredicateObjectList)
             self
           }
           _ => self.error(errors, "TOKEN is not a valid graph name")
@@ -564,36 +906,55 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         if token != TokenOrLineJump::Token(N3Token::Punctuation(".")) {
           self.stack.push(TriGState::PredicateObjectList)
         }
-        self.recognize_next(
-          token,
-          Context::TriGRecognizerContext(context),
-          results,
-          errors,
-        )
+        self
+        // self.recognize_next(
+        //   token,
+        //   RdfContext ::TriGRecognizerContext(context),
+        //   results,
+        //   errors,
+        // )
       }
       TriGState::PredicateObjectList => {
         self.stack.push(TriGState::PredicateObjectListEnd)
-        self.stack.push(TriGState::ObjectsList)
-        self.stack.push(TriGState::Verb)
-        self.recognize_next(
-          token,
-          Context::TriGRecognizerContext(context),
-          results,
-          errors,
-        )
+        self.stack.push(TriGState::Object) // ✅ 改为直接 push Object
+        // self.stack.push(TriGState::Verb)
+        self
+        // self.recognize_next(
+        //   token,
+        //   RdfContext ::TriGRecognizerContext(context),
+        //   results,
+        //   errors,
+        // )
       }
       TriGState::PredicateObjectListEnd => {
-        let _ = self.cur_predicate.pop()
-        if token == TokenOrLineJump::Token(N3Token::Punctuation(";")) {
-          self.stack.push(TriGState::PredicateObjectListPossibleContinuation)
-          self
-        } else {
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+        // let _ = self.cur_predicate.pop()
+        debug(
+          "PredicateObjectListEnd: token=\{token}, expected_dot=\{TokenOrLineJump::Token(N3Token::Punctuation("."))}",
+        )
+        debug(
+          "Equal? \{token == TokenOrLineJump::Token(N3Token::Punctuation("."))}",
+        )
+        match token {
+          TokenOrLineJump::Token(N3Token::Punctuation(",")) => {
+            self.stack.push(TriGState::Object) // 改，直接 push Object
+            self
+          }
+          TokenOrLineJump::Token(N3Token::Punctuation(";")) => {
+            self.stack.push(TriGState::PredicateObjectListPossibleContinuation)
+            self
+          }
+          TokenOrLineJump::Token(N3Token::Punctuation(".")) => {
+            self.stack.clear()
+            self.stack.push(TriGState::TriGDoc)
+            self.cur_subject.clear()
+            self.cur_predicate.clear()
+            self.cur_object.clear()
+            self
+          }
+          _ =>
+            self.error(
+              errors, "Expected ';' or '.' after predicate-object list",
+            )
         }
       }
       TriGState::PredicateObjectListPossibleContinuation =>
@@ -604,29 +965,39 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           is TokenOrLineJump::Token(
             N3Token::Punctuation("." | "}" | "]" | "|}")
           ) {
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         } else {
           self.stack.push(TriGState::PredicateObjectListEnd)
-          self.stack.push(TriGState::ObjectsList)
+          self.stack.push(TriGState::Object)
           self.stack.push(TriGState::Verb)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
+      // self.stack.push(TriGState::AnnotationEnd(with_reifier=false))
+      // self.set_state(TriGState::Object) // 替换栈顶
       TriGState::ObjectsList => {
-        self.stack.push(TriGState::AnnotationEnd(with_reifier=false))
+        // self.error(errors, "Unexpected state: ObjectsList")
+        // let _ = self.stack.pop()
+
         self.stack.push(TriGState::Object)
+        self.debug_logger.info(
+          "ObjectsList: after replace, stack: \{self.stack.to_string()}",
+        )
+        // self
         self.recognize_next(
           token,
-          Context::TriGRecognizerContext(context),
+          RdfContext::TriGRecognizerContext(context),
           results,
           errors,
         )
@@ -649,7 +1020,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: subject stack empty",
-                    TextPosition::default(),
+                    SourcePosition::default(),
                   ),
                 )
                 return self
@@ -661,7 +1032,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: predicate stack empty",
-                    TextPosition::default(),
+                    SourcePosition::default(),
                   ),
                 )
                 return self
@@ -673,7 +1044,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: object stack empty",
-                    TextPosition::default(),
+                    SourcePosition::default(),
                   ),
                 )
                 return self
@@ -695,7 +1066,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: subject stack empty",
-                    TextPosition::default(),
+                    SourcePosition::default(),
                   ),
                 )
                 return self
@@ -707,7 +1078,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: predicate stack empty",
-                    TextPosition::default(),
+                    SourcePosition::default(),
                   ),
                 )
                 return self
@@ -719,7 +1090,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: object stack empty",
-                    TextPosition::default(),
+                    SourcePosition::default(),
                   ),
                 )
                 return self
@@ -732,7 +1103,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   errors.push(
                     RuleRecognizerError::SyntaxError(
                       "Internal error: reifier stack empty",
-                      TextPosition::default(),
+                      SourcePosition::default(),
                     ),
                   )
                   return self
@@ -741,7 +1112,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             } else {
               let reifier = BlankNode::default()
               results.push(
-                LexOutput::Quad(
+                RdfStatement::Quad(
                   Quad::Quad(
                     reifier.as_enum(),
                     lwREIFIES.into_owned(),
@@ -764,12 +1135,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             if with_reifier {
               let _ = self.cur_reifier.pop()
             }
-            self.recognize_next(
-              token,
-              Context::TriGRecognizerContext(context),
-              results,
-              errors,
-            )
+            self
+            // self.recognize_next(
+            //   token,
+            //   RdfContext ::TriGRecognizerContext(context),
+            //   results,
+            //   errors,
+            // )
           }
         }
       TriGState::AnnotationEnd(with_reifier~) => {
@@ -782,7 +1154,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           .error(errors, "Annotations should end with '|}'")
           .recognize_next(
             token,
-            Context::TriGRecognizerContext(context),
+            RdfContext::TriGRecognizerContext(context),
             results,
             errors,
           )
@@ -796,7 +1168,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           }
           TokenOrLineJump::Token(N3Token::Iri(iri)) => {
             self.cur_predicate.push(NamedNodeRef::new_unchecked(iri))
+            self.emit_quad(results)
+            self.stack.push(TriGState::PredicateObjectListEnd)
             self
+            // self.set_state(TriGState::PredicateObjectListEnd)
           }
           TokenOrLineJump::Token(
             N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~)
@@ -816,13 +1191,28 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             }
           _ => self.error(errors, "TOKEN is not a valid predicate")
         }
-      TriGState::Object =>
+      TriGState::Object => {
+        self.debug_logger.info("Entering Object state with token: \{token}")
+        // let in_collection = self.stack.contains(
+        //   TriGState::ObjectCollectionPossibleEnd,
+        // )
+
         match token {
           TokenOrLineJump::Token(N3Token::Iri(iri)) => {
+            self.debug_logger.info("Object: IRI branch, pushing object")
+
             self.cur_object.push(
               TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(iri)),
             )
             self.emit_quad(results)
+            // ✅ 弹出 Object，进入 PredicateObjectListEnd
+            // let _ = self.stack.pop() // 弹出 Object
+            // self.set_state(TriGState::PredicateObjectListEnd)
+            self.stack.push(TriGState::PredicateObjectListEnd)
+            self.debug_logger.info(
+              "Object: after pop, stack: \{self.stack.to_string()}",
+            )
+
             self
           }
           TokenOrLineJump::Token(
@@ -836,8 +1226,19 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 context.prefixes,
               ) {
               Ok(t) => {
+                self.debug_logger.info(
+                  "Object: PrefixedName branch, pushing object",
+                )
                 self.cur_object.push(TermRef::NamedNodeRef(t))
+
                 self.emit_quad(results)
+                // let _ = self.stack.pop()
+
+                // self.set_state(TriGState::PredicateObjectListEnd)
+                self.stack.push(TriGState::PredicateObjectListEnd)
+                self.debug_logger.info(
+                  "Object: after pop, stack: \{self.stack.to_string()}",
+                )
                 self
               }
               Err(e) => self.error(errors, e)
@@ -847,6 +1248,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(label)),
             )
             self.emit_quad(results)
+            // let _ = self.stack.pop()
+
+            // self.set_state(TriGState::PredicateObjectListEnd)
+            self.stack.push(TriGState::PredicateObjectListEnd)
             self
           }
           TokenOrLineJump::Token(N3Token::Punctuation("[")) => {
@@ -875,6 +1280,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   ).as_term(),
                 )
                 self.emit_quad(results)
+                if self.in_collection {
+                  // ✅ 在集合中：进入 ObjectCollectionPossibleEnd
+                  self.stack.push(TriGState::ObjectCollectionPossibleEnd)
+                } else {
+                  // ✅ 不在集合中：进入 PredicateObjectListEnd
+                  self.stack.push(TriGState::PredicateObjectListEnd)
+                }
                 self
               }
               Err(e) => self.error(errors, e.to_string())
@@ -893,6 +1305,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   ).as_term(),
                 )
                 self.emit_quad(results)
+                // let _ = self.stack.pop()
+
+                self.stack.push(TriGState::PredicateObjectListEnd) // ⚠️ 【新增】修复缺失的状态压入
+
                 self
               }
               Err(e) => self.error(errors, e.to_string())
@@ -911,6 +1327,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   ).as_term(),
                 )
                 self.emit_quad(results)
+                // let _ = self.stack.pop()
+
+                self.stack.push(TriGState::PredicateObjectListEnd) // ⚠️ 【新增】修复缺失的状态压入
+
                 self
               }
               Err(e) => self.error(errors, e.to_string())
@@ -921,6 +1341,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               LiteralRef::new_typed_literal(VarDataType::TrueVar, lwBOOLEAN).as_term(),
             )
             self.emit_quad(results)
+            // let _ = self.stack.pop()
+
+            self.stack.push(TriGState::PredicateObjectListEnd) // ⚠️ 【新增】修复缺失的状态压入
+
             self
           }
           TokenOrLineJump::Token(N3Token::PlainKeyword("false")) => {
@@ -928,6 +1352,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               LiteralRef::new_typed_literal(VarDataType::FalseVar, lwBOOLEAN).as_term(),
             )
             self.emit_quad(results)
+            // let _ = self.stack.pop()
+
+            self.stack.push(TriGState::PredicateObjectListEnd) // ⚠️ 【新增】修复缺失的状态压入
+
             self
           }
           TokenOrLineJump::Token(N3Token::Punctuation("<<")) => {
@@ -945,8 +1373,43 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             self.stack.push(TriGState::ReifiedTripleObject(is_reified=false))
             self
           }
+          TokenOrLineJump::Token(
+            N3Token::Punctuation("." | ";" | "," | "]" | "}" | "|}")
+          ) => {
+            self.debug_logger.info(
+              "Object: Termination token detected: \{token}. Treating as missing object.",
+            )
+
+            // errors.push(
+            //   RuleRecognizerError::SyntaxError(
+            //     "Expected an object but found termination token",
+            //     SourcePosition::default(),
+            //   ),
+            // )
+
+            // 弹出 Object，准备让 PredicateObjectListEnd 处理这个终止符
+            // let _ = self.stack.pop() 
+            self.stack.push(TriGState::PredicateObjectListEnd)
+            self.debug_logger.info(
+              "Object: after push PredicateObjectListEnd, stack: \{self.stack.to_string()}",
+            )
+
+            // 递归调用，让 PredicateObjectListEnd 处理当前的终止符 token
+            self.recognize_next(
+              token,
+              RdfContext::TriGRecognizerContext(context),
+              results,
+              errors,
+            )
+          }
+          // TokenOrLineJump::Token(N3Token::Punctuation("-")) => {
+          //   self.debug_logger.info("Object: Detected negative sign '-'")
+          //   self.stack.push(TriGState::NegativeNumberSign)
+          //   self
+          // }
           _ => self.error(errors, "TOKEN is not a valid RDF object")
         }
+      }
       TriGState::ObjectBlankNodePropertyListCurrent =>
         if token == TokenOrLineJump::Token(N3Token::Punctuation("]")) {
           self.cur_object.push(
@@ -960,12 +1423,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           )
           self.stack.push(TriGState::ObjectBlankNodePropertyListEnd)
           self.stack.push(TriGState::PredicateObjectList)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       TriGState::ObjectBlankNodePropertyListEnd =>
         if token == TokenOrLineJump::Token(N3Token::Punctuation("]")) {
@@ -975,7 +1439,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               errors.push(
                 RuleRecognizerError::SyntaxError(
                   "Internal error: subject stack is empty",
-                  TextPosition::default(),
+                  SourcePosition::default(),
                 ),
               )
               return self
@@ -994,10 +1458,20 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
       TriGState::ObjectCollectionBeginning =>
         if token is TokenOrLineJump::Token(N3Token::Punctuation(")")) {
+          self.in_collection = false // ✅ 重置
+
           self.cur_object.push(TermRef::NamedNodeRef(lwNIL))
           self.emit_quad(results)
+          // let _ = self.stack.pop()
+          self.stack.push(TriGState::PredicateObjectListEnd)
+
           self
         } else {
+          self.debug_logger.info(
+            "ObjectCollectionBeginning: non-empty collection, first element: \{token}",
+          )
+          self.in_collection = true // ✅ 设置
+
           let root = BlankNode::default()
           self.cur_object.push(TermRef::BlankNodeRef(root.as_ref()))
           self.emit_quad(results)
@@ -1005,18 +1479,22 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             NamedOrBlankNodeRef::BlankNodeRef(root.as_ref()),
           )
           self.cur_predicate.push(
-            NamedNode::NamedNode(lwFIRST.to_string()).as_ref(),
+            NamedNodeRef::NamedNodeRef(lwFIRST.to_string()),
           )
+          let _ = self.stack.pop()
+
           self.stack.push(TriGState::ObjectCollectionPossibleEnd)
           self.stack.push(TriGState::Object)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       TriGState::ObjectCollectionPossibleEnd => {
+
         // if token.is_eof() || token.is_dot() || token.is_rbracket() || token.is_rbrace() || token.is_comma() || token.is_semicolon() || token.is_newline() || token.is_eol() || token.is_eof() {
         let old = match self.cur_subject.pop() {
           Some(s) => s
@@ -1024,7 +1502,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: subject stack is empty",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
             return self
@@ -1032,9 +1510,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         }
         let _ = self.cur_object.pop()
         if token is TokenOrLineJump::Token(N3Token::Punctuation(")")) {
+          self.debug_logger.info(
+            "ObjectCollectionPossibleEnd: end of collection",
+          )
+          self.in_collection = false // ✅ 重置
+
           let _ = self.cur_predicate.pop()
           results.push(
-            LexOutput::Quad(
+            RdfStatement::Quad(
               Quad::Quad(
                 old.into_owned(),
                 lwREST.into_owned(),
@@ -1043,11 +1526,15 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ),
             ),
           )
+          // ✅ 弹出自己，进入 PredicateObjectListEnd
+          let _ = self.stack.pop()
+          self.stack.push(TriGState::PredicateObjectListEnd)
           self
         } else {
+          self.debug_logger.info("ObjectCollectionPossibleEnd: more elements")
           let new = BlankNode::default()
           results.push(
-            LexOutput::Quad(
+            RdfStatement::Quad(
               Quad::Quad(
                 old.into_owned(),
                 lwREST.into_owned(),
@@ -1059,12 +1546,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           self.cur_subject.push(NamedOrBlankNodeRef::BlankNodeRef(new.as_ref()))
           self.stack.push(TriGState::ObjectCollectionPossibleEnd)
           self.stack.push(TriGState::Object)
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
         // }
       }
@@ -1084,7 +1572,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         e.to_string(),
-                        TextPosition::default(),
+                        SourcePosition::default(),
                       ),
                     )
                     return self
@@ -1106,6 +1594,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             )
             if emit {
               self.emit_quad(results)
+              self.stack.push(TriGState::PredicateObjectListEnd) // ⚠️ 【新增】
             }
             self
           }
@@ -1133,13 +1622,15 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             )
             if emit {
               self.emit_quad(results)
+              self.stack.push(TriGState::PredicateObjectListEnd) // ⚠️ 【新增】修复缺失的状态压入
             }
-            self.recognize_next(
-              token,
-              Context::TriGRecognizerContext(context),
-              results,
-              errors,
-            )
+            self
+            // self.recognize_next(
+            //   token,
+            //   RdfContext ::TriGRecognizerContext(context),
+            //   results,
+            //   errors,
+            // )
           }
         }
       TriGState::LiteralExpectDatatype(value~, emit~) =>
@@ -1149,7 +1640,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               errors.push(
                 RuleRecognizerError::SyntaxError(
                   "The datatype of a literal without a language tag must not be rdf:langString",
-                  TextPosition::default(),
+                  SourcePosition::default(),
                 ),
               )
             }
@@ -1157,7 +1648,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               errors.push(
                 RuleRecognizerError::SyntaxError(
                   "The datatype of a literal without a base direction must not be rdf:dirLangString",
-                  TextPosition::default(),
+                  SourcePosition::default(),
                 ),
               )
             }
@@ -1188,7 +1679,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   errors.push(
                     RuleRecognizerError::SyntaxError(
                       "The datatype of a literal without a language tag must not be rdf:langString",
-                      TextPosition::default(),
+                      SourcePosition::default(),
                     ),
                   )
                 }
@@ -1196,7 +1687,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   errors.push(
                     RuleRecognizerError::SyntaxError(
                       "The datatype of a literal without a base direction must not be rdf:dirLangString",
-                      TextPosition::default(),
+                      SourcePosition::default(),
                     ),
                   )
                 }
@@ -1215,14 +1706,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Err(e) => self.error(errors, e)
             }
           _ =>
-            self
-            .error(errors, "Expecting a datatype IRI after ^^, found TOKEN")
-            .recognize_next(
-              token,
-              Context::TriGRecognizerContext(context),
-              results,
-              errors,
-            )
+            self.error(errors, "Expecting a datatype IRI after ^^, found TOKEN")
+          // self
+          // .recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       TriGState::SubjectReifiedTripleEnd => {
         let reifier = match self.cur_reifier.pop() {
@@ -1231,7 +1722,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: reifier stack empty",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
             return self
@@ -1241,16 +1732,15 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         if token == TokenOrLineJump::Token(N3Token::Punctuation(">>")) {
           self
         } else {
-          self
-          .error(
+          self.error(
             errors, "Expecting '>>' to close a reified triple, found TOKEN",
           )
-          .recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          // .recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       }
       TriGState::ObjectReifiedTripleEnd(emit~) => {
@@ -1260,7 +1750,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: subject stack is empty",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
             return self
@@ -1278,16 +1768,15 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         if token == TokenOrLineJump::Token(N3Token::Punctuation(">>")) {
           self
         } else {
-          self
-          .error(
+          self.error(
             errors, "Expecting '>>' to close a reified triple, found TOKEN",
           )
-          .recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          // .recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       }
       TriGState::TripleTermEnd(emit~) => {
@@ -1297,7 +1786,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: subject stack empty in TripleTermEnd",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
             return self
@@ -1309,7 +1798,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: predicate stack empty in TripleTermEnd",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
             return self
@@ -1321,7 +1810,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: object stack empty in TripleTermEnd",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
             return self
@@ -1340,7 +1829,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           .error(errors, "Expecting ')>>' to close a triple term, found TOKEN")
           .recognize_next(
             token,
-            Context::TriGRecognizerContext(context),
+            RdfContext::TriGRecognizerContext(context),
             results,
             errors,
           )
@@ -1353,7 +1842,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: subject stack empty",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
             return self
@@ -1365,7 +1854,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: predicate stack empty",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
             return self
@@ -1377,7 +1866,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: object stack empty",
-                TextPosition::default(),
+                SourcePosition::default(),
               ),
             )
             return self
@@ -1391,7 +1880,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         } else {
           let reifier = BlankNode::default()
           results.push(
-            LexOutput::Quad(
+            RdfStatement::Quad(
               Quad::Quad(
                 reifier.as_enum(),
                 lwREIFIES.into_owned(),
@@ -1401,12 +1890,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             ),
           )
           self.cur_reifier.push(reifier.as_enum().as_ref())
-          self.recognize_next(
-            token,
-            Context::TriGRecognizerContext(context),
-            results,
-            errors,
-          )
+          self
+          // self.recognize_next(
+          //   token,
+          //   RdfContext ::TriGRecognizerContext(context),
+          //   results,
+          //   errors,
+          // )
         }
       }
       TriGState::Reifier(triple~) =>
@@ -1414,7 +1904,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           TokenOrLineJump::Token(N3Token::Iri(iri)) => {
             let reifier = NamedNodeRef::new_unchecked(iri)
             results.push(
-              LexOutput::Quad(
+              RdfStatement::Quad(
                 Quad::Quad(
                   reifier.as_enum().into_owned(),
                   lwREIFIES.into_owned(),
@@ -1438,7 +1928,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ) {
               Ok(reifier) => {
                 results.push(
-                  LexOutput::Quad(
+                  RdfStatement::Quad(
                     Quad::Quad(
                       reifier.as_enum().into_owned(),
                       lwREIFIES.into_owned(),
@@ -1453,7 +1943,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               Err(e) => {
                 let reifier = BlankNode::default()
                 results.push(
-                  LexOutput::Quad(
+                  RdfStatement::Quad(
                     Quad::Quad(
                       reifier.as_enum(),
                       lwREIFIES.into_owned(),
@@ -1469,7 +1959,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           TokenOrLineJump::Token(N3Token::BlankNodeLabel(bnode)) => {
             let reifier = BlankNodeRef::new_unchecked(bnode)
             results.push(
-              LexOutput::Quad(
+              RdfStatement::Quad(
                 Quad::Quad(
                   reifier.as_enum().into_owned(),
                   lwREIFIES.into_owned(),
@@ -1484,7 +1974,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
           _ => {
             let reifier = BlankNode::default()
             results.push(
-              LexOutput::Quad(
+              RdfStatement::Quad(
                 Quad::Quad(
                   reifier.as_enum(),
                   lwREIFIES.into_owned(),
@@ -1494,12 +1984,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ),
             )
             self.cur_reifier.push(reifier.as_enum().as_ref())
-            self.recognize_next(
-              token,
-              Context::TriGRecognizerContext(context),
-              results,
-              errors,
-            )
+            self
+            // self.recognize_next(
+            //   token,
+            //   RdfContext ::TriGRecognizerContext(context),
+            //   results,
+            //   errors,
+            // )
           }
         }
       TriGState::ReifiedTripleSubject(is_reified~) =>
@@ -1686,7 +2177,47 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             errors, "Anonymous blank node with a property list are not allowed in quoted triples",
           )
         }
+      TriGState::ExpectAtKeyword =>
+        match token {
+          TokenOrLineJump::Token(N3Token::PlainKeyword(k)) if eq_ignore_ascii_case(
+              k, "base",
+            ) => {
+            self.stack.push(TriGState::BaseExpectIri)
+            self
+          }
+          TokenOrLineJump::Token(N3Token::PlainKeyword(k)) if eq_ignore_ascii_case(
+              k, "prefix",
+            ) => {
+            self.stack.push(TriGState::PrefixExpectPrefix)
+            self
+          }
+          TokenOrLineJump::Token(N3Token::PlainKeyword(k)) if eq_ignore_ascii_case(
+              k, "version",
+            ) => {
+            self.stack.push(TriGState::VersionExpectVersion)
+            self
+          }
+          TokenOrLineJump::Token(N3Token::Punctuation("{")) if context.with_graph_name => {
+            self.stack.push(TriGState::WrappedGraph)
+            self
+
+            // self.recognize_next(token, RdfContext ::TriGRecognizerContext(context), results, errors)
+          }
+          _ =>
+            self.error(
+              errors, "Expected 'base', 'prefix', or 'version' after '@'",
+            )
+        }
+      // TriGState::NegativeNumberSign =>
+      //   self.error(
+      //     errors, "Unexpected negative sign in this context. Negative numbers should be lexed as a single numeric literal token.",
+      //   )
     }
+
+    //     _ => {
+    //   self.stack.push(TriGState::TriplesOrGraph)
+    //   self.recognize_next(token, RdfContext ::TriGRecognizerContext(context), results, errors)
+    // }
   } else if token == TokenOrLineJump::Token(N3Token::Punctuation(".")) ||
     token == TokenOrLineJump::Token(N3Token::Punctuation("}")) {
     self.stack.push(TriGState::TriGDoc)
@@ -1699,10 +2230,13 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
 ///|
 impl RuleRecognizer for TriGRecognizer with fn recognize_end(
   self : TriGRecognizer,
-  _context : Context,
-  results : Array[LexOutput],
+  _context : RdfContext,
+  results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> Unit {
+  self.debug_logger.info(
+    "TriGRecognizer :: recognize_end \{self.stack.to_string()}",
+  )
   match self.stack {
     [] | [TriGState::TriGDoc] => {
       debug_assert(() => self.cur_subject.is_empty())
@@ -1715,7 +2249,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Triples should be followed by a dot",
-          TextPosition::default(),
+          SourcePosition::default(),
         ),
       )
     }
@@ -1723,16 +2257,18 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Unexpected end",
-          TextPosition::default(),
+          SourcePosition::default(),
         ),
       )
   }
 }
 
 ///|
-impl RuleRecognizer for TriGRecognizer with fn lexer_options(context : Context) -> LexerOptions? {
+impl RuleRecognizer for TriGRecognizer with fn lexer_options(
+  context : RdfContext,
+) -> LexerOptions? {
   let lexer_opts : LexerOptions? = match context {
-    Context::TriGRecognizerContext(ctx) => Some(ctx.lexer_options)
+    RdfContext::TriGRecognizerContext(ctx) => Some(ctx.lexer_options)
     _ => None
   }
   lexer_opts
@@ -1746,15 +2282,18 @@ pub fn TriGRecognizer::new_parser(
   lenient : Bool,
   base_iri : Iri?,
   prefixes : Map[String, Iri],
-) -> Parser[NxLexer, TriGRecognizer] {
+  debug_logger? : &DebugLogger = make_mute_logger(),
+) -> Parser[RdfLexer, TriGRecognizer] {
   Parser::Parser(
     Lexer::Lexer(
-      NxLexer::NxLexer(NxLexerMode::Turtle, lenient),
+      RdfLexer::RdfLexer(RdfLexerMode::Turtle, lenient),
       data,
       is_ending,
       MIN_BUFFER_SIZE,
       MAX_BUFFER_SIZE,
       Some(b"#"),
+      0,
+      0,
     ),
     {
       stack: [TriGState::TriGDoc],
@@ -1764,8 +2303,10 @@ pub fn TriGRecognizer::new_parser(
       cur_graph: GraphName::DefaultGraph.as_ref(),
       cur_reifier: [],
       lenient,
+      debug_logger, // <-- 添加这一行，具体值需根据 TriGRecognizer 定义调整，可能是 None 或 DebugLogger::default()
+      in_collection: false,
     },
-    Context::TriGRecognizerContext({
+    RdfContext::TriGRecognizerContext({
       with_graph_name,
       prefixes,
       lexer_options: { base_iri, },
@@ -1779,7 +2320,7 @@ fn TriGRecognizer::error(
   errors : Array[RuleRecognizerError],
   msg : String,
 ) -> TriGRecognizer {
-  errors.push(RuleRecognizerError::SyntaxError(msg, TextPosition::default()))
+  errors.push(RuleRecognizerError::SyntaxError(msg, SourcePosition::default()))
   self.stack.clear()
   self.cur_subject.clear()
   self.cur_predicate.clear()
@@ -1793,7 +2334,7 @@ fn TriGRecognizer::error(
 ///|
 fn TriGRecognizer::emit_quad(
   self : TriGRecognizer,
-  results : Array[LexOutput],
+  results : Array[RdfStatement],
 ) -> Unit {
   let subject = match self.cur_subject.last() {
     Some(s) => s
@@ -1809,7 +2350,7 @@ fn TriGRecognizer::emit_quad(
   }
 
   results.push(
-    LexOutput::Quad(
+    RdfStatement::Quad(
       Quad::Quad(
         subject.into_owned(),
         predicate.into_owned(),
@@ -1822,6 +2363,7 @@ fn TriGRecognizer::emit_quad(
 
 ///|
 enum TriGState {
+  ExpectAtKeyword
   TriGDoc
   ExpectDot
   BaseExpectIri
@@ -1864,4 +2406,100 @@ enum TriGState {
   ReifiedTripleSubject(is_reified~ : Bool)
   ReifiedTripleObject(is_reified~ : Bool)
   QuotedAnonEnd
-} derive(Debug)
+  // NegativeNumberSign
+} derive(Debug, Eq)
+
+///|
+impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
+  match self {
+    TriGState::TriGDoc => logger.write("TriGDoc")
+    TriGState::Object => logger.write("Object")
+    TriGState::PredicateObjectList => logger.write("PredicateObjectList")
+    TriGState::PredicateObjectListEnd => logger.write("PredicateObjectListEnd")
+    TriGState::ObjectsList => logger.write("ObjectsList")
+    TriGState::Verb => logger.write("Verb")
+    TriGState::TriplesOrGraph => logger.write("TriplesOrGraph")
+    TriGState::ExpectDot => logger.write("ExpectDot")
+    TriGState::BaseExpectIri => logger.write("BaseExpectIri")
+    TriGState::PrefixExpectPrefix => logger.write("PrefixExpectPrefix")
+    TriGState::PrefixExpectIri(name~) =>
+      logger.write("PrefixExpectIri(\{name})")
+    TriGState::VersionExpectVersion => logger.write("VersionExpectVersion")
+    TriGState::WrappedGraph => logger.write("WrappedGraph")
+    TriGState::GraphName => logger.write("GraphName")
+    TriGState::ExpectAtKeyword => logger.write("ExpectAtKeyword")
+    TriGState::LiteralPossibleSuffix(..) =>
+      logger.write("LiteralPossibleSuffix")
+    TriGState::SubjectCollectionBeginning =>
+      logger.write("SubjectCollectionBeginning")
+    TriGState::ObjectCollectionBeginning =>
+      logger.write("ObjectCollectionBeginning")
+    TriGState::WrappedGraphOrPredicateObjectList(_) =>
+      logger.write("WrappedGraphOrPredicateObjectList")
+    TriGState::AnnotationBlock(_) => logger.write("AnnotationBlock")
+    TriGState::Reifier(_) => logger.write("Reifier")
+    TriGState::ReifiedTripleSubject(_) => logger.write("ReifiedTripleSubject")
+    TriGState::ReifiedTripleObject(_) => logger.write("ReifiedTripleObject")
+    TriGState::ObjectReifiedTripleEnd(_) =>
+      logger.write("ObjectReifiedTripleEnd")
+    TriGState::SubjectReifiedTripleEnd =>
+      logger.write("SubjectReifiedTripleEnd")
+    TriGState::EndOfReifiedTripleBeforeReifier =>
+      logger.write("EndOfReifiedTripleBeforeReifier")
+    TriGState::MaybePredicateObjectList =>
+      logger.write("MaybePredicateObjectList")
+    TriGState::PredicateObjectListPossibleContinuation =>
+      logger.write("PredicateObjectListPossibleContinuation")
+    TriGState::ObjectBlankNodePropertyListCurrent =>
+      logger.write("ObjectBlankNodePropertyListCurrent")
+    TriGState::ObjectBlankNodePropertyListEnd =>
+      logger.write("ObjectBlankNodePropertyListEnd")
+    TriGState::ObjectCollectionPossibleEnd =>
+      logger.write("ObjectCollectionPossibleEnd")
+    TriGState::SubjectBlankNodePropertyListEnd =>
+      logger.write("SubjectBlankNodePropertyListEnd")
+    TriGState::SubjectBlankNodePropertyListAfter =>
+      logger.write("SubjectBlankNodePropertyListAfter")
+    TriGState::WrappedGraphBlankNodePropertyListCurrent =>
+      logger.write("WrappedGraphBlankNodePropertyListCurrent")
+    TriGState::Triples => logger.write("Triples")
+    TriGState::TriplesBlankNodePropertyListCurrent =>
+      logger.write("TriplesBlankNodePropertyListCurrent")
+    TriGState::GraphNameAnonEnd => logger.write("GraphNameAnonEnd")
+    TriGState::QuotedAnonEnd => logger.write("QuotedAnonEnd")
+    TriGState::AnnotationEnd(_) => logger.write("AnnotationEnd")
+    TriGState::LiteralExpectDatatype(..) =>
+      logger.write("LiteralExpectDatatype")
+    TriGState::TripleTermEnd(_) => logger.write("TripleTermEnd")
+    TriGState::SubjectCollectionPossibleEnd =>
+      logger.write("SubjectCollectionPossibleEnd")
+    TriGState::WrappedGraphPossibleEnd =>
+      logger.write("WrappedGraphPossibleEnd")
+    // TriGState::NegativeNumberSign => logger.write("NegativeNumberSign")
+  }
+}
+
+///|
+fn TriGRecognizer::replace_top(
+  stack : Array[TriGState],
+  new_state : TriGState,
+) -> Array[TriGState] {
+  let _ = stack.pop()
+  stack.push(new_state)
+  stack
+}
+
+///|
+fn TriGRecognizer::set_state(
+  self : TriGRecognizer,
+  new_state : TriGState,
+) -> TriGRecognizer {
+  // let _ = self.stack.pop() // 弹出当前状态
+  self.stack.push(new_state) // 压入新状态
+  self
+}
+// impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
+//   logger.write("TriGState: ")
+//   logger.write_object(self)
+
+// }
