@@ -1,4 +1,34 @@
-// 在 test_f.mbt 中添加
+///|
+async test "debug_simple_turtle" {
+  let input =
+    #| <http://a.example/s> <http://a.example/p> (1) .
+
+  // #|<http://a.example/s> <http://a.example/p> 1 .
+  // #|<http://example.org/s> <http://example.org/p> <http://example.org/o> .
+  let data = @utf8.encode(input).to_array()
+
+  // 关键：Turtle 解析通常需要 BASE 或 Prefixes 即使为空，或者特定的标志
+  // 如果 TriGRecognizer 有 is_turtle 标志，请设置为 true
+  let prefixes = Map([])
+  let base_iri = Some(Iri::Iri("http://example.org/")) // 尝试提供一个基础 IRI，避免相对 IRI 问题
+
+  // 注意：with_graph_name 为 false，lenient 为 true
+  let parser = TriGRecognizer::new_parser(
+    data, true, // is_ending
+     false, // with_graph_name
+     true, // lenient - 开启宽松模式可能有助于处理非标准起始
+     base_iri, prefixes,
+    debug_logger=make_console_logger(),
+  )
+
+  // 如果仍然失败，可能需要检查 TriGRecognizer 是否需要在 parse_next 之前调用某个 init() 或 set_mode_turtle()
+
+  match parser.parse_next() {
+    Some(Ok(t)) => println("Success: \{t.to_string()}")
+    Some(Err(e)) => println("Error: \{e.message()}")
+    None => println("None")
+  }
+}
 
 ///|
 async test "debug_simple_triple" {
@@ -80,39 +110,7 @@ async test "debug_simple_triple 2" {
   }
 }
 
-// 在 test_turtle.mbt 中
 
-///|
-async test "debug_simple_turtle" {
-  let input =
-    #| <http://a.example/s> <http://a.example/p> (1) .
-
-  // #|<http://a.example/s> <http://a.example/p> 1 .
-  // #|<http://example.org/s> <http://example.org/p> <http://example.org/o> .
-  let data = @utf8.encode(input).to_array()
-
-  // 关键：Turtle 解析通常需要 BASE 或 Prefixes 即使为空，或者特定的标志
-  // 如果 TriGRecognizer 有 is_turtle 标志，请设置为 true
-  let prefixes = Map([])
-  let base_iri = Some(Iri::Iri("http://example.org/")) // 尝试提供一个基础 IRI，避免相对 IRI 问题
-
-  // 注意：with_graph_name 为 false，lenient 为 true
-  let parser = TriGRecognizer::new_parser(
-    data, true, // is_ending
-     false, // with_graph_name
-     true, // lenient - 开启宽松模式可能有助于处理非标准起始
-     base_iri, prefixes,
-    debug_logger=make_console_logger(),
-  )
-
-  // 如果仍然失败，可能需要检查 TriGRecognizer 是否需要在 parse_next 之前调用某个 init() 或 set_mode_turtle()
-
-  match parser.parse_next() {
-    Some(Ok(t)) => println("Success: \{t.to_string()}")
-    Some(Err(e)) => println("Error: \{e.message()}")
-    None => println("None")
-  }
-}
 
 ///|
 async test "debug_lexer" {

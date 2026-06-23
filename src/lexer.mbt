@@ -289,8 +289,8 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
   // 修复点：使用 match 完整处理 Option 返回值
   match self.parser.recognize_next_token(view, self.is_ending, options) {
     Some((consumed, result)) => {
-      // debug_assert(consumed > 0, "The lexer must consume at least one byte each time")
-      // debug_assert(self.position.buffer_offset + consumed <= self.data.length(), "The lexer tried to consumed {consumed} bytes but only {} bytes are readable", self.data.length() - self.position.buffer_offset)
+      debug_assert(()=>consumed > 0)
+      debug_assert(()=>self.position.buffer_offset + consumed <= self.data.length())
       debug("Lexer returned: consumed \{consumed} \{result.unwrap()}")
       let consumed_view = self.data[self.position.buffer_offset:self.position.buffer_offset +
         consumed]

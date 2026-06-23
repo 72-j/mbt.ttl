@@ -27,6 +27,23 @@ enum NQuadsState {
   RecoverToLineJump
   AfterQuotedTriple
 }
+impl Show for NQuadsState with fn output(self, logger : &Logger) -> Unit {
+  match self {
+    NQuadsState::ExpectSubject => logger.write("Expecting subject")
+    NQuadsState::ExpectPredicate => logger.write("Expecting predicate")
+    NQuadsState::ExpectedObject => logger.write("Expecting object")
+    NQuadsState::ExpectDot => logger.write("Expecting dot")
+    NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~) => logger.write("Expecting literal annotation \{value} ")
+    NQuadsState::ExpectLiteralDatatype(value~) => logger.write("Expecting literal datatype \{value}")
+    NQuadsState::ExpectLineJump => logger.write("Expecting line jump")
+    NQuadsState::RecoverToLineJump => logger.write("Recovering to line jump")
+    NQuadsState::AfterQuotedTriple => logger.write("After quoted triple")
+    NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple => logger.write("Expecting possible graph or end of quoted triple")
+
+
+
+  }
+}
 
 ///|
 impl RuleRecognizer for NQuadsRecognizer with fn error_recovery_state(
@@ -54,16 +71,21 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
   results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> NQuadsRecognizer {
-  // let RdfContext ::NQuadsRecognizerContext(context) = context
-  //  let TokenOrLineJump::Token(token) = token
   let ctx = match context {
     RdfContext::NQuadsRecognizerContext(c) => c
-    // _ => panic()
     _ => abort("Invalid context type")
   }
+
+  // 获取当前状态的字符串表示用于日志（假设 NQuadsState 实现了 ToString 或者手动匹配）
+  // 这里为了通用性，我们直接在每个分支记录状态名称
+  
   match self.stack.pop().unwrap_or(NQuadsState::ExpectSubject) {
-    NQuadsState::ExpectSubject =>
-      // let TokenOrLineJump::Token(token) = token
+    NQuadsState::ExpectSubject => {
+      self.debug_logger.info(
+        "Entering ExpectSubject with token: \{token}",
+      )
+      self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+      
       match token {
         TokenOrLineJump::Token(N3Token::Iri(s)) => {
           self.subjects.push(NamedNodeRef::new_unchecked(s).as_enum())
@@ -75,7 +97,6 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           self.stack.push(NQuadsState::ExpectPredicate)
           self
         }
-        // _ => self.error(context, results, errors, TokenOrLineJump::Token(token), "The subject of a triple must be an IRI or a blank node")
         _ =>
           self.error(
             ctx,
@@ -85,8 +106,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             RuleRecognizerError::BlankNodeOrIriError,
           )
       }
-    NQuadsState::ExpectPredicate =>
-      // let TokenOrLineJump::Token(token) = token
+    }
+    NQuadsState::ExpectPredicate => {
+      self.debug_logger.info(
+        "Entering ExpectPredicate with token: \{token}",
+      )
+      self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
       match token {
         TokenOrLineJump::Token(N3Token::Iri(p)) => {
           self.predicates.push(NamedNodeRef::new_unchecked(p))
@@ -102,8 +128,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             RuleRecognizerError::PredicateNotAnIRI,
           )
       }
-    NQuadsState::ExpectedObject =>
-      // let TokenOrLineJump::Token(token) = token
+    }
+    NQuadsState::ExpectedObject => {
+      self.debug_logger.info(
+        "Entering ExpectedObject with token: \{token}",
+      )
+      self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
       match token {
         TokenOrLineJump::Token(N3Token::Iri(o)) => {
           self.objects.push(
@@ -137,12 +168,18 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             RuleRecognizerError::BlankNodeOrIriError,
           )
       }
-    NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~) =>
+    }
+    NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~) => {
+      self.debug_logger.info(
+        "Entering ExpectLiteralAnnotationOrGraphNameOrDot with token: \{token}, value: \{value}",
+      )
+      self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
       match token {
         TokenOrLineJump::Token(N3Token::LangTag(language~, direction~)) if direction
           is Some(_) => {
           let dir = match direction {
-            Some(d) => d // 假设有此类方法
+            Some(d) => d
             None => BaseDirection::Ltr
           }
           let lang_tag = try
@@ -163,15 +200,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
               self
             }
             Err(_e) => {
-              // 处理错误，例如推入错误信息并进入恢复状态
-              errors.push(RuleRecognizerError::InvalidLanguageTag) // 需确保此错误类型存在
+ errors.push(RuleRecognizerError::InvalidLanguageTag)
               self.error_recovery_state()
             }
           }
         }
         TokenOrLineJump::Token(N3Token::LangTag(language~, direction~)) if direction
           is None => {
-          // self.objects.push(Literal::new_language_tagged_literal_unchecked(value, try? LanguageTag::from_str(language.to_lower())))
           let lang_tag = try
             LanguageTag::from_str(language.to_lower()) |> Ok
           catch {
@@ -193,8 +228,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
               self
             }
             Err(_e) => {
-              // 处理错误，例如推入错误信息并进入恢复状态
-              errors.push(RuleRecognizerError::InvalidLanguageTag) // 需确保此错误类型存在
+              errors.push(RuleRecognizerError::InvalidLanguageTag)
               self.error_recovery_state()
             }
           }
@@ -209,16 +243,15 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           )
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
           self
-          // self.recognize_next(
-          //   token,
-          //   NQuadsRecognizerContext(ctx),
-          //   results,
-          //   errors,
-          // )
         }
       }
-    NQuadsState::ExpectLiteralDatatype(value~) =>
-      // let TokenOrLineJump::Token(token) = token
+    }
+    NQuadsState::ExpectLiteralDatatype(value~) => {
+      self.debug_logger.info(
+        "Entering ExpectLiteralDatatype with token: \{token}, value: \{value}",
+      )
+      self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
       match token {
         TokenOrLineJump::Token(N3Token::Iri(d)) => {
           if !self.lenient && d == lwLANG_STRING.to_string() {
@@ -254,7 +287,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             RuleRecognizerError::LiteralDatatypeError,
           )
       }
-    NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple =>
+    }
+    NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple => {
+      self.debug_logger.info(
+        "Entering ExpectPossibleGraphOrEndOfQuotedTriple with token: \{token}",
+      )
+      self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
       if self.stack.is_empty() {
         match token {
           TokenOrLineJump::Token(N3Token::Iri(g)) if ctx.with_graph_name => {
@@ -292,8 +331,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           ),
         )
       }
-    NQuadsState::ExpectDot =>
-      // let TokenOrLineJump::Token(token) = token
+    }
+    NQuadsState::ExpectDot => {
+      self.debug_logger.info(
+        "Entering ExpectDot with token: \{token}",
+      )
+      self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
       if token == TokenOrLineJump::Token(N3Token::Punctuation(".")) {
         self.stack.push(NQuadsState::ExpectLineJump)
         self
@@ -305,15 +349,14 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           ),
         )
         self
-        // self.recognize_next(
-        //   token,
-        //   RdfContext ::NQuadsRecognizerContext(ctx),
-        //   results,
-        //   errors,
-        // )
       }
+    }
     NQuadsState::ExpectLineJump => {
-      // let TokenOrLineJump::Token(token) = token
+      self.debug_logger.info(
+        "Entering ExpectLineJump with token: \{token}",
+      )
+      self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Only a single triple or quad can be written in a line, found \{token.to_string()}",
@@ -321,15 +364,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         ),
       )
       self
-      // self.recognize_next(
-      //   token,
-      //   RdfContext ::NQuadsRecognizerContext(ctx),
-      //   results,
-      //   errors,
-      // )
     }
     NQuadsState::AfterQuotedTriple => {
-      // 安全地弹出三元组的组成部分
+      self.debug_logger.info(
+        "Entering AfterQuotedTriple with token: \{token}",
+      )
+      self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
       let subject_opt = self.subjects.pop()
       let predicate_opt = self.predicates.pop()
       let object_opt = self.objects.pop()
@@ -340,15 +381,8 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           self.objects.push(TermRef::TripleRef(triple))
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
           self
-          // self.recognize_next(
-          //   token,
-          //   RdfContext ::NQuadsRecognizerContext(ctx),
-          //   results,
-          //   errors,
-          // )
         }
         _ => {
-          // 如果栈中元素不足，说明内部状态不一致，报告错误并恢复
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: incomplete quoted triple on stack",
@@ -359,22 +393,12 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         }
       }
     }
-    // NQuadsState::AfterQuotedTriple => {
-    //   let triple : TripleRef = {
-    //     subject: self.subjects.pop().unwrap(),
-    //     predicate: self.predicates.pop().unwrap(),
-    //     object: self.objects.pop().unwrap(),
-    //   }
-    //   self.objects.push(TermRef::TripleRef(triple))
-    //   self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
-    //   self.recognize_next(
-    //     token,
-    //     RdfContext ::NQuadsRecognizerContext(ctx),
-    //     results,
-    //     errors,
-    //   )
-    // }
     NQuadsState::RecoverToLineJump => {
+      self.debug_logger.info(
+        "Entering RecoverToLineJump with token: \{token}",
+      )
+      self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
       if token != TokenOrLineJump::LineJump {
         self.stack.push(NQuadsState::RecoverToLineJump)
       }
@@ -382,7 +406,6 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
     }
   }
 }
-
 ///|
 impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
   self : NQuadsRecognizer,

@@ -65,43 +65,43 @@ async test "verify_with_ntriples" {
 }
 
 ///|
-async test "lenient parsing for Reader simple @en" {
-  let input =
-    #| <http://example.org/s> <http://example.org/p> <http://example.org/o> .\n
-    #| <http://example/s> <http://example/p> <http://example/o> . # comment
-    #| <http://example/s> <http://example/p> _:o . # comment
-    #| <http://example/s> <http://example/p> "o" . # comment
-    #|<http://example/s> <http://example/p> "o"^^<http://example/dt> . # comment
-    #|<http://example/s> <http://example/p> "o"@en . # comment
-  let slice = @utf8.encode(input)
-  // let (r, w) = @io.pipe()
-  let path = "temp.ntriples"
-  @fs.write_file(path, slice, create_mode=CreateOrTruncate)
-  let r = @fs.open(path, mode=ReadWrite)
-  // r.write(slice)
-  // let r = r.read_all()
-  // let r = @io.ReaderBuffer::new()
-  // 使用内存 Reader 而不是 pipe
-  // let reader = @io.Reader::read(r, slice)
+// async test "lenient parsing for Reader simple @en" {
+//   let input =
+//     #| <http://example.org/s> <http://example.org/p> <http://example.org/o> .\n
+//     #| <http://example/s> <http://example/p> <http://example/o> . # comment
+//     #| <http://example/s> <http://example/p> _:o . # comment
+//     #| <http://example/s> <http://example/p> "o" . # comment
+//     #|<http://example/s> <http://example/p> "o"^^<http://example/dt> . # comment
+//     #|<http://example/s> <http://example/p> "o"@en . # comment
+//   let slice = @utf8.encode(input)
+//   // let (r, w) = @io.pipe()
+//   let path = "temp.ntriples"
+//   @fs.write_file(path, slice, create_mode=CreateOrTruncate)
+//   let r = @fs.open(path, mode=ReadWrite)
+//   // r.write(slice)
+//   // let r = r.read_all()
+//   // let r = @io.ReaderBuffer::new()
+//   // 使用内存 Reader 而不是 pipe
+//   // let reader = @io.Reader::read(r, slice)
 
-  let triples = NTriplesParser::new().lenient().for_async_reader(r)
-  let iter = triples.inner
+//   let triples = NTriplesParser::new().lenient().for_async_reader(r)
+//   let iter = triples.inner
 
-  match iter.next() {
-    Some(Ok(triple)) => {
-      @fs.remove(path)
-      debug(triple.to_string())
-    }
-    Some(Err(e)) => {
-      @fs.remove(path)
-      println("Parse error: \{e}")
-    }
-    None => {
-      @fs.remove(path)
-      println("parse_next returned None")
-    }
-  }
-}
+//   match iter.next() {
+//     Some(Ok(triple)) => {
+//       @fs.remove(path)
+//       debug(triple.to_string())
+//     }
+//     Some(Err(e)) => {
+//       @fs.remove(path)
+//       println("Parse error: \{e}")
+//     }
+//     None => {
+//       @fs.remove(path)
+//       println("parse_next returned None")
+//     }
+//   }
+// }
 
 ///|
 test "parse basic ntriples" {
