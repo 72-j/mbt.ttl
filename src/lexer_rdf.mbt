@@ -17,7 +17,7 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
   data : ArrayView[Byte],
   is_ending : Bool,
   options : LexerOptions?,
-) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let base_iri_opt = match options {
     Some(options) =>
       match options.base_iri {
@@ -47,9 +47,19 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
       match data.get(1) {
         Some(b'<') =>
           if data.get(2) == Some(b'(') {
-            Some((3, Ok(TokenOrLineJump::Token(N3Token::Punctuation("<<(")))))
+            Some(
+              (
+                3,
+                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<<("), Range::default()))),
+              ),
+            )
           } else {
-            Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("<<")))))
+            Some(
+              (
+                2,
+                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<<"), Range::default()))),
+              ),
+            )
           }
         Some(b'=') if self.mode == RdfLexerMode::N3 =>
           if self.recognize_iri(data, options) is Some((consumed, result)) {
@@ -57,11 +67,21 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               if result is Ok(result) {
                 (consumed, Ok(result))
               } else {
-                (2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("<="))))
+                (
+                  2,
+                  Ok(
+                    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<="),Range::default())),
+                  ),
+                )
               },
             )
           } else if is_ending {
-            Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("<=")))))
+            Some(
+              (
+                2,
+                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<="), Range::default()))),
+              ),
+            )
           } else {
             None
           }
@@ -71,11 +91,21 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               if result is Ok(result) {
                 (consumed, Ok(result))
               } else {
-                (2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("<-"))))
+                (
+                  2,
+                  Ok(
+                    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<-"),Range::default())),
+                  ),
+                )
               },
             )
           } else if is_ending {
-            Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("<-")))))
+            Some(
+              (
+                2,
+                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<-"), Range::default()))),
+              ),
+            )
           } else {
             None
           }
@@ -83,9 +113,13 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
       }
     b'>' =>
       if data.get(1) == Some(b'>') {
-        Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation(">>")))))
+        Some(
+          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(">>"), Range::default())))),
+        )
       } else {
-        Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(">")))))
+        Some(
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(">"), Range::default())))),
+        )
       }
     b'_' =>
       match data.get(1) {
@@ -124,52 +158,87 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
       match data.get(1) {
         Some(b'0'..=b'9') => RdfLexer::recognize_number(data, is_ending)
         Some(_) =>
-          Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(".")))))
+          Some(
+            (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("."), Range::default())))),
+          )
         None =>
           if is_ending {
-            Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(".")))))
+            Some(
+              (
+                1,
+                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("."), Range::default()))),
+              ),
+            )
           } else {
             None
           }
       }
     b'^' =>
       if data.get(1) == Some(b'^') {
-        Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("^^")))))
+        Some(
+          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("^^"), Range::default())))),
+        )
       } else {
-        Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("^")))))
+        Some(
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("^"), Range::default())))),
+        )
       }
-    b'(' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("(")))))
+    b'(' =>
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("("), Range::default())))))
     b')' =>
       if data.get(1) == Some(b'>') && data.get(2) == Some(b'>') {
-        Some((3, Ok(TokenOrLineJump::Token(N3Token::Punctuation(")>>")))))
+        Some(
+          (3, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(")>>"),Range::default())))),
+        )
       } else {
-        Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(")")))))
+        Some(
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(")"),Range::default())))),
+        )
       }
-    b'[' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("[")))))
-    b']' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("]")))))
+    b'[' =>
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("["), Range::default())))))
+    b']' =>
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("]"), Range::default())))))
     b'{' =>
       if data.get(1) == Some(b'|') {
-        Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("{|")))))
+        Some(
+          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("{|"), Range::default())))),
+        )
       } else {
-        Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("{")))))
+        Some(
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("{"), Range::default())))),
+        )
       }
-    b'}' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("}")))))
-    b',' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(",")))))
-    b';' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation(";")))))
-    b'!' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("!")))))
+    b'}' =>
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("}"), Range::default())))))
+    b',' =>
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(","), Range::default())))))
+    b';' =>
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(";"), Range::default())))))
+    b'!' =>
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("!"), Range::default())))))
     b'|' =>
       if data.get(1) == Some(b'}') {
-        Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("|}")))))
+        Some(
+          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("|}"), Range::default())))),
+        )
       } else {
-        Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("|")))))
+        Some(
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("|"), Range::default())))),
+        )
       }
     b'=' =>
       if data.get(1) == Some(b'>') {
-        Some((2, Ok(TokenOrLineJump::Token(N3Token::Punctuation("=>")))))
+        Some(
+          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("=>"), Range::default())))),
+        )
       } else {
-        Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("=")))))
+        Some(
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("="), Range::default())))),
+        )
       }
-    b'~' => Some((1, Ok(TokenOrLineJump::Token(N3Token::Punctuation("~")))))
+    b'~' =>
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("~"), Range::default())))))
     b'0'..=b'9' | b'+' | b'-' => RdfLexer::recognize_number(data, is_ending)
     b'?' => self.recognize_variable(data, is_ending)
     _ => self.recognize_pname_or_keyword(data, is_ending)
@@ -182,59 +251,11 @@ pub fn RdfLexer::RdfLexer(mode : RdfLexerMode, lenient : Bool) -> RdfLexer {
 }
 
 ///|
-// fn RdfLexer::recognize_iri(
-//   self : RdfLexer,
-//   data : ArrayView[Byte],
-//   options : LexerOptions,
-// ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
-//   let string = []
-//   let mut i = 1
-//   for ;; {
-//     let end_opt = array_view_memchr2(b'>', b'\'', data[i:])
-
-//     let end = match end_opt {
-//       Some(e) => e
-//       None =>
-//         // 如果未找到结束符，根据 N3 语法通常视为错误，或者取到末尾
-//         // 这里为了保持类型一致并避免崩溃，假设取剩余长度，但后续 match data[i] 可能会越界
-//         // 建议在此处检查并返回错误
-//         return Some(
-//           (
-//             data.length(),
-//             Err(
-//               TokenRecognizerError::IriTruncated(
-//                 data[i:],
-//                 Range(i, i + data.length()),
-//               ),
-//             ),
-//           ),
-//         )
-//     }
-//     string.append(data[i:i + end])
-//     i += end
-//     match data[i] {
-//       b'>' =>
-//         return Some((i + 1, self.parse_iri(string, Range(0, i + 1), options)))
-//       b'\'' => {
-//         let (additional, c) = self.recognize_escape(data[i:], i, false).unwrap()
-//         i += additional + 1
-//         match c {
-//           Ok(c) => string.append(char_to_utf8_bytes(c))
-//           // Ok(c) => string.append(@utf8.encode("\{c}").to_array())
-//           Err(e) => return Some((i, Err(e)))
-//         }
-//       }
-//       _ => panic()
-//     }
-//   }
-// }
-
-///|
 fn RdfLexer::recognize_iri(
   self : RdfLexer,
   data : ArrayView[Byte],
   options : LexerOptions,
-) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let string = []
   let mut i = 1
 
@@ -277,7 +298,7 @@ fn RdfLexer::parse_iri(
   iri_bytes : Array[Byte],
   position : Range,
   options : LexerOptions,
-) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError] {
+) -> Result[LocatedTokenOrLineJump, TokenRecognizerError] {
   // 1. 将字节数组转换为字符串，处理可能的 UTF-8 错误
   let iri_str = match string_from_utf8(iri_bytes, position) {
     Ok(s) => s
@@ -331,7 +352,7 @@ fn RdfLexer::parse_iri(
     Ok(iri) => iri
     Err(e) => return Err(e)
   }
-  Ok(TokenOrLineJump::Token(N3Token::Iri(final_iri.base_iri)))
+  Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(final_iri.base_iri), Range::default())))
 }
 
 ///|
@@ -339,7 +360,7 @@ fn RdfLexer::recognize_pname_or_keyword(
   self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
-) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut i = 0
 
   // 解析前缀部分，直到遇到 ':'
@@ -373,11 +394,15 @@ fn RdfLexer::recognize_pname_or_keyword(
           while array_view_has_prefix(data[:i], b".") {
             i -= 1
           }
+          let range = Range::{ start: 0, end: i }
+
           return Some(
             (
               i,
               str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
-                TokenOrLineJump::Token(N3Token::PlainKeyword(s))
+                LocatedTokenOrLineJump::LocatedN3Token(
+                  LocatedN3Token(N3Token::PlainKeyword(s), range),
+                )
               }),
             ),
           )
@@ -404,7 +429,9 @@ fn RdfLexer::recognize_pname_or_keyword(
               (
                 i,
                 str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
-                  TokenOrLineJump::Token(N3Token::PlainKeyword(s))
+                  LocatedTokenOrLineJump::LocatedN3Token(
+                    LocatedN3Token(N3Token::PlainKeyword(s), Range::Range(0, i)),
+                  )
                 }),
               )
             },
@@ -439,20 +466,27 @@ fn RdfLexer::recognize_pname_or_keyword(
   // 解析本地部分
   match self.recognize_optional_pn_local(data[i:], is_ending) {
     Some((consumed, Ok((localx, might_be_invalid_iri)))) =>
-      Some(
-        (
-          consumed + i,
-          Ok(
-            TokenOrLineJump::Token(
-              N3Token::PrefixedName(
-                prefix=pn_prefix,
-                localx~,
-                might_be_invalid_iri~,
-              ),
-            ),
+{
+  let range = Range::{ start: i, end:  consumed + i+1 }
+
+Some(
+  (
+    consumed + i,
+    Ok(
+      LocatedTokenOrLineJump::LocatedN3Token(
+        LocatedN3Token(
+          N3Token::PrefixedName(
+            prefix=pn_prefix,
+            localx~,
+            might_be_invalid_iri~,
           ),
+          range,
         ),
-      )
+      ),
+    ),
+  ),
+)
+}
     Some((consumed, Err(e))) => Some((consumed + i, Err(e)))
     None => None
   }
@@ -463,7 +497,7 @@ fn RdfLexer::recognize_variable(
   self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
-) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   if data.is_empty() || data[0] != b'?' {
     return None
   }
@@ -475,7 +509,8 @@ fn RdfLexer::recognize_variable(
 
       let token_result = match name_result {
         Ok((name, _)) if !name.is_empty() =>
-          Ok(TokenOrLineJump::Token(N3Token::Variable(name)))
+          Ok(LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::Variable(name),Range::Range(consumed, total_consumed))))
         Ok((name, _)) =>
           Err(
             TokenRecognizerError::InvalidErrMessage(
@@ -717,7 +752,7 @@ fn RdfLexer::recognize_optional_pn_local(
 fn RdfLexer::recognize_blank_node_label(
   data : ArrayView[Byte],
   is_ending : Bool,
-) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut i = 2
   while true {
     match RdfLexer::recognize_unicode_char(data[i:], i) {
@@ -750,7 +785,10 @@ fn RdfLexer::recognize_blank_node_label(
                   (
                     i,
                     str_from_utf8(data[2:i], Range::Range(2, i)).map(s => {
-                      TokenOrLineJump::Token(N3Token::BlankNodeLabel(s))
+                      LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(
+                        N3Token::BlankNodeLabel(s),Range::Range(2, i)
+                      ))
                     }),
                   ),
                 )
@@ -761,7 +799,8 @@ fn RdfLexer::recognize_blank_node_label(
                 (
                   i,
                   str_from_utf8(data[2:i], Range::Range(2, i)).map(s => {
-                    TokenOrLineJump::Token(N3Token::BlankNodeLabel(s))
+                    LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::BlankNodeLabel(s),Range::Range(2, i)))
                   }),
                 ),
               )
@@ -770,7 +809,8 @@ fn RdfLexer::recognize_blank_node_label(
                 (
                   i,
                   str_from_utf8(data[2:i], Range::Range(2, i)).map(s => {
-                    TokenOrLineJump::Token(N3Token::BlankNodeLabel(s))
+                    LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::BlankNodeLabel(s),Range::Range(2, i)))
                   }),
                 ),
               )
@@ -791,7 +831,7 @@ fn RdfLexer::recognize_blank_node_label(
         (
           i,
           str_from_utf8(data[2:i], Range::Range(2, i)).map(s => {
-            TokenOrLineJump::Token(N3Token::BlankNodeLabel(s))
+            LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::BlankNodeLabel(s),Range::Range(2, i)))
           }),
         ),
       )
@@ -818,7 +858,7 @@ fn RdfLexer::recognize_blank_node_label(
 fn RdfLexer::recognize_lang_tag(
   self : RdfLexer,
   data : ArrayView[Byte],
-) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut is_last_block_empty = true
   let mut are_digits_allowed = false
   let mut last_valid_index = 1 // 记录最后一个合法字符的位置
@@ -875,8 +915,8 @@ fn RdfLexer::parse_lang_tag(
   lang_tag : ArrayView[Byte],
   direction : Bytes?,
   position : Range,
-) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError] {
-  debug("Parsing lang tag from bytes: \{lang_tag}")
+) -> Result[LocatedTokenOrLineJump, TokenRecognizerError] {
+  // debug("Parsing lang tag from bytes: \{lang_tag}")
 
   // 1. 先将 bytes 转换为 string，处理可能的 UTF-8 错误
   let lang_str_result = str_from_utf8(lang_tag, position)
@@ -933,90 +973,14 @@ fn RdfLexer::parse_lang_tag(
         Err(e) => Err(e)
         Ok(dir_opt) =>
           Ok(
-            TokenOrLineJump::Token(
-              N3Token::LangTag(language=lang_str, direction=dir_opt),
+            LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(
+              N3Token::LangTag(language=lang_str, direction=dir_opt),Range::Range(0, position.end)),
             ),
           )
       }
     }
   }
 }
-// fn RdfLexer::parse_lang_tag(self : RdfLexer, lang_tag : Bytes, direction : Option[Bytes], position : Range) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError] {
-//   if direction is Some(direction) {
-//     return Err(TokenRecognizerError::InvalidErrMessage(lang_tag[position.end - direction.length():position.end],Range::Range(position.end - direction.length(),position.end), "Literal base direction are only allowed in RDF 1.2"))
-//   }
-//   let lang_tag = str_from_utf8(lang_tag, position)
-//   Ok({ language: if self.lenient {
-//     lang_tag
-//   } else {
-//     LanguageTag::parse(lang_tag).map_err(fn(e) { (position, e.to_string()) })
-//   }, direction: direction.map(fn(direction) {   Ok(match direction {
-//     b"ltr" => BaseDirection::Ltr
-//     b"rtl" => BaseDirection::Rtl
-//     _ =>     return Err((position.end - direction.length():position.end, "The allowed base directions are --ltr and --rtl, found --\{String::from_utf8_lossy(direction)}"))
-//   }) }).flatten() })
-// }
-
-///|
-// fn RdfLexer::recognize_string(
-//   self : RdfLexer,
-//   data : BytesView,
-//   delimiter : Byte,
-// ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
-//   let string = StringBuilder::new()
-//   let mut i = 1
-//   for ;; {
-//     let mut end = memchr2(delimiter, b'\'', data[i:]).unwrap()
-//     if !self.lenient {
-//       if memchr2(b'\'', b'\'', data[i:i + end]) is Some(line_jump_end) {
-//         end = line_jump_end
-//       }
-//     }
-//     match str_from_utf8(data[i:i + end], Range::Range(i, i + end)) {
-//       Ok(s) => string.write_string(s)
-//       Err(e) => return Some((end, Err(e)))
-//     }
-//     i += end
-//     match data[i] {
-//       c if c == delimiter =>
-//         return Some(
-//           (
-//             i + 1,
-//             Ok(TokenOrLineJump::Token(N3Token::String(string.to_string()))),
-//           ),
-//         )
-//       b'\'' => {
-//         let (additional, c) = self.recognize_escape(data[i:], i, true).unwrap()
-//         i += additional + 1
-//         match c {
-//           Ok(c) => string.write_char(c)
-//           Err(e) => {
-//             let end = memchr(delimiter, data[i:]).unwrap()
-//             return Some((i + end + 1, Err(e)))
-//           }
-//         }
-//       }
-//       b'\n' | b'\r' => {
-//         let end = memchr(delimiter, data[i:]).unwrap()
-//         return Some(
-//           (
-//             i + end + 1,
-//             Err(
-//               TokenRecognizerError::InvalidErrMessage(
-//                 data[i:i + 1],
-//                 Range::Range(i, i + 1),
-//                 "Line jumps are not allowed in string literals, use \n",
-//               ),
-//             ),
-//           ),
-//         )
-//       }
-//       _ => abort("Unexpected character in string literal")
-//     }
-//   }
-// }
-
-///|
 
 ///|
 fn RdfLexer::recognize_string(
@@ -1024,7 +988,7 @@ fn RdfLexer::recognize_string(
   data : ArrayView[Byte],
   delimiter : Byte,
   is_ending : Bool,
-) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   debug("DEBUG: Entering recognize_string with delimiter \{delimiter}")
 
   let string = StringBuilder::new()
@@ -1096,7 +1060,11 @@ fn RdfLexer::recognize_string(
         return Some(
           (
             i + 1,
-            Ok(TokenOrLineJump::Token(N3Token::String(string.to_string()))),
+            Ok(
+              LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(
+                N3Token::String(string.to_string()),Range::Range(0, i + 1)),
+              ),
+            ),
           ),
         )
       }
@@ -1173,7 +1141,7 @@ fn RdfLexer::recognize_long_string(
   data : ArrayView[Byte],
   delimiter : Byte,
   is_ending : Bool,
-) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let string = StringBuilder::new()
   let mut i = 3
   for ;; {
@@ -1221,7 +1189,9 @@ fn RdfLexer::recognize_long_string(
             (
               i + 3,
               Ok(
-                TokenOrLineJump::Token(N3Token::LongString(string.to_string())),
+                LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(
+                  N3Token::LongString(string.to_string()),Range::Range(0, i + 3))
+                ),
               ),
             ),
           )
@@ -1267,7 +1237,7 @@ fn RdfLexer::recognize_long_string(
 fn RdfLexer::recognize_number(
   data : ArrayView[Byte],
   is_ending : Bool,
-) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])? {
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut i = 0
   // let c = data.first()
   match data.get(0) {
@@ -1344,7 +1314,7 @@ fn RdfLexer::recognize_number(
           )
         } else {
           str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
-            TokenOrLineJump::Token(N3Token::Double(s))
+            LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Double(s),Range::Range(0, i)))
           })
         },
       ),
@@ -1365,7 +1335,7 @@ fn RdfLexer::recognize_number(
             )
           } else {
             str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
-              TokenOrLineJump::Token(N3Token::Integer(s))
+              LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Integer(s),Range::Range(0, i)))
             })
           },
         ),
@@ -1375,7 +1345,7 @@ fn RdfLexer::recognize_number(
         (
           i,
           str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
-            TokenOrLineJump::Token(N3Token::Decimal(s))
+            LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Decimal(s),Range::Range(0, i)))
           }),
         ),
       )
@@ -1394,7 +1364,7 @@ fn RdfLexer::recognize_number(
           )
         } else {
           str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
-            TokenOrLineJump::Token(N3Token::Integer(s))
+            LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Integer(s),Range::Range(0, i)))
           })
         },
       ),
@@ -1476,36 +1446,6 @@ fn RdfLexer::recognize_escape(
     None => None // 数据不足
   }
 }
-// fn RdfLexer::recognize_escape(self : RdfLexer, data : BytesView, position : Int, with_echar : Bool) -> Option[(Int, Result[Char, TokenRecognizerError])] {
-//   match data.get(1) is Some(_c) {
-//     b'u' => match RdfLexer::recognize_hex_char(data[2:].to_owned(), 4, 'u', position) {
-//       Ok(c) => Some((5, Ok(c)))
-//       Err(e) =>       if self.lenient {
-//         match RdfLexer::recognize_utf16_surrogate_pair(data[2:], position) {
-//           Ok(c) => Some((11, Ok(c!)))
-//           Err(e) => Some((5, Err(e)))
-//         }
-//       } else {
-//         Some((5, Err(e)))
-//       }
-//     }
-//     b'U' => match RdfLexer::recognize_hex_char(data[2:], 8, 'U', position) {
-//       Ok(c) => Some((9, Ok(c!)))
-//       Err(e) => Some((9, Err(e)))
-//     }
-//     b't' if with_echar => Some((1, Ok('	')))
-//     b'b' if with_echar => Some((1, Ok('')))
-//     b'n' if with_echar => Some((1, Ok('
-// ')))
-//     b'r' if with_echar => Some((1, Ok('
-// ')))
-//     b'f' if with_echar => Some((1, Ok('')))
-//     b'"' if with_echar => Some((1, Ok('"')))
-//     b'\'' if with_echar => Some((1, Ok(''')))
-//     b'\'' if with_echar => Some((1, Ok('\'')))
-//     c => Some((1, Err((position:position + 2, "Unexpected escape character '\\{Byte::to_char(c)}'").into())))
-//   }
-// }
 
 ///|
 fn RdfLexer::recognize_hex_char(
@@ -1650,26 +1590,6 @@ fn RdfLexer::recognize_utf16_surrogate_pair(
       )
   }
 }
-// fn RdfLexer::recognize_utf16_surrogate_pair(data : Bytes, position : Int) -> Result[Option[Char], TokenRecognizerError] {
-//   let Some(val_high_slice) = data.get(4)
-//   let val_high = str_from_utf8(val_high_slice, position:position + 6)
-//   let surrogate_high = UInt::from_str_radix(val_high, 16).map_err(fn(e) {   (position:position + 6, "The escape sequence '\u{val_high}' is not a valid hexadecimal string: {e}") })
-//   if !(surrogate_high is 0xD800 ..= 0xDFFF) {
-//     return Err((position:position + 6, "The escape sequence '\u{val_high}' is not a UTF-16 surrogate").into())
-//   }
-//   let Some(_) = data.get(4)
-//   let Some(_) = data.get(5)
-//   if d4 != b'\'' || d5 != b'u' {
-//     return Err((position:position + 6, "UTF-16 surrogate escape sequence '\u{val_high}' must be followed by another surrogate escape sequence").into())
-//   }
-//   let Some(val_low_slice) = data.get(6:10)
-//   let val_low = str_from_utf8(val_low_slice, position + 6:position + 12)
-//   let surrogate_low = UInt::from_str_radix(val_low, 16).map_err(fn(e) {   (position + 6:position + 12, "The escape sequence '\u{val_low}' is not a valid hexadecimal string: {e}") })
-//   let mut chars = Char::decode_utf16([surrogate_high, surrogate_low])
-//   let c = chars.next().bind(Result::ok).ok_or_else(fn() {   (position:position + 12, "Escape sequences '\u{val_high}\u{val_low}' do not form a valid UTF-16 surrogate pair") })
-//   debug_assert_eq(chars.next(), None, "Surrogate pair should combine to exactly one character")
-//   Ok(Some(c))
-// }
 
 ///|
 fn RdfLexer::recognize_unicode_char(
@@ -1854,44 +1774,6 @@ fn str_from_utf8(
   s
 }
 
-// 2. 使用 decode_lossy 直接获取 String
-// 注意：decode_lossy 通常不返回 Result，而是直接返回 String
-// match @utf8.decode_lossy(view) {
-//   Ok(s) => s
-//   Err(e) =>
-//     return Err(
-//       TokenRecognizerError::InvalidErrMessage(
-//         data[range.start:range.end],
-//         range,
-//         "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
-//       ),
-//     )
-
-// }
-
-// 3. 如果你仍然希望检测严重的 UTF-8 错误并报错，
-//    你需要手动检查或者保留 decode。
-//    但如果目的是“尽可能解析”，直接返回即可：
-// catch {
-//   _e =>
-//     return Err(
-//       TokenRecognizerError::InvalidErrMessage(
-//         data[range.start:range.end],
-//         range,
-//         "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
-//       ),
-//     )
-// }
-// guard s is Ok(s) else {
-//   return Err(
-//     TokenRecognizerError::InvalidErrMessage(
-//       data[range.start:range.end],
-//       range,
-//       "Invalid UTF-8 sequence at position \{range.start}: \{range.end}.",
-//     ),
-//   )
-// }
-
 ///|
 fn string_from_utf8(
   data : Array[Byte],
@@ -1899,10 +1781,3 @@ fn string_from_utf8(
 ) -> Result[String, TokenRecognizerError] {
   str_from_utf8(data[:], range)
 }
-
-// fn str_from_utf8(data : BytesView, range : Range) -> Result[String, TokenRecognizerError] {
-//   @utf8.decode(data).map_err(fn(e) {   (range.start + e.valid_up_to():min(range.end, range.start + e.valid_up_to() + 4), "Invalid UTF-8: {e}").into() })
-// }
-// fn string_from_utf8(data : Array[Byte], range : Range) -> Result[String, TokenRecognizerError] {
-//   @utf8.decode_lossy(array_to_view(data)).map_err(fn(e) {   (range.start + e.utf8_error().valid_up_to():min(range.end, range.start + e.utf8_error().valid_up_to() + 4), "Invalid UTF-8: {e}").into() })
-// }

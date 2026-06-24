@@ -1,6 +1,7 @@
+///|
 impl RuleRecognizer for N3Recognizer with fn recognize_next(
   self : N3Recognizer,
-  token : TokenOrLineJump[N3Token],
+  token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
@@ -10,34 +11,38 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
       Some(rule) =>
         match rule {
           N3State::N3Doc => {
-            self.debug_logger.info(
-              "Entering N3Doc with token: \{token}",
-            )
+            self.debug_logger.info("Entering N3Doc with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             self.stack.push(N3State::N3Doc)
             match token {
-              TokenOrLineJump::Token(N3Token::PlainKeyword(k)) if eq_ignore_ascii_case(
-                  k, "base",
-                ) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword(k), _)
+              ) if eq_ignore_ascii_case(k, "base") => {
                 self.stack.push(N3State::BaseExpectIri)
                 return self
               }
-              TokenOrLineJump::Token(N3Token::PlainKeyword(k)) if eq_ignore_ascii_case(
-                  k, "prefix",
-                ) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword(k), _)
+              ) if eq_ignore_ascii_case(k, "prefix") => {
                 self.stack.push(N3State::PrefixExpectPrefix)
                 return self
               }
-              TokenOrLineJump::Token(
-                N3Token::LangTag(language="prefix", direction=None)
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(
+                  N3Token::LangTag(language="prefix", direction=None),
+                  _
+                )
               ) => {
                 self.stack.push(N3State::N3DocExpectDot)
                 self.stack.push(N3State::PrefixExpectPrefix)
                 return self
               }
-              TokenOrLineJump::Token(
-                N3Token::LangTag(language="base", direction=None)
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(
+                  N3Token::LangTag(language="base", direction=None),
+                  _
+                )
               ) => {
                 self.stack.push(N3State::N3DocExpectDot)
                 self.stack.push(N3State::BaseExpectIri)
@@ -55,8 +60,11 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             )
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            if token == TokenOrLineJump::Token(N3Token::Punctuation(".")) {
-              return self
+            match token {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("."), _)
+              ) => return self
+              _ => ()
             }
             errors.push(
               RuleRecognizerError::SyntaxError(
@@ -71,7 +79,10 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             )
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            if token is TokenOrLineJump::Token(N3Token::Iri(iri)) {
+            if token
+              is LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Iri(iri), _)
+              ) {
               match context {
                 RdfContext::N3RecognizerContext(ctx) =>
                   ctx.lexer_options.base_iri = Some(Iri::Iri(iri))
@@ -95,8 +106,8 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             return match token {
-              TokenOrLineJump::Token(
-                N3Token::PrefixedName(prefix~, localx~, ..)
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PrefixedName(prefix~, localx~, ..), _)
               ) if localx.is_empty() => {
                 self.stack.push(N3State::PrefixExpectIri(name=prefix))
                 self
@@ -117,7 +128,10 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             )
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            return if token is TokenOrLineJump::Token(N3Token::Iri(iri)) {
+            return if token
+              is LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Iri(iri), _)
+              ) {
               match context {
                 RdfContext::N3RecognizerContext(ctx) =>
                   ctx.prefixes.set(name, Iri::Iri(iri))
@@ -135,9 +149,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             }
           }
           N3State::Triples => {
-            self.debug_logger.info(
-              "Entering Triples with token: \{token}",
-            )
+            self.debug_logger.info("Entering Triples with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             self.stack.push(N3State::TriplesMiddle)
@@ -150,8 +162,8 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             if token
-              is TokenOrLineJump::Token(
-                N3Token::Punctuation("." | "]" | "}" | ")")
+              is LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("." | "]" | "}" | ")"), _)
               ) {
 
             } else {
@@ -160,9 +172,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             }
           }
           N3State::TriplesEnd => {
-            self.debug_logger.info(
-              "Entering TriplesEnd with token: \{token}",
-            )
+            self.debug_logger.info("Entering TriplesEnd with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             let _ = self.terms.pop()
@@ -184,9 +194,23 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             let _ = self.predicates.pop()
-            if token == TokenOrLineJump::Token(N3Token::Punctuation(";")) {
-              self.stack.push(N3State::PredicateObjectListPossibleContinuation)
-              return self
+            // if token ==
+            //   LocatedTokenOrLineJump::LocatedN3Token(
+            //     LocatedN3Token(N3Token::Punctuation(";"), _),
+            //   ) {
+            //   self.stack.push(N3State::PredicateObjectListPossibleContinuation)
+            //   return self
+            // }
+            match token {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation(";"), _)
+              ) => {
+                self.stack.push(
+                  N3State::PredicateObjectListPossibleContinuation,
+                )
+                return self
+              }
+              _ => ()
             }
           }
           N3State::PredicateObjectListPossibleContinuation => {
@@ -195,24 +219,44 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             )
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            if token == TokenOrLineJump::Token(N3Token::Punctuation(";")) {
-              self.stack.push(N3State::PredicateObjectListPossibleContinuation)
-              return self
-            } else if token
-              is TokenOrLineJump::Token(
-                N3Token::Punctuation(";" | "." | "}" | "]" | ")")
-              ) {
-
-            } else {
-              self.stack.push(N3State::PredicateObjectListEnd)
-              self.stack.push(N3State::ObjectsList)
-              self.stack.push(N3State::Verb)
+            match token {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation(";"), _)
+              ) => {
+                self.stack.push(
+                  N3State::PredicateObjectListPossibleContinuation,
+                )
+                return self
+              }
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("."), _)
+              ) =>
+                // 处理句号
+                return self
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("}"), _)
+              ) =>
+                // 处理右花括号
+                return self
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("]"), _)
+              ) =>
+                // 处理右方括号
+                return self
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation(")"), _)
+              ) =>
+                // 处理右括号
+                return self
+              _ => {
+                self.stack.push(N3State::PredicateObjectListEnd)
+                self.stack.push(N3State::ObjectsList)
+                self.stack.push(N3State::Verb)
+              }
             }
           }
           N3State::ObjectsList => {
-            self.debug_logger.info(
-              "Entering ObjectsList with token: \{token}",
-            )
+            self.debug_logger.info("Entering ObjectsList with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             self.stack.push(N3State::ObjectsListEnd)
@@ -268,34 +312,53 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                   RdfStatement::N3Quad(self.quad(object, predicate, subject))
               },
             )
-            if token == TokenOrLineJump::Token(N3Token::Punctuation(",")) {
-              self.stack.push(N3State::ObjectsListEnd)
-              self.stack.push(N3State::Path)
-              return self
+            // if token ==
+            //   LocatedTokenOrLineJump::LocatedN3Token(
+            //     LocatedN3Token(N3Token::Punctuation(","), _),
+            //   ) {
+            //   self.stack.push(N3State::ObjectsListEnd)
+            //   self.stack.push(N3State::Path)
+            //   return self
+            // }
+            match token {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation(","), _)
+              ) => {
+                self.stack.push(N3State::ObjectsListEnd)
+                self.stack.push(N3State::Path)
+                return self
+              }
+              _ => ()
             }
           }
           N3State::Verb => {
-            self.debug_logger.info(
-              "Entering Verb with token: \{token}",
-            )
+            self.debug_logger.info("Entering Verb with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             match token {
-              TokenOrLineJump::Token(N3Token::PlainKeyword("a")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword("a"), _)
+              ) => {
                 self.predicates.push(Predicate::Regular(lwTYPE.as_n3term()))
                 return self
               }
-              TokenOrLineJump::Token(N3Token::PlainKeyword("has")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword("has"), _)
+              ) => {
                 self.stack.push(N3State::AfterRegularVerb)
                 self.stack.push(N3State::Path)
                 return self
               }
-              TokenOrLineJump::Token(N3Token::PlainKeyword("is")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword("is"), _)
+              ) => {
                 self.stack.push(N3State::AfterVerbIs)
                 self.stack.push(N3State::Path)
                 return self
               }
-              TokenOrLineJump::Token(N3Token::Punctuation("=")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("="), _)
+              ) => {
                 self.predicates.push(
                   Predicate::Regular(
                     NamedNodeRef::new_unchecked(
@@ -305,7 +368,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 )
                 return self
               }
-              TokenOrLineJump::Token(N3Token::Punctuation("=>")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("=>"), _)
+              ) => {
                 self.predicates.push(
                   Predicate::Regular(
                     NamedNodeRef::new_unchecked(
@@ -315,7 +380,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 )
                 return self
               }
-              TokenOrLineJump::Token(N3Token::Punctuation("<=")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("<="), _)
+              ) => {
                 self.predicates.push(
                   Predicate::Inverted(
                     NamedNodeRef::new_unchecked(
@@ -325,7 +392,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 )
                 return self
               }
-              TokenOrLineJump::Token(N3Token::Punctuation("<-")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("<-"), _)
+              ) => {
                 self.stack.push(N3State::AfterInvertedVerb)
                 self.stack.push(N3State::Path)
                 return self
@@ -379,13 +448,13 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             return self
           }
           N3State::AfterVerbIs => {
-            self.debug_logger.info(
-              "Entering AfterVerbIs with token: \{token}",
-            )
+            self.debug_logger.info("Entering AfterVerbIs with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             return match token {
-              TokenOrLineJump::Token(N3Token::PlainKeyword("of")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword("of"), _)
+              ) => {
                 let term = match self.terms.pop() {
                   Some(t) => t
                   None => {
@@ -412,27 +481,27 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             }
           }
           N3State::Path => {
-            self.debug_logger.info(
-              "Entering Path with token: \{token}",
-            )
+            self.debug_logger.info("Entering Path with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             self.stack.push(N3State::PathFollowUp)
             self.stack.push(N3State::PathItem)
           }
           N3State::PathFollowUp => {
-            self.debug_logger.info(
-              "Entering PathFollowUp with token: \{token}",
-            )
+            self.debug_logger.info("Entering PathFollowUp with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             match token {
-              TokenOrLineJump::Token(N3Token::Punctuation("!")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("!"), _)
+              ) => {
                 self.stack.push(N3State::PathAfterIndicator(is_inverse=false))
                 self.stack.push(N3State::PathItem)
                 return self
               }
-              TokenOrLineJump::Token(N3Token::Punctuation("^")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("^"), _)
+              ) => {
                 self.stack.push(N3State::PathAfterIndicator(is_inverse=false))
                 self.stack.push(N3State::PathItem)
                 return self
@@ -482,18 +551,21 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.stack.push(N3State::PathFollowUp)
           }
           N3State::PathItem => {
-            self.debug_logger.info(
-              "Entering PathItem with token: \{token}",
-            )
+            self.debug_logger.info("Entering PathItem with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             return match token {
-              TokenOrLineJump::Token(N3Token::Iri(iri)) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Iri(iri), _)
+              ) => {
                 self.terms.push(NamedNodeRef::new_unchecked(iri).as_n3term())
                 self
               }
-              TokenOrLineJump::Token(
-                N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~)
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(
+                  N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+                  _
+                )
               ) =>
                 match context {
                   RdfContext::N3RecognizerContext(ctx) =>
@@ -526,28 +598,42 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                       ),
                     )
                 }
-              TokenOrLineJump::Token(N3Token::BlankNodeLabel(bnode)) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::BlankNodeLabel(bnode), _)
+              ) => {
                 self.terms.push(BlankNodeRef::new_unchecked(bnode).as_n3term())
                 self
               }
-              TokenOrLineJump::Token(N3Token::Variable(name)) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Variable(name), _)
+              ) => {
                 self.terms.push(N3Term::Variable(name))
                 self
               }
-              TokenOrLineJump::Token(N3Token::Punctuation("[")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("["), _)
+              ) => {
                 self.stack.push(N3State::PropertyListMiddle)
                 self
               }
-              TokenOrLineJump::Token(N3Token::Punctuation("(")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("("), _)
+              ) => {
                 self.stack.push(N3State::CollectionBeginning)
                 self
               }
-              TokenOrLineJump::Token(N3Token::String(value))
-              | TokenOrLineJump::Token(N3Token::LongString(value)) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::String(value), _)
+              )
+              | LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::LongString(value), _)
+              ) => {
                 self.stack.push(N3State::LiteralPossibleSuffix(value~))
                 self
               }
-              TokenOrLineJump::Token(N3Token::Integer(v)) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Integer(v), _)
+              ) => {
                 self.terms.push(
                   LiteralRef::new_typed_literal(
                     VarDataType::IntegerVar(v),
@@ -556,7 +642,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 )
                 self
               }
-              TokenOrLineJump::Token(N3Token::Decimal(v)) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Decimal(v), _)
+              ) => {
                 self.terms.push(
                   LiteralRef::new_typed_literal(
                     VarDataType::IntegerVar(v),
@@ -565,7 +653,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 )
                 self
               }
-              TokenOrLineJump::Token(N3Token::Double(v)) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Double(v), _)
+              ) => {
                 self.terms.push(
                   LiteralRef::new_typed_literal(
                     VarDataType::IntegerVar(v),
@@ -574,7 +664,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 )
                 self
               }
-              TokenOrLineJump::Token(N3Token::PlainKeyword("true")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword("true"), _)
+              ) => {
                 self.terms.push(
                   LiteralRef::new_typed_literal(
                     VarDataType::IntegerVar("true"),
@@ -583,7 +675,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 )
                 self
               }
-              TokenOrLineJump::Token(N3Token::PlainKeyword("false")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword("false"), _)
+              ) => {
                 self.terms.push(
                   LiteralRef::new_typed_literal(
                     VarDataType::IntegerVar("false"),
@@ -592,7 +686,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 )
                 self
               }
-              TokenOrLineJump::Token(N3Token::Punctuation("{")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("{"), _)
+              ) => {
                 self.contexts.push(BlankNode::default())
                 self.stack.push(N3State::FormulaContent)
                 self
@@ -614,11 +710,15 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             match token {
-              TokenOrLineJump::Token(N3Token::Punctuation("]")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("]"), _)
+              ) => {
                 self.terms.push(BlankNode::default().as_n3term())
                 return self
               }
-              TokenOrLineJump::Token(N3Token::PlainKeyword("id")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword("id"), _)
+              ) => {
                 self.stack.push(N3State::IriPropertyList)
                 return self
               }
@@ -635,15 +735,17 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             )
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            if token == TokenOrLineJump::Token(N3Token::Punctuation("]")) {
-              return self
-            } else {
-              errors.push(
-                RuleRecognizerError::SyntaxError(
-                  "blank node property lists should end with a ']'",
-                  SourcePosition::default(),
-                ),
-              )
+            match token {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("]"), _)
+              ) => return self
+              _ =>
+                errors.push(
+                  RuleRecognizerError::SyntaxError(
+                    "blank node property lists should end with a ']'",
+                    SourcePosition::default(),
+                  ),
+                )
             }
           }
           N3State::IriPropertyList => {
@@ -653,14 +755,19 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             return match token {
-              TokenOrLineJump::Token(N3Token::Iri(id)) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Iri(id), _)
+              ) => {
                 self.terms.push(NamedNodeRef::new_unchecked(id).as_n3term())
                 self.stack.push(N3State::PropertyListEnd)
                 self.stack.push(N3State::PredicateObjectList)
                 self
               }
-              TokenOrLineJump::Token(
-                N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~)
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(
+                  N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+                  _
+                )
               ) =>
                 match context {
                   RdfContext::N3RecognizerContext(ctx) =>
@@ -709,7 +816,10 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             )
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            if token is TokenOrLineJump::Token(N3Token::Punctuation(")")) {
+            if token
+              is LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation(")"), _)
+              ) {
               self.terms.push(lwNIL.as_n3term())
               return self
             } else {
@@ -753,7 +863,10 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             results.push(
               RdfStatement::N3Quad(self.quad(old, lwFIRST.as_n3term(), value)),
             )
-            if token is TokenOrLineJump::Token(N3Token::Punctuation(")")) {
+            if token
+              is LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation(")"), _)
+              ) {
               results.push(
                 RdfStatement::N3Quad(
                   self.quad(old, lwREST.as_n3term(), lwNIL.as_n3term()),
@@ -778,7 +891,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             match token {
-              TokenOrLineJump::Token(N3Token::LangTag(language~, direction~)) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::LangTag(language~, direction~), _)
+              ) => {
                 if direction is Some(_) {
                   return self.error(
                     errors,
@@ -796,7 +911,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 )
                 return self
               }
-              TokenOrLineJump::Token(N3Token::Punctuation("^^")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("^^"), _)
+              ) => {
                 self.stack.push(N3State::LiteralExpectDatatype(value~))
                 return self
               }
@@ -811,7 +928,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             match token {
-              TokenOrLineJump::Token(N3Token::Iri(datatype)) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Iri(datatype), _)
+              ) => {
                 let datatype = NamedNodeRef::new_unchecked(datatype)
                 self.terms.push(
                   LiteralRef::new_typed_literal(
@@ -821,8 +940,11 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 )
                 return self
               }
-              TokenOrLineJump::Token(
-                N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~)
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(
+                  N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+                  _
+                )
               ) =>
                 match context {
                   RdfContext::N3RecognizerContext(ctx) =>
@@ -877,7 +999,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             match token {
-              TokenOrLineJump::Token(N3Token::Punctuation("}")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("}"), _)
+              ) => {
                 let ctx = match self.contexts.pop() {
                   Some(c) => c
                   None => {
@@ -893,29 +1017,35 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 self.terms.push(ctx.as_n3term())
                 return self
               }
-              TokenOrLineJump::Token(N3Token::PlainKeyword(k)) if eq_ignore_ascii_case(
-                  k, "base",
-                ) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword(k), _)
+              ) if eq_ignore_ascii_case(k, "base") => {
                 self.stack.push(N3State::FormulaContent)
                 self.stack.push(N3State::BaseExpectIri)
                 return self
               }
-              TokenOrLineJump::Token(N3Token::PlainKeyword(k)) if eq_ignore_ascii_case(
-                  k, "prefix",
-                ) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::PlainKeyword(k), _)
+              ) if eq_ignore_ascii_case(k, "prefix") => {
                 self.stack.push(N3State::FormulaContent)
                 self.stack.push(N3State::PrefixExpectPrefix)
                 return self
               }
-              TokenOrLineJump::Token(
-                N3Token::LangTag(language="prefix", direction=None)
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(
+                  N3Token::LangTag(language="prefix", direction=None),
+                  _
+                )
               ) => {
                 self.stack.push(N3State::FormulaContentExpectDot)
                 self.stack.push(N3State::PrefixExpectPrefix)
                 return self
               }
-              TokenOrLineJump::Token(
-                N3Token::LangTag(language="base", direction=None)
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(
+                  N3Token::LangTag(language="base", direction=None),
+                  _
+                )
               ) => {
                 self.stack.push(N3State::FormulaContentExpectDot)
                 self.stack.push(N3State::BaseExpectIri)
@@ -934,7 +1064,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
             match token {
-              TokenOrLineJump::Token(N3Token::Punctuation("}")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("}"), _)
+              ) => {
                 let ctx = match self.contexts.pop() {
                   Some(c) => c
                   None => {
@@ -950,7 +1082,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 self.terms.push(ctx.as_n3term())
                 return self
               }
-              TokenOrLineJump::Token(N3Token::Punctuation(".")) => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token(N3Token::Punctuation("."), _)
+              ) => {
                 self.stack.push(N3State::FormulaContent)
                 return self
               }
@@ -969,10 +1103,17 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
       _ => break
     }
   }
-  if token == TokenOrLineJump::Token(Punctuation(".")) {
-    self.stack.push(N3State::N3Doc)
-    self
-  } else {
-    self
+  // if token ==
+  //   LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(Punctuation(".")), _) {
+  //   self.stack.push(N3State::N3Doc)
+  //   self
+  // } else {
+  //   self
+  // }
+  match token {
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::Punctuation("."), _)
+    ) => return self
+    _ => self
   }
 }

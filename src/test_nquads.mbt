@@ -50,88 +50,7 @@ test "low level parser initialization" {
   // assert_true(low_level.is_end())
 }
 
-///|
-// test "sync serializer accumulation" {
-//   let serializer = NQuadsSerializer::new()
-//   let (_r, w) = @io.pipe()
 
-//   let sync_serializer = serializer.for_writer(w)
-
-//   let subject = NamedNode::NamedNode("<http://example.org/s>").as_enum()
-//   let predicate = NamedNode::NamedNode("<http://example.org/p>")
-//   let object = NamedNode::NamedNode("<http://example.org/o>").as_term()
-//   let graph = GraphName::default() // 或者使用 Option::None 如果 API 支持
-
-//   let q_sb = Quad::Quad(subject, predicate, object, graph)
-//   // q_sb.write_string(
-//   //   "<http://example.org/s> <http://example.org/p> <http://example.org/o>",
-//   // )
-
-//   let res = sync_serializer.serialize_quad(q_sb)
-//   assert_true(res is Ok(_))
-
-//   // 关闭 writer 以便 flush 数据
-//   w.close()
-
-//   // 验证返回的字符串
-//   match res {
-//     Ok(string) => debug(string)
-//     Err(_) => assert_true(false)
-//   }
-// }
-
-// async test "async serializer buffer accumulation" {
-//   let log = StringBuilder::new()
-//   let serializer = NQuadsSerializer::new()
-//   let (r, w) = @io.pipe()
-
-//   @async.with_task_group() <| fn(root) {
-//     // 1. 写入者协程 (Producer)
-//     root.spawn_bg() <| () => {
-//       defer w.close() // 任务结束时关闭写端，触发读端的 EOF
-
-//       let async_serializer = serializer.for_async_writer(w)
-
-//       let q_sb = StringBuilder::new()
-//       q_sb.write_string(
-//         "<http://example.org/s> <http://example.org/p> <http://example.org/o>",
-//       )
-
-//       // 必须 await 异步写入
-//       let res = async_serializer.serialize_quad(q_sb)
-
-//       assert_true(res is Ok(_))
-
-//       // 可选：记录日志以便调试
-//       log <+ "quad serialized\n"
-
-//     }
-
-//     // 2. 读取者协程 (Consumer)
-//     root.spawn_bg() <| () => {
-//       defer r.close()
-
-//       // 循环读取直到管道关闭 (EOF)
-//       while r.read_some() is Some(data) {
-//         let content = @utf8.decode(data)
-//         log.write_string("received: \{content}")
-//       }
-//     }
-//   }
-
-//   // 3. 验证结果
-//   // 预期收到序列化后的四元组字符串，通常以 " .\n" 结尾
-//   inspect(
-//     log.to_string(),
-//     content=(
-//       #|quad serialized
-//       #|received: <http://example.org/s> <http://example.org/p> <http://example.org/o> .
-//       #|
-//     ),
-//   )
-// }
-
-///|
 // async test "async serializer buffer accumulation" {
 //   let log = StringBuilder::new()
 //   let serializer = NQuadsSerializer::new()
@@ -185,6 +104,58 @@ test "low level parser initialization" {
 //     log.to_string(),
 //     content=(
 //       #|quad serialized and finished
+//       #|received: <http://example.org/s> <http://example.org/p> <http://example.org/o> .
+//       #|
+//     ),
+//   )
+// }
+
+
+// async test "async serializer buffer accumulation" {
+//   let log = StringBuilder::new()
+//   let serializer = NQuadsSerializer::new()
+//   let (r, w) = @io.pipe()
+
+//   @async.with_task_group() <| fn(root) {
+//     // 1. 写入者协程 (Producer)
+//     root.spawn_bg() <| () => {
+//       defer w.close() // 任务结束时关闭写端，触发读端的 EOF
+
+//       let async_serializer = serializer.for_async_writer(w)
+
+//       let q_sb = StringBuilder::new()
+//       q_sb.write_string(
+//         "<http://example.org/s> <http://example.org/p> <http://example.org/o>",
+//       )
+
+//       // 必须 await 异步写入
+//       let res = async_serializer.serialize_quad(q_sb)
+
+//       assert_true(res is Ok(_))
+
+//       // 可选：记录日志以便调试
+//       log <+ "quad serialized\n"
+
+//     }
+
+//     // 2. 读取者协程 (Consumer)
+//     root.spawn_bg() <| () => {
+//       defer r.close()
+
+//       // 循环读取直到管道关闭 (EOF)
+//       while r.read_some() is Some(data) {
+//         let content = @utf8.decode(data)
+//         log.write_string("received: \{content}")
+//       }
+//     }
+//   }
+
+//   // 3. 验证结果
+//   // 预期收到序列化后的四元组字符串，通常以 " .\n" 结尾
+//   inspect(
+//     log.to_string(),
+//     content=(
+//       #|quad serialized
 //       #|received: <http://example.org/s> <http://example.org/p> <http://example.org/o> .
 //       #|
 //     ),

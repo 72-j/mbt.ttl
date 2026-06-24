@@ -27,31 +27,31 @@ pub fn RdfStatement::new(quad : Quad) -> RdfStatement {
 }
 
 ///|
-pub struct Parser[RL, PR] {
-  lexer : Lexer[RL]
-  mut state : PR?
+pub struct Parser[TR, RR] {
+  lexer : Lexer[TR]
+  mut state : RR?
   context : RdfContext
   results : Array[RdfStatement]
   errors : Array[RuleRecognizerError]
 }
 
 ///|
-pub fn[RL, PR] Parser::Parser(
-  lexer : Lexer[RL],
-  recognizer : PR,
+pub fn[TR, RR] Parser::Parser(
+  lexer : Lexer[TR],
+  recognizer : RR,
   context : RdfContext,
-) -> Parser[RL, PR] {
+) -> Parser[TR, RR] {
   { lexer, state: Some(recognizer), context, results: [], errors: [] }
 }
 
 ///|
-pub fn[RL, PR] Parser::is_end(self : Parser[RL, PR]) -> Bool {
+pub fn[TR, RR] Parser::is_end(self : Parser[TR, RR]) -> Bool {
   self.state is None && self.results.is_empty() && self.errors.is_empty()
 }
 
-
-pub fn[RL : TokenRecognizer, PR : RuleRecognizer] Parser::parse_next(
-  self : Parser[RL, PR],
+///|
+pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
+  self : Parser[TR, RR],
 ) -> Result[RdfStatement, TurtleError]? {
   for ;; {
     // 1. 优先处理错误
@@ -60,7 +60,7 @@ pub fn[RL : TokenRecognizer, PR : RuleRecognizer] Parser::parse_next(
         Err(
           TurtleError::InvalidToken(
             self.lexer.last_token_start(),
-            "- \{self.lexer.last_token_source() }\{e.message()} - TOKEN is not allowed here",
+            "- \{self.lexer.last_token_source()}\{e.message()} - TOKEN is not allowed here",
           ),
         ),
       )
@@ -72,15 +72,30 @@ pub fn[RL : TokenRecognizer, PR : RuleRecognizer] Parser::parse_next(
     }
 
     // 3. 尝试从 Lexer 获取下一个 Token
-    match self.lexer.parse_next(PR::lexer_options(self.context)) {
+    match self.lexer.parse_next(RR::lexer_options(self.context)) {
+      // Some(Ok(token)) => {
+      //   self.state = self.state.map(fn(state) {
+      //     state.recognize_next(token, self.context, self.results, self.errors)
+      //   })
+      //   continue
+      // }
       Some(Ok(token)) => {
-        self.state = self.state.map(fn(state) {
-          state.recognize_next(token, self.context, self.results, self.errors)
-        })
+        match self.state {
+          Some(state) => {
+            let new_state = state.recognize_next(
+              token,
+              self.context,
+              self.results,
+              self.errors,
+            )
+            self.state = Some(new_state)
+          }
+          None => ()
+        }
         continue
       }
       Some(Err(e)) => {
-        self.state = self.state.map(fn(s) { PR::error_recovery_state(s) })
+        self.state = self.state.map(fn(s) { RR::error_recovery_state(s) })
         return Some(
           Err(
             TurtleError::InvalidToken(
@@ -113,43 +128,43 @@ pub fn[RL : TokenRecognizer, PR : RuleRecognizer] Parser::parse_next(
 }
 
 ///|
-pub fn[RL, PR] Parser::end(self : Parser[RL, PR]) -> Unit {
+pub fn[TR, RR] Parser::end(self : Parser[TR, RR]) -> Unit {
   self.lexer.end()
 }
 
 ///|
-pub fn[RL, PR] Parser::extend_from_slice(
-  self : Parser[RL, PR],
+pub fn[TR, RR] Parser::extend_from_slice(
+  self : Parser[TR, RR],
   other : Bytes,
 ) -> Unit {
   self.lexer.extend_from_slice(other)
 }
 
 ///|
-pub fn[RL, PR] Parser::for_reader(
-  self : Parser[RL, PR],
+pub fn[TR, RR] Parser::for_reader(
+  self : Parser[TR, RR],
   reader : &Reader,
-) -> ReaderIterator[RL, PR] {
+) -> ReaderIterator[TR, RR] {
   { reader, parser: self }
 }
 
 ///|
-pub fn[RL, PR] Parser::for_async_reader(
-  self : Parser[RL, PR],
+pub fn[TR, RR] Parser::for_async_reader(
+  self : Parser[TR, RR],
   reader : &Reader,
-) -> AsyncReaderIterator[RL, PR] {
+) -> AsyncReaderIterator[TR, RR] {
   { reader, parser: self }
 }
 
 ///|
-pub struct ReaderIterator[RL, PR] {
+pub struct ReaderIterator[TR, RR] {
   reader : &Reader
-  parser : Parser[RL, PR]
+  parser : Parser[TR, RR]
 }
 
 ///|
-pub async fn[PR : RuleRecognizer] ReaderIterator::next(
-  self : ReaderIterator[RdfLexer, PR],
+pub async fn[RR : RuleRecognizer] ReaderIterator::next(
+  self : ReaderIterator[RdfLexer, RR],
 ) -> Result[RdfStatement, LexerError]? {
   while !self.parser.is_end() {
     if self.parser.parse_next() is Some(result) {
@@ -181,14 +196,14 @@ pub async fn[PR : RuleRecognizer] ReaderIterator::next(
 }
 
 ///|
-pub struct AsyncReaderIterator[RL, PR] {
+pub struct AsyncReaderIterator[TR, RR] {
   reader : &Reader
-  parser : Parser[RL, PR]
+  parser : Parser[TR, RR]
 }
 
 ///|
-pub async fn[RL : TokenRecognizer, PR : RuleRecognizer] AsyncReaderIterator::next(
-  self : AsyncReaderIterator[RL, PR],
+pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::next(
+  self : AsyncReaderIterator[TR, RR],
 ) -> Result[RdfStatement, LexerError]? {
   while !self.parser.is_end() {
     if self.parser.parse_next() is Some(result) {
@@ -209,13 +224,13 @@ pub async fn[RL : TokenRecognizer, PR : RuleRecognizer] AsyncReaderIterator::nex
 }
 
 ///|
-pub(all) struct SliceIterator[RL, PR] {
-  parser : Parser[RL, PR]
+pub(all) struct SliceIterator[TR, RR] {
+  parser : Parser[TR, RR]
 }
 
 ///|
-pub fn[RL : TokenRecognizer, PR : RuleRecognizer] SliceIterator::next(
-  self : SliceIterator[RL, PR],
+pub fn[TR : TokenRecognizer, RR : RuleRecognizer] SliceIterator::next(
+  self : SliceIterator[TR, RR],
 ) -> Result[RdfStatement, LexerError]? {
   while !self.parser.is_end() {
     if self.parser.parse_next() is Some(result) {

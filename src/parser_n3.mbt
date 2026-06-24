@@ -122,19 +122,20 @@ fn N3Quad::N3Quad(
 // }
 
 ///|
+
 ///|
 impl Show for N3Quad with fn output(self : N3Quad, f : &Logger) -> Unit {
   // 输出 Subject
   self.subject.output(f)
   f.write(" ")
-  
+
   // 输出 Predicate
   self.predicate.output(f)
   f.write(" ")
-  
+
   // 输出 Object
   self.object.output(f)
-  
+
   // 如果 Graph Name 不是默认图，则输出 Graph Name
   if self.graph_name != GraphName::DefaultGraph {
     f.write(" ")

@@ -160,7 +160,6 @@ pub struct TriGRecognizerContext {
   prefixes : Map[String, Iri]
 }
 
-
 ///|
 pub fn TriGRecognizerContext::prefixes(
   self : TriGRecognizerContext,
@@ -188,7 +187,6 @@ impl RuleRecognizer for TriGRecognizer with fn[DL : DebugLogger] debug_logger(
 ) {
   self.debug_logger = debug_logger
 }
-
 
 ///|
 impl RuleRecognizer for TriGRecognizer with fn recognize_end(
@@ -375,12 +373,13 @@ enum TriGState {
 ///|
 impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
   match self {
-    TriGState::TripleTermEnd(emit~)=> logger.write("TripleTermEnd(\{emit})")
+    TriGState::TripleTermEnd(emit~) => logger.write("TripleTermEnd(\{emit})")
     TriGState::LiteralExpectDatatype(value~, emit~) =>
       logger.write("LiteralExpectDatatype(\{value}, \{emit})")
-    TriGState::TriplesBlankNodePropertyListCurrent=> logger.write("TriplesBlankNodePropertyListCurrent")
+    TriGState::TriplesBlankNodePropertyListCurrent =>
+      logger.write("TriplesBlankNodePropertyListCurrent")
     TriGState::GraphNameAnonEnd => logger.write("GraphNameAnonEnd")
-    TriGState::ExpectAtKeyword=> logger.write("ExpectAtKeyword")
+    TriGState::ExpectAtKeyword => logger.write("ExpectAtKeyword")
     TriGState::TriGDoc => logger.write("TriGDoc")
     TriGState::Object => logger.write("Object")
     TriGState::PredicateObjectList => logger.write("PredicateObjectList")
@@ -465,6 +464,18 @@ fn TriGRecognizer::set_state(
 ) -> TriGRecognizer {
   // let _ = self.stack.pop() // 弹出当前状态
   self.stack.push(new_state) // 压入新状态
+  self
+}
+
+/// 重置状态到 TriGDoc
+fn TriGRecognizer::reset_to_tri_gdoc(self : TriGRecognizer) -> TriGRecognizer {
+  let new_stack = []
+  new_stack.push(TriGState::TriGDoc)
+  self.stack = new_stack
+  self.cur_subject.clear()
+  self.cur_predicate.clear()
+  self.cur_object.clear()
+  self.cur_reifier.clear()
   self
 }
 // impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {

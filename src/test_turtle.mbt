@@ -1,4 +1,54 @@
 ///|
+/// 
+///|
+async test "debug_simple_turtle_workaround" {
+  // 变通：使用简单字面量代替集合，验证解析器基本通路
+  let input = "<http://a.example/s> <http://a.example/p> 1 ."
+  let data = @utf8.encode(input).to_array()
+
+  let prefixes = Map([])
+  let base_iri = Some(Iri::Iri("http://example.org/"))
+
+  let parser = TriGRecognizer::new_parser(
+    data,
+    true, // is_ending
+    false, // with_graph_name
+    true, // lenient
+    base_iri,
+    prefixes,
+    debug_logger=make_console_logger(),
+  )
+
+  match parser.parse_next() {
+    Some(Ok(t)) => println("Success: \{t.to_string()}")
+    Some(Err(e)) => println("Error: \{e.message()}")
+    None => println("None")
+  }
+}
+async test "debug_simple_turtle_fixed_input" {
+  // 修复：使用标准的三元组，避免集合语法，以验证解析器核心功能
+  let input = "<http://a.example/s> <http://a.example/p> <http://a.example/o> ."
+  let data = @utf8.encode(input).to_array()
+
+  let prefixes = Map([])
+  let base_iri = Some(Iri::Iri("http://example.org/"))
+
+  let parser = TriGRecognizer::new_parser(
+    data,
+    true, // is_ending
+    false, // with_graph_name
+    true, // lenient
+    base_iri,
+    prefixes,
+    debug_logger=make_console_logger(),
+  )
+
+  match parser.parse_next() {
+    Some(Ok(t)) => println("Success: \{t.to_string()}")
+    Some(Err(e)) => println("Error: \{e.message()}")
+    None => println("None")
+  }
+}
 async test "debug_simple_turtle" {
   let input =
     #| <http://a.example/s> <http://a.example/p> (1) .
@@ -14,10 +64,12 @@ async test "debug_simple_turtle" {
 
   // 注意：with_graph_name 为 false，lenient 为 true
   let parser = TriGRecognizer::new_parser(
-    data, true, // is_ending
-     false, // with_graph_name
-     true, // lenient - 开启宽松模式可能有助于处理非标准起始
-     base_iri, prefixes,
+    data,
+    true, // is_ending
+    false, // with_graph_name
+    true, // lenient - 开启宽松模式可能有助于处理非标准起始
+    base_iri,
+    prefixes,
     debug_logger=make_console_logger(),
   )
 
@@ -110,57 +162,6 @@ async test "debug_simple_triple 2" {
   }
 }
 
-
-
-///|
-async test "debug_lexer" {
-  let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> ."
-  let data = @utf8.encode(input)
-
-  // 直接使用 RdfLexer
-  let lexer = RdfLexer::RdfLexer(RdfLexerMode::Turtle, true)
-
-  // for ;; {
-  //   match lexer.parse_next(None) {
-  //     Some(Ok(token)) => {
-  //       println("Token: \{token}")
-  //       // 检查 token 的变体
-  //       match token {
-  //         TokenOrLineJump::Token(t) => {
-  //           // 打印 token 的详细信息
-  //           match t {
-  //             N3Token::Iri(iri) => println("  IRI: \{iri}")
-  //             N3Token::PrefixedName(prefix~, localx~, ..) => println("  PrefixedName: \{prefix}:\{localx}")
-  //             N3Token::Punctuation(p) => println("  Punctuation: \{p}")
-  //             N3Token::String(s) => println("  String: \{s}")
-  //             N3Token::LongString(s) => println("  LongString: \{s}")
-  //             N3Token::Integer(i) => println("  Integer: \{i}")
-  //             N3Token::Decimal(d) => println("  Decimal: \{d}")
-  //             N3Token::Double(d) => println("  Double: \{d}")
-  //             N3Token::PlainKeyword(k) => println("  PlainKeyword: \{k}")
-  //             N3Token::BlankNodeLabel(l) => println("  BlankNodeLabel: \{l}")
-  //             N3Token::LangTag(lang, dir) => println("  LangTag: \{lang}, \{dir}")
-  //             N3Token::LocalName(l) => println("  LocalName: \{l}")
-  //             _ => println("  Other")
-  //           }
-  //         }
-  //         TokenOrLineJump::LineJump => println("LineJump")
-  //         TokenOrLineJump::End => println("End")
-  //       }
-  //     }
-  //     Some(Err(e)) => {
-  //       println("Lexer error: \{e.message()}")
-  //       break
-  //     }
-  //     None => {
-  //       println("End of input")
-  //       break
-  //     }
-  //   }
-  // }
-}
-
-///|
 
 ///|
 async test "verify_with_turtle" {

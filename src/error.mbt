@@ -222,23 +222,33 @@ pub(all) suberror RuleRecognizerError {
   //  UnexpectedToken(UnexpectedToken)
   // RecoveryError(RecoveryError)
 }
+
+///|
 struct Range {
   start : Int
   end : Int
-} derive(Debug, Default)
+} derive(Debug, Default,Eq)
 
+///|
 pub fn Range::Range(start : Int, end : Int) -> Range {
   { start, end }
 }
+
+///|
 pub fn Range::single(pos : Int) -> Range {
-  { start:pos, end:pos }
+  { start: pos, end: pos }
 }
-  pub fn  Range::length(self: Self) -> Int {
-    self.end - self.start
-  }
-  pub fn Range::contains(self: Self, pos: Int) -> Bool {
-    pos >= self.start && pos < self.end
-  }
+
+///|
+pub fn Range::length(self : Self) -> Int {
+  self.end - self.start
+}
+
+///|
+pub fn Range::contains(self : Self, pos : Int) -> Bool {
+  pos >= self.start && pos < self.end
+}
+
 ///|
 pub fn Range::utf8_range(self : Range, data : ArrayView[Byte]) -> String {
   let data = data[self.start:self.end]
@@ -250,10 +260,13 @@ pub fn Range::utf8_range(self : Range, data : ArrayView[Byte]) -> String {
 pub(all) struct SourceRange {
   start : SourcePosition
   end : SourcePosition
-}derive(Debug)
+} derive(Debug)
 
 ///|
-fn SourceRange::SourceRange(start : SourcePosition, end : SourcePosition) -> SourceRange {
+fn SourceRange::SourceRange(
+  start : SourcePosition,
+  end : SourcePosition,
+) -> SourceRange {
   { start, end }
 }
 
@@ -267,21 +280,42 @@ impl Show for SourceRange with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-pub fn RuleRecognizerError::text_range(self : RuleRecognizerError) -> SourceRange {
+pub fn RuleRecognizerError::text_range(
+  self : RuleRecognizerError,
+) -> SourceRange {
   match self {
-    RuleRecognizerError::SyntaxError(_, pos) => SourceRange::SourceRange(pos, pos)
+    RuleRecognizerError::SyntaxError(_, pos) =>
+      SourceRange::SourceRange(pos, pos)
     RuleRecognizerError::BlankNodeOrIriError =>
-      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
+      SourceRange::SourceRange(
+        SourcePosition::default(),
+        SourcePosition::default(),
+      )
     RuleRecognizerError::PredicateNotAnIRI =>
-      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
+      SourceRange::SourceRange(
+        SourcePosition::default(),
+        SourcePosition::default(),
+      )
     RuleRecognizerError::TripleMissingDot =>
-      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
+      SourceRange::SourceRange(
+        SourcePosition::default(),
+        SourcePosition::default(),
+      )
     RuleRecognizerError::LiteralDatatypeError =>
-      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
+      SourceRange::SourceRange(
+        SourcePosition::default(),
+        SourcePosition::default(),
+      )
     RuleRecognizerError::InvalidLanguageTag =>
-      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
+      SourceRange::SourceRange(
+        SourcePosition::default(),
+        SourcePosition::default(),
+      )
     RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
-      SourceRange::SourceRange(SourcePosition::default(), SourcePosition::default())
+      SourceRange::SourceRange(
+        SourcePosition::default(),
+        SourcePosition::default(),
+      )
   }
 }
 
@@ -440,6 +474,7 @@ pub(all) suberror TagParseErr {
   SubtagTooLong
   EmptySubtag
   TooManyExtlangs
+  InvalidLanguageLength
 }
 
 ///|
@@ -453,6 +488,8 @@ impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
     TagParseErr::SubtagTooLong => logger.write_string("SubtagTooLong")
     TagParseErr::EmptySubtag => logger.write_string("EmptySubtag")
     TagParseErr::TooManyExtlangs => logger.write_string("TooManyExtlangs")
+    TagParseErr::InvalidLanguageLength =>
+      logger.write_string("InvalidLanguageLength")
   }
 }
 

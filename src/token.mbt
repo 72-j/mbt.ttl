@@ -1,76 +1,84 @@
 ///|
-pub(all) enum TokenOrLineJump[T] {
-  Token(T)
-  LineJump
-} derive(Eq, Debug)
+// pub(all) enum TokenOrLineJump[T] {
+//   Token(T)
+//   LineJump
+// } derive(Eq, Debug)
 
 ///|
 
 ///|
 /// 带位置的 N3Token
-pub struct LocatedN3Token[T] {
-  token : T
-  range : Range
-} derive(Debug)
-impl Show for LocatedN3Token[N3Token] with fn output(
-  self : LocatedN3Token[N3Token],
+pub struct LocatedN3Token(N3Token,  Range)  derive(Debug)
+fn LocatedN3Token::into_token(self: Self) -> N3Token {
+  self.0
+}
+
+///|
+impl Show for LocatedN3Token with fn output(
+  self : LocatedN3Token,
   f : &Logger,
 ) -> Unit {
-  self.token.output(f)
-
+  self.0.output(f)
 }
+
 ///|
 /// 带位置的 TokenOrLineJump
-pub enum LocatedTokenOrLineJump[T] {
-  Token(LocatedN3Token[T])
+pub enum LocatedTokenOrLineJump {
+  LocatedN3Token(LocatedN3Token)
   LineJump(Int) // 换行位置
   End // 文件结束位置
 } derive(Debug)
 
-fn [T] LocatedTokenOrLineJump::into_token(self : LocatedTokenOrLineJump[T]) -> LocatedN3Token[T]? {
+///|
+fn LocatedTokenOrLineJump::into_token(
+  self : LocatedTokenOrLineJump,
+) -> N3Token? {
   match self {
-    LocatedTokenOrLineJump::Token(t) => Some(t)
+    LocatedTokenOrLineJump::LocatedN3Token(t) => Some(t.0)
     LocatedTokenOrLineJump::LineJump(_) => None
     LocatedTokenOrLineJump::End => None
   }
-} 
-
-
-fn [T] LocatedTokenOrLineJump::range(self : LocatedTokenOrLineJump[T]) -> Range? {
-    match self {
-      Token(t) => Some(t.range)
-      LineJump(pos) => Some(Range::{ start: pos, end: pos })
-      End => None
-    }
 }
-impl Show for LocatedTokenOrLineJump[N3Token] with fn output(
-  self : LocatedTokenOrLineJump[N3Token],
+
+///|
+fn LocatedTokenOrLineJump::range(self : LocatedTokenOrLineJump) -> Range? {
+  match self {
+    LocatedN3Token(t) => Some(t.1)
+    LineJump(pos) => Some(Range::{ start: pos, end: pos })
+    End => None
+  }
+}
+
+///|
+impl Show for LocatedTokenOrLineJump with fn output(
+  self : LocatedTokenOrLineJump,
   f : &Logger,
 ) -> Unit {
   match self {
-    LocatedTokenOrLineJump::Token(t) => t.output(f)
+    LocatedTokenOrLineJump::LocatedN3Token(t) => t.output(f)
     LocatedTokenOrLineJump::LineJump(pos) => pos.output(f)
     LocatedTokenOrLineJump::End => f.write_string("EOF")
   }
 }
-///|
-impl Show for TokenOrLineJump[N3Token] with fn output(
-  self : TokenOrLineJump[N3Token],
-  f : &Logger,
-) -> Unit {
-  match self {
-    TokenOrLineJump::Token(t) => t.output(f)
-    TokenOrLineJump::LineJump => f.write_string("\\n")
-  }
-}
 
 ///|
-pub fn[T] TokenOrLineJump::into_token(self : TokenOrLineJump[T]) -> T? {
-  match self {
-    TokenOrLineJump::Token(t) => Some(t)
-    TokenOrLineJump::LineJump => None
-  }
-}
+// impl Show for TokenOrLineJump[N3Token] with fn output(
+//   self : TokenOrLineJump[N3Token],
+//   f : &Logger,
+// ) -> Unit {
+//   match self {
+//     TokenOrLineJump::LocatedN3Token(t) => t.output(f)
+//     TokenOrLineJump::LineJump => f.write_string("\\n")
+//   }
+// }
+
+///|
+// pub fn[T] TokenOrLineJump::into_token(self : TokenOrLineJump[T]) -> T? {
+//   match self {
+//     TokenOrLineJump::LocatedN3Token(t) => Some(t)
+//     TokenOrLineJump::LineJump => None
+//   }
+// }
 
 ///|
 pub(all) enum Token {

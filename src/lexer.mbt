@@ -258,89 +258,6 @@ fn[RL] Lexer::shrink_data_by(self : Lexer[RL], shift_amount : Int) -> Unit {
 // }
 
 ///|
-pub fn[RL : TokenRecognizer] Lexer::parse_next(
-  self : Lexer[RL],
-  options : LexerOptions?,
-) -> Result[TokenOrLineJump[N3Token], TokenRecognizerError]? {
-  if self.is_ending && self.position.buffer_offset >= self.data.length() {
-    return None
-  }
-    // ✅ 记录 token 起始位置
-
-  self.current_token_start = self.current_offset()
-
-  match self.skip_whitespaces_and_comments() {
-    Some(true) => {
-      debug("DEBUG: Skipped line jump")
-
-      self.previous_position = self.position
-            // ✅ 记录 token 结束位置
-      self.current_token_end = self.current_offset()
-      return Some(Ok(TokenOrLineJump::LineJump))
-    }
-    Some(false) => () // 继续执行后续逻辑
-    None => return None // 需要更多数据
-  }
-  self.previous_position = self.position
-
-  // 获取当前剩余数据的视图
-  let view = self.data[self.position.buffer_offset:]
-
-  // 修复点：使用 match 完整处理 Option 返回值
-  match self.parser.recognize_next_token(view, self.is_ending, options) {
-    Some((consumed, result)) => {
-      debug_assert(()=>consumed > 0)
-      debug_assert(()=>self.position.buffer_offset + consumed <= self.data.length())
-      debug("Lexer returned: consumed \{consumed} \{result.unwrap()}")
-      let consumed_view = self.data[self.position.buffer_offset:self.position.buffer_offset +
-        consumed]
-
-      let (new_line_jumps, new_line_start) = Lexer::find_number_of_line_jumps_and_start_of_last_line(
-        consumed_view,
-      )
-      if new_line_jumps > 0 {
-        self.position.line_start_buffer_offset = self.position.buffer_offset +
-          new_line_start
-      }
-      self.position.buffer_offset += consumed
-      self.position.global_offset += consumed
-      self.position.global_line += new_line_jumps
-      // ✅ 记录 token 结束位置
-      self.current_token_end = self.current_offset()
-
-      Some(
-        result
-        .map(t => t)
-        .map_err(fn(e) {
-
-          // 注意：此处原代码逻辑可能有误，e.location 通常需要转换为全局位置或保持原样
-          // 这里保留原代码的占位逻辑，实际应根据 TokenRecognizerError 定义调整
-          match e {
-            TokenRecognizerError::InvalidToken(view, range) =>
-              TokenRecognizerError::InvalidToken(
-                view,
-                Range::Range(
-                  self.previous_position.global_offset + range.start,
-                  self.previous_position.global_offset + range.end,
-                ),
-              )
-            e => {
-              debug("Lexer returned an error: \{e.to_string()}")
-              TokenRecognizerError::Invalid
-            }
-          }
-          // TokenRecognizerError::InvalidToken(Range::new(0,0), "e.message")
-        }),
-      )
-    }
-    None =>
-      // 如果识别器返回 None，通常意味着需要更多数据才能确定下一个 token
-      // 或者当前没有更多 token 可识别
-      None
-  }
-}
-
-///|
 pub fn[RL] Lexer::location_from_buffer_offset_range(
   self : Lexer[RL],
   offset_range : Range,
@@ -383,24 +300,30 @@ pub fn[RL] Lexer::location_from_buffer_offset_range(
   )
 }
 
-///|
-// pub fn[RL] Lexer::last_token_location(self : Lexer[RL]) -> SourcePosition {
-//   self.text_position_from_position(self.previous_position)
-//   //  SourcePosition::new(self.text_position_from_position(self.previous_position),
-//   //  self.text_position_from_position(self.position),
-//   //  )
-// }
 
 ///|
-pub fn[RL] Lexer::current_token_location(self : Lexer[RL]) -> SourcePosition {
-  self.text_position_from_position(self.previous_position)
-  //  SourcePosition::new(self.text_position_from_position(self.previous_position),
-  //  self.text_position_from_position(self.position),
+pub fn[RL] Lexer::current_token_start_location(self : Lexer[RL]) -> SourcePosition {
+  self.position_from_position(self.previous_position)
+  //  SourcePosition::new(self.position_from_position(self.previous_position),
+  //  self.position_from_position(self.position),
   //  )
+}
+///|
+/// 获取当前 Token 的**结束**位置 (即 Lexer 指针当前位置)
+pub fn[RL] Lexer::current_token_end_location(self : Lexer[RL]) -> SourcePosition {
+  self.position_from_position(self.position)
 }
 
 ///|
-fn[RL] Lexer::text_position_from_position(
+/// 获取当前 Token 的完整范围
+pub fn[RL] Lexer::current_token_source_range(self : Lexer[RL]) -> SourceRange {
+  SourceRange::SourceRange(
+    self.current_token_start_location(),
+    self.current_token_end_location()
+  )
+}
+///|
+fn[RL] Lexer::position_from_position(
   self : Lexer[RL],
   position : Position,
 ) -> SourcePosition {
@@ -668,21 +591,21 @@ fn[T] Lexer::record_token_end(self : Lexer[T]) -> Unit {
 //   )
 // }
 
+///|
 /// 获取上一个 token 的起始位置（解析完成后）
 pub fn[RL] Lexer::last_token_start(self : Lexer[RL]) -> SourcePosition {
-  self.text_position_from_position(self.previous_position)
+  self.position_from_position(self.previous_position)
 }
 
+///|
 /// 获取上一个 token 的结束位置
 pub fn[RL] Lexer::last_token_end(self : Lexer[RL]) -> SourcePosition {
-  self.text_position_from_position(self.position)
+  self.position_from_position(self.position)
 }
 
+///|
 pub fn[RL] Lexer::last_token_range(self : Lexer[RL]) -> SourceRange {
-  SourceRange(
-   self.last_token_start(),
-   self.last_token_end(),
-  )
+  SourceRange(self.last_token_start(), self.last_token_end())
 }
 /// 获取当前 token 的起始位置（解析进行中）
 // pub fn[RL] Lexer::current_token_start_pos(self : Lexer[RL]) -> SourcePosition {

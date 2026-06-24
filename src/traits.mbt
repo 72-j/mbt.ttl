@@ -218,7 +218,7 @@ pub trait TokenRecognizer {
     data : ArrayView[Byte],
     is_ending : Bool,
     options : LexerOptions?,
-  ) -> (Int, Result[TokenOrLineJump[N3Token], TokenRecognizerError])?
+  ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])?
 }
 
 ///|
@@ -227,7 +227,7 @@ pub trait RuleRecognizer {
   fn error_recovery_state(Self) -> Self
   fn recognize_next(
     Self,
-    token : TokenOrLineJump[N3Token],
+    token : LocatedTokenOrLineJump,
     context : RdfContext,
     results : Array[RdfStatement],
     errors : Array[RuleRecognizerError],
@@ -239,9 +239,7 @@ pub trait RuleRecognizer {
     errors : Array[RuleRecognizerError],
   ) -> Unit
   fn lexer_options(context : RdfContext) -> LexerOptions?
-  fn[DL: DebugLogger] debug_logger(Self, debug_logger: DL) ->  Unit
-
-
+  fn[DL : DebugLogger] debug_logger(Self, debug_logger : DL) -> Unit
 }
 
 // trait From {

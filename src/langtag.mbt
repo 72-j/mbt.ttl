@@ -9,6 +9,7 @@ pub struct LanguageTag {
 enum State {
   Start
   AfterLanguage
+  AfterLongLanguage // 主语言 4-8 位，不允许 Extlang
   AfterExtLang
   AfterScript
   AfterRegion
@@ -199,6 +200,40 @@ pub fn LanguageTag::parse_and_normalize(
 }
 
 ///|
+fn parse_primary_language(subtag : String) -> Result[String, TagParseErr] {
+  let len = subtag.length()
+
+  // 快速长度过滤
+  if len < 2 || len > 8 {
+    return Err(TagParseErr::InvalidLanguageLength)
+  }
+
+  // 检查是否全为字母
+  if !is_alphabetic(subtag) {
+    return Err(TagParseErr::ForbiddenChar)
+  }
+
+  // 根据长度分类
+  match len {
+    2 =>
+      // 2字母语言代码 (ISO 639-1)
+      // 可选：在此处查表验证是否为注册代码，若需宽松模式则直接通过
+      Ok(subtag.to_lower())
+    3 =>
+      // 3字母语言代码 (ISO 639-2/3)
+      // 可选：在此处查表验证
+      Ok(subtag.to_lower())
+    4..=8 =>
+      // 4-8字母语言代码 (Registered languages)
+      // 标准规定只要格式符合即视为 Well-formed，无需查表
+      Ok(subtag.to_lower())
+    _ =>
+      // 理论上前面已经过滤了 <2 和 >8，这里是防御性编程
+      Err(TagParseErr::InvalidLanguageLength)
+  }
+}
+
+///|
 impl Show for LanguageTag with fn to_string(self : LanguageTag) -> String {
   self.tag
 }
@@ -317,23 +352,22 @@ fn calculate_positions(
     }
 
     match state {
-      State::Start => {
-        // 主语言：2-3 字母 或 5-8 字母
-        let len = subtag.length()
-
-        // 修复：明确拒绝长度为 4 的主语言子标签
-        if len == 4 || len < 2 || !is_alphabetic(subtag) {
-          return Err(TagParseErr::InvalidLanguage)
+      State::Start =>
+        // 使用专用的解析函数处理主语言子标签
+        match parse_primary_language(subtag) {
+          Ok(_normalized_lang) => {
+            language_end = end
+            let len = subtag.length()
+            // 2-3 字母后可能跟扩展语言 (extlang)
+            // 4-8 字母后不能跟扩展语言，直接进入脚本/地区判断阶段
+            state = if len <= 3 {
+              State::AfterLanguage
+            } else {
+              State::AfterLongLanguage // 4-8 位主语言
+            }
+          }
+          Err(e) => return Err(e)
         }
-
-        language_end = end
-        // 2-3 字母后可能跟扩展语言，5-8 字母后直接跟脚本/地区等
-        state = if len < 4 {
-          State::AfterLanguage
-        } else {
-          State::AfterExtLang // 实际上 5-8 字母后不应有扩展语言，但状态机后续会校验
-        }
-      }
       State::InPrivateUse(_expected) => {
         // 私有使用内容
         if subtag.is_empty() || subtag.length() > 8 {
@@ -388,7 +422,11 @@ fn calculate_positions(
         }
 
         // 5. 脚本
-        if (state == State::AfterLanguage || state == State::AfterExtLang) &&
+        if (
+            state == State::AfterLanguage ||
+            state == State::AfterExtLang ||
+            state == State::AfterLongLanguage
+          ) &&
           subtag.length() == 4 &&
           is_alphabetic(subtag) {
           script_end = end
@@ -400,6 +438,7 @@ fn calculate_positions(
         if (
             state == State::AfterLanguage ||
             state == State::AfterExtLang ||
+            state == State::AfterLongLanguage ||
             state == State::AfterScript
           ) &&
           (
@@ -560,11 +599,31 @@ fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
 ///|
 struct ExtensionsIterator {
   input : String
+  subtags : Array[String]
+  index : Int
 }
 
 ///|
 fn ExtensionsIterator::ExtensionsIterator(input : String) -> ExtensionsIterator {
-  { input, }
+  let subtags = if input.is_empty() { [] } else { split_to_strings(input, '-') }
+  { input, subtags, index: 0 }
+}
+
+///|
+pub fn ExtensionsIterator::next(
+  self : ExtensionsIterator,
+) -> (String?, ExtensionsIterator) {
+  if self.index >= self.subtags.length() {
+    (None, self)
+  } else {
+    let tag = self.subtags[self.index]
+    let next_iter = {
+      input: self.input,
+      subtags: self.subtags,
+      index: self.index + 1,
+    }
+    (Some(tag), next_iter)
+  }
 }
 
 ///|

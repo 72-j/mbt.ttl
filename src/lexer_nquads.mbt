@@ -5,7 +5,7 @@ pub struct NQuadsRecognizer {
   predicates : Array[NamedNodeRef]
   objects : Array[TermRef]
   lenient : Bool
- mut debug_logger : &DebugLogger
+  mut debug_logger : &DebugLogger
 }
 
 ///|
@@ -27,21 +27,23 @@ enum NQuadsState {
   RecoverToLineJump
   AfterQuotedTriple
 }
+
+///|
 impl Show for NQuadsState with fn output(self, logger : &Logger) -> Unit {
   match self {
     NQuadsState::ExpectSubject => logger.write("Expecting subject")
     NQuadsState::ExpectPredicate => logger.write("Expecting predicate")
     NQuadsState::ExpectedObject => logger.write("Expecting object")
     NQuadsState::ExpectDot => logger.write("Expecting dot")
-    NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~) => logger.write("Expecting literal annotation \{value} ")
-    NQuadsState::ExpectLiteralDatatype(value~) => logger.write("Expecting literal datatype \{value}")
+    NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~) =>
+      logger.write("Expecting literal annotation \{value} ")
+    NQuadsState::ExpectLiteralDatatype(value~) =>
+      logger.write("Expecting literal datatype \{value}")
     NQuadsState::ExpectLineJump => logger.write("Expecting line jump")
     NQuadsState::RecoverToLineJump => logger.write("Recovering to line jump")
     NQuadsState::AfterQuotedTriple => logger.write("After quoted triple")
-    NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple => logger.write("Expecting possible graph or end of quoted triple")
-
-
-
+    NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple =>
+      logger.write("Expecting possible graph or end of quoted triple")
   }
 }
 
@@ -56,7 +58,9 @@ impl RuleRecognizer for NQuadsRecognizer with fn error_recovery_state(
   self.objects.clear()
   self
 }
-impl RuleRecognizer for NQuadsRecognizer with fn[DL: DebugLogger] debug_logger(
+
+///|
+impl RuleRecognizer for NQuadsRecognizer with fn[DL : DebugLogger] debug_logger(
   self : NQuadsRecognizer,
   debug_logger : DL,
 ) {
@@ -66,7 +70,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn[DL: DebugLogger] debug_logger(
 ///|
 impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
   self : NQuadsRecognizer,
-  token : TokenOrLineJump[N3Token],
+  token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
@@ -78,21 +82,23 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
 
   // 获取当前状态的字符串表示用于日志（假设 NQuadsState 实现了 ToString 或者手动匹配）
   // 这里为了通用性，我们直接在每个分支记录状态名称
-  
+
   match self.stack.pop().unwrap_or(NQuadsState::ExpectSubject) {
     NQuadsState::ExpectSubject => {
-      self.debug_logger.info(
-        "Entering ExpectSubject with token: \{token}",
-      )
+      self.debug_logger.info("Entering ExpectSubject with token: \{token}")
       self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-      
+
       match token {
-        TokenOrLineJump::Token(N3Token::Iri(s)) => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::Iri(s), _)
+        ) => {
           self.subjects.push(NamedNodeRef::new_unchecked(s).as_enum())
           self.stack.push(NQuadsState::ExpectPredicate)
           self
         }
-        TokenOrLineJump::Token(N3Token::BlankNodeLabel(s)) => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::BlankNodeLabel(s), _)
+        ) => {
           self.subjects.push(BlankNodeRef::new_unchecked(s).as_enum())
           self.stack.push(NQuadsState::ExpectPredicate)
           self
@@ -108,13 +114,13 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       }
     }
     NQuadsState::ExpectPredicate => {
-      self.debug_logger.info(
-        "Entering ExpectPredicate with token: \{token}",
-      )
+      self.debug_logger.info("Entering ExpectPredicate with token: \{token}")
       self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
       match token {
-        TokenOrLineJump::Token(N3Token::Iri(p)) => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::Iri(p), _)
+        ) => {
           self.predicates.push(NamedNodeRef::new_unchecked(p))
           self.stack.push(NQuadsState::ExpectedObject)
           self
@@ -130,31 +136,37 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       }
     }
     NQuadsState::ExpectedObject => {
-      self.debug_logger.info(
-        "Entering ExpectedObject with token: \{token}",
-      )
+      self.debug_logger.info("Entering ExpectedObject with token: \{token}")
       self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
       match token {
-        TokenOrLineJump::Token(N3Token::Iri(o)) => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::Iri(o), _)
+        ) => {
           self.objects.push(
             TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(o)),
           )
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
           self
         }
-        TokenOrLineJump::Token(N3Token::BlankNodeLabel(o)) => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::BlankNodeLabel(o), _)
+        ) => {
           self.objects.push(NamedNodeRef::new_unchecked(o).as_term())
           self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
           self
         }
-        TokenOrLineJump::Token(N3Token::String(value)) => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::String(value), _)
+        ) => {
           self.stack.push(
             NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~),
           )
           self
         }
-        TokenOrLineJump::Token(N3Token::Punctuation("<<(")) => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::Punctuation("<<("), _)
+        ) => {
           self.stack.push(NQuadsState::AfterQuotedTriple)
           self.stack.push(NQuadsState::ExpectSubject)
           self
@@ -176,8 +188,9 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
       match token {
-        TokenOrLineJump::Token(N3Token::LangTag(language~, direction~)) if direction
-          is Some(_) => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::LangTag(language~, direction~), _)
+        ) if direction is Some(_) => {
           let dir = match direction {
             Some(d) => d
             None => BaseDirection::Ltr
@@ -200,13 +213,14 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
               self
             }
             Err(_e) => {
- errors.push(RuleRecognizerError::InvalidLanguageTag)
+              errors.push(RuleRecognizerError::InvalidLanguageTag)
               self.error_recovery_state()
             }
           }
         }
-        TokenOrLineJump::Token(N3Token::LangTag(language~, direction~)) if direction
-          is None => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::LangTag(language~, direction~), _)
+        ) if direction is None => {
           let lang_tag = try
             LanguageTag::from_str(language.to_lower()) |> Ok
           catch {
@@ -233,7 +247,9 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             }
           }
         }
-        TokenOrLineJump::Token(N3Token::Punctuation("^^")) => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::Punctuation("^^"), _)
+        ) => {
           self.stack.push(NQuadsState::ExpectLiteralDatatype(value~))
           self
         }
@@ -253,7 +269,9 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
       match token {
-        TokenOrLineJump::Token(N3Token::Iri(d)) => {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::Iri(d), _)
+        ) => {
           if !self.lenient && d == lwLANG_STRING.to_string() {
             errors.push(
               RuleRecognizerError::SyntaxError(
@@ -293,68 +311,117 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         "Entering ExpectPossibleGraphOrEndOfQuotedTriple with token: \{token}",
       )
       self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-      if self.stack.is_empty() {
-        match token {
-          TokenOrLineJump::Token(N3Token::Iri(g)) if ctx.with_graph_name => {
-            self.emit_quad(results, errors, GraphNameRef::new_unchecked(g))
-            self.stack.push(NQuadsState::ExpectDot)
-            self
-          }
-          TokenOrLineJump::Token(N3Token::BlankNodeLabel(_g)) if ctx.with_graph_name => {
-            self.emit_quad(results, errors, GraphNameRef::DefaultGraph)
-            self.stack.push(NQuadsState::ExpectDot)
-            self
-          }
-          _ => {
-            self.emit_quad(results, errors, GraphName::DefaultGraph.as_ref())
-            self.stack.push(NQuadsState::ExpectDot)
-            self.recognize_next(
-              token,
-              RdfContext::NQuadsRecognizerContext(ctx),
-              results,
-              errors,
-            )
-          }
-        }
-      } else if token == TokenOrLineJump::Token(N3Token::Punctuation(")>>")) {
-        self
-      } else {
-        self.error(
-          ctx,
-          results,
-          errors,
-          token,
-          RuleRecognizerError::SyntaxError(
-            "Expecting the end of a quoted triple ')>>'",
-            SourcePosition::default(),
+      match (self.stack.is_empty(), token) {
+        (
+          true,
+          LocatedTokenOrLineJump::LocatedN3Token(
+            LocatedN3Token(N3Token::Iri(g), _)
           ),
-        )
+        ) if ctx.with_graph_name => {
+          self.emit_quad(results, errors, GraphNameRef::new_unchecked(g))
+          self.stack.push(NQuadsState::ExpectDot)
+          self
+        }
+        (
+          true,
+          LocatedTokenOrLineJump::LocatedN3Token(
+            LocatedN3Token(N3Token::BlankNodeLabel(_g), _)
+          ),
+        ) if ctx.with_graph_name => {
+          self.emit_quad(results, errors, GraphNameRef::DefaultGraph)
+          self.stack.push(NQuadsState::ExpectDot)
+          self
+        }
+        (true, _) => {
+          self.emit_quad(results, errors, GraphName::DefaultGraph.as_ref())
+          self.stack.push(NQuadsState::ExpectDot)
+          self.recognize_next(
+            token,
+            RdfContext::NQuadsRecognizerContext(ctx),
+            results,
+            errors,
+          )
+        }
+        (
+          false,
+          LocatedTokenOrLineJump::LocatedN3Token(
+            LocatedN3Token(N3Token::Punctuation(")>>"), _)
+          ),
+        ) => return self
+        (false, _) =>
+          self.error(
+            ctx,
+            results,
+            errors,
+            token,
+            RuleRecognizerError::SyntaxError(
+              "Expecting the end of a quoted triple ')>>'",
+              SourcePosition::default(),
+            ),
+          )
       }
     }
+    // if self.stack.is_empty() {
+    //   match token {
+    //     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(g), _)) if ctx.with_graph_name => {
+    //       self.emit_quad(results, errors, GraphNameRef::new_unchecked(g))
+    //       self.stack.push(NQuadsState::ExpectDot)
+    //       self
+    //     }
+    //     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::BlankNodeLabel(_g), _)) if ctx.with_graph_name => {
+    //       self.emit_quad(results, errors, GraphNameRef::DefaultGraph)
+    //       self.stack.push(NQuadsState::ExpectDot)
+    //       self
+    //     }
+    //     _ => {
+    //       self.emit_quad(results, errors, GraphName::DefaultGraph.as_ref())
+    //       self.stack.push(NQuadsState::ExpectDot)
+    //       self.recognize_next(
+    //         token,
+    //         RdfContext::NQuadsRecognizerContext(ctx),
+    //         results,
+    //         errors,
+    //       )
+    //     }
+    //   }
+    // } else if token == LocatedTokenOrLineJump::LocatedN3Token(N3Token::Punctuation(")>>")) {
+    //   self
+    // } else {
+    //   self.error(
+    //     ctx,
+    //     results,
+    //     errors,
+    //     token,
+    //     RuleRecognizerError::SyntaxError(
+    //       "Expecting the end of a quoted triple ')>>'",
+    //       SourcePosition::default(),
+    //     ),
+    //   )
+    // }
     NQuadsState::ExpectDot => {
-      self.debug_logger.info(
-        "Entering ExpectDot with token: \{token}",
-      )
+      self.debug_logger.info("Entering ExpectDot with token: \{token}")
       self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-      if token == TokenOrLineJump::Token(N3Token::Punctuation(".")) {
-        self.stack.push(NQuadsState::ExpectLineJump)
-        self
-      } else {
-        errors.push(
-          RuleRecognizerError::SyntaxError(
-            "Quads must be followed by a dot",
-            SourcePosition::default(),
-          ),
-        )
-        self
+      match token {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::Punctuation("."), _)
+        ) => {
+          self.stack.push(NQuadsState::ExpectLineJump)
+          self
+        }
+        _ => {
+          errors.push(
+            RuleRecognizerError::SyntaxError(
+              "Quads must be followed by a dot",
+              SourcePosition::default(),
+            ),
+          )
+          self
+        }
       }
     }
     NQuadsState::ExpectLineJump => {
-      self.debug_logger.info(
-        "Entering ExpectLineJump with token: \{token}",
-      )
+      self.debug_logger.info("Entering ExpectLineJump with token: \{token}")
       self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
       errors.push(
@@ -366,9 +433,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       self
     }
     NQuadsState::AfterQuotedTriple => {
-      self.debug_logger.info(
-        "Entering AfterQuotedTriple with token: \{token}",
-      )
+      self.debug_logger.info("Entering AfterQuotedTriple with token: \{token}")
       self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
       let subject_opt = self.subjects.pop()
@@ -394,18 +459,26 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       }
     }
     NQuadsState::RecoverToLineJump => {
-      self.debug_logger.info(
-        "Entering RecoverToLineJump with token: \{token}",
-      )
+      self.debug_logger.info("Entering RecoverToLineJump with token: \{token}")
       self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-      if token != TokenOrLineJump::LineJump {
-        self.stack.push(NQuadsState::RecoverToLineJump)
+      // if token != LocatedTokenOrLineJump::LineJump {
+      //   self.stack.push(NQuadsState::RecoverToLineJump)
+      // }
+      // self
+      match token {
+        LocatedTokenOrLineJump::LineJump(_) =>
+          // 是 LineJump，不做任何事
+          return self
+        _ => {
+          self.stack.push(NQuadsState::RecoverToLineJump)
+          self
+        }
       }
-      self
     }
   }
 }
+
 ///|
 impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
   self : NQuadsRecognizer,
@@ -454,7 +527,6 @@ pub fn NQuadsRecognizer::new_parser(
   with_graph_name : Bool,
   lenient : Bool,
   debug_logger? : &DebugLogger = make_mute_logger(),
-
 ) -> Parser[RdfLexer, NQuadsRecognizer] {
   let initial_context = NQuadsRecognizerContext::{
     with_graph_name,
@@ -470,8 +542,7 @@ pub fn NQuadsRecognizer::new_parser(
       MAX_BUFFER_SIZE,
       Some(b"#"),
       0,
-      0
-
+      0,
     ),
     {
       stack: [NQuadsState::ExpectSubject],
@@ -491,20 +562,21 @@ fn NQuadsRecognizer::error(
   context : NQuadsRecognizerContext,
   results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
-  token : TokenOrLineJump[N3Token],
+  token : LocatedTokenOrLineJump,
   msg : RuleRecognizerError,
 ) -> NQuadsRecognizer {
   errors.push(msg)
   let this = self.error_recovery_state()
   match token {
-    TokenOrLineJump::Token(_) => this
-    TokenOrLineJump::LineJump =>
+    LocatedTokenOrLineJump::LocatedN3Token(_) => this
+    LocatedTokenOrLineJump::LineJump(_) =>
       this.recognize_next(
         token,
         RdfContext::NQuadsRecognizerContext(context),
         results,
         errors,
       )
+    LocatedTokenOrLineJump::End => this
   }
 }
 
