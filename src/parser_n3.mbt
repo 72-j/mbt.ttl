@@ -307,7 +307,7 @@ pub async fn[RL : TokenRecognizer] AsyncReaderN3Parser::next(
         RdfStatement::N3Quad(n3quad) => n3quad
       }
     })
-    .map_err(fn(e) { TurtleError::InvalidCharacter(e.message()) }) // 根据实际错误类型调整
+    .map_err(fn(e) { TurtleError::InvalidCharacter(e.to_string()) }) // 根据实际错误类型调整
   })
 }
 

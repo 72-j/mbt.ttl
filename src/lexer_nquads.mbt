@@ -276,7 +276,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "The datatype of a literal without a language tag must not be rdf:langString",
-                SourcePosition::default(),
+                Range::default(),
               ),
             )
           }
@@ -284,7 +284,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "The datatype of a literal without a base direction must not be rdf:dirLangString",
-                SourcePosition::default(),
+                Range::default(),
               ),
             )
           }
@@ -356,7 +356,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             token,
             RuleRecognizerError::SyntaxError(
               "Expecting the end of a quoted triple ')>>'",
-              SourcePosition::default(),
+              Range::default(),
             ),
           )
       }
@@ -394,7 +394,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
     //     token,
     //     RuleRecognizerError::SyntaxError(
     //       "Expecting the end of a quoted triple ')>>'",
-    //       SourcePosition::default(),
+    //       Range::default(),
     //     ),
     //   )
     // }
@@ -413,7 +413,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Quads must be followed by a dot",
-              SourcePosition::default(),
+              Range::default(),
             ),
           )
           self
@@ -427,7 +427,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Only a single triple or quad can be written in a line, found \{token.to_string()}",
-          SourcePosition::default(),
+          Range::default(),
         ),
       )
       self
@@ -451,7 +451,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: incomplete quoted triple on stack",
-              SourcePosition::default(),
+              Range::default(),
             ),
           )
           self.error_recovery_state()
@@ -504,7 +504,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Unexpected end",
-          SourcePosition::default(),
+          Range::default(),
         ),
       )
   }
@@ -565,6 +565,7 @@ fn NQuadsRecognizer::error(
   token : LocatedTokenOrLineJump,
   msg : RuleRecognizerError,
 ) -> NQuadsRecognizer {
+
   errors.push(msg)
   let this = self.error_recovery_state()
   match token {
@@ -606,7 +607,7 @@ fn NQuadsRecognizer::emit_quad(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: incomplete quad on stack during emission",
-          SourcePosition::default(),
+          Range::default(),
         ),
       )
     // 可以选择在此处调用 self.error_recovery_state()，但这会改变 self

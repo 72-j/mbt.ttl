@@ -82,14 +82,12 @@ impl Show for IriError with fn output(self : IriError, logger : &Logger) -> Unit
   let pos = self.position()
   let err_kind = self.err_kind()
   if pos >= 0 {
-    logger.write_string("Error: ")
     logger.write_string(err_kind)
     logger.write_string(" - ")
     logger.write_string(msg)
     logger.write_string(" at position ")
     logger.write_string(pos.to_string())
   } else {
-    logger.write_string("Error: ")
     logger.write_string(err_kind)
     logger.write_string(" - ")
     logger.write_string(msg)
@@ -185,14 +183,12 @@ impl Show for TokenRecognizerError with fn output(
   let pos = self.range()
   let err_kind = self.err_kind()
   if pos.start >= 0 {
-    logger.write_string("Error: ")
     logger.write_string(err_kind)
     logger.write_string(" - ")
     logger.write_string(pos.to_string())
     logger.write_string(": ")
     logger.write_string(msg)
   } else {
-    logger.write_string("Error: ")
     logger.write_string(err_kind)
     logger.write_string(" - ")
     logger.write_string(msg)
@@ -212,7 +208,7 @@ pub impl Show for Range with fn output(self, logger : &Logger) -> Unit {
 
 ///|
 pub(all) suberror RuleRecognizerError {
-  SyntaxError(String, SourcePosition)
+  SyntaxError(String, Range)
   BlankNodeOrIriError
   PredicateNotAnIRI
   LiteralDatatypeError
@@ -270,7 +266,7 @@ fn SourceRange::SourceRange(
   { start, end }
 }
 
-///|
+
 impl Show for SourceRange with fn output(self, logger : &Logger) -> Unit {
   logger.write_string("[")
   logger.write_string(self.start.to_string())
@@ -282,40 +278,28 @@ impl Show for SourceRange with fn output(self, logger : &Logger) -> Unit {
 ///|
 pub fn RuleRecognizerError::text_range(
   self : RuleRecognizerError,
-) -> SourceRange {
+) -> Range {
   match self {
     RuleRecognizerError::SyntaxError(_, pos) =>
-      SourceRange::SourceRange(pos, pos)
+      pos
     RuleRecognizerError::BlankNodeOrIriError =>
-      SourceRange::SourceRange(
-        SourcePosition::default(),
-        SourcePosition::default(),
-      )
+      Range::default()
     RuleRecognizerError::PredicateNotAnIRI =>
-      SourceRange::SourceRange(
-        SourcePosition::default(),
-        SourcePosition::default(),
-      )
+      Range::default()
+
+     
     RuleRecognizerError::TripleMissingDot =>
-      SourceRange::SourceRange(
-        SourcePosition::default(),
-        SourcePosition::default(),
-      )
+      Range::default()
+
     RuleRecognizerError::LiteralDatatypeError =>
-      SourceRange::SourceRange(
-        SourcePosition::default(),
-        SourcePosition::default(),
-      )
+      Range::default()
+
     RuleRecognizerError::InvalidLanguageTag =>
-      SourceRange::SourceRange(
-        SourcePosition::default(),
-        SourcePosition::default(),
-      )
+      Range::default()
+
     RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
-      SourceRange::SourceRange(
-        SourcePosition::default(),
-        SourcePosition::default(),
-      )
+      Range::default()
+
   }
 }
 
@@ -363,7 +347,6 @@ pub impl Show for RuleRecognizerError with fn output(
   let pos = self.text_range()
   let err_kind = self.err_kind()
   // if pos.start >= 0 {
-  logger.write_string("Error: ")
   logger.write_string(err_kind)
   logger.write_string(" - ")
   logger.write_string(msg)
@@ -374,11 +357,11 @@ pub impl Show for RuleRecognizerError with fn output(
 
 ///|
 pub(all) suberror TurtleError {
-  TurtleParseError(String, SourcePosition)
-  TurtleSyntaxError(String, SourcePosition)
+  TurtleParseError(String, Range)
+  TurtleSyntaxError(String, Range)
   InvalidEscapeSequence
   InvalidCharacter(String)
-  InvalidToken(SourcePosition, String)
+  InvalidToken(SourcePosition , String)
 }
 
 ///|
@@ -407,7 +390,6 @@ pub impl ErrOut for TurtleError with fn err_kind(self : TurtleError) -> String {
 impl Show for TurtleError with fn output(self, logger : &Logger) -> Unit {
   let msg = self.message()
   let err_kind = self.err_kind()
-  logger.write_string("Error: ")
   logger.write_string(err_kind)
   logger.write_string(" - ")
   logger.write_string(msg)

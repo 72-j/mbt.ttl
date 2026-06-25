@@ -52,7 +52,7 @@
 //     let success = match result {
 //       Some(Ok(_)) => !is_bad_test // 好文件应解析成功
 //       Some(Err(e)) => {
-//         debug(e.message())
+//         debug(e.to_string())
 //         is_bad_test
 //       } // 坏文件应解析失败
 //       None => false // 无输出视为失败
@@ -136,7 +136,7 @@
 //       Some(Ok(_)) => !is_bad_test // 好文件应能解析出内容
 //       Some(Err(e)) => {
 //         // 如果是坏文件，解析出错误是预期的；如果是好文件，解析出错误则是失败
-//         debug("File: \{file}, Error: \{e.message()}")
+//         debug("File: \{file}, Error: \{e.to_string()}")
 //         is_bad_test
 //       }
 //       None =>

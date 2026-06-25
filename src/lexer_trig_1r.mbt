@@ -130,8 +130,8 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   Err(e) =>
                     errors.push(
                       RuleRecognizerError::SyntaxError(
-                        "Invalid BASE IRI: \{e.message()}",
-                        SourcePosition::default(),
+                        "Invalid BASE IRI: \{e.to_string()}",
+                        Range::default(),
                       ),
                     )
                 }
@@ -438,7 +438,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: subject stack is empty",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -834,7 +834,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         "Internal error: subject stack empty",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                     return self
@@ -846,7 +846,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         "Internal error: predicate stack empty",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                     return self
@@ -858,7 +858,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         "Internal error: object stack empty",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                     return self
@@ -882,7 +882,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         "Internal error: subject stack empty",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                     return self
@@ -894,7 +894,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         "Internal error: predicate stack empty",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                     return self
@@ -906,7 +906,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         "Internal error: object stack empty",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                     return self
@@ -919,7 +919,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                       errors.push(
                         RuleRecognizerError::SyntaxError(
                           "Internal error: reifier stack empty",
-                          SourcePosition::default(),
+                          Range::default(),
                         ),
                       )
                       return self
@@ -1292,7 +1292,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         "Internal error: subject stack is empty",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                     return self
@@ -1363,7 +1363,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: subject stack is empty",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -1438,7 +1438,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                         errors.push(
                           RuleRecognizerError::SyntaxError(
                             e.to_string(),
-                            SourcePosition::default(),
+                            Range::default(),
                           ),
                         )
                         return self
@@ -1496,7 +1496,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   errors.push(
                     RuleRecognizerError::SyntaxError(
                       "The datatype of a literal without a language tag must not be rdf:langString",
-                      SourcePosition::default(),
+                      Range::default(),
                     ),
                   )
                 }
@@ -1504,7 +1504,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   errors.push(
                     RuleRecognizerError::SyntaxError(
                       "The datatype of a literal without a base direction must not be rdf:dirLangString",
-                      SourcePosition::default(),
+                      Range::default(),
                     ),
                   )
                 }
@@ -1538,7 +1538,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                       errors.push(
                         RuleRecognizerError::SyntaxError(
                           "The datatype of a literal without a language tag must not be rdf:langString",
-                          SourcePosition::default(),
+                          Range::default(),
                         ),
                       )
                     }
@@ -1546,7 +1546,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                       errors.push(
                         RuleRecognizerError::SyntaxError(
                           "The datatype of a literal without a base direction must not be rdf:dirLangString",
-                          SourcePosition::default(),
+                          Range::default(),
                         ),
                       )
                     }
@@ -1581,7 +1581,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: reifier stack empty",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -1611,7 +1611,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: subject stack is empty",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -1648,7 +1648,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: subject stack empty in TripleTermEnd",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -1660,7 +1660,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: predicate stack empty in TripleTermEnd",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -1672,7 +1672,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: object stack empty in TripleTermEnd",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -1714,7 +1714,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: subject stack empty",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -1726,7 +1726,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: predicate stack empty",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -1738,7 +1738,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: object stack empty",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -2246,6 +2246,11 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 // 谓词是当前 token 之前已经设置好的
                 // 直接进入 ObjectsList 处理宾语
                 //  self.in_collection = true 
+                self.debug_logger.info(
+                  "WrappedGraphOrPredicateObjectList: Collection start",
+                )
+                // 必须推入 ObjectCollectionBeginning 来初始化集合的空白节点和 rdf:first/rdf:rest 结构
+                // self.stack.push(TriGState::ObjectCollectionBeginning)
                 self.stack.push(TriGState::ObjectsList)
                 self
               }

@@ -178,7 +178,7 @@ pub async fn[RL : TokenRecognizer] AsyncReaderTriGParser::next(
           }
       }
     })
-    .map_err(fn(e) { TurtleError::InvalidCharacter(e.message()) }) // 根据实际错误类型调整
+    .map_err(fn(e) { TurtleError::InvalidCharacter(e.to_string()) }) // 根据实际错误类型调整
   })
 }
 
@@ -301,7 +301,7 @@ pub fn[RL : TokenRecognizer] LowLevelTriGParser::parse_next(
           }
       }
     })
-    .map_err(fn(e) { TurtleError::InvalidCharacter(e.message()) }) // 根据实际错误类型调整
+    .map_err(fn(e) { TurtleError::InvalidCharacter(e.to_string()) }) // 根据实际错误类型调整
   })
 }
 

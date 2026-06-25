@@ -60,7 +60,7 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
         Err(
           TurtleError::InvalidToken(
             self.lexer.last_token_start(),
-            "- \{self.lexer.last_token_source()}\{e.message()} - TOKEN is not allowed here",
+            "- \{self.lexer.last_token_source()}\{e.to_string()} - TOKEN is not allowed here",
           ),
         ),
       )
@@ -100,7 +100,7 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
           Err(
             TurtleError::InvalidToken(
               self.lexer.last_token_start(),
-              "- \{self.lexer.last_token_source()} \{e.message()}- TOKEN is not allowed here.",
+              "- \{self.lexer.last_token_source()} \{e.to_string()}- TOKEN is not allowed here.",
             ),
           ),
         )

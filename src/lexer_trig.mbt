@@ -210,7 +210,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Triples should be followed by a dot",
-          SourcePosition::default(),
+          Range::default(),
         ),
       )
     }
@@ -218,7 +218,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Unexpected end",
-          SourcePosition::default(),
+          Range::default(),
         ),
       )
   }
@@ -247,7 +247,7 @@ pub fn TriGRecognizer::new_parser(
 ) -> Parser[RdfLexer, TriGRecognizer] {
   Parser::Parser(
     Lexer::Lexer(
-      RdfLexer::RdfLexer(RdfLexerMode::Turtle, lenient),
+      RdfLexer::RdfLexer(RdfLexerMode::NTriples, lenient),
       data,
       is_ending,
       MIN_BUFFER_SIZE,
@@ -281,7 +281,7 @@ fn TriGRecognizer::error(
   errors : Array[RuleRecognizerError],
   msg : String,
 ) -> TriGRecognizer {
-  errors.push(RuleRecognizerError::SyntaxError(msg, SourcePosition::default()))
+  errors.push(RuleRecognizerError::SyntaxError(msg, Range::default()))
   self.stack.clear()
   self.cur_subject.clear()
   self.cur_predicate.clear()

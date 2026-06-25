@@ -69,7 +69,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "A dot is expected at the end of N3 statements",
-                SourcePosition::default(),
+                Range::default(),
               ),
             )
           }
@@ -94,7 +94,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors,
                 RuleRecognizerError::SyntaxError(
                   "The BASE keyword should be followed by an IRI",
-                  SourcePosition::default(),
+                  Range::default(),
                 ),
               )
             }
@@ -117,7 +117,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                   errors,
                   RuleRecognizerError::SyntaxError(
                     "The PREFIX keyword should be followed by a prefix like 'ex:'",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
             }
@@ -143,7 +143,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors,
                 RuleRecognizerError::SyntaxError(
                   "The PREFIX declaration should be followed by a prefix and its value as an IRI",
-                  SourcePosition::default(),
+                  Range::default(),
                 ),
               )
             }
@@ -274,7 +274,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: terms stack empty (object)",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -286,7 +286,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: terms stack empty (subject)",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -298,7 +298,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: predicates stack empty",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -417,7 +417,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: terms stack empty in AfterRegularVerb",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -438,7 +438,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: terms stack empty in AfterInvertedVerb",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -461,7 +461,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         "Internal error: terms stack empty in AfterVerbIs",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                     return self
@@ -475,7 +475,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                   errors,
                   RuleRecognizerError::SyntaxError(
                     "The keyword 'is' should be followed by a predicate then by the keyword 'of'",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
             }
@@ -521,7 +521,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: terms stack empty (predicate) in PathAfterIndicator",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -533,7 +533,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: terms stack empty (previous) in PathAfterIndicator",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -585,7 +585,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                           errors,
                           RuleRecognizerError::SyntaxError(
                             e,
-                            SourcePosition::default(),
+                            Range::default(),
                           ),
                         )
                     }
@@ -594,7 +594,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                       errors,
                       RuleRecognizerError::SyntaxError(
                         "Invalid context for prefix resolution",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                 }
@@ -698,7 +698,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                   errors,
                   RuleRecognizerError::SyntaxError(
                     "TOKEN is not a valid RDF value",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
             }
@@ -743,7 +743,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "blank node property lists should end with a ']'",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
             }
@@ -787,7 +787,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                           errors,
                           RuleRecognizerError::SyntaxError(
                             e,
-                            SourcePosition::default(),
+                            Range::default(),
                           ),
                         )
                     }
@@ -796,7 +796,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                       errors,
                       RuleRecognizerError::SyntaxError(
                         "Invalid context for prefix resolution",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                 }
@@ -805,7 +805,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                   errors,
                   RuleRecognizerError::SyntaxError(
                     "The '[ id' construction should be followed by an IRI",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
             }
@@ -842,7 +842,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: terms stack empty (value) in CollectionPossibleEnd",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -854,7 +854,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "Internal error: terms stack empty (old) in CollectionPossibleEnd",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 return self
@@ -899,7 +899,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                     errors,
                     RuleRecognizerError::SyntaxError(
                       "rdf:dirLangString is not supported in N3",
-                      SourcePosition::default(),
+                      Range::default(),
                     ),
                   )
                 }
@@ -969,7 +969,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                           errors,
                           RuleRecognizerError::SyntaxError(
                             e,
-                            SourcePosition::default(),
+                            Range::default(),
                           ),
                         )
                     }
@@ -978,7 +978,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                       errors,
                       RuleRecognizerError::SyntaxError(
                         "Invalid context for prefix resolution",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                 }
@@ -987,7 +987,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                   errors,
                   RuleRecognizerError::SyntaxError(
                     "Unexpected token in formula content",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
             }
@@ -1008,7 +1008,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         "Internal error: contexts stack empty in FormulaContent",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                     return self
@@ -1073,7 +1073,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                     errors.push(
                       RuleRecognizerError::SyntaxError(
                         "Internal error: contexts stack empty in FormulaContentExpectDot",
-                        SourcePosition::default(),
+                        Range::default(),
                       ),
                     )
                     return self
@@ -1092,7 +1092,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 errors.push(
                   RuleRecognizerError::SyntaxError(
                     "A dot is expected at the end of N3 statements",
-                    SourcePosition::default(),
+                    Range::default(),
                   ),
                 )
                 self.stack.push(N3State::FormulaContent)

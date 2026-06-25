@@ -36,9 +36,9 @@ async test "verify_with_ntriples" {
   low_level.end()
 
   match low_level.parse_next() {
-    Some(Ok(t)) => println("NTriples Success:\{t.to_string()} ")
-    Some(Err(e)) => println("NTriples Error: \{e.message()}")
-    None => println("NTriples None")
+    Some(Ok(t)) => debug("NTriples Success:\{t.to_string()} ")
+    Some(Err(e)) => debug("NTriples Error: \{e.to_string()}")
+    None => debug("NTriples None")
   }
 }
 
@@ -69,7 +69,7 @@ test "parse basic ntriples" {
       // 验证 q 的内容
       assert_true(true)
     }
-    Err(e) => debug(e.message())
+    Err(e) => debug(e.to_string())
   }
 }
 
@@ -89,7 +89,7 @@ test "parse basic ntriples with error handling" {
 
   // 1. 先检查是否为 None
   if result is None {
-    println("parse_next returned None")
+    debug("parse_next returned None")
     // panic()
   }
 
@@ -102,7 +102,7 @@ test "parse basic ntriples with error handling" {
     }
     Err(e) =>
       // 3. 打印具体错误信息（使用 {} 进行字符串插值）
-      println("Parse error: \{e}")
+      debug("Parse error: \{e}")
     // panic()
   }
 }
@@ -112,15 +112,15 @@ test "parse basic ntriples with error handling" {
 ///|
 async test "debug single file safe" {
   let path = "test/rdf/rdf11/n-triples/nt-syntax-file-04.nt"
-  println("Reading: \{path}")
+  debug("Reading: \{path}")
   let content = @fs.read_file(path).binary()
-  println("Read done")
+  debug("Read done")
 
   let parser = NTriplesParser::new()
   let low_level = parser.low_level()
 
   // 尝试先打印长度，确保数据可读
-  // println("Content length: \{content.len()}") 
+  // debug("Content length: \{content.len()}") 
   // let input =
   //   #|<http://example/s> <http://example/p> "o"@en .
 
@@ -129,7 +129,7 @@ async test "debug single file safe" {
 
   let result = low_level.parse_next()
   if result is None {
-    println("parse_next returned None")
+    debug("parse_next returned None")
     // panic()
   }
 
@@ -141,7 +141,7 @@ async test "debug single file safe" {
     }
     Err(e) =>
       // 3. 打印具体错误信息（使用 {} 进行字符串插值）
-      println("Parse error: \{e}")
+      debug("Parse error: \{e}")
     // panic()
   }
 }
@@ -171,7 +171,7 @@ async test "run official n-triples test suite" {
       continue
     }
 
-    println("Testing: \{file}")
+    debug("Testing: \{file}")
     total_tested += 1
 
     let path = "\{test_dir}/\{file}"
@@ -200,7 +200,7 @@ async test "run official n-triples test suite" {
     let success = match result {
       Some(Ok(_)) => !is_bad_test // 好文件应解析成功
       Some(Err(e)) => {
-        debug(e.message())
+        debug(e.to_string())
         is_bad_test
       } // 坏文件应解析失败
       None => false // 无输出视为失败
@@ -220,15 +220,15 @@ async test "run official n-triples test suite" {
   }
 
   // 8. 输出结果
-  println("Test Suite Results:")
-  println("Total Tested: \{total_tested}")
-  println("Passed: \{passed}")
-  println("Failed: \{failed}")
+  debug("Test Suite Results:")
+  debug("Total Tested: \{total_tested}")
+  debug("Passed: \{passed}")
+  debug("Failed: \{failed}")
 
   if Array::length(errors) > 0 {
-    println("\nFailures:")
+    debug("\nFailures:")
     for err in errors {
-      println("  - \{err}")
+      debug("  - \{err}")
     }
     // panic() // 如果有失败，让测试挂掉
   }
@@ -244,7 +244,7 @@ test "parse literal all punctuation direct" {
   let input =
     #|<http://example/%53> <http://example/p> <http://example/o> .
 
-  println("Input: \{input}")
+  debug("Input: \{input}")
 
   let parser = NTriplesParser::new()
   let low_level = parser.low_level()
@@ -252,7 +252,7 @@ test "parse literal all punctuation direct" {
   low_level.extend_from_slice(@utf8.encode(input))
   low_level.end()
 
-  println("Starting parse...")
+  debug("Starting parse...")
   let result = low_level.parse_next()
 
   match result {
@@ -260,8 +260,8 @@ test "parse literal all punctuation direct" {
       debug(triple)
       assert_true(true)
     }
-    Some(Err(e)) => println("Test \{e}")
-    None => println("No result")
+    Some(Err(e)) => debug("Test \{e}")
+    None => debug("No result")
   }
 }
 
@@ -278,13 +278,13 @@ test "safe parse all punctuation" {
   // 直接使用 match，避免 unwrap
   match low_level.parse_next() {
     Some(Ok(triple)) => {
-      println("Success")
+      debug("Success")
       debug(triple)
       assert_true(true)
     }
-    Some(Err(e)) => println("Parse Error: \{e}")
+    Some(Err(e)) => debug("Parse Error: \{e}")
     // panic() // 这里 panic 是正常的测试失败
-    None => println("No Result")
+    None => debug("No Result")
     // panic() // 这里 panic 是正常的测试失败
   }
 }
@@ -320,11 +320,11 @@ test "safe parse all punctuation" {
 //     }
 //     Some(Err(e)) => {
 //       @fs.remove(path)
-//       println("Parse error: \{e}")
+//       debug("Parse error: \{e}")
 //     }
 //     None => {
 //       @fs.remove(path)
-//       println("parse_next returned None")
+//       debug("parse_next returned None")
 //     }
 //   }
 // }

@@ -52,7 +52,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_end(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Unexpected end",
-          SourcePosition::SourcePosition(0, 0, 0),
+          Range::default(),
         ),
       )
   }

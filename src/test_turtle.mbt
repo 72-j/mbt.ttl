@@ -20,9 +20,9 @@ async test "debug_simple_turtle_workaround" {
   )
 
   match parser.parse_next() {
-    Some(Ok(t)) => println("Success: \{t.to_string()}")
-    Some(Err(e)) => println("Error: \{e.message()}")
-    None => println("None")
+    Some(Ok(t)) => debug("Success: \{t.to_string()}")
+    Some(Err(e)) => debug("Error: \{e.to_string()}")
+    None => debug("None")
   }
 }
 async test "debug_simple_turtle_fixed_input" {
@@ -44,9 +44,9 @@ async test "debug_simple_turtle_fixed_input" {
   )
 
   match parser.parse_next() {
-    Some(Ok(t)) => println("Success: \{t.to_string()}")
-    Some(Err(e)) => println("Error: \{e.message()}")
-    None => println("None")
+    Some(Ok(t)) => debug("Success: \{t.to_string()}")
+    Some(Err(e)) => debug("Error: \{e.to_string()}")
+    None => debug("None")
   }
 }
 async test "debug_simple_turtle" {
@@ -76,9 +76,9 @@ async test "debug_simple_turtle" {
   // 如果仍然失败，可能需要检查 TriGRecognizer 是否需要在 parse_next 之前调用某个 init() 或 set_mode_turtle()
 
   match parser.parse_next() {
-    Some(Ok(t)) => println("Success: \{t.to_string()}")
-    Some(Err(e)) => println("Error: \{e.message()}")
-    None => println("None")
+    Some(Ok(t)) => debug("Success: \{t.to_string()}")
+    Some(Err(e)) => debug("Error: \{e.to_string()}")
+    None => debug("None")
   }
 }
 
@@ -103,11 +103,11 @@ async test "debug_simple_triple" {
 
   // 5. 输出调试信息
   match result {
-    Some(Ok(triple)) => println("Success! Parsed Quad: \{triple.to_string()}")
+    Some(Ok(triple)) => debug("Success! Parsed Quad: \{triple.to_string()}")
     // 预期输出: Success! Parsed Quad: <http://example.org/s> <http://example.org/p> <http://example.org/o> .
-    Some(Err(e)) => println("Parse Error: \{e.message()}")
+    Some(Err(e)) => debug("Parse Error: \{e.to_string()}")
     // 如果这里报错 "TOKEN is not allowed here"，说明状态栈复位失败
-    None => println("Parse returned None (No output)")
+    None => debug("Parse returned None (No output)")
   }
 }
 
@@ -132,30 +132,30 @@ async test "debug_simple_triple 2" {
   let mut step = 0
   for ;; {
     step += 1
-    println("\n=== Step \{step} ===")
+    debug("\n=== Step \{step} ===")
 
     // 修复：移除对 lexer.last_token() 等不存在方法的调用
     // 如果 RdfLexer 有公开的 current_token 或 peek 方法，可在此处添加
-    // 例如: if let Some(tok) = parser.lexer.peek() { println("Current token: \{tok}") }
+    // 例如: if let Some(tok) = parser.lexer.peek() { debug("Current token: \{tok}") }
 
     // 获取当前状态 (这是更可靠的调试信息来源)
     match parser.state {
       Some(state) => {
-        println("State stack depth: \{state.stack.length()}")
-        println("Current object: \{state.to_string()}")
+        debug("State stack depth: \{state.stack.length()}")
+        debug("Current object: \{state.to_string()}")
       }
-      None => println("No active state")
+      None => debug("No active state")
     }
 
     // 解析下一个
     match parser.parse_next() {
-      Some(Ok(t)) => println("✓ Parsed quad: \{t.to_string()}")
+      Some(Ok(t)) => debug("✓ Parsed quad: \{t.to_string()}")
       Some(Err(e)) => {
-        println("Error: \{e.message()}")
+        debug("Error: \{e.to_string()}")
         break
       }
       None => {
-        println("Need more input or end of file")
+        debug("Need more input or end of file")
         break
       }
     }
@@ -177,7 +177,7 @@ async test "verify_with_turtle" {
 
   match low_level.parse_next() {
     Some(Ok(t)) => debug("Turtle Success:\{t.to_string()} ")
-    Some(Err(e)) => debug("Turtle Error: \{e.message()}")
+    Some(Err(e)) => debug("Turtle Error: \{e.to_string()}")
     None => debug("Turtle None")
   }
 }

@@ -45,7 +45,7 @@ pub struct SourcePosition {
   offset : Int
 } derive(Debug, Default)
 
-///|
+
 fn SourcePosition::SourcePosition(
   line : Int,
   column : Int,
@@ -54,7 +54,6 @@ fn SourcePosition::SourcePosition(
   { line, column, offset }
 }
 
-///|
 impl Show for SourcePosition with fn output(self, logger : &Logger) -> Unit {
   logger.write_string("[")
   logger.write_string(self.line.to_string())
@@ -566,15 +565,16 @@ fn[T] Lexer::current_token_range(self : Lexer[T]) -> Range {
 ///|
 /// 记录 token 起始
 fn[T] Lexer::record_token_start(self : Lexer[T]) -> Unit {
-  self.current_token_start = self.current_offset()
+  // 使用 global_offset 确保位置在数据收缩后依然有效
+  self.current_token_start = self.position.global_offset
 }
 
 ///|
 /// 记录 token 结束
 fn[T] Lexer::record_token_end(self : Lexer[T]) -> Unit {
-  self.current_token_end = self.current_offset()
+  // 使用 global_offset 确保位置在数据收缩后依然有效
+  self.current_token_end = self.position.global_offset
 }
-
 ///|
 // fn[RL] Lexer::position_at_offset(
 //   self : Lexer[RL],

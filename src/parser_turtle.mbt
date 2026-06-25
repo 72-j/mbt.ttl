@@ -199,7 +199,7 @@ pub async fn[RL : TokenRecognizer] AsyncReaderTurtleParser::next(
         RdfStatement::N3Quad(n3quad) => n3quad
       }
     })
-    .map_err(fn(e) { TurtleError::InvalidCharacter(e.message()) })
+    .map_err(fn(e) { TurtleError::InvalidCharacter(e.to_string()) })
   })
 }
 
