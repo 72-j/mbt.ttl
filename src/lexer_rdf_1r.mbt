@@ -4,6 +4,7 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
   data : ArrayView[Byte],
   is_ending : Bool,
   options : LexerOptions?,
+  location_ctx : SourcePosition,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let base_iri_opt = match options {
     Some(options) =>
@@ -29,6 +30,12 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
   if data.is_empty() {
     return None
   }
+
+  // 辅助函数：构建基于 location_ctx 的 Range
+  let make_range = fn(start_offset : Int, length : Int) -> Range {
+    Range(start_offset, start_offset + length)
+  }
+
   match data[0] {
     b'<' =>
       match data.get(1) {
@@ -37,19 +44,19 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             Some(
               (
                 3,
-                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<<("), Range::default()))),
+                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<<("), make_range(location_ctx.offset, 3)))),
               ),
             )
           } else {
             Some(
               (
                 2,
-                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<<"), Range::default()))),
+                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<<"), make_range(location_ctx.offset, 2)))),
               ),
             )
           }
         Some(b'=') if self.mode == RdfLexerMode::N3 =>
-          if self.recognize_iri(data, options) is Some((consumed, result)) {
+          if self.recognize_iri(data, options, location_ctx) is Some((consumed, result)) {
             Some(
               if result is Ok(result) {
                 (consumed, Ok(result))
@@ -57,7 +64,7 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                 (
                   2,
                   Ok(
-                    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<="),Range::default())),
+                    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<="), make_range(location_ctx.offset, 2))),
                   ),
                 )
               },
@@ -66,14 +73,14 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             Some(
               (
                 2,
-                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<="), Range::default()))),
+                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<="), make_range(location_ctx.offset, 2)))),
               ),
             )
           } else {
             None
           }
         Some(b'-') if self.mode == RdfLexerMode::N3 =>
-          if self.recognize_iri(data, options) is Some((consumed, result)) {
+          if self.recognize_iri(data, options, location_ctx) is Some((consumed, result)) {
             Some(
               if result is Ok(result) {
                 (consumed, Ok(result))
@@ -81,7 +88,7 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                 (
                   2,
                   Ok(
-                    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<-"),Range::default())),
+                    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<-"), make_range(location_ctx.offset, 2))),
                   ),
                 )
               },
@@ -90,29 +97,29 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             Some(
               (
                 2,
-                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<-"), Range::default()))),
+                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("<-"), make_range(location_ctx.offset, 2)))),
               ),
             )
           } else {
             None
           }
-        _ => self.recognize_iri(data, options)
+        _ => self.recognize_iri(data, options, location_ctx)
       }
     b'>' =>
       if data.get(1) == Some(b'>') {
         Some(
-          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(">>"), Range::default())))),
+          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(">>"), make_range(location_ctx.offset, 2))))),
         )
       } else {
         Some(
-          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(">"), Range::default())))),
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(">"), make_range(location_ctx.offset, 1))))),
         )
       }
     b'_' =>
       match data.get(1) {
-        Some(b':') => RdfLexer::recognize_blank_node_label(data, is_ending)
+        Some(b':') => RdfLexer::recognize_blank_node_label(data, is_ending, location_ctx)
         Some(c) =>
-          Some((1, Err(TokenRecognizerError::InvalidToken([c], Range(1, 2)))))
+          Some((1, Err(TokenRecognizerError::InvalidToken([c], make_range(location_ctx.offset + 1, 1)))))
         None =>
           Some(
             (
@@ -120,7 +127,7 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               Err(
                 TokenRecognizerError::UnexpectedEndOfInput(
                   data[0:1],
-                  Range(0, 1),
+                  make_range(location_ctx.offset, 1),
                 ),
               ),
             ),
@@ -130,30 +137,30 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
       if self.mode != RdfLexerMode::NTriples &&
         data.get(1) == Some(b'"') &&
         data.get(2) == Some(b'"') {
-        self.recognize_long_string(data, b'"', is_ending)
+        self.recognize_long_string(data, b'"', is_ending, location_ctx)
       } else {
-        self.recognize_string(data, b'"', is_ending)
+        self.recognize_string(data, b'"', is_ending, location_ctx)
       }
     b'\'' if self.mode != RdfLexerMode::NTriples =>
       if data.get(1) == Some(b'\'') && data.get(2) == Some(b'\'') {
-        self.recognize_long_string(data, b'\'', is_ending)
+        self.recognize_long_string(data, b'\'', is_ending, location_ctx)
       } else {
-        self.recognize_string(data, b'\'', is_ending)
+        self.recognize_string(data, b'\'', is_ending, location_ctx)
       }
-    b'@' => self.recognize_lang_tag(data)
+    b'@' => self.recognize_lang_tag(data, location_ctx)
     b'.' =>
       match data.get(1) {
-        Some(b'0'..=b'9') => RdfLexer::recognize_number(data, is_ending)
+        Some(b'0'..=b'9') => RdfLexer::recognize_number(data, is_ending, location_ctx)
         Some(_) =>
           Some(
-            (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("."), Range::default())))),
+            (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("."), make_range(location_ctx.offset, 1))))),
           )
         None =>
           if is_ending {
             Some(
               (
                 1,
-                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("."), Range::default()))),
+                Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("."), make_range(location_ctx.offset, 1)))),
               ),
             )
           } else {
@@ -163,71 +170,71 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
     b'^' =>
       if data.get(1) == Some(b'^') {
         Some(
-          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("^^"), Range::default())))),
+          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("^^"), make_range(location_ctx.offset, 2))))),
         )
       } else {
         Some(
-          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("^"), Range::default())))),
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("^"), make_range(location_ctx.offset, 1))))),
         )
       }
     b'(' =>
-      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("("), Range::default())))))
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("("), make_range(location_ctx.offset, 1))))))
     b')' =>
       if data.get(1) == Some(b'>') && data.get(2) == Some(b'>') {
         Some(
-          (3, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(")>>"),Range::default())))),
+          (3, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(")>>"), make_range(location_ctx.offset, 3))))),
         )
       } else {
         Some(
-          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(")"),Range::default())))),
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(")"), make_range(location_ctx.offset, 1))))),
         )
       }
     b'[' =>
-      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("["), Range::default())))))
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("["), make_range(location_ctx.offset, 1))))))
     b']' =>
-      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("]"), Range::default())))))
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("]"), make_range(location_ctx.offset, 1))))))
     b'{' =>
       if data.get(1) == Some(b'|') {
         Some(
-          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("{|"), Range::default())))),
+          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("{|"), make_range(location_ctx.offset, 2))))),
         )
       } else {
         Some(
-          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("{"), Range::default())))),
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("{"), make_range(location_ctx.offset, 1))))),
         )
       }
     b'}' =>
-      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("}"), Range::default())))))
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("}"), make_range(location_ctx.offset, 1))))))
     b',' =>
-      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(","), Range::default())))))
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(","), make_range(location_ctx.offset, 1))))))
     b';' =>
-      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(";"), Range::default())))))
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(";"), make_range(location_ctx.offset, 1))))))
     b'!' =>
-      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("!"), Range::default())))))
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("!"), make_range(location_ctx.offset, 1))))))
     b'|' =>
       if data.get(1) == Some(b'}') {
         Some(
-          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("|}"), Range::default())))),
+          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("|}"), make_range(location_ctx.offset, 2))))),
         )
       } else {
         Some(
-          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("|"), Range::default())))),
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("|"), make_range(location_ctx.offset, 1))))),
         )
       }
     b'=' =>
       if data.get(1) == Some(b'>') {
         Some(
-          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("=>"), Range::default())))),
+          (2, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("=>"), make_range(location_ctx.offset, 2))))),
         )
       } else {
         Some(
-          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("="), Range::default())))),
+          (1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("="), make_range(location_ctx.offset, 1))))),
         )
       }
     b'~' =>
-      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("~"), Range::default())))))
-    b'0'..=b'9' | b'+' | b'-' => RdfLexer::recognize_number(data, is_ending)
-    b'?' => self.recognize_variable(data, is_ending)
-    _ => self.recognize_pname_or_keyword(data, is_ending)
+      Some((1, Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("~"), make_range(location_ctx.offset, 1))))))
+    b'0'..=b'9' | b'+' | b'-' => RdfLexer::recognize_number(data, is_ending, location_ctx)
+    b'?' => self.recognize_variable(data, is_ending, location_ctx)
+    _ => self.recognize_pname_or_keyword(data, is_ending, location_ctx)
   }
 }

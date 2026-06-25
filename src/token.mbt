@@ -13,6 +13,8 @@ fn LocatedN3Token::into_token(self: Self) -> N3Token {
   self.0
 }
 
+fn LocatedN3Token::new(token : N3Token, range : Range) -> Self {
+  LocatedN3Token(token,range)}
 ///|
 impl Show for LocatedN3Token with fn output(
   self : LocatedN3Token,

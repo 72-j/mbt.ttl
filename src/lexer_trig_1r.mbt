@@ -13,7 +13,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
     RdfContext::TriGRecognizerContext(c) => c
     _ => abort("Invalid context for TriGRecognizer")
   }
-
+  match token {
+    LocatedTokenOrLineJump::LocatedN3Token(located) => {
+      match located {
+        LocatedN3Token(_, range) => self.last_range = range
+      }
+    }
+    _ => ()
+  }
   while true {
     match self.stack.pop() {
       Some(rule) =>

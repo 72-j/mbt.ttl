@@ -11,7 +11,6 @@ pub struct RdfLexer {
   lenient : Bool
 }
 
-
 ///|
 pub fn RdfLexer::RdfLexer(mode : RdfLexerMode, lenient : Bool) -> RdfLexer {
   { mode, lenient }
@@ -22,6 +21,7 @@ fn RdfLexer::recognize_iri(
   self : RdfLexer,
   data : ArrayView[Byte],
   options : LexerOptions,
+  location_ctx : SourcePosition,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let string = []
   let mut i = 1
@@ -42,7 +42,10 @@ fn RdfLexer::recognize_iri(
             Err(
               TokenRecognizerError::IriTruncated(
                 data[i:],
-                Range(i, i + data.length()),
+                Range(
+                  location_ctx.offset + i,
+                  location_ctx.offset + i + data.length(),
+                ),
               ),
             ),
           ),
@@ -55,7 +58,17 @@ fn RdfLexer::recognize_iri(
 
     // 此时 data[i] 必须是 '>'
     // 直接返回解析结果，不再处理任何转义逻辑
-    return Some((i + 1, self.parse_iri(string, Range(0, i + 1), options)))
+    // 总消耗长度为 i + 1
+    return Some(
+      (
+        i + 1,
+        self.parse_iri(
+          string,
+          Range(location_ctx.offset, location_ctx.offset + i + 1),
+          options,
+        ),
+      ),
+    )
   }
 }
 
@@ -69,7 +82,7 @@ fn RdfLexer::parse_iri(
   // 1. 将字节数组转换为字符串，处理可能的 UTF-8 错误
   let iri_str = match string_from_utf8(iri_bytes, position) {
     Ok(s) => s
-    Err(e) => return Err(e) // 或者直接使用: let iri_str = string_from_utf8(iri_bytes, position)?;
+    Err(e) => return Err(e)
   }
   if iri_str.contains("\\") {
     return Err(
@@ -96,13 +109,8 @@ fn RdfLexer::parse_iri(
   } else {
     // 没有 base_iri，直接解析绝对 IRI
     let iri = Iri::new(iri_str)
-    // let iri = IriRef::of_ref(iri)
 
     if self.lenient {
-      // 宽松模式：这里可能需要一个不检查错误的 parse，或者假设 iri_str 已经是合法的
-      // 如果 Iri 模块没有 unchecked_parse，可能需要借用严格模式的结果或自定义逻辑
-      // 假设 lenient 模式下如果没有 base_iri 也至少要是合法格式，或者使用 try_parse
-
       Ok(IriRef::parse_unchecked(iri))
     } else {
       // 严格模式
@@ -113,13 +121,16 @@ fn RdfLexer::parse_iri(
   }
 
   // 3. 返回 Token
-  // 注意：这里假设 N3Token::IriRef 接受 Iri 类型。
-  // 如果 N3Token::IriRef 定义为 IriRef(String)，请改为 N3Token::IriRef(final_iri.to_string())
   let final_iri = match final_iri {
     Ok(iri) => iri
     Err(e) => return Err(e)
   }
-  Ok(LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(final_iri.base_iri), Range::default())))
+  // 使用传入的 position (已经是全局 Range)
+  Ok(
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::Iri(final_iri.base_iri), position),
+    ),
+  )
 }
 
 ///|
@@ -127,6 +138,7 @@ fn RdfLexer::recognize_pname_or_keyword(
   self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
+  location_ctx : SourcePosition,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut i = 0
 
@@ -145,7 +157,7 @@ fn RdfLexer::recognize_pname_or_keyword(
                 Err(
                   TokenRecognizerError::InvalidErrMessage(
                     data[0:consumed],
-                    Range::Range(0, consumed),
+                    Range(location_ctx.offset, location_ctx.offset + consumed),
                     "'\{c}' is not allowed at the beginning of a prefix name",
                   ),
                 ),
@@ -161,12 +173,15 @@ fn RdfLexer::recognize_pname_or_keyword(
           while array_view_has_prefix(data[:i], b".") {
             i -= 1
           }
-          let range = Range::{ start: 0, end: i }
+          let range = Range(location_ctx.offset, location_ctx.offset + i)
 
           return Some(
             (
               i,
-              str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
+              str_from_utf8(
+                data[:i],
+                Range(location_ctx.offset, location_ctx.offset + i),
+              ).map(s => {
                 LocatedTokenOrLineJump::LocatedN3Token(
                   LocatedN3Token(N3Token::PlainKeyword(s), range),
                 )
@@ -174,7 +189,7 @@ fn RdfLexer::recognize_pname_or_keyword(
             ),
           )
         }
-      Some(Err(e)) => return Some((e.range().end, Err(e)))
+      Some(Err(e)) => return Some((e.range().end - location_ctx.offset, Err(e))) // 注意：子函数返回的 range 可能需要调整，这里假设 e.range 是局部的
       None =>
         // 没有更多字符可解析
         if is_ending {
@@ -188,16 +203,22 @@ fn RdfLexer::recognize_pname_or_keyword(
                 Err(
                   TokenRecognizerError::UnexpectedEndOfInput(
                     data[0:1],
-                    Range::Range(0, i),
+                    Range(location_ctx.offset, location_ctx.offset + 1),
                   ),
                 ),
               )
             } else {
               (
                 i,
-                str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
+                str_from_utf8(
+                  data[:i],
+                  Range(location_ctx.offset, location_ctx.offset + i),
+                ).map(s => {
                   LocatedTokenOrLineJump::LocatedN3Token(
-                    LocatedN3Token(N3Token::PlainKeyword(s), Range::Range(0, i)),
+                    LocatedN3Token(
+                      N3Token::PlainKeyword(s),
+                      Range(location_ctx.offset, location_ctx.offset + i),
+                    ),
                   )
                 }),
               )
@@ -208,8 +229,13 @@ fn RdfLexer::recognize_pname_or_keyword(
         }
     }
   }
-  // 提取前缀
-  let pn_prefix = match str_from_utf8(data[:i - 1], Range::Range(0, i - 1)) {
+
+  // 提取前缀 (如果代码能到达这里，说明遇到了 ':')
+  let pn_prefix = match
+    str_from_utf8(
+      data[:i - 1],
+      Range(location_ctx.offset, location_ctx.offset + i - 1),
+    ) {
     Ok(prefix) => prefix
     Err(e) => return Some((i, Err(e)))
   }
@@ -222,7 +248,7 @@ fn RdfLexer::recognize_pname_or_keyword(
         Err(
           TokenRecognizerError::InvalidErrMessage(
             data[0:i],
-            Range::Range(0, i),
+            Range(location_ctx.offset, location_ctx.offset + i),
             "'\{pn_prefix}' is not a valid prefix: prefixes are not allowed to end with '.'",
           ),
         ),
@@ -231,29 +257,37 @@ fn RdfLexer::recognize_pname_or_keyword(
   }
 
   // 解析本地部分
-  match self.recognize_optional_pn_local(data[i:], is_ending) {
-    Some((consumed, Ok((localx, might_be_invalid_iri)))) =>
-{
-  let range = Range::{ start: i, end:  consumed + i+1 }
+  match
+    self.recognize_optional_pn_local(
+      data[i:],
+      is_ending,
+      location_ctx.offset + i,
+    ) {
+    Some((consumed, Ok((localx, might_be_invalid_iri)))) => {
+      let total_consumed = consumed + i
+      let range = Range(
+        location_ctx.offset,
+        location_ctx.offset + total_consumed,
+      )
 
-Some(
-  (
-    consumed + i,
-    Ok(
-      LocatedTokenOrLineJump::LocatedN3Token(
-        LocatedN3Token(
-          N3Token::PrefixedName(
-            prefix=pn_prefix,
-            localx~,
-            might_be_invalid_iri~,
+      Some(
+        (
+          total_consumed,
+          Ok(
+            LocatedTokenOrLineJump::LocatedN3Token(
+              LocatedN3Token::new(
+                N3Token::PrefixedName(
+                  prefix=pn_prefix,
+                  localx~,
+                  might_be_invalid_iri~,
+                ),
+                range,
+              ),
+            ),
           ),
-          range,
         ),
-      ),
-    ),
-  ),
-)
-}
+      )
+    }
     Some((consumed, Err(e))) => Some((consumed + i, Err(e)))
     None => None
   }
@@ -264,25 +298,38 @@ fn RdfLexer::recognize_variable(
   self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
+  location_ctx : SourcePosition,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   if data.is_empty() || data[0] != b'?' {
     return None
   }
 
   // 修复：对 Option 类型进行模式匹配
-  match self.recognize_optional_pn_local(data[1:], is_ending) {
+  // 传递 ? 之后的起始位置
+  match
+    self.recognize_optional_pn_local(
+      data[1:],
+      is_ending,
+      location_ctx.offset + 1,
+    ) {
     Some((consumed, name_result)) => {
       let total_consumed = consumed + 1
 
       let token_result = match name_result {
         Ok((name, _)) if !name.is_empty() =>
-          Ok(LocatedTokenOrLineJump::LocatedN3Token(
-          LocatedN3Token(N3Token::Variable(name),Range::Range(consumed, total_consumed))))
+          Ok(
+            LocatedTokenOrLineJump::LocatedN3Token(
+              LocatedN3Token::new(
+                N3Token::Variable(name),
+                Range(location_ctx.offset, location_ctx.offset + total_consumed),
+              ),
+            ),
+          )
         Ok((name, _)) =>
           Err(
             TokenRecognizerError::InvalidErrMessage(
               data[0:total_consumed],
-              Range::Range(0, total_consumed),
+              Range(location_ctx.offset, location_ctx.offset + total_consumed),
               "A variable name is not allowed to be empty",
             ),
           )
@@ -300,6 +347,7 @@ fn RdfLexer::recognize_optional_pn_local(
   self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
+  start_offset : Int, // 接收起始全局偏移量
 ) -> (Int, Result[(String, Bool), TokenRecognizerError])? {
   let mut i = 0
   let mut buffer : StringBuilder? = None
@@ -325,7 +373,7 @@ fn RdfLexer::recognize_optional_pn_local(
                       Err(
                         TokenRecognizerError::InvalidErrMessage(
                           data[i - 2:i],
-                          Range::Range(i - 2, i),
+                          Range(start_offset + i - 2, start_offset + i),
                           "escapes in IRIs should be % followed by two hexadecimal characters, found '\{a}\{b}'",
                         ),
                       ),
@@ -375,7 +423,7 @@ fn RdfLexer::recognize_optional_pn_local(
                       Err(
                         TokenRecognizerError::InvalidErrMessage(
                           data[i:i + 1],
-                          Range::Range(i, i + 1),
+                          Range(start_offset + i, start_offset + i + 1),
                           "The character that are allowed to be escaped in IRIs are _~.-!$&'()*+,;=/?#@%, found '\{a}'",
                         ),
                       ),
@@ -392,9 +440,9 @@ fn RdfLexer::recognize_optional_pn_local(
                       match
                         str_from_utf8(
                           data[position_that_is_already_in_buffer:i - 1],
-                          Range::Range(
-                            position_that_is_already_in_buffer,
-                            i - 1,
+                          Range(
+                            start_offset + position_that_is_already_in_buffer,
+                            start_offset + i - 1,
                           ),
                         ) {
                         Ok(data_str) => b.write_stringview(data_str)
@@ -407,8 +455,6 @@ fn RdfLexer::recognize_optional_pn_local(
                     ends_with_unescaped_dot = 0
                   }
                   None => abort(" cannot happen")
-                  // 理论上不可达，因为上面已经初始化了
-                  // 可以留空或添加 debug assert
                 }
               }
               None =>
@@ -446,14 +492,15 @@ fn RdfLexer::recognize_optional_pn_local(
               match
                 str_from_utf8(
                   data[position_that_is_already_in_buffer:i],
-                  Range::Range(position_that_is_already_in_buffer, i),
+                  Range(
+                    start_offset + position_that_is_already_in_buffer,
+                    start_offset + i,
+                  ),
                 ) {
                 Ok(data_str) => buffer_val.write_stringview(data_str)
                 Err(e) => return Some((i, Err(e)))
               }
-              // 修复：将 StringBuilder 转为 String，然后去除末尾的点
               let mut res_str = buffer_val.to_string()
-              // 简单去除末尾的 ends_with_unescaped_dot 个字符
               if ends_with_unescaped_dot > 0 {
                 let len = res_str.length()
                 if len >= ends_with_unescaped_dot {
@@ -464,7 +511,7 @@ fn RdfLexer::recognize_optional_pn_local(
               res_str
             } else {
               let mut data_str = match
-                str_from_utf8(data[:i], Range::Range(0, i)) {
+                str_from_utf8(data[:i], Range(start_offset, start_offset + i)) {
                 Ok(d) => d
                 Err(e) => return Some((i, Err(e)))
               }
@@ -474,23 +521,24 @@ fn RdfLexer::recognize_optional_pn_local(
             }
             return Some((i, Ok((result, might_be_invalid_iri))))
           }
-        Err(e) => return Some((e.range().end, Err(e)))
+        Err(e) => return Some((e.range().end - start_offset, Err(e)))
       }
     } else if is_ending {
       let result = if buffer is Some(buffer_val) {
-        // 修复：处理缓冲区中剩余的数据
         if i - position_that_is_already_in_buffer > 0 {
           match
             str_from_utf8(
               data[position_that_is_already_in_buffer:i],
-              Range::Range(position_that_is_already_in_buffer, i),
+              Range(
+                start_offset + position_that_is_already_in_buffer,
+                start_offset + i,
+              ),
             ) {
             Ok(data_str) => buffer_val.write_stringview(data_str)
             Err(e) => return Some((i, Err(e)))
           }
         }
         let mut res_str = buffer_val.to_string()
-        // 去除末尾的点
         while res_str.has_suffix(".") {
           let len = res_str.length()
           res_str = res_str[:len - 1].to_owned()
@@ -498,7 +546,8 @@ fn RdfLexer::recognize_optional_pn_local(
         }
         res_str
       } else {
-        let mut data_str = match str_from_utf8(data[:i], Range::Range(0, i)) {
+        let mut data_str = match
+          str_from_utf8(data[:i], Range(start_offset, start_offset + i)) {
           Ok(d) => d
           Err(e) => return Some((i, Err(e)))
         }
@@ -519,6 +568,7 @@ fn RdfLexer::recognize_optional_pn_local(
 fn RdfLexer::recognize_blank_node_label(
   data : ArrayView[Byte],
   is_ending : Bool,
+  location_ctx : SourcePosition,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut i = 2
   while true {
@@ -539,7 +589,7 @@ fn RdfLexer::recognize_blank_node_label(
                   Err(
                     TokenRecognizerError::InvalidErrMessage(
                       data[0:i],
-                      Range::Range(0, i),
+                      Range(location_ctx.offset, location_ctx.offset + i),
                       "A blank node ID cannot be empty",
                     ),
                   ),
@@ -551,11 +601,19 @@ fn RdfLexer::recognize_blank_node_label(
                 return Some(
                   (
                     i,
-                    str_from_utf8(data[2:i], Range::Range(2, i)).map(s => {
+                    str_from_utf8(
+                      data[2:i],
+                      Range(location_ctx.offset + 2, location_ctx.offset + i),
+                    ).map(s => {
                       LocatedTokenOrLineJump::LocatedN3Token(
-          LocatedN3Token(
-                        N3Token::BlankNodeLabel(s),Range::Range(2, i)
-                      ))
+                        LocatedN3Token::new(
+                          N3Token::BlankNodeLabel(s),
+                          Range(
+                            location_ctx.offset + 2,
+                            location_ctx.offset + i,
+                          ),
+                        ),
+                      )
                     }),
                   ),
                 )
@@ -565,9 +623,16 @@ fn RdfLexer::recognize_blank_node_label(
               return Some(
                 (
                   i,
-                  str_from_utf8(data[2:i], Range::Range(2, i)).map(s => {
+                  str_from_utf8(
+                    data[2:i],
+                    Range(location_ctx.offset + 2, location_ctx.offset + i),
+                  ).map(s => {
                     LocatedTokenOrLineJump::LocatedN3Token(
-          LocatedN3Token(N3Token::BlankNodeLabel(s),Range::Range(2, i)))
+                      LocatedN3Token::new(
+                        N3Token::BlankNodeLabel(s),
+                        Range(location_ctx.offset + 2, location_ctx.offset + i),
+                      ),
+                    )
                   }),
                 ),
               )
@@ -575,16 +640,23 @@ fn RdfLexer::recognize_blank_node_label(
               return Some(
                 (
                   i,
-                  str_from_utf8(data[2:i], Range::Range(2, i)).map(s => {
+                  str_from_utf8(
+                    data[2:i],
+                    Range(location_ctx.offset + 2, location_ctx.offset + i),
+                  ).map(s => {
                     LocatedTokenOrLineJump::LocatedN3Token(
-          LocatedN3Token(N3Token::BlankNodeLabel(s),Range::Range(2, i)))
+                      LocatedN3Token::new(
+                        N3Token::BlankNodeLabel(s),
+                        Range(location_ctx.offset + 2, location_ctx.offset + i),
+                      ),
+                    )
                   }),
                 ),
               )
             }
             i += consumed
           }
-          Err(e) => return Some((e.range().end, Err(e)))
+          Err(e) => return Some((e.range().end - location_ctx.offset, Err(e)))
         }
       _ => break
     }
@@ -597,8 +669,16 @@ fn RdfLexer::recognize_blank_node_label(
       return Some(
         (
           i,
-          str_from_utf8(data[2:i], Range::Range(2, i)).map(s => {
-            LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::BlankNodeLabel(s),Range::Range(2, i)))
+          str_from_utf8(
+            data[2:i],
+            Range(location_ctx.offset + 2, location_ctx.offset + i),
+          ).map(s => {
+            LocatedTokenOrLineJump::LocatedN3Token(
+              LocatedN3Token::new(
+                N3Token::BlankNodeLabel(s),
+                Range(location_ctx.offset + 2, location_ctx.offset + i),
+              ),
+            )
           }),
         ),
       )
@@ -609,7 +689,7 @@ fn RdfLexer::recognize_blank_node_label(
           Err(
             TokenRecognizerError::InvalidErrMessage(
               data[0:i],
-              Range::Range(0, i),
+              Range(location_ctx.offset, location_ctx.offset + i),
               "A blank node ID cannot be empty",
             ),
           ),
@@ -625,17 +705,18 @@ fn RdfLexer::recognize_blank_node_label(
 fn RdfLexer::recognize_lang_tag(
   self : RdfLexer,
   data : ArrayView[Byte],
+  location_ctx : SourcePosition,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut is_last_block_empty = true
   let mut are_digits_allowed = false
-  let mut last_valid_index = 1 // 记录最后一个合法字符的位置
+  let mut last_valid_index = 1
 
   for _item in data[1:].iter2() {
     let (i, c) = _item
     if (are_digits_allowed && is_ascii_alphanumeric(Byte::to_char(c))) ||
       (!are_digits_allowed && Byte::to_char(c).is_ascii_alphabetic()) {
       is_last_block_empty = false
-      last_valid_index = i + 2 // i 是从 0 开始的索引，相对于 data[1:]，所以要 +2 才是相对于 data 的索引
+      last_valid_index = i + 2
     } else if i == 0 {
       // ... 错误处理 ...
     } else if is_last_block_empty {
@@ -647,11 +728,11 @@ fn RdfLexer::recognize_lang_tag(
       // 遇到非字母数字字符（如空格、标点），说明语言标签结束
       return Some(
         (
-          i + 1, // 消耗到当前字符之前
+          i + 1,
           self.parse_lang_tag(
             data[1:i + 1].to_owned(),
             None,
-            Range::Range(1, i + 1),
+            Range(location_ctx.offset + 1, location_ctx.offset + i + 1),
           ),
         ),
       )
@@ -667,7 +748,7 @@ fn RdfLexer::recognize_lang_tag(
         self.parse_lang_tag(
           data[1:last_valid_index].to_owned(),
           None,
-          Range::Range(1, last_valid_index),
+          Range(location_ctx.offset + 1, location_ctx.offset + last_valid_index),
         ),
       ),
     )
@@ -683,9 +764,6 @@ fn RdfLexer::parse_lang_tag(
   direction : Bytes?,
   position : Range,
 ) -> Result[LocatedTokenOrLineJump, TokenRecognizerError] {
-  // debug("Parsing lang tag from bytes: \{lang_tag}")
-
-  // 1. 先将 bytes 转换为 string，处理可能的 UTF-8 错误
   let lang_str_result = str_from_utf8(lang_tag, position)
 
   let parsed_lang = match lang_str_result {
@@ -694,21 +772,20 @@ fn RdfLexer::parse_lang_tag(
         TokenRecognizerError::InvalidErrMessage(
           lang_tag[position.start:position.end],
           position,
-          e.to_string(), // 假设 e 有 message 方法，或者根据实际 Error 类型调整
+          e.to_string(),
         ),
       )
     Ok(lang_str) =>
       if self.lenient {
         Ok(lang_str)
       } else {
-        // 修复：先 map 提取 string，再 map_err 转换错误类型
         LanguageTag::parse(lang_str)
-        .map(fn(tag) { tag.to_string() }) // 假设 LanguageTag 有 to_string 或类似方法获取原始字符串
+        .map(fn(tag) { tag.to_string() })
         .map_err(fn(e) {
           TokenRecognizerError::InvalidErrMessage(
             lang_tag[position.start:position.end],
             position,
-            e.to_string(), // 根据实际 Error 类型调整
+            e.to_string(),
           )
         })
       }
@@ -728,7 +805,7 @@ fn RdfLexer::parse_lang_tag(
             Err(
               TokenRecognizerError::InvalidErrMessage(
                 dir_bytes.to_array(),
-                Range::Range(position.end - dir_bytes.length(), position.end),
+                Range(position.end - dir_bytes.length(), position.end),
                 "The allowed base directions are --ltr and --rtl, found --" +
                 @utf8.decode_lossy(dir_bytes),
               ),
@@ -740,8 +817,11 @@ fn RdfLexer::parse_lang_tag(
         Err(e) => Err(e)
         Ok(dir_opt) =>
           Ok(
-            LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(
-              N3Token::LangTag(language=lang_str, direction=dir_opt),Range::Range(0, position.end)),
+            LocatedTokenOrLineJump::LocatedN3Token(
+              LocatedN3Token::new(
+                N3Token::LangTag(language=lang_str, direction=dir_opt),
+                Range(position.start, position.end),
+              ),
             ),
           )
       }
@@ -755,29 +835,18 @@ fn RdfLexer::recognize_string(
   data : ArrayView[Byte],
   delimiter : Byte,
   is_ending : Bool,
+  location_ctx : SourcePosition,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
-  debug("DEBUG: Entering recognize_string with delimiter \{delimiter}")
-
   let string = StringBuilder::new()
   let mut i = 1
-  let mut loop_count = 0
 
   for ;; {
-    loop_count += 1
-    if loop_count > 100 {
-      debug("Infinite loop detected in recognize_string")
-    }
     // 1. 查找下一个定界符或反斜杠
-    // 如果找不到，说明数据不足，返回 None 等待更多数据
     let end_opt = array_view_memchr2(delimiter, b'\\', data[i:])
 
     let mut end = match end_opt {
-      Some(e) => {
-        debug("DEBUG: Found end of string literal at index \{i + e}")
-        e
-      }
-      None => {
-        debug("DEBUG: No end of string literal found")
+      Some(e) => e
+      None =>
         if is_ending {
           return Some(
             (
@@ -785,7 +854,10 @@ fn RdfLexer::recognize_string(
               Err(
                 TokenRecognizerError::UnexpectedEndOfInput(
                   data[i:],
-                  Range::Range(i, data.length()),
+                  Range(
+                    location_ctx.offset + i,
+                    location_ctx.offset + data.length(),
+                  ),
                 ),
               ),
             ),
@@ -793,7 +865,6 @@ fn RdfLexer::recognize_string(
         } else {
           return None
         }
-      }
     }
 
     // 2. 在非宽松模式下，检查这段普通字符中是否包含未转义的换行符
@@ -805,66 +876,66 @@ fn RdfLexer::recognize_string(
     }
 
     // 3. 将普通字符部分追加到字符串缓冲区
-    match str_from_utf8(data[i:i + end], Range::Range(i, i + end)) {
+    match
+      str_from_utf8(
+        data[i:i + end],
+        Range(location_ctx.offset + i, location_ctx.offset + i + end),
+      ) {
       Ok(s) => string.write_string(s)
       Err(e) => return Some((i + end, Err(e)))
     }
     i += end
 
-    // 4. 检查当前遇到的字符是什么
-    // 注意：此时 data[i] 必须是 delimiter 或 b'\\' 或 (非lenient下的) 换行符
     if i >= data.length() {
-      // 防御性检查：如果索引越界，说明数据不足
       return None
     }
 
     match data[i] {
-      c if c == delimiter => {
-        debug(
-          "Returning String Token: '\{string.to_string()}', Consumed: \{i + 1}",
-        )
+      c if c == delimiter =>
         // 遇到定界符，字符串结束
         return Some(
           (
             i + 1,
             Ok(
-              LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(
-                N3Token::String(string.to_string()),Range::Range(0, i + 1)),
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token::new(
+                  N3Token::String(string.to_string()),
+                  Range(location_ctx.offset, location_ctx.offset + i + 1),
+                ),
               ),
             ),
           ),
         )
-      }
       b'\\' => {
         // 遇到反斜杠，处理转义序列
-        let escape_result = self.recognize_escape(data[i:], i, true)
+        let escape_result = self.recognize_escape(
+          data[i:],
+          location_ctx.offset + i,
+          true,
+        )
 
         match escape_result {
           Some((additional, c_result)) => {
-            i += additional + 1 // 移动过 \ 和转义字符
+            i += additional + 1
             if i > data.length() {
-              return None // 数据不足
+              return None
             }
             match c_result {
               Ok(c) => string.write_char(c)
               Err(e) => {
-                // 转义错误：找到结束符并返回错误
                 let end_opt = array_view_memchr(delimiter, data[i:])
                 let final_end = match end_opt {
                   Some(e) => i + e + 1
-                  None => data.length() // 或者返回 None
+                  None => data.length()
                 }
                 return Some((final_end, Err(e)))
               }
             }
           }
-          None =>
-            // 需要更多数据来识别转义序列
-            return None
+          None => return None
         }
       }
       b'\n' | b'\r' => {
-        // 遇到未转义的换行符
         let end_opt = array_view_memchr(delimiter, data[i:])
         let final_end = match end_opt {
           Some(e) => i + e + 1
@@ -876,7 +947,7 @@ fn RdfLexer::recognize_string(
             Err(
               TokenRecognizerError::InvalidErrMessage(
                 data[i:i + 1],
-                Range::Range(i, i + 1),
+                Range(location_ctx.offset + i, location_ctx.offset + i + 1),
                 "Line jumps are not allowed in string literals, use \\n",
               ),
             ),
@@ -884,15 +955,13 @@ fn RdfLexer::recognize_string(
         )
       }
       _ =>
-        // 理论上不会到达这里，除非 memchr2 逻辑有误
-        // 为了安全，返回错误或 abort
         return Some(
           (
             i + 1,
             Err(
               TokenRecognizerError::InvalidErrMessage(
                 data[i:i + 1],
-                Range::Range(i, i + 1),
+                Range(location_ctx.offset + i, location_ctx.offset + i + 1),
                 "Unexpected character in string literal",
               ),
             ),
@@ -908,6 +977,7 @@ fn RdfLexer::recognize_long_string(
   data : ArrayView[Byte],
   delimiter : Byte,
   is_ending : Bool,
+  location_ctx : SourcePosition,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let string = StringBuilder::new()
   let mut i = 3
@@ -924,17 +994,19 @@ fn RdfLexer::recognize_long_string(
               Err(
                 TokenRecognizerError::UnexpectedEndOfInput(
                   data[i:],
-                  Range::Range(i, data.length()),
+                  Range(
+                    location_ctx.offset + i,
+                    location_ctx.offset + data.length(),
+                  ),
                 ),
               ),
             ),
           )
         } else {
-          return None // 需要更多数据
+          return None
         }
-    } // 需要更多数据
+    }
 
-    // 2. 在非宽松模式下，检查这段普通字符中是否包含未转义的换行符
     if !self.lenient {
       if array_view_memchr2(b'\n', b'\r', data[i:i + end])
         is Some(line_jump_end) {
@@ -942,8 +1014,11 @@ fn RdfLexer::recognize_long_string(
       }
     }
 
-    // let end = array_view_memchr2(delimiter, b'\'', data[i:]).unwrap()
-    match str_from_utf8(data[i:i + end], Range::Range(i, i + end)) {
+    match
+      str_from_utf8(
+        data[i:i + end],
+        Range(location_ctx.offset + i, location_ctx.offset + i + end),
+      ) {
       Ok(s) => string.write_string(s)
       Err(e) => return Some((end, Err(e)))
     }
@@ -956,8 +1031,11 @@ fn RdfLexer::recognize_long_string(
             (
               i + 3,
               Ok(
-                LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(
-                  N3Token::LongString(string.to_string()),Range::Range(0, i + 3))
+                LocatedTokenOrLineJump::LocatedN3Token(
+                  LocatedN3Token::new(
+                    N3Token::LongString(string.to_string()),
+                    Range(location_ctx.offset, location_ctx.offset + i + 3),
+                  ),
                 ),
               ),
             ),
@@ -967,10 +1045,9 @@ fn RdfLexer::recognize_long_string(
         string.write_char(Byte::to_char(delimiter))
       }
       b'\'' =>
-        match self.recognize_escape(data[i:], i, true) {
+        match self.recognize_escape(data[i:], location_ctx.offset + i, true) {
           Some((additional, c_result)) => {
             i += additional + 1
-            // 防御性检查：确保索引未越界（虽然 recognize_escape 通常只消耗固定长度，但安全起见）
             if i > data.length() {
               return None
             }
@@ -979,9 +1056,7 @@ fn RdfLexer::recognize_long_string(
               Err(e) => return Some((i, Err(e)))
             }
           }
-          None =>
-            // 数据不足，需要更多输入来完整解析转义序列
-            return None
+          None => return None
         }
       _ =>
         return Some(
@@ -990,7 +1065,7 @@ fn RdfLexer::recognize_long_string(
             Err(
               TokenRecognizerError::InvalidErrMessage(
                 data[i:i + 1],
-                Range::Range(i, i + 1),
+                Range(location_ctx.offset + i, location_ctx.offset + i + 1),
                 "Unexpected character in long string literal",
               ),
             ),
@@ -1004,18 +1079,16 @@ fn RdfLexer::recognize_long_string(
 fn RdfLexer::recognize_number(
   data : ArrayView[Byte],
   is_ending : Bool,
+  location_ctx : SourcePosition,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut i = 0
-  // let c = data.first()
   match data.get(0) {
     Some(c) => if c == b'+' || c == b'-' { i += 1 }
-    None =>
-      // 如果数据为空，根据具体逻辑决定是返回 None 还是错误
-      return None
+    None => return None
   }
   let count_before = match RdfLexer::recognize_digits(data[i:], is_ending) {
     Some(count) => count
-    None => return None // 数据不足
+    None => return None
   }
   i += count_before
   let c = if data.get(i) is Some(c) {
@@ -1029,7 +1102,7 @@ fn RdfLexer::recognize_number(
     i += 1
     let count_after = match RdfLexer::recognize_digits(data[i:], is_ending) {
       Some(count) => count
-      None => return None // 数据不足
+      None => return None
     }
     i += count_after
     Some(count_after)
@@ -1057,7 +1130,7 @@ fn RdfLexer::recognize_number(
     }
     let count_exp = match RdfLexer::recognize_digits(data[i:], is_ending) {
       Some(count) => count
-      None => return None // 数据不足
+      None => return None
     }
     i += count_exp
     Some(
@@ -1067,7 +1140,7 @@ fn RdfLexer::recognize_number(
           Err(
             TokenRecognizerError::InvalidErrMessage(
               data[0:i],
-              Range::Range(0, i),
+              Range(location_ctx.offset, location_ctx.offset + i),
               "A double exponent cannot be empty",
             ),
           )
@@ -1075,13 +1148,21 @@ fn RdfLexer::recognize_number(
           Err(
             TokenRecognizerError::InvalidErrMessage(
               data[0:i],
-              Range::Range(0, i),
+              Range(location_ctx.offset, location_ctx.offset + i),
               "A double should not be empty",
             ),
           )
         } else {
-          str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
-            LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Double(s),Range::Range(0, i)))
+          str_from_utf8(
+            data[:i],
+            Range(location_ctx.offset, location_ctx.offset + i),
+          ).map(s => {
+            LocatedTokenOrLineJump::LocatedN3Token(
+              LocatedN3Token::new(
+                N3Token::Double(s),
+                Range(location_ctx.offset, location_ctx.offset + i),
+              ),
+            )
           })
         },
       ),
@@ -1096,13 +1177,21 @@ fn RdfLexer::recognize_number(
             Err(
               TokenRecognizerError::InvalidErrMessage(
                 data[0:i],
-                Range::Range(0, i),
+                Range(location_ctx.offset, location_ctx.offset + i),
                 "An integer should not be empty",
               ),
             )
           } else {
-            str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
-              LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Integer(s),Range::Range(0, i)))
+            str_from_utf8(
+              data[:i],
+              Range(location_ctx.offset, location_ctx.offset + i),
+            ).map(s => {
+              LocatedTokenOrLineJump::LocatedN3Token(
+                LocatedN3Token::new(
+                  N3Token::Integer(s),
+                  Range(location_ctx.offset, location_ctx.offset + i),
+                ),
+              )
             })
           },
         ),
@@ -1111,8 +1200,16 @@ fn RdfLexer::recognize_number(
       Some(
         (
           i,
-          str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
-            LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Decimal(s),Range::Range(0, i)))
+          str_from_utf8(
+            data[:i],
+            Range(location_ctx.offset, location_ctx.offset + i),
+          ).map(s => {
+            LocatedTokenOrLineJump::LocatedN3Token(
+              LocatedN3Token::new(
+                N3Token::Decimal(s),
+                Range(location_ctx.offset, location_ctx.offset + i),
+              ),
+            )
           }),
         ),
       )
@@ -1125,13 +1222,21 @@ fn RdfLexer::recognize_number(
           Err(
             TokenRecognizerError::InvalidErrMessage(
               data[0:i],
-              Range::Range(0, i),
+              Range(location_ctx.offset, location_ctx.offset + i),
               "An integer should not be empty",
             ),
           )
         } else {
-          str_from_utf8(data[:i], Range::Range(0, i)).map(s => {
-            LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Integer(s),Range::Range(0, i)))
+          str_from_utf8(
+            data[:i],
+            Range(location_ctx.offset, location_ctx.offset + i),
+          ).map(s => {
+            LocatedTokenOrLineJump::LocatedN3Token(
+              LocatedN3Token::new(
+                N3Token::Integer(s),
+                Range(location_ctx.offset, location_ctx.offset + i),
+              ),
+            )
           })
         },
       ),
@@ -1160,18 +1265,16 @@ fn RdfLexer::recognize_digits(data : ArrayView[Byte], is_ending : Bool) -> Int? 
 fn RdfLexer::recognize_escape(
   self : RdfLexer,
   data : ArrayView[Byte],
-  position : Int,
+  position : Int, // 全局起始位置
   with_echar : Bool,
 ) -> (Int, Result[Char, TokenRecognizerError])? {
   match data.get(1) {
     Some(b'u') =>
-      // 处理 \uXXXX
       match RdfLexer::recognize_hex_char(data[2:], 4, 'u', position) {
         Ok(Some(c)) => Some((5, Ok(c)))
-        Ok(None) => None // 数据不足
+        Ok(None) => None
         Err(e) =>
           if self.lenient {
-            // 尝试处理 UTF-16 代理对 \uXXXX\uXXXX
             match RdfLexer::recognize_utf16_surrogate_pair(data[2:], position) {
               Ok(Some(c)) => Some((11, Ok(c)))
               Ok(None) => None
@@ -1182,35 +1285,33 @@ fn RdfLexer::recognize_escape(
           }
       }
     Some(b'U') =>
-      // 处理 \UXXXXXXXX
       match RdfLexer::recognize_hex_char(data[2:], 8, 'U', position) {
         Ok(Some(c)) => Some((9, Ok(c)))
         Ok(None) => None
         Err(e) => Some((9, Err(e)))
       }
     Some(b't') if with_echar => Some((1, Ok('\t')))
-    Some(b'b') if with_echar => Some((1, Ok('\u{0008}'))) // \b
+    Some(b'b') if with_echar => Some((1, Ok('\u{0008}')))
     Some(b'n') if with_echar => Some((1, Ok('\n')))
     Some(b'r') if with_echar => Some((1, Ok('\r')))
-    Some(b'f') if with_echar => Some((1, Ok('\u{000C}'))) // \f
+    Some(b'f') if with_echar => Some((1, Ok('\u{000C}')))
     Some(b'"') if with_echar => Some((1, Ok('"')))
     Some(b'\'') if with_echar => Some((1, Ok('\'')))
     Some(b'\\') if with_echar => Some((1, Ok('\\')))
     Some(c) =>
-      // 未知转义字符
       Some(
         (
           1,
           Err(
             TokenRecognizerError::InvalidErrMessage(
               data[1:2],
-              Range::Range(position + 1, position + 2),
+              Range(position + 1, position + 2),
               "Unexpected escape character \{c}",
             ),
           ),
         ),
       )
-    None => None // 数据不足
+    None => None
   }
 }
 
@@ -1227,7 +1328,6 @@ fn RdfLexer::recognize_hex_char(
   let mut codepoint = 0
   for i in 0..<len {
     let c = data[i]
-    // let c_char = Byte::to_char(c)
 
     codepoint = codepoint * 16 +
       Char::to_int(
@@ -1240,7 +1340,7 @@ fn RdfLexer::recognize_hex_char(
             return Err(
               TokenRecognizerError::InvalidErrMessage(
                 data[position + i + 2:position + i + 3],
-                Range::Range(position + i + 2, position + i + 3),
+                Range(position + i + 2, position + i + 3),
                 "The escape sequence '\{escape_char}\{val}' is not a valid hexadecimal string",
               ),
             )
@@ -1249,8 +1349,6 @@ fn RdfLexer::recognize_hex_char(
       )
   }
   let c = Int::unsafe_to_char(codepoint)
-  // .ok_or_else(fn() {   let val = @utf8.decode_lossy(data[:len])
-  // (position:position + len + 2, "The escape sequence '\{escape_char}\{val}' is encoding \{codepoint} that is not a valid unicode character") })
   Ok(Some(c))
 }
 
@@ -1259,16 +1357,13 @@ fn RdfLexer::recognize_utf16_surrogate_pair(
   data : ArrayView[Byte],
   position : Int,
 ) -> Result[Char?, TokenRecognizerError] {
-  // 检查长度是否足够容纳 \uXXXX\uXXXX (2 + 4 + 2 + 4 = 12 个字符/字节)
   if data.length() < 12 {
     return Ok(None)
   }
 
-  // 提取高代理项的十六进制字符串 \uXXXX
-  // data[2:6] 是第一个 \u 后的4个十六进制字符
   let val_high_bytes = data[2:6]
   let val_high = match
-    str_from_utf8(val_high_bytes, Range::Range(position + 2, position + 6)) {
+    str_from_utf8(val_high_bytes, Range(position + 2, position + 6)) {
     Ok(s) => s
     Err(e) => return Err(e)
   }
@@ -1279,38 +1374,35 @@ fn RdfLexer::recognize_utf16_surrogate_pair(
       return Err(
         TokenRecognizerError::InvalidErrMessage(
           val_high_bytes,
-          Range::Range(position + 2, position + 6),
+          Range(position + 2, position + 6),
           "The escape sequence '\\u{val_high}' is not a valid hexadecimal string",
         ),
       )
   }
 
-  // 检查是否为高代理项范围 D800-DBFF
   if !(surrogate_high >= 0xD800 && surrogate_high <= 0xDBFF) {
     return Err(
       TokenRecognizerError::InvalidErrMessage(
         val_high_bytes,
-        Range::Range(position + 2, position + 6),
+        Range(position + 2, position + 6),
         "The escape sequence '\\u{val_high}' is not a UTF-16 high surrogate",
       ),
     )
   }
 
-  // 检查接下来的两个字符是否是 '\' 和 'u'
   if data[6] != b'\\' || data[7] != b'u' {
     return Err(
       TokenRecognizerError::InvalidErrMessage(
         data[6:8],
-        Range::Range(position + 6, position + 8),
+        Range(position + 6, position + 8),
         "UTF-16 surrogate escape sequence must be followed by another surrogate escape sequence '\\u'",
       ),
     )
   }
 
-  // 提取低代理项的十六进制字符串 \uXXXX
   let val_low_bytes = data[8:12]
   let val_low = match
-    str_from_utf8(val_low_bytes, Range::Range(position + 8, position + 12)) {
+    str_from_utf8(val_low_bytes, Range(position + 8, position + 12)) {
     Ok(s) => s
     Err(e) => return Err(e)
   }
@@ -1321,24 +1413,22 @@ fn RdfLexer::recognize_utf16_surrogate_pair(
       return Err(
         TokenRecognizerError::InvalidErrMessage(
           val_low_bytes,
-          Range::Range(position + 8, position + 12),
+          Range(position + 8, position + 12),
           "The escape sequence '\\u\{val_low}' is not a valid hexadecimal string",
         ),
       )
   }
 
-  // 检查是否为低代理项范围 DC00-DFFF
   if !(surrogate_low >= 0xDC00 && surrogate_low <= 0xDFFF) {
     return Err(
       TokenRecognizerError::InvalidErrMessage(
         val_low_bytes,
-        Range::Range(position + 8, position + 12),
+        Range(position + 8, position + 12),
         "The escape sequence '\\u\{val_low}' is not a UTF-16 low surrogate",
       ),
     )
   }
 
-  // 组合代理对
   let c = Int::to_char(
     ((UInt::reinterpret_as_int(surrogate_high) - 0xD800) << 10) +
     (UInt::reinterpret_as_int(surrogate_low) - 0xDC00) +
@@ -1351,7 +1441,7 @@ fn RdfLexer::recognize_utf16_surrogate_pair(
       Err(
         TokenRecognizerError::InvalidErrMessage(
           data[2:12],
-          Range::Range(position + 2, position + 12),
+          Range(position + 2, position + 12),
           "Escape sequences do not form a valid Unicode character",
         ),
       )
@@ -1369,7 +1459,7 @@ fn RdfLexer::recognize_unicode_char(
   let mut upper_boundary = 0xBF
   let byte = match data.get(0) {
     Some(b) => b
-    None => return None // 数据不足
+    None => return None
   }
   match byte {
     0x00..=0x7F => return Some(Ok((Byte::to_char(byte), 1)))
@@ -1402,7 +1492,7 @@ fn RdfLexer::recognize_unicode_char(
         Err(
           TokenRecognizerError::InvalidErrMessage(
             data[position:position + 1],
-            Range::Range(position, position + 1),
+            Range(position, position + 1),
             "Invalid UTF-8 character encoding",
           ),
         ),
@@ -1411,7 +1501,7 @@ fn RdfLexer::recognize_unicode_char(
   for i in 1..<=bytes_needed {
     let next_byte = match data.get(i) {
       Some(b) => b
-      None => return None // 数据不足，需要更多输入
+      None => return None
     }
     if next_byte < Int::to_byte(lower_boundary) ||
       upper_boundary < Byte::to_int(byte) {
@@ -1419,7 +1509,7 @@ fn RdfLexer::recognize_unicode_char(
         Err(
           TokenRecognizerError::InvalidErrMessage(
             data[position:position + i],
-            Range::Range(position, position + i),
+            Range(position, position + i),
             "Invalid UTF-8 character encoding",
           ),
         ),
@@ -1432,7 +1522,7 @@ fn RdfLexer::recognize_unicode_char(
   match Int::to_char(UInt::reinterpret_as_int(code_point)) {
     Some(c) => Some(Ok((c, bytes_needed + 1)))
     None => {
-      let error_range = Range::Range(position, position + bytes_needed)
+      let error_range = Range(position, position + bytes_needed)
       let msg = "The codepoint \{code_point} is not a valid unicode character"
 
       Some(
@@ -1446,8 +1536,6 @@ fn RdfLexer::recognize_unicode_char(
       )
     }
   }
-  // Some(UInt::reinterpret_as_int(code_point)
-  // .map(fn(c) { (c, bytes_needed + 1) }).ok_or_else(fn() { (data[position:position + bytes_needed], "The codepoint {code_point:X} is not a valid unicode character")}))
 }
 
 ///|
@@ -1502,7 +1590,6 @@ pub fn resolve_local_name(
   if prefixes.get(prefix) is Some(start) {
     let iri = "\{start.into_string()}\{localx}"
     let iri = Iri::Iri(iri).as_ref()
-    // let iri = IriRef::of_ref(iri)
     if might_be_invalid_iri || start.path() is Some("") {
       if IriRef::parse(iri) is Err(e) {
         return Err(
@@ -1531,7 +1618,7 @@ fn str_from_utf8(
       return Err(
         TokenRecognizerError::InvalidErrMessage(
           data[error_start:error_end],
-          Range::Range(error_start, error_end),
+          Range(error_start, error_end),
           "Invalid UTF-8 sequence",
         ),
       )

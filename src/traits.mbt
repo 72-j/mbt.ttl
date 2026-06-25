@@ -218,6 +218,7 @@ pub trait TokenRecognizer {
     data : ArrayView[Byte],
     is_ending : Bool,
     options : LexerOptions?,
+    location_ctx : SourcePosition,
   ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])?
 }
 

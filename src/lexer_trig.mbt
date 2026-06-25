@@ -9,6 +9,8 @@ pub struct TriGRecognizer {
   lenient : Bool
   mut debug_logger : &DebugLogger
   mut in_collection : Bool
+   mut last_range: Range
+
 }
 
 ///|
@@ -266,6 +268,7 @@ pub fn TriGRecognizer::new_parser(
       lenient,
       debug_logger, // <-- 添加这一行，具体值需根据 TriGRecognizer 定义调整，可能是 None 或 DebugLogger::default()
       in_collection: false,
+      last_range: Range::default(),
     },
     RdfContext::TriGRecognizerContext({
       with_graph_name,
@@ -280,8 +283,10 @@ fn TriGRecognizer::error(
   self : TriGRecognizer,
   errors : Array[RuleRecognizerError],
   msg : String,
-) -> TriGRecognizer {
-  errors.push(RuleRecognizerError::SyntaxError(msg, Range::default()))
+) -> TriGRecognizer { 
+  // guard self.last_range.start != self.last_range.end 
+
+  errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
   self.stack.clear()
   self.cur_subject.clear()
   self.cur_predicate.clear()

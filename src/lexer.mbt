@@ -36,16 +36,21 @@ struct Position {
   mut buffer_offset : Int
   mut global_offset : Int
   mut global_line : Int
-} derive(Debug)
+} derive(Debug, Default)
 
 ///|
 pub struct SourcePosition {
   line : Int
   column : Int
   offset : Int
-} derive(Debug, Default)
+} derive(Debug)
 
+///|
+fn SourcePosition::default() -> SourcePosition {
+  SourcePosition(0, 0, 0)
+}
 
+///|
 fn SourcePosition::SourcePosition(
   line : Int,
   column : Int,
@@ -54,6 +59,26 @@ fn SourcePosition::SourcePosition(
   { line, column, offset }
 }
 
+///|
+pub fn SourcePosition::end_position(
+  self : Self,
+  consumed_bytes : Int,
+) -> SourcePosition {
+  // 注意：这里简化处理，假设消耗的都是单字节 ASCII 或者你希望在字节层面计算 offset
+  // 如果需要精确的 UTF-8 列号计算，需要扫描 data[start..start+consumed]
+  SourcePosition::SourcePosition(
+    self.line,
+    self.column + consumed_bytes, // 简化列计算，实际可能需要 utf8 解析
+    self.offset + consumed_bytes,
+  )
+}
+
+///|
+pub fn SourcePosition::start_position(self : Self) -> SourcePosition {
+  SourcePosition::SourcePosition(self.line, self.column, self.offset)
+}
+
+///|
 impl Show for SourcePosition with fn output(self, logger : &Logger) -> Unit {
   logger.write_string("[")
   logger.write_string(self.line.to_string())
@@ -78,18 +103,8 @@ pub fn[RL] Lexer::Lexer(
   {
     parser,
     data,
-    position: {
-      line_start_buffer_offset: 0,
-      buffer_offset: 0,
-      global_offset: 0,
-      global_line: 0,
-    },
-    previous_position: {
-      line_start_buffer_offset: 0,
-      buffer_offset: 0,
-      global_offset: 0,
-      global_line: 0,
-    },
+    position: Position::default(),
+    previous_position: Position::default(),
     is_ending,
     min_buffer_size,
     max_buffer_size,
@@ -210,11 +225,24 @@ pub async fn[RL] Lexer::extend_from_async_read(
 }
 
 ///|
+// pub fn[RL] Lexer::shrink_data(self : Lexer[RL]) -> Unit {
+//   if self.position.line_start_buffer_offset > 0 {
+//     self.shrink_data_by(self.position.line_start_buffer_offset)
+//   }
+//   if self.position.buffer_offset > self.max_buffer_size / 2 {
+//     self.shrink_data_by(self.position.buffer_offset)
+//   }
+// }
+
+///|
 pub fn[RL] Lexer::shrink_data(self : Lexer[RL]) -> Unit {
+  // 策略1: 如果行起始偏移量大于0，说明前面有完整的行可以丢弃
   if self.position.line_start_buffer_offset > 0 {
     self.shrink_data_by(self.position.line_start_buffer_offset)
-  }
-  if self.position.buffer_offset > self.max_buffer_size / 2 {
+    // 策略2: 如果缓冲区使用超过一半，尝试收缩已处理的部分
+    // 注意：这里通常收缩到 current_token_start 或者 position.buffer_offset
+    // 原代码使用 position.buffer_offset，意味着丢弃所有已消耗的字符
+  } else if self.position.buffer_offset > self.max_buffer_size / 2 {
     self.shrink_data_by(self.position.buffer_offset)
   }
 }
@@ -226,28 +254,99 @@ fn[RL] Lexer::shrink_data_by(self : Lexer[RL], shift_amount : Int) -> Unit {
   }
 
   let current_len = self.data.length()
+
+  // 安全检查：确保不移动超出数组范围的数据
+  if shift_amount > current_len {
+    // 理论上不应发生，除非逻辑有误
+    return
+  }
+
   let new_len = current_len - shift_amount
 
-  // 1. 将 data[shift_amount .. current_len] 的数据拷贝到 data[0 .. new_len]
-  // Array::blit_to(src, dst, len, src_offset, dst_offset)
-  // 注意：blit_to 是实例方法，调用者是源数组
-  ArrayView::blit_to(self.data, self.data, dst_offset=shift_amount)
+  // 1. 数据移动：将 [shift_amount .. current_len) 移动到 [0 .. new_len)
+  // Moonbit ArrayView::blit_to(src, dst, src_offset, dst_offset, len) 
+  // 注意：不同版本 API 可能略有不同，假设 blit_to 签名如下：
+  // src.blit_to(dst, src_offset, dst_offset, length)
+  // 或者静态方法 ArrayView::blit_to(src, dst, src_offset, dst_offset, length)
 
-  // 2. 截断数组，移除末尾多余的数据
+  // 假设使用实例方法或标准库推荐方式：
+  // 将 self.data 从 shift_amount 开始的内容，拷贝到 self.data 从 0 开始的位置
+  // self.data.blit_to(
+
+  //   src_offset=shift_amount, 
+  //   dst_offset=0, 
+  //   len=new_len,
+  //   self.data
+  // )
+  let _ = ArrayView::blit_to(self.data, self.data, dst_offset=shift_amount)
+  // 2. 截断数组
   self.data.truncate(new_len)
 
-  // 3. 更新位置信息
+  // 3. 更新相对偏移量 (Buffer Offsets)
+  // 这些是数组索引，必须减去移走的字节数
   self.position.buffer_offset -= shift_amount
-  self.position.line_start_buffer_offset = if self.position.line_start_buffer_offset >=
-    shift_amount {
-    self.position.line_start_buffer_offset - shift_amount
-  } else {
-    0
+  self.position.line_start_buffer_offset -= shift_amount
+
+  // 确保 line_start_buffer_offset 不为负（虽然逻辑上 shift_amount <= line_start_buffer_offset 时才调用，或者针对 buffer_offset）
+  if self.position.line_start_buffer_offset < 0 {
+    self.position.line_start_buffer_offset = 0
   }
-  // 4. 更新 previous_position (保持与当前 position 一致，或者根据逻辑重置)
-  // 原代码中直接赋值，这里保持一致
-  self.previous_position = self.position
+  if self.position.buffer_offset < 0 {
+    self.position.buffer_offset = 0
+  }
+
+  // 4. 【关键】绝对偏移量 (Global Offsets) 保持不变
+  // self.position.global_offset 不变
+  // self.position.global_line 不变
+
+  // 5. 更新 previous_position
+  // 如果 previous_position 用于指向“上一个处理完的位置”，它应该跟随当前的 position 状态
+  // 因为 position 已经更新为收缩后的新索引，previous_position 也应反映这一变化
+  // 注意：previous_position 中的 global_offset 和 global_line 也应保持不变（因为它们来自 position 的副本或独立维护）
+  // 如果 previous_position 是 Position 结构体，它也包含 buffer_offset 等相对字段，必须同样调整
+
+  self.previous_position.buffer_offset -= shift_amount
+  self.previous_position.line_start_buffer_offset -= shift_amount
+
+  if self.previous_position.line_start_buffer_offset < 0 {
+    self.previous_position.line_start_buffer_offset = 0
+  }
+  if self.previous_position.buffer_offset < 0 {
+    self.previous_position.buffer_offset = 0
+  }
+
+  // previous_position 的 global_offset 和 global_line 也不需要变，因为它们代表历史绝对位置
 }
+
+///|
+// fn[RL] Lexer::shrink_data_by(self : Lexer[RL], shift_amount : Int) -> Unit {
+//   if shift_amount <= 0 {
+//     return
+//   }
+
+//   let current_len = self.data.length()
+//   let new_len = current_len - shift_amount
+
+//   // 1. 将 data[shift_amount .. current_len] 的数据拷贝到 data[0 .. new_len]
+//   // Array::blit_to(src, dst, len, src_offset, dst_offset)
+//   // 注意：blit_to 是实例方法，调用者是源数组
+//   ArrayView::blit_to(self.data, self.data, dst_offset=shift_amount)
+
+//   // 2. 截断数组，移除末尾多余的数据
+//   self.data.truncate(new_len)
+
+//   // 3. 更新位置信息
+//   self.position.buffer_offset -= shift_amount
+//   self.position.line_start_buffer_offset = if self.position.line_start_buffer_offset >=
+//     shift_amount {
+//     self.position.line_start_buffer_offset - shift_amount
+//   } else {
+//     0
+//   }
+//   // 4. 更新 previous_position (保持与当前 position 一致，或者根据逻辑重置)
+//   // 原代码中直接赋值，这里保持一致
+//   self.previous_position = self.position
+// }
 // fn[RL] Lexer::shrink_data_by(self : Lexer[R], shift_amount : Int) -> Unit {
 //   self.data.copy_within(shift_amount..<, 0)
 //   self.data.truncate(self.data.length() - shift_amount)
@@ -299,17 +398,21 @@ pub fn[RL] Lexer::location_from_buffer_offset_range(
   )
 }
 
-
 ///|
-pub fn[RL] Lexer::current_token_start_location(self : Lexer[RL]) -> SourcePosition {
+pub fn[RL] Lexer::current_token_start_location(
+  self : Lexer[RL],
+) -> SourcePosition {
   self.position_from_position(self.previous_position)
   //  SourcePosition::new(self.position_from_position(self.previous_position),
   //  self.position_from_position(self.position),
   //  )
 }
+
 ///|
 /// 获取当前 Token 的**结束**位置 (即 Lexer 指针当前位置)
-pub fn[RL] Lexer::current_token_end_location(self : Lexer[RL]) -> SourcePosition {
+pub fn[RL] Lexer::current_token_end_location(
+  self : Lexer[RL],
+) -> SourcePosition {
   self.position_from_position(self.position)
 }
 
@@ -318,9 +421,10 @@ pub fn[RL] Lexer::current_token_end_location(self : Lexer[RL]) -> SourcePosition
 pub fn[RL] Lexer::current_token_source_range(self : Lexer[RL]) -> SourceRange {
   SourceRange::SourceRange(
     self.current_token_start_location(),
-    self.current_token_end_location()
+    self.current_token_end_location(),
   )
 }
+
 ///|
 fn[RL] Lexer::position_from_position(
   self : Lexer[RL],
@@ -534,7 +638,7 @@ fn[T] Lexer::current_offset(self : Lexer[T]) -> Int {
 
 ///|
 /// 获取当前行号
-fn[T] Lexer::urrent_line(self : Lexer[T]) -> Int {
+fn[T] Lexer::current_line(self : Lexer[T]) -> Int {
   self.position.global_line
 }
 
@@ -575,6 +679,7 @@ fn[T] Lexer::record_token_end(self : Lexer[T]) -> Unit {
   // 使用 global_offset 确保位置在数据收缩后依然有效
   self.current_token_end = self.position.global_offset
 }
+
 ///|
 // fn[RL] Lexer::position_at_offset(
 //   self : Lexer[RL],
