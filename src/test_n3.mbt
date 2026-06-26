@@ -80,7 +80,7 @@ async test "debug_n3_literal_complex" {
   // N3 支持更复杂的字面量，如 XML Literal 或 Formula literals (如果实现的话)
   // 这里测试一个标准的带语言标签和类型的复杂情况，确保 N3 模式下兼容
   let input =
-  #|<http://example.org/s> <http://example.org/p> "Simple String"@en-us .
+    #|<http://example.org/s> <http://example.org/p> "Simple String"@en-us .
   let data = @utf8.encode(input).to_array()
 
   let prefixes = Map([])

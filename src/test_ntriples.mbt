@@ -23,7 +23,7 @@ test "lenient parsing" {
   // assert_eq(triples, [expected_triple])
 }
 
-
+///|
 async test "verify_with_ntriples" {
   // N-Triples 格式相同
   let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> ."
@@ -41,7 +41,6 @@ async test "verify_with_ntriples" {
     None => debug("NTriples None")
   }
 }
-
 
 ///|
 test "parse basic ntriples" {
@@ -288,7 +287,6 @@ test "safe parse all punctuation" {
     // panic() // 这里 panic 是正常的测试失败
   }
 }
-
 
 // ///|
 // async test "lenient parsing for Reader simple @en" {

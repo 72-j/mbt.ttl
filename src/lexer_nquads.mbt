@@ -6,6 +6,7 @@ pub struct NQuadsRecognizer {
   objects : Array[TermRef]
   lenient : Bool
   mut debug_logger : &DebugLogger
+  mut last_range : Range
 }
 
 ///|
@@ -67,8 +68,6 @@ impl RuleRecognizer for NQuadsRecognizer with fn[DL : DebugLogger] debug_logger(
   self.debug_logger = debug_logger
 }
 
-
-
 ///|
 impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
   self : NQuadsRecognizer,
@@ -92,10 +91,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
     }
     _ =>
       errors.push(
-        RuleRecognizerError::SyntaxError(
-          "Unexpected end",
-          Range::default(),
-        ),
+        RuleRecognizerError::SyntaxError("Unexpected end", Range::default()),
       )
   }
 }
@@ -141,6 +137,7 @@ pub fn NQuadsRecognizer::new_parser(
       objects: [],
       lenient,
       debug_logger, // 修复：包装为 Option 类型
+      last_range: Range::default(),
     },
     RdfContext::NQuadsRecognizerContext(initial_context),
   )
@@ -153,10 +150,9 @@ fn NQuadsRecognizer::error(
   results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
   token : LocatedTokenOrLineJump,
-  msg : RuleRecognizerError,
+  msg : String,
 ) -> NQuadsRecognizer {
-
-  errors.push(msg)
+  errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
   let this = self.error_recovery_state()
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(_) => this

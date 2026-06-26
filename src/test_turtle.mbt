@@ -1,5 +1,6 @@
 ///|
-/// 
+///
+
 ///|
 async test "debug_simple_turtle_workaround" {
   // 变通：使用简单字面量代替集合，验证解析器基本通路
@@ -25,6 +26,8 @@ async test "debug_simple_turtle_workaround" {
     None => debug("None")
   }
 }
+
+///|
 async test "debug_simple_turtle_fixed_input" {
   // 修复：使用标准的三元组，避免集合语法，以验证解析器核心功能
   let input = "<http://a.example/s> <http://a.example/p> <http://a.example/o> ."
@@ -49,6 +52,8 @@ async test "debug_simple_turtle_fixed_input" {
     None => debug("None")
   }
 }
+
+///|
 async test "debug_simple_turtle" {
   let input =
     #| <http://a.example/s> <http://a.example/p> (1) .
@@ -161,7 +166,6 @@ async test "debug_simple_triple 2" {
     }
   }
 }
-
 
 ///|
 async test "verify_with_turtle" {

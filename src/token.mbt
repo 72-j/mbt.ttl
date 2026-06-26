@@ -8,18 +8,20 @@
 
 ///|
 /// 带位置的 N3Token
-pub struct LocatedN3Token(N3Token,  Range)  derive(Debug)
-fn LocatedN3Token::into_token(self: Self) -> N3Token {
+pub struct LocatedN3Token(N3Token, Range) derive(Debug)
+
+///|
+fn LocatedN3Token::into_token(self : Self) -> N3Token {
   self.0
 }
 
-fn LocatedN3Token::new(token : N3Token, range : Range) -> Self {
-  LocatedN3Token(token,range)}
 ///|
-impl Show for LocatedN3Token with fn output(
-  self : LocatedN3Token,
-  f : &Logger,
-) -> Unit {
+fn LocatedN3Token::new(token : N3Token, range : Range) -> Self {
+  LocatedN3Token(token, range)
+}
+
+///|
+impl Show for LocatedN3Token with fn output(self : LocatedN3Token, f : &Logger) -> Unit {
   self.0.output(f)
 }
 

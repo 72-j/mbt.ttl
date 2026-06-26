@@ -31,7 +31,6 @@ test "parse absolute IRI" {
   let result = IriRef::parse(iri)
   match result {
     Ok(parsed) => assert_eq(parsed.as_stringview(), iri.into_string())
-
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
 }
@@ -125,7 +124,6 @@ test "parse: fragment only" {
 
 ///|
 test "parse: error on invalid scheme format" {
-
   let iri = Iri::Iri("invalid:iri").as_ref()
 
   let result = IriRef::parse(iri)
@@ -404,4 +402,3 @@ test "relativize: parent directory navigation" {
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
 }
-

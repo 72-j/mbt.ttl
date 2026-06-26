@@ -50,7 +50,6 @@ test "low level parser initialization" {
   // assert_true(low_level.is_end())
 }
 
-
 // async test "async serializer buffer accumulation" {
 //   let log = StringBuilder::new()
 //   let serializer = NQuadsSerializer::new()
@@ -109,7 +108,6 @@ test "low level parser initialization" {
 //     ),
 //   )
 // }
-
 
 // async test "async serializer buffer accumulation" {
 //   let log = StringBuilder::new()

@@ -223,7 +223,7 @@ pub(all) suberror RuleRecognizerError {
 struct Range {
   start : Int
   end : Int
-} derive(Debug, Default,Eq)
+} derive(Debug, Default, Eq)
 
 ///|
 pub fn Range::Range(start : Int, end : Int) -> Range {
@@ -266,7 +266,7 @@ fn SourceRange::SourceRange(
   { start, end }
 }
 
-
+///|
 impl Show for SourceRange with fn output(self, logger : &Logger) -> Unit {
   logger.write_string("[")
   logger.write_string(self.start.to_string())
@@ -276,30 +276,16 @@ impl Show for SourceRange with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-pub fn RuleRecognizerError::text_range(
-  self : RuleRecognizerError,
-) -> Range {
+pub fn RuleRecognizerError::text_range(self : RuleRecognizerError) -> Range {
   match self {
-    RuleRecognizerError::SyntaxError(_, pos) =>
-      pos
-    RuleRecognizerError::BlankNodeOrIriError =>
-      Range::default()
-    RuleRecognizerError::PredicateNotAnIRI =>
-      Range::default()
-
-     
-    RuleRecognizerError::TripleMissingDot =>
-      Range::default()
-
-    RuleRecognizerError::LiteralDatatypeError =>
-      Range::default()
-
-    RuleRecognizerError::InvalidLanguageTag =>
-      Range::default()
-
+    RuleRecognizerError::SyntaxError(_, pos) => pos
+    RuleRecognizerError::BlankNodeOrIriError => Range::default()
+    RuleRecognizerError::PredicateNotAnIRI => Range::default()
+    RuleRecognizerError::TripleMissingDot => Range::default()
+    RuleRecognizerError::LiteralDatatypeError => Range::default()
+    RuleRecognizerError::InvalidLanguageTag => Range::default()
     RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
       Range::default()
-
   }
 }
 
@@ -361,7 +347,7 @@ pub(all) suberror TurtleError {
   TurtleSyntaxError(String, Range)
   InvalidEscapeSequence
   InvalidCharacter(String)
-  InvalidToken(SourcePosition , String)
+  InvalidToken(SourcePosition, String)
 }
 
 ///|

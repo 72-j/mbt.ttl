@@ -10,7 +10,14 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
     RdfContext::NQuadsRecognizerContext(c) => c
     _ => abort("Invalid context type")
   }
-
+  match token {
+    LocatedTokenOrLineJump::LocatedN3Token(located) => {
+      match located {
+        LocatedN3Token(_, range) => self.last_range = range
+      }
+    }
+    _ => ()
+  }
   // 获取当前状态的字符串表示用于日志（假设 NQuadsState 实现了 ToString 或者手动匹配）
   // 这里为了通用性，我们直接在每个分支记录状态名称
 
@@ -40,7 +47,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             results,
             errors,
             token,
-            RuleRecognizerError::BlankNodeOrIriError,
+            RuleRecognizerError::BlankNodeOrIriError.err_kind(),
           )
       }
     }
@@ -62,7 +69,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             results,
             errors,
             token,
-            RuleRecognizerError::PredicateNotAnIRI,
+            RuleRecognizerError::PredicateNotAnIRI.err_kind(),
           )
       }
     }
@@ -108,7 +115,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             results,
             errors,
             token,
-            RuleRecognizerError::BlankNodeOrIriError,
+            RuleRecognizerError::BlankNodeOrIriError.err_kind(),
           )
       }
     }
@@ -233,7 +240,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             results,
             errors,
             token,
-            RuleRecognizerError::LiteralDatatypeError,
+            RuleRecognizerError::LiteralDatatypeError.err_kind(),
           )
       }
     }
@@ -285,10 +292,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
             results,
             errors,
             token,
-            RuleRecognizerError::SyntaxError(
               "Expecting the end of a quoted triple ')>>'",
-              Range::default(),
-            ),
           )
       }
     }

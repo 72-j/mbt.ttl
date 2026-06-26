@@ -9,8 +9,7 @@ pub struct TriGRecognizer {
   lenient : Bool
   mut debug_logger : &DebugLogger
   mut in_collection : Bool
-   mut last_range: Range
-
+  mut last_range : Range
 }
 
 ///|
@@ -218,10 +217,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
     }
     _ =>
       errors.push(
-        RuleRecognizerError::SyntaxError(
-          "Unexpected end",
-          Range::default(),
-        ),
+        RuleRecognizerError::SyntaxError("Unexpected end", Range::default()),
       )
   }
 }
@@ -283,7 +279,7 @@ fn TriGRecognizer::error(
   self : TriGRecognizer,
   errors : Array[RuleRecognizerError],
   msg : String,
-) -> TriGRecognizer { 
+) -> TriGRecognizer {
   // guard self.last_range.start != self.last_range.end 
 
   errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
@@ -472,6 +468,7 @@ fn TriGRecognizer::set_state(
   self
 }
 
+///|
 /// 重置状态到 TriGDoc
 fn TriGRecognizer::reset_to_tri_gdoc(self : TriGRecognizer) -> TriGRecognizer {
   let new_stack = []

@@ -5,6 +5,7 @@ struct N3Recognizer {
   predicates : Array[Predicate]
   contexts : Array[BlankNode]
   mut debug_logger : &DebugLogger
+ mut last_range : Range
 }
 
 ///|
@@ -50,10 +51,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_end(
     [] | [N3State::N3Doc] => ()
     _ =>
       errors.push(
-        RuleRecognizerError::SyntaxError(
-          "Unexpected end",
-          Range::default(),
-        ),
+        RuleRecognizerError::SyntaxError("Unexpected end", Range::default()),
       )
   }
 }
@@ -94,6 +92,7 @@ pub fn N3Recognizer::new_parser(
       predicates: [],
       contexts: [],
       debug_logger,
+      last_range: Range::default(),
     },
     // 修复点：使用 RdfContext ::N3RecognizerContext 包装记录
     RdfContext::N3RecognizerContext({ lexer_options: { base_iri, }, prefixes }),
@@ -104,11 +103,12 @@ pub fn N3Recognizer::new_parser(
 fn N3Recognizer::error(
   self : N3Recognizer,
   errors : Array[RuleRecognizerError],
-  msg : RuleRecognizerError,
+  msg : String,
 ) -> N3Recognizer {
-  errors.push(msg)
+  errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
   self.stack.clear()
-  self
+
+   self
 }
 
 ///|
@@ -160,53 +160,50 @@ enum N3State {
   LiteralExpectDatatype(value~ : String)
   FormulaContent
   FormulaContentExpectDot
-} derive(Debug)
+} derive(Debug, Eq)
 
 ///|
 impl Show for N3State with fn output(self, logger : &Logger) -> Unit {
   match self {
-    N3State::N3Doc => logger.write("N3 Document Start")
-    N3State::N3DocExpectDot => logger.write("Expecting dot after N3 statement")
-    N3State::BaseExpectIri => logger.write("Expecting IRI after BASE keyword")
-    N3State::PrefixExpectPrefix =>
-      logger.write("Expecting prefix name after PREFIX keyword")
-    N3State::PrefixExpectIri(name~) =>
-      logger.write("Expecting IRI for prefix '\{name}'")
-    N3State::Triples => logger.write("Parsing Triples")
-    N3State::TriplesMiddle => logger.write("Parsing Triples Middle")
-    N3State::TriplesEnd => logger.write("Triples End")
-    N3State::PredicateObjectList =>
-      logger.write("Parsing Predicate Object List")
-    N3State::PredicateObjectListEnd => logger.write("Predicate Object List End")
+    N3State::N3Doc => logger.write("N3Doc")
+    N3State::N3DocExpectDot => logger.write("N3DocExpectDot")
+    N3State::BaseExpectIri => logger.write("BaseExpectIri")
+    N3State::PrefixExpectPrefix => logger.write("PrefixExpectPrefix")
+    N3State::PrefixExpectIri(name~) => logger.write("PrefixExpectIri(\{name})")
+    N3State::Triples => logger.write("Triples")
+    N3State::TriplesMiddle => logger.write("TriplesMiddle")
+    N3State::TriplesEnd => logger.write("TriplesEnd")
+    N3State::PredicateObjectList => logger.write("PredicateObjectList")
+    N3State::PredicateObjectListEnd => logger.write("PredicateObjectListEnd")
     N3State::PredicateObjectListPossibleContinuation =>
-      logger.write("Checking Predicate Object List Continuation")
-    N3State::ObjectsList => logger.write("Parsing Objects List")
-    N3State::ObjectsListEnd => logger.write("Objects List End")
-    N3State::Verb => logger.write("Parsing Verb")
-    N3State::AfterRegularVerb => logger.write("After Regular Verb")
-    N3State::AfterInvertedVerb => logger.write("After Inverted Verb")
-    N3State::AfterVerbIs => logger.write("After 'is' keyword")
-    N3State::Path => logger.write("Parsing Path")
-    N3State::PathFollowUp => logger.write("Path Follow Up")
+      logger.write("PredicateObjectListPossibleContinuation")
+    N3State::ObjectsList => logger.write("ObjectsList")
+    N3State::ObjectsListEnd => logger.write("ObjectsListEnd")
+    N3State::Verb => logger.write("Verb")
+    N3State::AfterRegularVerb => logger.write("AfterRegularVerb")
+    N3State::AfterInvertedVerb => logger.write("AfterInvertedVerb")
+    N3State::AfterVerbIs => logger.write("AfterVerbIs")
+    N3State::Path => logger.write("Path")
+    N3State::PathFollowUp => logger.write("PathFollowUp")
     N3State::PathAfterIndicator(is_inverse~) => {
       let desc = if is_inverse { "inverse" } else { "regular" }
       logger.write("Path After \{desc} Indicator")
     }
-    N3State::PathItem => logger.write("Parsing Path Item")
+    N3State::PathItem => logger.write("PathItem")
     N3State::PropertyListMiddle =>
-      logger.write("Parsing Property List Middle (Blank Node)")
-    N3State::PropertyListEnd => logger.write("Property List End")
+      logger.write("PropertyListMiddle")
+    N3State::PropertyListEnd => logger.write("PropertyListEnd")
     N3State::IriPropertyList =>
-      logger.write("Parsing IRI Property List ([ id ... ])")
-    N3State::CollectionBeginning => logger.write("Collection Beginning")
+      logger.write("IriPropertyList")
+    N3State::CollectionBeginning => logger.write("CollectionBeginning")
     N3State::CollectionPossibleEnd =>
-      logger.write("Checking Collection End or Continuation")
+      logger.write("CollectionPossibleEnd")
     N3State::LiteralPossibleSuffix(value~) =>
-      logger.write("Expecting literal suffix for '\{value}'")
+      logger.write("LiteralPossibleSuffix(\{value})")
     N3State::LiteralExpectDatatype(value~) =>
-      logger.write("Expecting datatype for literal '\{value}'")
-    N3State::FormulaContent => logger.write("Parsing Formula Content")
+      logger.write("LiteralExpectDatatype(\{value})")
+    N3State::FormulaContent => logger.write("FormulaContent")
     N3State::FormulaContentExpectDot =>
-      logger.write("Expecting dot in Formula Content")
+      logger.write("FormulaContentExpectDot")
   }
 }

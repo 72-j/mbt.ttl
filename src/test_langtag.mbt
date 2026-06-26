@@ -307,8 +307,6 @@ test "wellformed tags" {
       Err(e) => debug("✗ \{tag} should be  passed: \{e}")
     }
   }
-
-
 }
 
 ///|
@@ -330,7 +328,6 @@ test "broken tags" {
       // debug("✓ \{tag} correctly rejected: \{e}")
     }
   }
-
 }
 
 ///|
@@ -455,8 +452,6 @@ test "hash eq" {
   let tag2 = LanguageTag::parse("en-fr").unwrap()
   assert_eq(tag, tag2)
   assert_eq(tag.hash(), tag2.hash())
-
-
 }
 
 ///|
@@ -584,6 +579,7 @@ test "str" {
   assert_true(tag.tag.has_prefix("en-"))
 }
 
+///|
 test "extension_subtags iteration" {
   // 1. 测试包含多个扩展子标签的情况
   // en-US-u-co-phonebk-ca-gregory
@@ -591,29 +587,31 @@ test "extension_subtags iteration" {
   // 子标签应为: ["u", "co", "phonebk", "ca", "gregory"]
   let tag_str = "en-US-u-co-phonebk-ca-gregory"
   let lang_tag = LanguageTag::parse(tag_str).unwrap()
-  
-  let  collected = []
+
+  let collected = []
   for subtag in lang_tag.extension_subtags().subtags {
     collected.push(subtag.to_string())
   }
 
-assert_eq(collected, ["u", "co", "phonebk", "ca", "gregory"]);
+  assert_eq(collected, ["u", "co", "phonebk", "ca", "gregory"])
 }
 
+///|
 test "extension_subtags empty" {
   // 2. 测试没有扩展部分的情况
   // en-US
   let tag_str = "en-US"
   let lang_tag = LanguageTag::parse(tag_str).unwrap()
-  
+
   let mut count = 0
   for subtag in lang_tag.extension_subtags().subtags {
     count += 1
   }
-  
+
   assert_eq(count, 0)
 }
 
+///|
 test "extension_subtags single extension intro" {
   // 3. 测试只有扩展标识符，没有内容的情况 (虽然解析器可能会报错 EmptyExtension，但在合法标签中测试)
   // 注意：根据 RFC 5646，扩展标识符后必须跟随至少一个子标签，否则是 Ill-formed。
@@ -621,27 +619,28 @@ test "extension_subtags single extension intro" {
   // 因此我们测试一个合法的简单扩展：en-u-co
   let tag_str = "en-u-co"
   let lang_tag = LanguageTag::parse(tag_str).unwrap()
-  
-  let  collected = []
+
+  let collected = []
   for subtag in lang_tag.extension_subtags().subtags {
     collected.push(subtag.to_string())
   }
-  
+
   assert_eq(collected, ["u", "co"])
 }
 
+///|
 test "extension_subtags multiple extensions" {
   // 4. 测试多个扩展序列 (例如 u-... 和 t-...)
   // en-US-u-co-phonebk-t-it-x-private
   // 扩展部分直到 x- 之前: u-co-phonebk-t-it
   let tag_str = "en-US-u-co-phonebk-t-it-x-private"
   let lang_tag = LanguageTag::parse(tag_str).unwrap()
-  
-  let  collected = []
+
+  let collected = []
   for subtag in lang_tag.extension_subtags().subtags {
     collected.push(subtag.to_string())
   }
-  
+
   // 期望: ["u", "co", "phonebk", "t", "it"]
   assert_eq(collected, ["u", "co", "phonebk", "t", "it"])
 }

@@ -6,6 +6,14 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
   results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> N3Recognizer {
+    match token {
+    LocatedTokenOrLineJump::LocatedN3Token(located) => {
+      match located {
+        LocatedN3Token(_, range) => self.last_range = range
+      }
+    }
+    _ => ()
+  }
   while true {
     match self.stack.pop() {
       Some(rule) =>
@@ -92,10 +100,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             } else {
               return self.error(
                 errors,
-                RuleRecognizerError::SyntaxError(
+                
                   "The BASE keyword should be followed by an IRI",
-                  Range::default(),
-                ),
+                
               )
             }
           }
@@ -115,10 +122,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               _ =>
                 self.error(
                   errors,
-                  RuleRecognizerError::SyntaxError(
+                  
                     "The PREFIX keyword should be followed by a prefix like 'ex:'",
-                    Range::default(),
-                  ),
+ 
                 )
             }
           }
@@ -141,10 +147,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             } else {
               self.error(
                 errors,
-                RuleRecognizerError::SyntaxError(
+                
                   "The PREFIX declaration should be followed by a prefix and its value as an IRI",
-                  Range::default(),
-                ),
+                  
               )
             }
           }
@@ -473,10 +478,8 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               _ =>
                 self.error(
                   errors,
-                  RuleRecognizerError::SyntaxError(
                     "The keyword 'is' should be followed by a predicate then by the keyword 'of'",
-                    Range::default(),
-                  ),
+
                 )
             }
           }
@@ -550,159 +553,55 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.terms.push(current)
             self.stack.push(N3State::PathFollowUp)
           }
-          N3State::PathItem => {
-            self.debug_logger.info("Entering PathItem with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+ N3State::PathItem => {
+    self.debug_logger.info("Entering PathItem with token: \{token}")
+    self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            return match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Iri(iri), _)
-              ) => {
-                self.terms.push(NamedNodeRef::new_unchecked(iri).as_n3term())
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-                  _
-                )
-              ) =>
-                match context {
-                  RdfContext::N3RecognizerContext(ctx) =>
-                    match
-                      resolve_local_name(
-                        prefix,
-                        localx,
-                        might_be_invalid_iri,
-                        ctx.prefixes,
-                      ) {
-                      Ok(t) => {
-                        self.terms.push(t.as_n3term())
-                        self
-                      }
-                      Err(e) =>
-                        return self.error(
-                          errors,
-                          RuleRecognizerError::SyntaxError(
-                            e,
-                            Range::default(),
-                          ),
-                        )
-                    }
-                  _ =>
-                    self.error(
-                      errors,
-                      RuleRecognizerError::SyntaxError(
-                        "Invalid context for prefix resolution",
-                        Range::default(),
-                      ),
-                    )
-                }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::BlankNodeLabel(bnode), _)
-              ) => {
-                self.terms.push(BlankNodeRef::new_unchecked(bnode).as_n3term())
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Variable(name), _)
-              ) => {
-                self.terms.push(N3Term::Variable(name))
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("["), _)
-              ) => {
-                self.stack.push(N3State::PropertyListMiddle)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("("), _)
-              ) => {
-                self.stack.push(N3State::CollectionBeginning)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::String(value), _)
-              )
-              | LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::LongString(value), _)
-              ) => {
-                self.stack.push(N3State::LiteralPossibleSuffix(value~))
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Integer(v), _)
-              ) => {
-                self.terms.push(
-                  LiteralRef::new_typed_literal(
-                    VarDataType::IntegerVar(v),
-                    lwINTEGER,
-                  ).as_n3term(),
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Decimal(v), _)
-              ) => {
-                self.terms.push(
-                  LiteralRef::new_typed_literal(
-                    VarDataType::IntegerVar(v),
-                    lwDECIMAL,
-                  ).as_n3term(),
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Double(v), _)
-              ) => {
-                self.terms.push(
-                  LiteralRef::new_typed_literal(
-                    VarDataType::IntegerVar(v),
-                    lwDOUBLE,
-                  ).as_n3term(),
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword("true"), _)
-              ) => {
-                self.terms.push(
-                  LiteralRef::new_typed_literal(
-                    VarDataType::IntegerVar("true"),
-                    lwBOOLEAN,
-                  ).as_n3term(),
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword("false"), _)
-              ) => {
-                self.terms.push(
-                  LiteralRef::new_typed_literal(
-                    VarDataType::IntegerVar("false"),
-                    lwBOOLEAN,
-                  ).as_n3term(),
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("{"), _)
-              ) => {
-                self.contexts.push(BlankNode::default())
-                self.stack.push(N3State::FormulaContent)
-                self
-              }
-              _ =>
-                self.error(
-                  errors,
-                  RuleRecognizerError::SyntaxError(
-                    "TOKEN is not a valid RDF value",
-                    Range::default(),
-                  ),
-                )
-            }
-          }
+    return match token {
+      LocatedTokenOrLineJump::LocatedN3Token(
+        LocatedN3Token(N3Token::Punctuation("["), _)
+      ) => {
+        self.stack.push(N3State::PropertyListMiddle)
+        self
+      }
+      LocatedTokenOrLineJump::LocatedN3Token(
+        LocatedN3Token(N3Token::Punctuation("("), _)
+      ) => {
+        self.stack.push(N3State::CollectionBeginning)
+        self
+      }
+      LocatedTokenOrLineJump::LocatedN3Token(
+        LocatedN3Token(N3Token::Punctuation("{"), _)
+      ) => {
+        self.contexts.push(BlankNode::default())
+        self.stack.push(N3State::FormulaContent)
+        self
+      }
+      // 修复：处理公式结束符 }
+      LocatedTokenOrLineJump::LocatedN3Token(
+        LocatedN3Token(N3Token::Punctuation("}"), _)
+      ) => {
+        if self.contexts.is_empty() {
+          return self.error(
+            errors,
+              "Unexpected '}' outside of formula",
+  
+          )
+        }
+        let ctx = self.contexts.pop().unwrap()
+        self.terms.push(ctx.as_n3term())
+                if self.stack.last() == Some(N3State::PathFollowUp) {
+          let _ = self.stack.pop()
+        }
+        
+        self
+      }
+      _ => {
+        // 使用辅助函数处理其他 Term
+        self.handle_term_token(token, context, errors)
+      }
+    }
+  }
           N3State::PropertyListMiddle => {
             self.debug_logger.info(
               "Entering PropertyListMiddle with token: \{token}",
@@ -785,28 +684,20 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                       Err(e) =>
                         self.error(
                           errors,
-                          RuleRecognizerError::SyntaxError(
-                            e,
-                            Range::default(),
-                          ),
-                        )
+                          e.to_string(),)
                     }
                   _ =>
                     return self.error(
                       errors,
-                      RuleRecognizerError::SyntaxError(
                         "Invalid context for prefix resolution",
-                        Range::default(),
-                      ),
+
                     )
                 }
               _ =>
                 self.error(
                   errors,
-                  RuleRecognizerError::SyntaxError(
                     "The '[ id' construction should be followed by an IRI",
-                    Range::default(),
-                  ),
+
                 )
             }
           }
@@ -897,10 +788,8 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 if direction is Some(_) {
                   return self.error(
                     errors,
-                    RuleRecognizerError::SyntaxError(
                       "rdf:dirLangString is not supported in N3",
-                      Range::default(),
-                    ),
+
                   )
                 }
                 self.terms.push(
@@ -967,28 +856,20 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                       Err(e) =>
                         return self.error(
                           errors,
-                          RuleRecognizerError::SyntaxError(
-                            e,
-                            Range::default(),
-                          ),
+                          e
                         )
                     }
                   _ =>
                     return self.error(
                       errors,
-                      RuleRecognizerError::SyntaxError(
                         "Invalid context for prefix resolution",
-                        Range::default(),
-                      ),
+      
                     )
                 }
               _ =>
                 return self.error(
                   errors,
-                  RuleRecognizerError::SyntaxError(
-                    "Unexpected token in formula content",
-                    Range::default(),
-                  ),
+                  "Unexpected token in formula content",
                 )
             }
           }
@@ -1002,21 +883,10 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::Punctuation("}"), _)
               ) => {
-                let ctx = match self.contexts.pop() {
-                  Some(c) => c
-                  None => {
-                    errors.push(
-                      RuleRecognizerError::SyntaxError(
-                        "Internal error: contexts stack empty in FormulaContent",
-                        Range::default(),
-                      ),
-                    )
-                    return self
-                  }
-                }
-                self.terms.push(ctx.as_n3term())
-                return self
+                // 调用辅助函数处理结束逻辑
+                return self.finish_formula(errors)
               }
+              // ... 其他 case 保持不变
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::PlainKeyword(k), _)
               ) if eq_ignore_ascii_case(k, "base") => {
@@ -1024,33 +894,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 self.stack.push(N3State::BaseExpectIri)
                 return self
               }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword(k), _)
-              ) if eq_ignore_ascii_case(k, "prefix") => {
-                self.stack.push(N3State::FormulaContent)
-                self.stack.push(N3State::PrefixExpectPrefix)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::LangTag(language="prefix", direction=None),
-                  _
-                )
-              ) => {
-                self.stack.push(N3State::FormulaContentExpectDot)
-                self.stack.push(N3State::PrefixExpectPrefix)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::LangTag(language="base", direction=None),
-                  _
-                )
-              ) => {
-                self.stack.push(N3State::FormulaContentExpectDot)
-                self.stack.push(N3State::BaseExpectIri)
-                return self
-              }
+              // ...
               _ => {
                 self.stack.push(N3State::FormulaContentExpectDot)
                 self.stack.push(N3State::Triples)
@@ -1067,20 +911,10 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::Punctuation("}"), _)
               ) => {
-                let ctx = match self.contexts.pop() {
-                  Some(c) => c
-                  None => {
-                    errors.push(
-                      RuleRecognizerError::SyntaxError(
-                        "Internal error: contexts stack empty in FormulaContentExpectDot",
-                        Range::default(),
-                      ),
-                    )
-                    return self
-                  }
-                }
-                self.terms.push(ctx.as_n3term())
-                return self
+                // 调用辅助函数处理结束逻辑
+                // 注意：在 ExpectDot 状态下遇到 }，说明公式内最后一个三元组省略了 .
+                // 或者 } 直接结束了公式。finish_formula 会处理上下文弹出。
+                return self.finish_formula(errors)
               }
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::Punctuation("."), _)
@@ -1091,10 +925,11 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               _ => {
                 errors.push(
                   RuleRecognizerError::SyntaxError(
-                    "A dot is expected at the end of N3 statements",
+                    "A dot or '}' is expected at the end of N3 statements inside formula",
                     Range::default(),
                   ),
                 )
+                // 尝试恢复，推回 FormulaContent 继续解析
                 self.stack.push(N3State::FormulaContent)
               }
             }
@@ -1117,3 +952,108 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
     _ => self
   }
 }
+  // 辅助函数：处理普通的 Term Token
+  fn handle_term_token(
+    self : N3Recognizer,
+    token : LocatedTokenOrLineJump,
+    context : RdfContext,
+    errors : Array[RuleRecognizerError],
+  ) -> N3Recognizer {
+    match token {
+      LocatedTokenOrLineJump::LocatedN3Token(located) =>
+        match located {
+          LocatedN3Token(N3Token::Iri(iri), _) => {
+            self.terms.push(NamedNodeRef::new_unchecked(iri).as_n3term())
+            self
+          }
+          LocatedN3Token(N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~), _) =>
+            match context {
+              RdfContext::N3RecognizerContext(ctx) =>
+                match resolve_local_name(prefix, localx, might_be_invalid_iri, ctx.prefixes) {
+                  Ok(t) => {
+                    self.terms.push(t.as_n3term())
+                    self
+                  }
+                  Err(e) => self.error(errors, e)
+                }
+              _ => self.error(errors, "Invalid context for N3Term")
+            }
+          LocatedN3Token(N3Token::BlankNodeLabel(bnode), _) => {
+            self.terms.push(BlankNodeRef::new_unchecked(bnode).as_n3term())
+            self
+          }
+          LocatedN3Token(N3Token::Variable(name), _) => {
+            self.terms.push(N3Term::Variable(name))
+            self
+          }
+          LocatedN3Token(N3Token::String(value), _) | LocatedN3Token(N3Token::LongString(value), _) => {
+            self.stack.push(N3State::LiteralPossibleSuffix(value~))
+            self
+          }
+          LocatedN3Token(N3Token::Integer(v), _) => {
+            self.terms.push(LiteralRef::new_typed_literal(VarDataType::IntegerVar(v), lwINTEGER).as_n3term())
+            self
+          }
+          LocatedN3Token(N3Token::Decimal(v), _) => {
+            self.terms.push(LiteralRef::new_typed_literal(VarDataType::IntegerVar(v), lwDECIMAL).as_n3term())
+            self
+          }
+          LocatedN3Token(N3Token::Double(v), _) => {
+            self.terms.push(LiteralRef::new_typed_literal(VarDataType::IntegerVar(v), lwDOUBLE).as_n3term())
+            self
+          }
+          LocatedN3Token(N3Token::PlainKeyword("true"), _) => {
+            self.terms.push(LiteralRef::new_typed_literal(VarDataType::IntegerVar("true"), lwBOOLEAN).as_n3term())
+            self
+          }
+          LocatedN3Token(N3Token::PlainKeyword("false"), _) => {
+            self.terms.push(LiteralRef::new_typed_literal(VarDataType::IntegerVar("false"), lwBOOLEAN).as_n3term())
+            self
+          }
+          _ => self.error(errors, "TOKEN is not a valid RDF value")
+        }
+      _ => self.error(errors, "TOKEN is not a valid RDF value")
+    }
+  }
+
+   // 辅助函数：统一处理公式结束逻辑
+    fn finish_formula(
+    self : N3Recognizer,
+    errors : Array[RuleRecognizerError],
+  ) -> N3Recognizer {
+    let ctx = match self.contexts.pop() {
+      Some(c) => c
+      None => {
+        errors.push(
+          RuleRecognizerError::SyntaxError(
+            "Internal error: contexts stack empty in finish_formula",
+            Range::default(),
+          ),
+        )
+        return self
+      }
+    }
+    
+    // 将公式对应的 BlankNode 作为 Term 压入
+    self.terms.push(ctx.as_n3term())
+
+    // 关键修复：清理状态栈
+    // 1. 弹出 PathFollowUp (如果存在)
+    if self.stack.last() == Some(N3State::PathFollowUp) {
+      let _ = self.stack.pop()
+    }
+    
+    // 2. 弹出 FormulaContentExpectDot (如果存在，防止残留)
+    if self.stack.last() == Some(N3State::FormulaContentExpectDot) {
+      let _ = self.stack.pop()
+    }
+
+    // 3. 重要：公式结束后，我们实际上完成了一个 PathItem。
+    // 如果栈顶现在是 TriplesMiddle 或 ObjectsListEnd 等，它们应该能处理后续 token。
+    // 但如果栈顶是 PathFollowUp 的上一层（例如 Path），我们需要确保不会再次进入 PathFollowUp 的错误逻辑。
+    
+    // 调试建议：打印此时的栈状态
+    // self.debug_logger.info("Stack after finish_formula: \{self.stack.to_string()}")
+
+    self
+  }
