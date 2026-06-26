@@ -5,7 +5,7 @@ struct N3Recognizer {
   predicates : Array[Predicate]
   contexts : Array[BlankNode]
   mut debug_logger : &DebugLogger
- mut last_range : Range
+  mut last_range : Range
 }
 
 ///|
@@ -108,7 +108,7 @@ fn N3Recognizer::error(
   errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
   self.stack.clear()
 
-   self
+  self
 }
 
 ///|
@@ -190,20 +190,16 @@ impl Show for N3State with fn output(self, logger : &Logger) -> Unit {
       logger.write("Path After \{desc} Indicator")
     }
     N3State::PathItem => logger.write("PathItem")
-    N3State::PropertyListMiddle =>
-      logger.write("PropertyListMiddle")
+    N3State::PropertyListMiddle => logger.write("PropertyListMiddle")
     N3State::PropertyListEnd => logger.write("PropertyListEnd")
-    N3State::IriPropertyList =>
-      logger.write("IriPropertyList")
+    N3State::IriPropertyList => logger.write("IriPropertyList")
     N3State::CollectionBeginning => logger.write("CollectionBeginning")
-    N3State::CollectionPossibleEnd =>
-      logger.write("CollectionPossibleEnd")
+    N3State::CollectionPossibleEnd => logger.write("CollectionPossibleEnd")
     N3State::LiteralPossibleSuffix(value~) =>
       logger.write("LiteralPossibleSuffix(\{value})")
     N3State::LiteralExpectDatatype(value~) =>
       logger.write("LiteralExpectDatatype(\{value})")
     N3State::FormulaContent => logger.write("FormulaContent")
-    N3State::FormulaContentExpectDot =>
-      logger.write("FormulaContentExpectDot")
+    N3State::FormulaContentExpectDot => logger.write("FormulaContentExpectDot")
   }
 }

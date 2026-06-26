@@ -11,11 +11,10 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
     _ => abort("Invalid context type")
   }
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(located) => {
+    LocatedTokenOrLineJump::LocatedN3Token(located) =>
       match located {
         LocatedN3Token(_, range) => self.last_range = range
       }
-    }
     _ => ()
   }
   // 获取当前状态的字符串表示用于日志（假设 NQuadsState 实现了 ToString 或者手动匹配）
@@ -288,11 +287,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         ) => return self
         (false, _) =>
           self.error(
-            ctx,
-            results,
-            errors,
-            token,
-              "Expecting the end of a quoted triple ')>>'",
+            ctx, results, errors, token, "Expecting the end of a quoted triple ')>>'",
           )
       }
     }

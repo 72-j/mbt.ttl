@@ -14,91 +14,18 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
     _ => abort("Invalid context for TriGRecognizer")
   }
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(located) => {
+    LocatedTokenOrLineJump::LocatedN3Token(located) =>
       match located {
         LocatedN3Token(_, range) => self.last_range = range
       }
-    }
     _ => ()
   }
   while true {
     match self.stack.pop() {
       Some(rule) =>
         match rule {
-          TriGState::TriGDoc => {
-            self.debug_logger.info("Entering TriGDoc with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            self.cur_graph = GraphNameRef::DefaultGraph
-            self.stack.push(TriGState::TriGDoc)
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword(k), _)
-              ) if eq_ignore_ascii_case(k, "base") => {
-                self.stack.push(TriGState::BaseExpectIri)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword(k), _)
-              ) if eq_ignore_ascii_case(k, "prefix") => {
-                self.stack.push(TriGState::PrefixExpectPrefix)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword(k), _)
-              ) if eq_ignore_ascii_case(k, "version") => {
-                self.stack.push(TriGState::VersionExpectVersion)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::LangTag(language="prefix", direction=None),
-                  _
-                )
-              ) => {
-                self.stack.push(TriGState::ExpectDot)
-                self.stack.push(TriGState::PrefixExpectPrefix)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::LangTag(language="base", direction=None),
-                  _
-                )
-              ) => {
-                self.stack.push(TriGState::ExpectDot)
-                self.stack.push(TriGState::BaseExpectIri)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::LangTag(language="version", direction=None),
-                  _
-                )
-              ) => {
-                self.stack.push(TriGState::ExpectDot)
-                self.stack.push(TriGState::VersionExpectVersion)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword(k), _)
-              ) if eq_ignore_ascii_case(k, "graph") && context.with_graph_name => {
-                self.stack.push(TriGState::WrappedGraph)
-                self.stack.push(TriGState::GraphName)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("{"), _)
-              ) if context.with_graph_name => {
-                self.stack.push(TriGState::WrappedGraph)
-                return self
-              }
-              _ => {
-                self.stack.push(TriGState::TriplesOrGraph)
-                return self
-              }
-            }
-          }
+          TriGState::TriGDoc =>
+            return self.handle_tri_g_doc(token, context, results, errors)
           TriGState::ExpectDot => {
             self.debug_logger.info("Entering ExpectDot with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
@@ -232,93 +159,8 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               )
             }
           }
-          TriGState::TriplesOrGraph => {
-            self.debug_logger.info(
-              "Entering TriplesOrGraph with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            return match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Iri(iri), _)
-              ) => {
-                self.cur_subject.push(
-                  NamedNodeRef::new_unchecked(iri).as_enum(),
-                )
-                self.stack.push(
-                  TriGState::WrappedGraphOrPredicateObjectList(
-                    term=NamedNodeRef::new_unchecked(iri).as_enum(),
-                  ),
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-                  _
-                )
-              ) =>
-                match
-                  resolve_local_name(
-                    prefix,
-                    localx,
-                    might_be_invalid_iri,
-                    context.prefixes,
-                  ) {
-                  Ok(t) => {
-                    self.cur_subject.push(t.as_enum())
-                    self.stack.push(
-                      TriGState::WrappedGraphOrPredicateObjectList(
-                        term=t.as_enum(),
-                      ),
-                    )
-                    self
-                  }
-                  Err(e) => self.error(errors, e)
-                }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::BlankNodeLabel(label), _)
-              ) => {
-                self.stack.push(
-                  TriGState::WrappedGraphOrPredicateObjectList(
-                    term=NamedNodeRef::new_unchecked(label).as_enum(),
-                  ),
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("["), _)
-              ) => {
-                self.stack.push(
-                  TriGState::WrappedGraphBlankNodePropertyListCurrent,
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("("), _)
-              ) => {
-                self.stack.push(TriGState::ExpectDot)
-                self.stack.push(TriGState::PredicateObjectList)
-                self.stack.push(TriGState::SubjectCollectionBeginning)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("<<"), _)
-              ) => {
-                self.stack.push(TriGState::MaybePredicateObjectList)
-                self.stack.push(TriGState::SubjectReifiedTripleEnd)
-                self.stack.push(TriGState::EndOfReifiedTripleBeforeReifier)
-                self.stack.push(TriGState::ReifiedTripleObject(is_reified=true))
-                self.stack.push(TriGState::Verb)
-                self.stack.push(
-                  TriGState::ReifiedTripleSubject(is_reified=true),
-                )
-                self
-              }
-              _ =>
-                self.error(errors, "TOKEN is not a valid subject or graph name")
-            }
-          }
+          TriGState::TriplesOrGraph =>
+            return self.handle_triples_or_graph(token, context, results, errors)
           TriGState::WrappedGraphBlankNodePropertyListCurrent => {
             self.debug_logger.info(
               "Entering WrappedGraphBlankNodePropertyListCurrent with token: \{token}",
@@ -345,32 +187,6 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               }
             }
           }
-          // TriGState::WrappedGraphBlankNodePropertyListCurrent => {
-          //   self.debug_logger.info(
-          //     "Entering WrappedGraphBlankNodePropertyListCurrent with token: \{token}",
-          //   )
-          //   self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-          //   match token {
-          //     LocatedTokenOrLineJump::LocatedN3Token(
-          //       LocatedN3Token(N3Token::Punctuation("]"), _)
-          //     ) => {
-          //       self.stack.push(
-          //         TriGState::WrappedGraphOrPredicateObjectList(
-          //           term=BlankNode::default().as_ref().as_enum(),
-          //         ),
-          //       )
-
-          //     }
-          //     _ => {
-          //       self.cur_subject.push(BlankNode::default().as_ref().as_enum())
-          //       self.stack.push(TriGState::ExpectDot)
-          //       self.stack.push(TriGState::SubjectBlankNodePropertyListEnd)
-          //       self.stack.push(TriGState::PredicateObjectList)
-          //       return self
-          //     }
-          //   }
-          // }
           TriGState::SubjectBlankNodePropertyListEnd => {
             self.debug_logger.info(
               "Entering SubjectBlankNodePropertyListEnd with token: \{token}",
@@ -488,129 +304,14 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               return self
             }
           }
-          TriGState::WrappedGraph => {
-            self.debug_logger.info("Entering WrappedGraph with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("{"), _)
-              ) => {
-                self.stack.push(TriGState::WrappedGraphPossibleEnd)
-                self.stack.push(TriGState::Triples)
-                return self
-              }
-              _ =>
-                return self.error(
-                  errors, "The GRAPH keyword should be followed by a graph name and a value in '{'",
-                )
-            }
-          }
-          TriGState::WrappedGraphPossibleEnd => {
-            self.debug_logger.info(
-              "Entering WrappedGraphPossibleEnd with token: \{token}",
+          TriGState::WrappedGraph =>
+            return self.handle_wrapped_graph(token, context, results, errors)
+          TriGState::WrappedGraphPossibleEnd =>
+            return self.handle_wrapped_graph_possible_end(
+              token, context, results, errors,
             )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            return match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("}"), _)
-              ) => self
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("."), _)
-              ) => {
-                self.stack.push(TriGState::WrappedGraphPossibleEnd)
-                self.stack.push(TriGState::Triples)
-                self
-              }
-              _ => {
-                errors.push(RuleRecognizerError::TripleMissingDot)
-                self
-              }
-            }
-          }
-          TriGState::Triples => {
-            self.debug_logger.info("Entering Triples with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            return match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("}"), _)
-              ) => self
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("["), _)
-              ) => {
-                self.cur_subject.push(
-                  NamedOrBlankNodeRef::BlankNodeRef(
-                    BlankNode::default().as_ref(),
-                  ),
-                )
-                self.stack.push(TriGState::PredicateObjectList)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Iri(iri), _)
-              ) => {
-                self.cur_subject.push(
-                  NamedNodeRef::new_unchecked(iri).as_enum(),
-                )
-                self.stack.push(TriGState::PredicateObjectList)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-                  _
-                )
-              ) =>
-                match
-                  resolve_local_name(
-                    prefix,
-                    localx,
-                    might_be_invalid_iri,
-                    context.prefixes,
-                  ) {
-                  Ok(t) => {
-                    self.cur_subject.push(t.as_enum())
-                    self.stack.push(TriGState::PredicateObjectList)
-                    self
-                  }
-                  Err(e) => self.error(errors, e)
-                }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::BlankNodeLabel(label), _)
-              ) => {
-                self.cur_subject.push(
-                  NamedOrBlankNodeRef::BlankNodeRef(
-                    BlankNodeRef::new_unchecked(label),
-                  ),
-                )
-                self.stack.push(TriGState::PredicateObjectList)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("("), _)
-              ) => {
-                self.stack.push(TriGState::PredicateObjectList)
-                self.stack.push(TriGState::SubjectCollectionBeginning)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("<<"), _)
-              ) => {
-                self.stack.push(TriGState::MaybePredicateObjectList)
-                self.stack.push(TriGState::SubjectReifiedTripleEnd)
-                self.stack.push(TriGState::EndOfReifiedTripleBeforeReifier)
-                self.stack.push(
-                  TriGState::ReifiedTripleSubject(is_reified=true),
-                )
-                self.stack.push(TriGState::Verb)
-                self.stack.push(TriGState::ReifiedTripleObject(is_reified=true))
-                self
-              }
-              _ => self.error(errors, "TOKEN is not a valid RDF subject")
-            }
-          }
+          TriGState::Triples =>
+            return self.handle_triples(token, context, results, errors)
           TriGState::TriplesBlankNodePropertyListCurrent => {
             self.debug_logger.info(
               "Entering TriplesBlankNodePropertyListCurrent with token: \{token}",
@@ -722,83 +423,18 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             }
             return self
           }
-          TriGState::PredicateObjectList => {
-            self.debug_logger.info(
-              "Entering PredicateObjectList with token: \{token}",
+          TriGState::PredicateObjectList =>
+            return self.handle_predicate_object_list(
+              token, context, results, errors,
             )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            self.stack.push(TriGState::PredicateObjectListEnd)
-            self.stack.push(TriGState::Object)
-            return self
-          }
-          TriGState::PredicateObjectListEnd => {
-            self.debug_logger.info(
-              "Entering PredicateObjectListEnd with token: \{token}",
+          TriGState::PredicateObjectListEnd =>
+            return self.handle_predicate_object_list_end(
+              token, context, results, errors,
             )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            self.debug_logger.info(
-              "PredicateObjectListEnd: token=\{token}, expected_dot=\{LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("."), Range::default()))}",
+          TriGState::PredicateObjectListPossibleContinuation =>
+            return self.handle_predicate_object_list_possible_continuation(
+              token, context, results, errors,
             )
-
-            return match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(","), _)
-              ) => {
-                self.stack.push(TriGState::Object)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(";"), _)
-              ) => {
-                self.stack.push(
-                  TriGState::PredicateObjectListPossibleContinuation,
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("."), _)
-              ) => {
-                self.stack.clear()
-                self.stack.push(TriGState::TriGDoc)
-                self.cur_subject.clear()
-                self.cur_predicate.clear()
-                self.cur_object.clear()
-                self
-              }
-              _ =>
-                self.error(
-                  errors, "Expected ';' or '.' after predicate-object list",
-                )
-            }
-          }
-          TriGState::PredicateObjectListPossibleContinuation => {
-            self.debug_logger.info(
-              "Entering PredicateObjectListPossibleContinuation with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(";"), _)
-              ) => {
-                self.stack.push(
-                  TriGState::PredicateObjectListPossibleContinuation,
-                )
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("." | "}" | "]" | "|}"), _)
-              ) => return self
-              _ => {
-                self.stack.push(TriGState::PredicateObjectListEnd)
-                self.stack.push(TriGState::Object)
-                self.stack.push(TriGState::Verb)
-                return self
-              }
-            }
-          }
           TriGState::ObjectsList => {
             self.debug_logger.info("Entering ObjectsList with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
@@ -814,154 +450,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               errors,
             )
           }
-          TriGState::AnnotationBlock(with_reifier~) => {
-            self.debug_logger.info(
-              "Entering AnnotationBlock(with_reifier=\{with_reifier}) with token: \{token}",
+          TriGState::AnnotationBlock(with_reifier~) =>
+            return self.handle_annotation_block(
+              with_reifier, token, context, results, errors,
             )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            return match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(","), _)
-              ) => {
-                let _ = self.cur_object.pop()
-                if with_reifier {
-                  let _ = self.cur_reifier.pop()
-                }
-                self.stack.push(TriGState::AnnotationBlock(with_reifier=false))
-                self.stack.push(TriGState::Object)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("~"), _)
-              ) => {
-                let cur_sub = match self.cur_subject.last() {
-                  Some(s) => s
-                  None => {
-                    errors.push(
-                      RuleRecognizerError::SyntaxError(
-                        "Internal error: subject stack empty",
-                        Range::default(),
-                      ),
-                    )
-                    return self
-                  }
-                }
-                let cur_pred = match self.cur_predicate.last() {
-                  Some(p) => p
-                  None => {
-                    errors.push(
-                      RuleRecognizerError::SyntaxError(
-                        "Internal error: predicate stack empty",
-                        Range::default(),
-                      ),
-                    )
-                    return self
-                  }
-                }
-                let cur_obj = match self.cur_object.last() {
-                  Some(o) => o
-                  None => {
-                    errors.push(
-                      RuleRecognizerError::SyntaxError(
-                        "Internal error: object stack empty",
-                        Range::default(),
-                      ),
-                    )
-                    return self
-                  }
-                }
-
-                self.stack.push(TriGState::AnnotationBlock(with_reifier=true))
-                self.stack.push(
-                  TriGState::Reifier(
-                    triple=TripleRef::TripleRef(cur_sub, cur_pred, cur_obj).into_owned(),
-                  ),
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("{|"), _)
-              ) => {
-                let cur_sub = match self.cur_subject.last() {
-                  Some(s) => s
-                  None => {
-                    errors.push(
-                      RuleRecognizerError::SyntaxError(
-                        "Internal error: subject stack empty",
-                        Range::default(),
-                      ),
-                    )
-                    return self
-                  }
-                }
-                let cur_pred = match self.cur_predicate.last() {
-                  Some(p) => p
-                  None => {
-                    errors.push(
-                      RuleRecognizerError::SyntaxError(
-                        "Internal error: predicate stack empty",
-                        Range::default(),
-                      ),
-                    )
-                    return self
-                  }
-                }
-                let cur_obj = match self.cur_object.last() {
-                  Some(o) => o
-                  None => {
-                    errors.push(
-                      RuleRecognizerError::SyntaxError(
-                        "Internal error: object stack empty",
-                        Range::default(),
-                      ),
-                    )
-                    return self
-                  }
-                }
-                let reifier = if with_reifier {
-                  match self.cur_reifier.last() {
-                    Some(r) => r
-                    None => {
-                      errors.push(
-                        RuleRecognizerError::SyntaxError(
-                          "Internal error: reifier stack empty",
-                          Range::default(),
-                        ),
-                      )
-                      return self
-                    }
-                  }
-                } else {
-                  let reifier = BlankNode::default()
-                  results.push(
-                    RdfStatement::Quad(
-                      Quad::Quad(
-                        reifier.as_enum(),
-                        lwREIFIES.into_owned(),
-                        TermRef::TripleRef(
-                          TripleRef::TripleRef(cur_sub, cur_pred, cur_obj),
-                        ).into_owned(),
-                        self.cur_graph.into_owned(),
-                      ),
-                    ),
-                  )
-                  reifier.as_enum().as_ref()
-                }
-                self.cur_subject.push(reifier)
-                self.stack.push(TriGState::AnnotationBlock(with_reifier~))
-                self.stack.push(TriGState::PredicateObjectList)
-                self
-              }
-              _ => {
-                let _ = self.cur_object.pop()
-                if with_reifier {
-                  let _ = self.cur_reifier.pop()
-                }
-                self
-              }
-            }
-          }
           TriGState::AnnotationEnd(with_reifier~) => {
             self.debug_logger.info(
               "Entering AnnotationEnd(with_reifier=\{with_reifier}) with token: \{token}",
@@ -1028,233 +520,8 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               _ => self.error(errors, "TOKEN is not a valid predicate")
             }
           }
-          TriGState::Object => {
-            self.debug_logger.info("Entering Object state with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            return match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Iri(iri), _)
-              ) => {
-                self.debug_logger.info("Object: IRI branch, pushing object")
-                self.cur_object.push(
-                  TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(iri)),
-                )
-                self.emit_quad(results)
-                self.stack.push(TriGState::PredicateObjectListEnd)
-                self.debug_logger.info(
-                  "Object: after pop, stack: \{self.stack.to_string()}",
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-                  _
-                )
-              ) =>
-                match
-                  resolve_local_name(
-                    prefix,
-                    localx,
-                    might_be_invalid_iri,
-                    context.prefixes,
-                  ) {
-                  Ok(t) => {
-                    self.debug_logger.info(
-                      "Object: PrefixedName branch, pushing object",
-                    )
-                    self.cur_object.push(TermRef::NamedNodeRef(t))
-                    self.emit_quad(results)
-                    self.stack.push(TriGState::PredicateObjectListEnd)
-                    self.debug_logger.info(
-                      "Object: after pop, stack: \{self.stack.to_string()}",
-                    )
-                    self
-                  }
-                  Err(e) => self.error(errors, e)
-                }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::BlankNodeLabel(label), _)
-              ) => {
-                self.cur_object.push(
-                  TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(label)),
-                )
-                self.emit_quad(results)
-                self.stack.push(TriGState::PredicateObjectListEnd)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("["), _)
-              ) => {
-                self.stack.push(TriGState::ObjectBlankNodePropertyListCurrent)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("("), _)
-              ) => {
-                self.stack.push(TriGState::ObjectCollectionBeginning)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::String(value), _)
-              )
-              | LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::LongString(value), _)
-              ) => {
-                self.stack.push(
-                  TriGState::LiteralPossibleSuffix(value~, emit=true),
-                )
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Integer(v), _)
-              ) => {
-                let v = try @string.parse_int(v) |> Ok catch {
-                  e => Err(e)
-                }
-                self.debug_logger.info(
-                  "Object: Integer branch, in_collection = \{self.in_collection}",
-                )
-
-                match v {
-                  Ok(value) => {
-                    self.cur_object.push(
-                      LiteralRef::new_typed_literal(
-                        VarDataType::IntVar(value.to_string()),
-                        lwINTEGER,
-                      ).as_term(),
-                    )
-                    self.emit_quad(results)
-                    if self.in_collection {
-                      self.stack.push(TriGState::ObjectCollectionPossibleEnd)
-                    } else {
-                      self.stack.push(TriGState::PredicateObjectListEnd)
-                    }
-                    self
-                  }
-                  Err(e) => self.error(errors, e.to_string())
-                }
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Decimal(v), _)
-              ) => {
-                let v = try @string.parse_double(v) |> Ok catch {
-                  e => Err(e)
-                }
-                match v {
-                  Ok(value) => {
-                    self.cur_object.push(
-                      LiteralRef::new_typed_literal(
-                        VarDataType::DecimalVar(value.to_string()),
-                        lwDECIMAL,
-                      ).as_term(),
-                    )
-                    self.emit_quad(results)
-                    self.stack.push(TriGState::PredicateObjectListEnd)
-                    self
-                  }
-                  Err(e) => self.error(errors, e.to_string())
-                }
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Double(v), _)
-              ) => {
-                let v = try @string.parse_double(v) |> Ok catch {
-                  e => Err(e)
-                }
-                match v {
-                  Ok(value) => {
-                    self.cur_object.push(
-                      LiteralRef::new_typed_literal(
-                        VarDataType::DoubleVar(value.to_string()),
-                        lwDOUBLE,
-                      ).as_term(),
-                    )
-                    self.emit_quad(results)
-                    self.stack.push(TriGState::PredicateObjectListEnd)
-                    self
-                  }
-                  Err(e) => self.error(errors, e.to_string())
-                }
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword("true"), _)
-              ) => {
-                self.cur_object.push(
-                  LiteralRef::new_typed_literal(VarDataType::TrueVar, lwBOOLEAN).as_term(),
-                )
-                self.emit_quad(results)
-                self.stack.push(TriGState::PredicateObjectListEnd)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword("false"), _)
-              ) => {
-                self.cur_object.push(
-                  LiteralRef::new_typed_literal(
-                    VarDataType::FalseVar,
-                    lwBOOLEAN,
-                  ).as_term(),
-                )
-                self.emit_quad(results)
-                self.stack.push(TriGState::PredicateObjectListEnd)
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("<<"), _)
-              ) => {
-                self.stack.push(TriGState::ObjectReifiedTripleEnd(emit=true))
-                self.stack.push(TriGState::EndOfReifiedTripleBeforeReifier)
-                self.stack.push(
-                  TriGState::ReifiedTripleSubject(is_reified=true),
-                )
-                self.stack.push(TriGState::Verb)
-                self.stack.push(TriGState::ReifiedTripleObject(is_reified=true))
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("<<("), _)
-              ) => {
-                self.stack.push(TriGState::ObjectReifiedTripleEnd(emit=true))
-                self.stack.push(
-                  TriGState::ReifiedTripleSubject(is_reified=false),
-                )
-                self.stack.push(TriGState::Verb)
-                self.stack.push(
-                  TriGState::ReifiedTripleObject(is_reified=false),
-                )
-                self
-              }
-              // 修复：移除对 ")" 的递归调用，恢复为报错或忽略。
-              // 如果 Object 收到 )，说明状态机流转错误，应该由 ObjectCollectionPossibleEnd 处理。
-              // 为了调试，我们让它报错，或者如果是在集合中，尝试回退。
-              // 但为了避免死循环，我们不再递归调用 recognize_next。
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::Punctuation("." | ";" | "," | "]" | "}" | "|}"),
-                  _
-                )
-              ) => {
-                self.debug_logger.info(
-                  "Object: Termination token detected: \{token}. Treating as missing object.",
-                )
-                self.stack.push(TriGState::PredicateObjectListEnd)
-                self.debug_logger.info(
-                  "Object: after push PredicateObjectListEnd, stack: \{self.stack.to_string()}",
-                )
-                return self.recognize_next(
-                  token,
-                  RdfContext::TriGRecognizerContext(context),
-                  results,
-                  errors,
-                )
-              }
-              // 对于 ")"，如果它出现在这里，说明前面的 ObjectCollectionPossibleEnd 没有正确处理。
-              // 我们直接报错，以便发现根本问题，而不是陷入死循环。
-              _ => self.error(errors, "TOKEN is not a valid RDF object")
-            }
-          }
+          TriGState::Object =>
+            return self.handle_object(token, context, results, errors)
           TriGState::ObjectBlankNodePropertyListCurrent => {
             self.debug_logger.info(
               "Entering ObjectBlankNodePropertyListCurrent with token: \{token}",
@@ -1283,212 +550,22 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               }
             }
           }
-          TriGState::ObjectBlankNodePropertyListEnd => {
-            self.debug_logger.info(
-              "Entering ObjectBlankNodePropertyListEnd with token: \{token}",
+          TriGState::ObjectBlankNodePropertyListEnd =>
+            return self.handle_object_blank_node_property_list_end(
+              token, context, results, errors,
             )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("]"), _)
-              ) => {
-                let subject = match self.cur_subject.pop() {
-                  Some(s) => s
-                  None => {
-                    errors.push(
-                      RuleRecognizerError::SyntaxError(
-                        "Internal error: subject stack is empty",
-                        Range::default(),
-                      ),
-                    )
-                    return self
-                  }
-                }
-
-                let blank_ref = match subject {
-                  NamedOrBlankNodeRef::BlankNodeRef(b) => b
-                  _ => abort("subject should be a blank node")
-                }
-                self.cur_object.push(TermRef::BlankNodeRef(blank_ref))
-                self.emit_quad(results)
-                return self
-              }
-              _ =>
-                return self.error(
-                  errors, "blank node property lists should end with a ']'",
-                )
-            }
-          }
-          TriGState::ObjectCollectionBeginning => {
-            self.debug_logger.info(
-              "Entering ObjectCollectionBeginning with token: \{token}",
+          TriGState::ObjectCollectionBeginning =>
+            return self.handle_object_collection_beginning(
+              token, context, results, errors,
             )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(")"), _)
-              ) => {
-                self.debug_logger.info("!!! SETTING in_collection TO TRUE !!!")
-                self.in_collection = false
-                self.debug_logger.info(
-                  "!!! in_collection IS NOW: \{self.in_collection} !!!",
-                )
-                self.cur_object.push(TermRef::NamedNodeRef(lwNIL))
-                self.emit_quad(results)
-                self.stack.push(TriGState::PredicateObjectListEnd)
-              }
-              _ => {
-                self.debug_logger.info(
-                  "ObjectCollectionBeginning: non-empty collection, first element: \{token}",
-                )
-                self.in_collection = true
-                let root = BlankNode::default()
-                self.cur_object.push(TermRef::BlankNodeRef(root.as_ref()))
-                self.emit_quad(results)
-                self.cur_subject.push(
-                  NamedOrBlankNodeRef::BlankNodeRef(root.as_ref()),
-                )
-                self.cur_predicate.push(
-                  NamedNodeRef::NamedNodeRef(lwFIRST.to_string()),
-                )
-                self.stack.push(TriGState::ObjectCollectionPossibleEnd)
-                self.stack.push(TriGState::Object)
-              }
-            }
-          }
-          TriGState::ObjectCollectionPossibleEnd => {
-            self.debug_logger.info(
-              "Entering ObjectCollectionPossibleEnd with token: \{token}",
+          TriGState::ObjectCollectionPossibleEnd =>
+            return self.handle_object_collection_possible_end(
+              token, context, results, errors,
             )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            let old = match self.cur_subject.pop() {
-              Some(s) => s
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: subject stack is empty",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-            let _ = self.cur_object.pop()
-            if token
-              is LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(")"), _)
-              ) {
-              self.debug_logger.info(
-                "ObjectCollectionPossibleEnd: end of collection",
-              )
-              self.in_collection = false
-              let _ = self.cur_predicate.pop()
-              results.push(
-                RdfStatement::Quad(
-                  Quad::Quad(
-                    old.into_owned(),
-                    lwREST.into_owned(),
-                    lwNIL.as_term().into_owned(),
-                    self.cur_graph.into_owned(),
-                  ),
-                ),
-              )
-              // 确保只压入下一个状态，不要 pop
-              self.stack.push(TriGState::PredicateObjectListEnd)
-              return self
-            } else {
-              self.debug_logger.info(
-                "ObjectCollectionPossibleEnd: more elements",
-              )
-              let new = BlankNode::default()
-              results.push(
-                RdfStatement::Quad(
-                  Quad::Quad(
-                    old.into_owned(),
-                    lwREST.into_owned(),
-                    lwNIL.as_term().into_owned(),
-                    self.cur_graph.into_owned(),
-                  ),
-                ),
-              )
-              self.cur_subject.push(
-                NamedOrBlankNodeRef::BlankNodeRef(new.as_ref()),
-              )
-              self.stack.push(TriGState::ObjectCollectionPossibleEnd)
-              self.stack.push(TriGState::Object)
-              return self
-            }
-          }
-          TriGState::LiteralPossibleSuffix(value~, emit~) => {
-            self.debug_logger.info(
-              "Entering LiteralPossibleSuffix(\{value}, emit=\{emit}) with token: \{token}",
+          TriGState::LiteralPossibleSuffix(value~, emit~) =>
+            return self.handle_literal_possible_suffix(
+              value, emit, token, context, results, errors,
             )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            return match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::LangTag(language~, direction~), _)
-              ) => {
-                self.cur_object.push(
-                  if direction is Some(direction) {
-                    let lang_tag = try
-                      LanguageTag::from_str(language.to_lower()) |> Ok
-                    catch {
-                      e => Err(e)
-                    }
-                    let resolved_lang_tag = match lang_tag {
-                      Ok(tag) => tag
-                      Err(e) => {
-                        errors.push(
-                          RuleRecognizerError::SyntaxError(
-                            e.to_string(),
-                            Range::default(),
-                          ),
-                        )
-                        return self
-                      }
-                    }
-                    TermRef::LiteralRef(
-                      LiteralRef::new_directional_language_tagged_literal_unchecked(
-                        value, resolved_lang_tag, direction,
-                      ),
-                    )
-                  } else {
-                    TermRef::LiteralRef(
-                      Literal::new_language_tagged_literal_unchecked(
-                        value,
-                        language.to_lower(),
-                      ).as_ref(),
-                    )
-                  },
-                )
-                if emit {
-                  self.emit_quad(results)
-                  self.stack.push(TriGState::PredicateObjectListEnd)
-                }
-                self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("^^"), _)
-              ) => {
-                self.stack.push(TriGState::LiteralPossibleSuffix(value~, emit~))
-                self
-              }
-              _ => {
-                self.cur_object.push(
-                  LiteralRef::new_simple_literal(value).as_term(),
-                )
-                if emit {
-                  self.emit_quad(results)
-                  self.stack.push(TriGState::PredicateObjectListEnd)
-                }
-                self
-              }
-            }
-          }
           TriGState::LiteralExpectDatatype(value~, emit~) => {
             self.debug_logger.info(
               "Entering LiteralExpectDatatype(\{value}, emit=\{emit}) with token: \{token}",
@@ -1606,43 +683,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 )
             }
           }
-          TriGState::ObjectReifiedTripleEnd(emit~) => {
-            self.debug_logger.info(
-              "Entering ObjectReifiedTripleEnd(emit=\{emit}) with token: \{token}",
+          TriGState::ObjectReifiedTripleEnd(emit~) =>
+            return self.handle_object_reified_triple_end(
+              emit, token, context, results, errors,
             )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            let subject = match self.cur_subject.pop() {
-              Some(s) => s
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: subject stack is empty",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-
-            let blank_ref = match subject {
-              NamedOrBlankNodeRef::BlankNodeRef(b) => TermRef::BlankNodeRef(b)
-              _ => abort("Subject must be a blank node")
-            }
-            self.cur_object.push(blank_ref)
-            if emit {
-              self.emit_quad(results)
-            }
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(">>"), _)
-              ) => return self
-              _ =>
-                return self.error(
-                  errors, "Expecting '>>' to close a reified triple, found TOKEN",
-                )
-            }
-          }
           TriGState::TripleTermEnd(emit~) => {
             self.debug_logger.info(
               "Entering TripleTermEnd(emit=\{emit}) with token: \{token}",
@@ -2177,102 +1221,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   errors, "Expected 'base', 'prefix', or 'version' after '@'",
                 )
             }
-          TriGState::WrappedGraphOrPredicateObjectList(term~) => {
-            self.debug_logger.info(
-              "Entering WrappedGraphOrPredicateObjectList with token: \{token}",
+          TriGState::WrappedGraphOrPredicateObjectList(term~) =>
+            return self.handle_wrapped_graph_or_predicate_object_list(
+              term, token, context, results, errors,
             )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            return match token {
-              // 1. 检查是否是图名块开始 '{'
-              // 只有在 context.with_graph_name 为 true 时，'{ ' 才可能表示图名块
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("{"), _)
-              ) if context.with_graph_name => {
-                self.debug_logger.info(
-                  "WrappedGraphOrPredicateObjectList: Graph branch",
-                )
-                // 将之前的 term 作为图名
-                self.cur_graph = term.into_graph()
-                self.stack.push(TriGState::WrappedGraph)
-                // 注意：WrappedGraph 状态会消耗 '{' 并推入 Triples
-                self
-              }
-
-              // 2.1 谓语是 'a' (rdf:type)
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword("a"), _)
-              ) => {
-                self.debug_logger.info(
-                  "WrappedGraphOrPredicateObjectList: 'a' predicate",
-                )
-                self.cur_predicate.push(lwTYPE)
-                self.stack.push(TriGState::ObjectsList)
-                self
-              }
-
-              // 2.2 谓语是 IRI
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Iri(iri), _)
-              ) => {
-                self.debug_logger.info(
-                  "WrappedGraphOrPredicateObjectList: IRI predicate: \{iri}",
-                )
-                self.cur_predicate.push(NamedNodeRef::new_unchecked(iri))
-                self.stack.push(TriGState::ObjectsList)
-                self
-              }
-
-              // 2.3 谓语是前缀名
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-                  _
-                )
-              ) =>
-                match
-                  resolve_local_name(
-                    prefix,
-                    localx,
-                    might_be_invalid_iri,
-                    context.prefixes,
-                  ) {
-                  Ok(t) => {
-                    self.debug_logger.info(
-                      "WrappedGraphOrPredicateObjectList: PrefixedName predicate: \{t}",
-                    )
-                    self.cur_predicate.push(t)
-                    self.stack.push(TriGState::ObjectsList)
-                    self
-                  }
-                  Err(e) => self.error(errors, e)
-                }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("("), _)
-              ) => {
-                // 谓词是当前 token 之前已经设置好的
-                // 直接进入 ObjectsList 处理宾语
-                //  self.in_collection = true 
-                self.debug_logger.info(
-                  "WrappedGraphOrPredicateObjectList: Collection start",
-                )
-                // 必须推入 ObjectCollectionBeginning 来初始化集合的空白节点和 rdf:first/rdf:rest 结构
-                // self.stack.push(TriGState::ObjectCollectionBeginning)
-                self.stack.push(TriGState::ObjectsList)
-                self
-              }
-              // 3. 其他所有情况均为语法错误（主语后必须跟谓语或图名块）
-              _ => {
-                self.debug_logger.info(
-                  "WrappedGraphOrPredicateObjectList: Invalid token: \{token}",
-                )
-                self.error(
-                  errors,
-                  "Expected a predicate (IRI or 'a') or graph block '{' after subject, found: \{token.to_string()}",
-                )
-              }
-            }
-          }
         }
       _ => break
     }
