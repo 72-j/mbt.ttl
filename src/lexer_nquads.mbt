@@ -8,6 +8,14 @@ pub struct NQuadsRecognizer {
   mut debug_logger : &DebugLogger
   mut last_range : Range
 }
+// impl RuleRecognizer for NQuadsRecognizer with fn stack_signature(self: NQuadsRecognizer) ->  Option[(Int, Option[String])] {
+//       match self.stack.last() {
+//       Some(state) => {
+//         Some((self.stack.length(), Some(state.to_string())))
+//         }
+//       None => None
+//     }
+// }
 
 ///|
 pub struct NQuadsRecognizerContext {

@@ -108,15 +108,15 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             )
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            return match token {
+            match token {
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::PrefixedName(prefix~, localx~, ..), _)
               ) if localx.is_empty() => {
                 self.stack.push(N3State::PrefixExpectIri(name=prefix))
-                self
+                return self
               }
               _ =>
-                self.error(
+                return self.error(
                   errors, "The PREFIX keyword should be followed by a prefix like 'ex:'",
                 )
             }
@@ -446,7 +446,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Entering AfterVerbIs with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            return match token {
+            match token {
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::PlainKeyword("of"), _)
               ) => {
@@ -463,10 +463,10 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                   }
                 }
                 self.predicates.push(Predicate::Inverted(term))
-                self
+                return self
               }
               _ =>
-                self.error(
+                return self.error(
                   errors, "The keyword 'is' should be followed by a predicate then by the keyword 'of'",
                 )
             }
@@ -545,25 +545,25 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             self.debug_logger.info("Entering PathItem with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            return match token {
+            match token {
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::Punctuation("["), _)
               ) => {
                 self.stack.push(N3State::PropertyListMiddle)
-                self
+                return self
               }
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::Punctuation("("), _)
               ) => {
                 self.stack.push(N3State::CollectionBeginning)
-                self
+                return self
               }
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::Punctuation("{"), _)
               ) => {
                 self.contexts.push(BlankNode::default())
                 self.stack.push(N3State::FormulaContent)
-                self
+                return self
               }
               // 修复：处理公式结束符 }
               LocatedTokenOrLineJump::LocatedN3Token(
@@ -578,11 +578,11 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                   let _ = self.stack.pop()
                 }
 
-                self
+                return self
               }
               _ =>
                 // 使用辅助函数处理其他 Term
-                self.handle_term_token(token, context, errors)
+                return self.handle_term_token(token, context, errors)
             }
           }
           N3State::PropertyListMiddle => {
@@ -636,14 +636,14 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             )
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-            return match token {
+            match token {
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::Iri(id), _)
               ) => {
                 self.terms.push(NamedNodeRef::new_unchecked(id).as_n3term())
                 self.stack.push(N3State::PropertyListEnd)
                 self.stack.push(N3State::PredicateObjectList)
-                self
+                return self
               }
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
@@ -662,9 +662,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                       ) {
                       Ok(t) => {
                         self.terms.push(t.as_n3term())
-                        self
+                        return self
                       }
-                      Err(e) => self.error(errors, e.to_string())
+                      Err(e) => return self.error(errors, e.to_string())
                     }
                   _ =>
                     return self.error(
@@ -672,7 +672,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                     )
                 }
               _ =>
-                self.error(
+                return self.error(
                   errors, "The '[ id' construction should be followed by an IRI",
                 )
             }

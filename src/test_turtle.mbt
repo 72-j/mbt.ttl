@@ -1,5 +1,54 @@
 ///|
-///
+async test "debug_simple_turtle_1" {
+  // 变通：使用简单字面量代替集合，验证解析器基本通路
+  let input = "<http://a.example/s>"
+  let data = @utf8.encode(input).to_array()
+
+  let prefixes = Map([])
+  let base_iri = Some(Iri::Iri("http://example.org/"))
+
+  let parser = TriGRecognizer::new_parser(
+    data,
+    true, // is_ending
+    false, // with_graph_name
+    true, // lenient
+    base_iri,
+    prefixes,
+    debug_logger=make_console_logger(),
+  )
+
+  match parser.parse_next() {
+    Some(Ok(t)) => debug("Success: \{t.to_string()}")
+    Some(Err(e)) => debug("Error: \{e.to_string()}")
+    None => debug("None")
+  }
+}
+
+///|
+async test "debug_simple_turtle_2" {
+  // 变通：使用简单字面量代替集合，验证解析器基本通路
+  let input = "<http://a.example/s> <http://a.example/p> <p> ."
+  let data = @utf8.encode(input).to_array()
+
+  let prefixes = Map([])
+  let base_iri = Some(Iri::Iri("http://example.org/"))
+
+  let parser = TriGRecognizer::new_parser(
+    data,
+    true, // is_ending
+    false, // with_graph_name
+    true, // lenient
+    base_iri,
+    prefixes,
+    debug_logger=make_console_logger(),
+  )
+
+  match parser.parse_next() {
+    Some(Ok(t)) => debug("Success: \{t.to_string()}")
+    Some(Err(e)) => debug("Error: \{e.to_string()}")
+    None => debug("None")
+  }
+}
 
 ///|
 async test "debug_simple_turtle_workaround" {
@@ -185,6 +234,161 @@ async test "verify_with_turtle" {
     None => debug("Turtle None")
   }
 }
+
+///|
+async test "debug_minimal_turtle" {
+  // 1. 绝对最小的合法 Turtle/N-Triples 输入
+  let input = "<http://a/b> <http://a/c> <http://a/d> ."
+  let data = @utf8.encode(input)
+
+  debug("Input bytes length: \{data.length()}")
+  debug("Input string: \{input}")
+
+  // 2. 创建解析器
+  // 尝试不使用 lenient 模式，看是否报更具体的错
+  let parser = TurtleParser::new()
+  let low_level = parser.low_level()
+
+  // 3. 喂入数据
+  low_level.extend_from_slice(data)
+
+  // 4. 标记结束
+  low_level.end()
+
+  // 5. 解析
+  match low_level.parse_next() {
+    Some(Ok(t)) => debug("✓ Success: \{t.to_string()}")
+    Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
+    // 如果这里失败，问题可能在解析器内部状态机对 '.' 后的处理
+    None => debug("⚠ None: Parser needs more input or finished silently")
+  }
+}
+
+///|
+async test "debug_minimal_turtle_with_newline" {
+  // 1. 在末尾添加换行符
+  let input = "<http://a/b> <http://a/c> <http://a/d> .\n"
+  let data = @utf8.encode(input)
+
+  debug("Input bytes length: \{data.length()}")
+  debug("Input string: \{input}")
+
+  // 2. 创建解析器
+  let parser = TurtleParser::new()
+  let low_level = parser.low_level()
+
+  // 3. 喂入数据
+  low_level.extend_from_slice(data)
+
+  // 4. 标记结束
+  low_level.end()
+
+  // 5. 解析
+  match low_level.parse_next() {
+    Some(Ok(t)) => debug("✓ Success: \{t.to_string()}")
+    Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
+    None => debug("⚠ None: Parser needs more input or finished silently")
+  }
+}
+
+///|
+async test "debug_no_dot" {
+  // 故意省略结尾的 .
+  let input = "<http://a/b> <http://a/c> <http://a/d>"
+  let data = @utf8.encode(input)
+
+  let parser = TurtleParser::new()
+  let low_level = parser.low_level()
+
+  low_level.extend_from_slice(data)
+  low_level.end()
+
+  match low_level.parse_next() {
+    Some(Ok(t)) => debug("✓ Success (Unexpected): \{t.to_string()}")
+    Some(Err(e)) => debug("✗ Error (Expected): \{e.to_string()}")
+    // 如果这里报 "Expected ." 或类似错误，说明 Object 解析成功了
+    // 如果这里报 "Invalid Object"，说明 Object 根本没被解析
+    None => debug("⚠ None")
+  }
+}
+
+///|
+async test "debug_subj_pred_only" {
+  // 只有 Subject 和 Predicate
+  let input = "<http://a/b> <http://a/c>"
+  let data = @utf8.encode(input)
+
+  let parser = TurtleParser::new()
+  let low_level = parser.low_level()
+
+  low_level.extend_from_slice(data)
+  low_level.end()
+
+  match low_level.parse_next() {
+    Some(Ok(t)) => debug("✓ Success (Unexpected): \{t.to_string()}")
+    Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
+    // 预期报错：Expected Object
+    None => debug("⚠ None")
+  }
+}
+
+///|
+async test "debug_subj_only" {
+  // 只有 Subject
+  let input = "<http://a/b>"
+  let data = @utf8.encode(input)
+
+  let parser = TurtleParser::new()
+  let low_level = parser.low_level()
+
+  low_level.extend_from_slice(data)
+  low_level.end()
+
+  match low_level.parse_next() {
+    Some(Ok(t)) => debug("✓ Success (Unexpected): \{t.to_string()}")
+    Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
+    // 预期报错：Expected Predicate 或 Unexpected end
+    None => debug("⚠ None")
+  }
+}
+
+///|
+// async test "debug_trig_two_triples" {
+//   // 两个三元组
+//   let input = "<http://a/b> <http://a/c> <http://a/d> . <http://e/f> <http://g/h> <http://i/j> ."
+//   let data = @utf8.encode(input).to_array()
+
+//   let prefixes = Map([])
+//   let base_iri = None
+
+//   let parser = TriGRecognizer::new_parser(
+//     data, 
+//     true, // is_ending
+//     false, // with_graph_name
+//     false, // lenient
+//     base_iri, 
+//     prefixes,
+//     debug_logger=make_console_logger(),
+//   )
+
+//   let mut count = 0
+//   for ;; {
+//     match parser.parse_next() {
+//       Some(Ok(t)) => {
+//         count += 1
+//         debug("✓ Parsed triple \{count}: \{t.to_string()}")
+//       }
+//       Some(Err(e)) => {
+//         debug("✗ Error at triple \{count + 1}: \{e.to_string()}")
+//         break
+//       }
+//       None => {
+//         debug("⚠ Finished. Total triples: \{count}")
+//         break
+//       }
+//     }
+//   }
+// }
 // test "write" {
 //   let mut serializer = TurtleSerializer::new().for_writer([])
 //   serializer.serialize_triple(TripleRef::new(NamedNodeRef::new_unchecked("http://example.com/s"), NamedNodeRef::new_unchecked("http://example.com/p"), NamedNodeRef::new_unchecked("http://example.com/o")))

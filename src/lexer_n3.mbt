@@ -7,6 +7,14 @@ struct N3Recognizer {
   mut debug_logger : &DebugLogger
   mut last_range : Range
 }
+// impl RuleRecognizer for N3Recognizer with fn stack_signature(self: N3Recognizer) ->  Option[(Int, Option[String])] {
+//       match self.stack.last() {
+//       Some(state) => {
+//         Some((self.stack.length(), Some(state.to_string())))
+//         }
+//       None => None
+//     }
+// }
 
 ///|
 struct N3RecognizerContext {

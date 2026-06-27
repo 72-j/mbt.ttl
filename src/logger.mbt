@@ -15,6 +15,9 @@ pub fn make_console_logger() -> ConsoleLogger {
 
 ///|
 pub impl DebugLogger for ConsoleLogger with fn info(_self, msg) {
+  // let builder = StringBuilder();
+  // builder.write_string("[INFO] ");
+  // builder.write_string(msg);
   debug("[INFO] \{msg}")
 }
 

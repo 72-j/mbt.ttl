@@ -1,19 +1,18 @@
-// ... (之前的函数)
-
 // 8. 图内三元组解析
 // 对应状态: TriGState::Triples
+
 ///|
-fn handle_triples(
+fn TriGRecognizer::handle_triples(
   self : TriGRecognizer,
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
-  results : Array[RdfStatement],
+  // results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info("Entering Triples with token: \{token}")
   self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-  return match token {
+  match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("}"), _)
     ) => self
@@ -86,11 +85,11 @@ fn handle_triples(
 // 对应状态: TriGState::AnnotationBlock
 
 ///|
-fn handle_annotation_block(
+fn TriGRecognizer::handle_annotation_block(
   self : TriGRecognizer,
   with_reifier : Bool,
   token : LocatedTokenOrLineJump,
-  context : TriGRecognizerContext,
+  // context : TriGRecognizerContext,
   results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
@@ -99,7 +98,7 @@ fn handle_annotation_block(
   )
   self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-  return match token {
+  match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation(","), _)
     ) => {
@@ -120,7 +119,7 @@ fn handle_annotation_block(
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: subject stack empty",
-              Range::default(),
+              self.last_range,
             ),
           )
           return self
@@ -132,7 +131,7 @@ fn handle_annotation_block(
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: predicate stack empty",
-              Range::default(),
+              self.last_range,
             ),
           )
           return self
@@ -144,7 +143,7 @@ fn handle_annotation_block(
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: object stack empty",
-              Range::default(),
+              self.last_range,
             ),
           )
           return self
@@ -168,7 +167,7 @@ fn handle_annotation_block(
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: subject stack empty",
-              Range::default(),
+              self.last_range,
             ),
           )
           return self
@@ -180,7 +179,7 @@ fn handle_annotation_block(
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: predicate stack empty",
-              Range::default(),
+              self.last_range,
             ),
           )
           return self
@@ -192,7 +191,7 @@ fn handle_annotation_block(
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: object stack empty",
-              Range::default(),
+              self.last_range,
             ),
           )
           return self
@@ -205,7 +204,7 @@ fn handle_annotation_block(
             errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: reifier stack empty",
-                Range::default(),
+                self.last_range,
               ),
             )
             return self
@@ -246,12 +245,12 @@ fn handle_annotation_block(
 // 对应状态: TriGState::LiteralPossibleSuffix
 
 ///|
-fn handle_literal_possible_suffix(
+fn TriGRecognizer::handle_literal_possible_suffix(
   self : TriGRecognizer,
   value : String,
   emit : Bool,
   token : LocatedTokenOrLineJump,
-  context : TriGRecognizerContext,
+  // context : TriGRecognizerContext,
   results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
@@ -260,7 +259,7 @@ fn handle_literal_possible_suffix(
   )
   self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-  return match token {
+  match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::LangTag(language~, direction~), _)
     ) => {
@@ -275,10 +274,7 @@ fn handle_literal_possible_suffix(
             Ok(tag) => tag
             Err(e) => {
               errors.push(
-                RuleRecognizerError::SyntaxError(
-                  e.to_string(),
-                  Range::default(),
-                ),
+                RuleRecognizerError::SyntaxError(e.to_string(), self.last_range),
               )
               return self
             }
@@ -324,11 +320,11 @@ fn handle_literal_possible_suffix(
 // 对应状态: TriGState::ObjectReifiedTripleEnd
 
 ///|
-fn handle_object_reified_triple_end(
+fn TriGRecognizer::handle_object_reified_triple_end(
   self : TriGRecognizer,
   emit : Bool,
   token : LocatedTokenOrLineJump,
-  context : TriGRecognizerContext,
+  // context : TriGRecognizerContext,
   results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
@@ -343,7 +339,7 @@ fn handle_object_reified_triple_end(
       errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: subject stack is empty",
-          Range::default(),
+          self.last_range,
         ),
       )
       return self
@@ -358,12 +354,13 @@ fn handle_object_reified_triple_end(
   if emit {
     self.emit_quad(results)
   }
+
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation(">>"), _)
-    ) => return self
+    ) => self
     _ =>
-      return self.error(
+      self.error(
         errors, "Expecting '>>' to close a reified triple, found TOKEN",
       )
   }
@@ -373,10 +370,10 @@ fn handle_object_reified_triple_end(
 // 对应状态: TriGState::ObjectBlankNodePropertyListEnd
 
 ///|
-fn handle_object_blank_node_property_list_end(
+fn TriGRecognizer::handle_object_blank_node_property_list_end(
   self : TriGRecognizer,
   token : LocatedTokenOrLineJump,
-  context : TriGRecognizerContext,
+  // context : TriGRecognizerContext,
   results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
@@ -395,7 +392,7 @@ fn handle_object_blank_node_property_list_end(
           errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: subject stack is empty",
-              Range::default(),
+              self.last_range,
             ),
           )
           return self
@@ -408,12 +405,9 @@ fn handle_object_blank_node_property_list_end(
       }
       self.cur_object.push(TermRef::BlankNodeRef(blank_ref))
       self.emit_quad(results)
-      return self
+      self
     }
-    _ =>
-      return self.error(
-        errors, "blank node property lists should end with a ']'",
-      )
+    _ => self.error(errors, "blank node property lists should end with a ']'")
   }
 }
 
@@ -421,12 +415,12 @@ fn handle_object_blank_node_property_list_end(
 // 对应状态: TriGState::PredicateObjectListPossibleContinuation
 
 ///|
-fn handle_predicate_object_list_possible_continuation(
+fn TriGRecognizer::handle_predicate_object_list_possible_continuation(
   self : TriGRecognizer,
   token : LocatedTokenOrLineJump,
-  context : TriGRecognizerContext,
-  results : Array[RdfStatement],
-  errors : Array[RuleRecognizerError],
+  // context : TriGRecognizerContext,
+  // results : Array[RdfStatement],
+  // errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info(
     "Entering PredicateObjectListPossibleContinuation with token: \{token}",
@@ -438,16 +432,16 @@ fn handle_predicate_object_list_possible_continuation(
       LocatedN3Token(N3Token::Punctuation(";"), _)
     ) => {
       self.stack.push(TriGState::PredicateObjectListPossibleContinuation)
-      return self
+      self
     }
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("." | "}" | "]" | "|}"), _)
-    ) => return self
+    ) => self
     _ => {
       self.stack.push(TriGState::PredicateObjectListEnd)
       self.stack.push(TriGState::Object)
       self.stack.push(TriGState::Verb)
-      return self
+      self
     }
   }
 }
@@ -456,11 +450,11 @@ fn handle_predicate_object_list_possible_continuation(
 // 对应状态: TriGState::WrappedGraphPossibleEnd
 
 ///|
-fn handle_wrapped_graph_possible_end(
+fn TriGRecognizer::handle_wrapped_graph_possible_end(
   self : TriGRecognizer,
   token : LocatedTokenOrLineJump,
-  context : TriGRecognizerContext,
-  results : Array[RdfStatement],
+  // context : TriGRecognizerContext,
+  // results : Array[RdfStatement],
   errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info(
@@ -468,7 +462,7 @@ fn handle_wrapped_graph_possible_end(
   )
   self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
-  return match token {
+  match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("}"), _)
     ) => self
@@ -482,6 +476,71 @@ fn handle_wrapped_graph_possible_end(
     _ => {
       errors.push(RuleRecognizerError::TripleMissingDot)
       self
+    }
+  }
+}
+
+///|
+///|
+fn TriGRecognizer::handle_verb(
+  self : TriGRecognizer,
+  token : LocatedTokenOrLineJump,
+  context : TriGRecognizerContext,
+  results : Array[RdfStatement],
+  errors : Array[RuleRecognizerError],
+) -> TriGRecognizer {
+  self.debug_logger.info("Verb: handling token: \{token}")
+
+  match token {
+    // 'a' 表示 rdf:type
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::PlainKeyword("a"), _)
+    ) => {
+      self.debug_logger.info("Verb: 'a' predicate")
+      self.cur_predicate.push(lwTYPE)
+      self.stack.push(TriGState::ObjectsList)
+      self
+    }
+
+    // IRI 谓词
+    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
+      self.debug_logger.info("Verb: IRI predicate: \{iri}")
+      self.cur_predicate.push(NamedNodeRef::new_unchecked(iri))
+      // 修复：确保推入 ObjectsList 状态，以便接下来解析对象
+      self.stack.push(TriGState::ObjectsList)
+      self
+    }
+
+    // 前缀名谓词
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(
+        N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+        _
+      )
+    ) =>
+      match
+        resolve_local_name(
+          prefix,
+          localx,
+          might_be_invalid_iri,
+          context.prefixes,
+        ) {
+        Ok(t) => {
+          self.debug_logger.info("Verb: PrefixedName predicate: \{t}")
+          self.cur_predicate.push(t)
+          self.stack.push(TriGState::ObjectsList)
+          self
+        }
+        Err(e) => self.error(errors, e)
+      }
+
+    // 其他情况 - 错误
+    _ => {
+      self.debug_logger.info("Verb: Invalid token: \{token}")
+      self.error(
+        errors,
+        "Expected a predicate (IRI or 'a'), found: \{token.to_string()}",
+      )
     }
   }
 }

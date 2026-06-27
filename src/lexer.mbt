@@ -129,7 +129,7 @@ pub fn[RL] Lexer::end(self : Lexer[RL]) -> Unit {
 pub async fn[RL] Lexer::extend_from_reader(
   self : Lexer[RL],
   reader : &Reader,
-) -> Result[Unit, LexerError] {
+) -> Result[Int, LexerError] {
   self.shrink_data()
 
   // 1. 检查容量限制
@@ -146,7 +146,7 @@ pub async fn[RL] Lexer::extend_from_reader(
   let want_read = Int::min(self.min_buffer_size, remaining_space)
 
   if want_read <= 0 {
-    return Ok(())
+    return Ok(0)
   }
 
   let old_len = self.data.length()
@@ -181,14 +181,14 @@ pub async fn[RL] Lexer::extend_from_reader(
   // 8. 更新结束标志
   self.is_ending = read == 0
 
-  Ok(())
+  Ok(read)
 }
 
 ///|
 pub async fn[RL] Lexer::extend_from_async_read(
   self : Lexer[RL],
   reader : &Reader,
-) -> Result[Unit, LexerError] {
+) -> Result[Int, LexerError] {
   self.shrink_data()
   if self.data.length() >= self.max_buffer_size {
     return Err(
@@ -202,7 +202,7 @@ pub async fn[RL] Lexer::extend_from_async_read(
   let want_read = Int::min(self.min_buffer_size, remaining_space)
 
   if want_read <= 0 {
-    return Ok(())
+    return Ok(0)
   }
 
   let old_len = self.data.length()
@@ -221,7 +221,7 @@ pub async fn[RL] Lexer::extend_from_async_read(
   self.data.truncate(old_len + read)
   self.is_ending = read == 0
 
-  Ok(())
+  Ok(read)
 }
 
 ///|

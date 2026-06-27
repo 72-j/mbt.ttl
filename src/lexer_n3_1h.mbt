@@ -1,5 +1,5 @@
 ///|
-fn handle_term_token(
+fn N3Recognizer::handle_term_token(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,
@@ -91,7 +91,7 @@ fn handle_term_token(
 // 辅助函数：统一处理公式结束逻辑
 
 ///|
-fn finish_formula(
+fn N3Recognizer::finish_formula(
   self : N3Recognizer,
   errors : Array[RuleRecognizerError],
 ) -> N3Recognizer {

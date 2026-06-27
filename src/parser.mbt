@@ -33,6 +33,7 @@ pub struct Parser[TR, RR] {
   context : RdfContext
   results : Array[RdfStatement]
   errors : Array[RuleRecognizerError]
+  //mut  pending_token : LocatedTokenOrLineJump? // ← 新增
 }
 
 ///|
@@ -42,18 +43,18 @@ pub fn[TR, RR] Parser::Parser(
   context : RdfContext,
 ) -> Parser[TR, RR] {
   { lexer, state: Some(recognizer), context, results: [], errors: [] }
+  // pending_token: None,
 }
 
 ///|
 pub fn[TR, RR] Parser::is_end(self : Parser[TR, RR]) -> Bool {
   self.state is None && self.results.is_empty() && self.errors.is_empty()
 }
-
 ///|
 pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
   self : Parser[TR, RR],
 ) -> Result[RdfStatement, TurtleError]? {
-  for ;; {
+  while true {
     // 1. 优先处理错误
     if self.errors.pop() is Some(e) {
       return Some(
@@ -73,13 +74,9 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
 
     // 3. 尝试从 Lexer 获取下一个 Token
     match self.lexer.parse_next(RR::lexer_options(self.context)) {
-      // Some(Ok(token)) => {
-      //   self.state = self.state.map(fn(state) {
-      //     state.recognize_next(token, self.context, self.results, self.errors)
-      //   })
-      //   continue
-      // }
       Some(Ok(token)) => {
+        debug("Parser: token before = \{token}")
+
         match self.state {
           Some(state) => {
             let new_state = state.recognize_next(
@@ -88,10 +85,13 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
               self.results,
               self.errors,
             )
+            debug("Parser: token after = \{token}")
+
             self.state = Some(new_state)
           }
           None => ()
         }
+        // 继续循环，处理可能产生的新结果或错误，或者获取下一个 token
         continue
       }
       Some(Err(e)) => {
@@ -120,12 +120,299 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
               return None
           }
         } else {
+          // Lexer 需要更多数据，暂时无法继续解析
           return None
         }
     }
   }
-  // Lexer 需要更多数据
+  // 添加此行以满足编译器对 while 循环必须有返回值的要求
+  // 逻辑上此行不可达
+  return None
 }
+///|
+// pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
+//   self : Parser[TR, RR],
+// ) -> Result[RdfStatement, TurtleError]? {
+//   for ;; {
+//     // 1. 优先处理错误
+//     if self.errors.pop() is Some(e) {
+//       return Some(
+//         Err(
+//           TurtleError::InvalidToken(
+//             self.lexer.last_token_start(),
+//             "\{self.lexer.last_token_source()}\{e.to_string()} - TOKEN is not allowed here",
+//           ),
+//         ),
+//       )
+//     }
+
+//     // 2. 优先返回已缓冲的结果
+//     if self.results.pop() is Some(result) {
+//       return Some(Ok(result))
+//     }
+
+//     // 3. 尝试从 Lexer 获取下一个 Token
+//     match self.lexer.parse_next(RR::lexer_options(self.context)) {
+//       // Some(Ok(token)) => {
+//       //   self.state = self.state.map(fn(state) {
+//       //     state.recognize_next(token, self.context, self.results, self.errors)
+//       //   })
+//       //   continue
+//       // }
+//       Some(Ok(token)) => {
+//         debug("Parser: token before = \{token}")
+
+//         match self.state {
+//           Some(state) => {
+//             let new_state = state.recognize_next(
+//               token,
+//               self.context,
+//               self.results,
+//               self.errors,
+//             )
+//             debug("Parser: token after = \{token}")
+
+//             self.state = Some(new_state)
+//           }
+//           None => ()
+//         }
+//         continue
+//       }
+//       Some(Err(e)) => {
+//         self.state = self.state.map(fn(s) { RR::error_recovery_state(s) })
+//         return Some(
+//           Err(
+//             TurtleError::InvalidToken(
+//               self.lexer.last_token_start(),
+//               "- \{self.lexer.last_token_source()} \{e.to_string()}- TOKEN is not allowed here.",
+//             ),
+//           ),
+//         )
+//       }
+//       None =>
+//         if self.lexer.is_end() {
+//           // 处理结束逻辑
+//           match self.state {
+//             Some(state) => {
+//               state.recognize_end(self.context, self.results, self.errors)
+//               self.state = None
+//               // 继续循环，让下一轮返回 results 或 errors
+//               continue
+//             }
+//             None =>
+//               // 没有状态，没有结果，没有错误，真正结束
+//               return None
+//           }
+//         } else {
+//           return None
+//         }
+//     }
+//   }
+//   // Lexer 需要更多数据
+// }
+// pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
+//   self : Parser[TR, RR],
+// ) -> Result[RdfStatement, TurtleError]? {
+//   for ;; {
+//     // 1. 优先处理错误
+//     if self.errors.pop() is Some(e) {
+//       return Some(
+//         Err(
+//           TurtleError::InvalidToken(
+//             self.lexer.last_token_start(),
+//             "\{self.lexer.last_token_source()}\{e.to_string()} - TOKEN is not allowed here",
+//           ),
+//         ),
+//       )
+//     }
+
+//     // 2. 优先返回已缓冲的结果
+//     if self.results.pop() is Some(result) {
+//       return Some(Ok(result))
+//     }
+
+//     // 3. 获取 token（如果有待处理的，用待处理的）
+//     match self.pending_token {
+//       Some(token) => {
+//         self.pending_token = None
+//         // 重用 pending_token，逻辑与下方获取新 token 后一致
+//         match self.state {
+//           Some(state) => {
+//             let old_sig = RR::stack_signature(state).unwrap_or((0, None))
+
+//             let new_state = state.recognize_next(
+//               token,
+//               self.context,
+//               self.results,
+//               self.errors,
+//             )
+//             self.state = Some(new_state)
+//             let new_sig = RR::stack_signature(new_state).unwrap_or(
+//               (0, None),
+//             )
+//             // 如果签名变了（压入了新状态），用同一个 token 继续
+//             if old_sig != new_sig {
+//               self.pending_token = Some(token)
+//             }
+//           }
+//           None => ()
+//         }
+//         continue
+//       }
+//       None =>
+//         match self.lexer.parse_next(RR::lexer_options(self.context)) {
+//           Some(Ok(token)) => {
+//             match self.state {
+//               Some(state) => {
+//                 let old_sig = RR::stack_signature(state).unwrap_or((0, None))
+
+//                 let new_state = state.recognize_next(
+//                   token,
+//                   self.context,
+//                   self.results,
+//                   self.errors,
+//                 )
+//                 self.state = Some(new_state)
+//                 let new_sig = RR::stack_signature(new_state).unwrap_or(
+//                   (0, None),
+//                 )
+//                 // 如果签名变了（压入了新状态），用同一个 token 继续
+//                 if old_sig != new_sig {
+//                   self.pending_token = Some(token)
+//                 }
+//               }
+//               None => ()
+//             }
+//             continue
+//           }
+//           Some(Err(e)) => {
+//             self.state = self.state.map(fn(s) { RR::error_recovery_state(s) })
+//             return Some(
+//               Err(
+//                 TurtleError::InvalidToken(
+//                   self.lexer.last_token_start(),
+//                   "- \{self.lexer.last_token_source()} \{e.to_string()}- TOKEN is not allowed here.",
+//                 ),
+//               ),
+//             )
+//           }
+//           None =>
+//             if self.lexer.is_end() {
+//               // 处理结束逻辑
+//               match self.state {
+//                 Some(state) => {
+//                   state.recognize_end(self.context, self.results, self.errors)
+//                   self.state = None
+//                   // 继续循环，让下一轮返回 results 或 errors
+//                   continue
+//                 }
+//                 None =>
+//                   // 没有状态，没有结果，没有错误，真正结束
+//                   return None
+//               }
+//             } else {
+//               return None
+//             }
+//         }
+//     }
+//   }
+//   // Lexer 需要更多数据
+// }
+
+///|
+// pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
+//   self : Parser[TR, RR],
+// ) -> Result[RdfStatement, TurtleError]? {
+//   for ;; {
+//     debug(" Parser::parse_next Panding token \{self.pending_token} ")
+//     // 1. 优先处理错误
+//     if self.errors.pop() is Some(e) {
+//       return Some(
+//         Err(
+//           TurtleError::InvalidToken(
+//             self.lexer.last_token_start(),
+//             "\{self.lexer.last_token_source()}\{e.to_string()} - TOKEN is not allowed here",
+//           ),
+//         ),
+//       )
+//     }
+
+//     // 2. 优先返回已缓冲的结果
+//     if self.results.pop() is Some(result) {
+//       return Some(Ok(result))
+//     }
+
+//     // 3. 获取 token（如果有待处理的，用待处理的）
+//     match self.pending_token {
+//       Some(_t) => {
+//         self.pending_token = None
+//         // t
+//       }
+//       None =>
+//         match self.lexer.parse_next(RR::lexer_options(self.context)) {
+//           // Some(Ok(token)) => {
+//           //   self.state = self.state.map(fn(state) {
+//           //     state.recognize_next(token, self.context, self.results, self.errors)
+//           //   })
+//           //   continue
+//           // }
+//           Some(Ok(token)) => {
+//             match self.state {
+//               Some(state) => {
+//                 let old_sig = RR::stack_signature(state).unwrap_or((0, None))
+
+//                 let new_state = state.recognize_next(
+//                   token,
+//                   self.context,
+//                   self.results,
+//                   self.errors,
+//                 )
+//                 self.state = Some(new_state)
+//                 let new_sig = RR::stack_signature(new_state).unwrap_or(
+//                   (0, None),
+//                 )
+//                 // 如果签名变了（压入了新状态），用同一个 token 继续
+//                 if old_sig != new_sig {
+//                   self.pending_token = Some(token)
+//                 }
+//               }
+//               None => ()
+//             }
+//             continue
+//           }
+//           Some(Err(e)) => {
+//             self.state = self.state.map(fn(s) { RR::error_recovery_state(s) })
+//             return Some(
+//               Err(
+//                 TurtleError::InvalidToken(
+//                   self.lexer.last_token_start(),
+//                   "- \{self.lexer.last_token_source()} \{e.to_string()}- TOKEN is not allowed here.",
+//                 ),
+//               ),
+//             )
+//           }
+//           None =>
+//             if self.lexer.is_end() {
+//               // 处理结束逻辑
+//               match self.state {
+//                 Some(state) => {
+//                   state.recognize_end(self.context, self.results, self.errors)
+//                   self.state = None
+//                   // 继续循环，让下一轮返回 results 或 errors
+//                   continue
+//                 }
+//                 None =>
+//                   // 没有状态，没有结果，没有错误，真正结束
+//                   return None
+//               }
+//             } else {
+//               return None
+//             }
+//         }
+//     }
+//   }
+//   // Lexer 需要更多数据
+// }
 
 ///|
 pub fn[TR, RR] Parser::end(self : Parser[TR, RR]) -> Unit {
@@ -178,14 +465,14 @@ pub async fn[RR : RuleRecognizer] ReaderIterator::next(
 
     // 尝试从 Reader 填充数据
     match self.parser.lexer.extend_from_reader(self.reader) {
-      Ok(_) => ()
-      // if bytes_read == 0 {
-      // 【关键修复】如果读取了 0 字节，说明到达 EOF
-      // 必须通知 Lexer/Parser 数据已结束
-      // self.parser.lexer.end() 
-      // 再次尝试解析，让 Parser 处理剩余的缓冲区或结束状态
-      // }
-
+      Ok(bytes_read) =>
+        if bytes_read == 0 {
+          // EOF reached
+          self.parser.lexer.end()
+          // 如果此时 parser 还没有结束，下一轮循环会处理结束逻辑或报错
+        } else {
+          // 成功读取数据，继续循环让 parse_next 尝试解析
+        }
       Err(e) =>
         return Some(
           Err(LexerError::IoReadError("IO Read Error: \{e.to_string()}")),
@@ -246,3 +533,10 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] SliceIterator::next(
   }
   None
 }
+
+// fn Parser::stack_signature(self: Parser[RdfLexer,TriGRecognizer]) -> Option[(Int, Option[TriGState])] {
+//   match self.state {
+//     Some(state) => Some((state.stack.length(), state.stack.last()))
+//     None => None
+//   }
+// }

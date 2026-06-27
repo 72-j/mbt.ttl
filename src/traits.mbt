@@ -241,6 +241,8 @@ pub trait RuleRecognizer {
   ) -> Unit
   fn lexer_options(context : RdfContext) -> LexerOptions?
   fn[DL : DebugLogger] debug_logger(Self, debug_logger : DL) -> Unit
+  // fn stack_signature(Self) -> Option[(Int, Option[String])]
+
 }
 
 // trait From {
