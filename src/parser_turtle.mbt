@@ -188,15 +188,15 @@ pub async fn[RL : TokenRecognizer] AsyncReaderTurtleParser::next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        RdfStatement::Triple(triple) =>
+        RdfOut::Triple(triple) =>
           Quad::Quad(
             triple.subject,
             triple.predicate,
             triple.object,
             GraphName::default(),
           ).as_n3quad()
-        RdfStatement::Quad(quad) => quad.as_n3quad()
-        RdfStatement::N3Quad(n3quad) => n3quad
+        RdfOut::Quad(quad) => quad.as_n3quad()
+        RdfOut::N3Quad(n3quad) => n3quad
       }
     })
     .map_err(fn(e) { TurtleError::InvalidCharacter(e.to_string()) })
@@ -290,7 +290,7 @@ pub fn[RL] LowLevelTurtleParser::is_end(
 ///|
 pub fn[RL : TokenRecognizer] LowLevelTurtleParser::parse_next(
   self : LowLevelTurtleParser[RL],
-) -> Result[RdfStatement, TurtleError]? {
+) -> Result[RdfOut, TurtleError]? {
   self.parser.parse_next()
 }
 

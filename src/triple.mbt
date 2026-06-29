@@ -69,6 +69,10 @@ pub fn Triple::as_n3term(self : Triple) -> N3Term {
   N3Term::Triple(self)
 }
 
+///|
+pub fn Triple::as_term(self : Triple) -> Term {
+  Term::Triple(self)
+}
 // impl fmt::Show for Triple with fmt(self : Triple, f : Formatter) -> Result {
 //   self.fmt(f)
 // }

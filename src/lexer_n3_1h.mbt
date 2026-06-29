@@ -29,9 +29,9 @@ fn N3Recognizer::handle_term_token(
                   self.terms.push(t.as_n3term())
                   self
                 }
-                Err(e) => self.error(errors, e)
+                Err(e) => self.error(e)
               }
-            _ => self.error(errors, "Invalid context for N3Term")
+            _ => self.error("Invalid context for N3Term")
           }
         LocatedN3Token(N3Token::BlankNodeLabel(bnode), _) => {
           self.terms.push(BlankNodeRef::new_unchecked(bnode).as_n3term())
@@ -82,9 +82,9 @@ fn N3Recognizer::handle_term_token(
           )
           self
         }
-        _ => self.error(errors, "TOKEN is not a valid RDF value")
+        _ => self.error("TOKEN is not a valid RDF value")
       }
-    _ => self.error(errors, "TOKEN is not a valid RDF value")
+    _ => self.error("TOKEN is not a valid RDF value")
   }
 }
 

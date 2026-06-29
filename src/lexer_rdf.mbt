@@ -21,7 +21,7 @@ fn RdfLexer::recognize_iri(
   self : RdfLexer,
   data : ArrayView[Byte],
   options : LexerOptions,
-  location_ctx : SourcePosition,
+  location_ctx : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let string = []
   let mut i = 1
@@ -138,7 +138,7 @@ fn RdfLexer::recognize_pname_or_keyword(
   self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
-  location_ctx : SourcePosition,
+  location_ctx : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut i = 0
 
@@ -298,7 +298,7 @@ fn RdfLexer::recognize_variable(
   self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
-  location_ctx : SourcePosition,
+  location_ctx : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   if data.is_empty() || data[0] != b'?' {
     return None
@@ -568,7 +568,7 @@ fn RdfLexer::recognize_optional_pn_local(
 fn RdfLexer::recognize_blank_node_label(
   data : ArrayView[Byte],
   is_ending : Bool,
-  location_ctx : SourcePosition,
+  location_ctx : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut i = 2
   while true {
@@ -705,7 +705,7 @@ fn RdfLexer::recognize_blank_node_label(
 fn RdfLexer::recognize_lang_tag(
   self : RdfLexer,
   data : ArrayView[Byte],
-  location_ctx : SourcePosition,
+  location_ctx : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut is_last_block_empty = true
   let mut are_digits_allowed = false
@@ -835,7 +835,7 @@ fn RdfLexer::recognize_string(
   data : ArrayView[Byte],
   delimiter : Byte,
   is_ending : Bool,
-  location_ctx : SourcePosition,
+  location_ctx : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let string = StringBuilder::new()
   let mut i = 1
@@ -977,7 +977,7 @@ fn RdfLexer::recognize_long_string(
   data : ArrayView[Byte],
   delimiter : Byte,
   is_ending : Bool,
-  location_ctx : SourcePosition,
+  location_ctx : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let string = StringBuilder::new()
   let mut i = 3
@@ -1079,7 +1079,7 @@ fn RdfLexer::recognize_long_string(
 fn RdfLexer::recognize_number(
   data : ArrayView[Byte],
   is_ending : Bool,
-  location_ctx : SourcePosition,
+  location_ctx : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let mut i = 0
   match data.get(0) {

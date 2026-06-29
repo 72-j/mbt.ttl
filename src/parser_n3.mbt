@@ -296,15 +296,15 @@ pub async fn[RL : TokenRecognizer] AsyncReaderN3Parser::next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        RdfStatement::Triple(triple) =>
+        RdfOut::Triple(triple) =>
           Quad::Quad(
             triple.subject,
             triple.predicate,
             triple.object,
             GraphName::default(),
           ).as_n3quad()
-        RdfStatement::Quad(quad) => quad.as_n3quad()
-        RdfStatement::N3Quad(n3quad) => n3quad
+        RdfOut::Quad(quad) => quad.as_n3quad()
+        RdfOut::N3Quad(n3quad) => n3quad
       }
     })
     .map_err(fn(e) { TurtleError::InvalidCharacter(e.to_string()) }) // 根据实际错误类型调整
@@ -396,7 +396,7 @@ pub fn[RL] LowLevelN3Parser::is_end(self : LowLevelN3Parser[RL]) -> Bool {
 ///|
 pub fn[RL : TokenRecognizer] LowLevelN3Parser::parse_next(
   self : LowLevelN3Parser[RL],
-) -> Result[RdfStatement, TurtleError]? {
+) -> Result[RdfOut, TurtleError]? {
   self.parser.parse_next()
 }
 

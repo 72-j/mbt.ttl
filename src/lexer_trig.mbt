@@ -10,6 +10,7 @@ pub struct TriGRecognizer {
   mut debug_logger : &DebugLogger
   // mut in_collection : Bool
   mut last_range : Range
+  errors : Array[RuleRecognizerError] // ← 新增：错误存储
 }
 
 // impl RuleRecognizer for TriGRecognizer with fn stack_signature(self: TriGRecognizer) ->  Option[(Int, Option[String])] {
@@ -31,7 +32,7 @@ impl Show for TriGRecognizer with fn output(self, logger : &Logger) -> Unit {
     if i > 0 {
       logger.write(", ")
     }
-    logger.write(self.stack[i].to_string())
+    logger.write(self.stack[i])
     // match self.stack[i] {
     //   TriGState::TriGDoc => logger.write("TriGDoc")
     //   TriGState::ExpectDot => logger.write("ExpectDot")
@@ -176,6 +177,15 @@ pub struct TriGRecognizerContext {
 }
 
 ///|
+fn TriGRecognizerContext::TriGRecognizerContext(
+  lexer_options : LexerOptions,
+  with_graph_name : Bool,
+  prefixes : Map[String, Iri],
+) -> TriGRecognizerContext {
+  TriGRecognizerContext::{ lexer_options, with_graph_name, prefixes }
+}
+
+///|
 pub fn TriGRecognizerContext::prefixes(
   self : TriGRecognizerContext,
 ) -> Map[String, Iri] {
@@ -207,7 +217,7 @@ impl RuleRecognizer for TriGRecognizer with fn[DL : DebugLogger] debug_logger(
 impl RuleRecognizer for TriGRecognizer with fn recognize_end(
   self : TriGRecognizer,
   _context : RdfContext,
-  results : Array[RdfStatement],
+  results : Array[RdfOut],
   errors : Array[RuleRecognizerError],
 ) -> Unit {
   self.debug_logger.info(
@@ -279,6 +289,7 @@ pub fn TriGRecognizer::new_parser(
       debug_logger, // <-- 添加这一行，具体值需根据 TriGRecognizer 定义调整，可能是 None 或 DebugLogger::default()
       // in_collection: false,
       last_range: Range::default(),
+      errors: [],
     },
     RdfContext::TriGRecognizerContext({
       with_graph_name,
@@ -291,12 +302,12 @@ pub fn TriGRecognizer::new_parser(
 ///|
 fn TriGRecognizer::error(
   self : TriGRecognizer,
-  errors : Array[RuleRecognizerError],
+  // errors : Array[RuleRecognizerError],
   msg : String,
 ) -> TriGRecognizer {
   // guard self.last_range.start != self.last_range.end 
 
-  errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
+  self.errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
   self.stack.clear()
   self.cur_subject.clear()
   self.cur_predicate.clear()
@@ -306,11 +317,25 @@ fn TriGRecognizer::error(
 }
 
 ///|
+fn TriGRecognizer::emit_quad_m(self : TriGRecognizer) -> RdfOut {
+  let subject = self.cur_subject.last().unwrap()
+  let predicate = self.cur_predicate.last().unwrap()
+  let object = self.cur_object.last().unwrap()
+
+  RdfOut::Quad(
+    Quad::Quad(
+      subject.into_owned(),
+      predicate.into_owned(),
+      object.into_owned(),
+      self.cur_graph.into_owned(),
+    ),
+  )
+}
 
 ///|
 fn TriGRecognizer::emit_quad(
   self : TriGRecognizer,
-  results : Array[RdfStatement],
+  results : Array[RdfOut],
 ) -> Unit {
   let subject = match self.cur_subject.last() {
     Some(s) => s
@@ -326,7 +351,7 @@ fn TriGRecognizer::emit_quad(
   }
 
   results.push(
-    RdfStatement::Quad(
+    RdfOut::Quad(
       Quad::Quad(
         subject.into_owned(),
         predicate.into_owned(),
@@ -386,7 +411,12 @@ enum TriGState {
   CollectionElement // 处理集合元素
   CollectionEnd // 处理集合结束
   // NegativeNumberSign
-} derive(Debug, Eq)
+} derive(Debug, Eq, Hash)
+
+///|
+fn TriGState::as_state_enum(self : TriGState) -> RdfState {
+  RdfState::TriGState(self)
+}
 
 ///|
 impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
@@ -505,3 +535,46 @@ fn TriGRecognizer::reset_to_tri_gdoc(self : TriGRecognizer) -> TriGRecognizer {
 //   logger.write_object(self)
 
 // }
+
+///|
+fn TriGRecognizer::make_current_quad(self : TriGRecognizer) -> RdfOut {
+  // 1. 获取主语、谓词、对象
+  let subject = match self.cur_subject.last() {
+    Some(s) => s
+    None => abort("Subject stack is empty when making quad")
+  }
+
+  let predicate = match self.cur_predicate.last() {
+    Some(p) => p
+    None => abort("Predicate stack is empty when making quad")
+  }
+
+  let object = match self.cur_object.last() {
+    Some(o) => o
+    None => abort("Object stack is empty when making quad")
+  }
+
+  // 2. 获取图名
+  // 假设 self.cur_graph 的类型是 Option<GraphName> 或类似结构
+  // 如果 cur_graph 是 None，通常表示默认图。
+  // 这里需要根据你项目中 Quad 的具体定义来构造。
+  // 假设 Quad::Quad 接收 (Subject, Predicate, Object, Graph)
+  // 且 Graph 可以是 Option 或者特定的 DefaultGraph 枚举值
+
+  let graph = self.cur_graph // 假设 cur_graph 已经是正确的类型 (e.g., Option<NamedNodeRef> 或 GraphName)
+
+  // 3. 构造 Quad
+  // 注意：你需要根据实际的 RdfOut 和 Quad 定义调整构造函数
+  // 例如：RdfOut::Quad(Quad::new(subject, predicate, object, graph))
+  // 或者如果是三元组：RdfOut::Triple(Triple::new(subject, predicate, object))
+
+  // 假设使用 Quad 结构：
+  RdfOut::Quad(
+    Quad::Quad(
+      subject.into_owned(), // 如果字段需要 Owned 类型
+      predicate.into_owned(),
+      object.into_owned(),
+      graph.into_owned(), // 如果 graph 是 Option，可能需要 unwrap_or(DefaultGraph)
+    ),
+  )
+}

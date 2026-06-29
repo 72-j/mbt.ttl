@@ -3,7 +3,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
   self : TriGRecognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,
-  results : Array[RdfStatement],
+  results : Array[RdfOut],
   errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info(
@@ -27,6 +27,63 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
         match rule {
           TriGState::TriGDoc =>
             return self.handle_trig_doc(token, context, errors)
+          TriGState::TriplesOrGraph =>
+            return self.handle_triples_or_graph(token, context, errors)
+          TriGState::WrappedGraph =>
+            return self.handle_wrapped_graph(token, context, results, errors)
+          TriGState::WrappedGraphPossibleEnd =>
+            return self.handle_wrapped_graph_possible_end(token, errors)
+          TriGState::Triples =>
+            return self.handle_triples(token, context, errors)
+          TriGState::PredicateObjectList =>
+            return self.handle_predicate_object_list(
+              token, context, results, errors,
+            )
+          TriGState::PredicateObjectListEnd =>
+            return self.handle_predicate_object_list_end(token, errors)
+          TriGState::PredicateObjectListPossibleContinuation =>
+            return self.handle_predicate_object_list_possible_continuation(
+              token,
+            )
+          TriGState::ObjectsList =>
+            return self.handle_objects_list(token, context, results, errors)
+          TriGState::AnnotationBlock(with_reifier~) =>
+            return self.handle_annotation_block(
+              with_reifier, token, results, errors,
+            )
+          TriGState::Verb =>
+            return self.handle_verb(token, context, results, errors)
+          TriGState::Object =>
+            return self.handle_object(token, context, results, errors)
+          TriGState::ObjectBlankNodePropertyListEnd =>
+            return self.handle_object_blank_node_property_list_end(
+              token, results, errors,
+            )
+          TriGState::ObjectCollectionBeginning =>
+            return self.handle_object_collection_beginning(
+              token, context, results, errors,
+            )
+          TriGState::ObjectCollectionPossibleEnd =>
+            return self.handle_object_collection_possible_end(
+              token, context, results, errors,
+            )
+          TriGState::LiteralPossibleSuffix(value~, emit~) =>
+            return self.handle_literal_possible_suffix(
+              value, emit, token, results, errors,
+            )
+          TriGState::ObjectReifiedTripleEnd(emit~) =>
+            return self.handle_object_reified_triple_end(
+              emit, token, results, errors,
+            )
+          TriGState::WrappedGraphOrPredicateObjectList(term~) =>
+            return self.handle_wrapped_graph_or_predicate_object_list(
+              term, token, context, results, errors,
+            )
+          TriGState::InCollection => return self.handle_in_collection()
+          TriGState::CollectionElement =>
+            return self.handle_collection_element(token)
+          TriGState::CollectionEnd =>
+            return self.handle_collection_end(token, results, errors)
           TriGState::ExpectDot => {
             self.debug_logger.info("Entering ExpectDot with token: \{token}")
             self.debug_logger.info("Token stack: \{self.stack.to_string()}")
@@ -74,9 +131,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               self.stack.push(TriGState::ExpectDot)
               return self
             } else {
-              return self.error(
-                errors, "The BASE keyword should be followed by an IRI",
-              )
+              return self.error("The BASE keyword should be followed by an IRI")
             }
           }
           TriGState::PrefixExpectPrefix => {
@@ -118,7 +173,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               }
               _ =>
                 return self.error(
-                  errors, "The PREFIX keyword should be followed by a prefix like 'ex:'",
+                  "The PREFIX keyword should be followed by a prefix like 'ex:'",
                 )
             }
           }
@@ -138,7 +193,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               return self
             } else {
               return self.error(
-                errors, "The PREFIX declaration should be followed by a prefix and its value as an IRI",
+                "The PREFIX declaration should be followed by a prefix and its value as an IRI",
               )
             }
           }
@@ -156,12 +211,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               return self
             } else {
               return self.error(
-                errors, "The VERSION keyword should be followed by a single quoted string like \"1.2\"",
+                "The VERSION keyword should be followed by a single quoted string like \"1.2\"",
               )
             }
           }
-          TriGState::TriplesOrGraph =>
-            return self.handle_triples_or_graph(token, context, errors)
           TriGState::WrappedGraphBlankNodePropertyListCurrent => {
             self.debug_logger.info(
               "Entering WrappedGraphBlankNodePropertyListCurrent with token: \{token}",
@@ -275,7 +328,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ) {
               let _ = self.cur_predicate.pop()
               results.push(
-                RdfStatement::Quad(
+                RdfOut::Quad(
                   Quad::Quad(
                     old.into_owned(),
                     lwREST.into_owned(),
@@ -288,7 +341,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             } else {
               let new = BlankNode::default()
               results.push(
-                RdfStatement::Quad(
+                RdfOut::Quad(
                   Quad::Quad(
                     old.into_owned(),
                     lwREST.into_owned(),
@@ -305,12 +358,6 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               return self
             }
           }
-          TriGState::WrappedGraph =>
-            return self.handle_wrapped_graph(token, context, results, errors)
-          TriGState::WrappedGraphPossibleEnd =>
-            return self.handle_wrapped_graph_possible_end(token, errors)
-          TriGState::Triples =>
-            return self.handle_triples(token, context, errors)
           TriGState::TriplesBlankNodePropertyListCurrent => {
             self.debug_logger.info(
               "Entering TriplesBlankNodePropertyListCurrent with token: \{token}",
@@ -361,7 +408,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     self.cur_graph = GraphNameRef::NamedNodeRef(t)
                     return self
                   }
-                  Err(e) => return self.error(errors, e)
+                  Err(e) => return self.error(e)
                 }
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::BlankNodeLabel(label), _)
@@ -382,7 +429,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                 self.stack.push(TriGState::PredicateObjectList)
                 return self
               }
-              _ => return self.error(errors, "TOKEN is not a valid graph name")
+              _ => return self.error("TOKEN is not a valid graph name")
             }
           }
           TriGState::GraphNameAnonEnd => {
@@ -402,7 +449,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               }
               _ =>
                 return self.error(
-                  errors, "Anonymous blank node with a property list are not allowed as graph name",
+                  "Anonymous blank node with a property list are not allowed as graph name",
                 )
             }
           }
@@ -422,20 +469,6 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
             }
             return self
           }
-          TriGState::PredicateObjectList =>
-            return self.handle_predicate_object_list(token, context,results, errors)
-          TriGState::PredicateObjectListEnd =>
-            return self.handle_predicate_object_list_end(token, errors)
-          TriGState::PredicateObjectListPossibleContinuation =>
-            return self.handle_predicate_object_list_possible_continuation(
-              token,
-            )
-          TriGState::ObjectsList =>
-            return self.handle_objects_list(token, context, results, errors)
-          TriGState::AnnotationBlock(with_reifier~) =>
-            return self.handle_annotation_block(
-              with_reifier, token, results, errors,
-            )
           TriGState::AnnotationEnd(with_reifier~) => {
             self.debug_logger.info(
               "Entering AnnotationEnd(with_reifier=\{with_reifier}) with token: \{token}",
@@ -452,7 +485,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ) => return self
               _ =>
                 return self
-                  .error(errors, "Annotations should end with '|}'")
+                  .error("Annotations should end with '|}'")
                   .recognize_next(
                     token,
                     RdfContext::TriGRecognizerContext(context),
@@ -461,9 +494,6 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   )
             }
           }
-          TriGState::Verb => return self.handle_verb(token, context, results,errors)
-          TriGState::Object =>
-            return self.handle_object(token, context, results, errors)
           TriGState::ObjectBlankNodePropertyListCurrent => {
             self.debug_logger.info(
               "Entering ObjectBlankNodePropertyListCurrent with token: \{token}",
@@ -492,22 +522,6 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               }
             }
           }
-          TriGState::ObjectBlankNodePropertyListEnd =>
-            return self.handle_object_blank_node_property_list_end(
-              token, results, errors,
-            )
-          TriGState::ObjectCollectionBeginning =>
-            return self.handle_object_collection_beginning(
-              token, context, results, errors,
-            )
-          TriGState::ObjectCollectionPossibleEnd =>
-            return self.handle_object_collection_possible_end(
-              token, context, results, errors,
-            )
-          TriGState::LiteralPossibleSuffix(value~, emit~) =>
-            return self.handle_literal_possible_suffix(
-              value, emit, token, results, errors,
-            )
           TriGState::LiteralExpectDatatype(value~, emit~) => {
             self.debug_logger.info(
               "Entering LiteralExpectDatatype(\{value}, emit=\{emit}) with token: \{token}",
@@ -587,11 +601,11 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     }
                     return self
                   }
-                  Err(e) => return self.error(errors, e)
+                  Err(e) => return self.error(e)
                 }
               _ =>
                 return self.error(
-                  errors, "Expecting a datatype IRI after ^^, found TOKEN",
+                  "Expecting a datatype IRI after ^^, found TOKEN",
                 )
             }
           }
@@ -621,14 +635,10 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ) => return self
               _ =>
                 return self.error(
-                  errors, "Expecting '>>' to close a reified triple, found TOKEN",
+                  "Expecting '>>' to close a reified triple, found TOKEN",
                 )
             }
           }
-          TriGState::ObjectReifiedTripleEnd(emit~) =>
-            return self.handle_object_reified_triple_end(
-              emit, token, results, errors,
-            )
           TriGState::TripleTermEnd(emit~) => {
             self.debug_logger.info(
               "Entering TripleTermEnd(emit=\{emit}) with token: \{token}",
@@ -684,9 +694,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ) => return self
               _ =>
                 return self
-                  .error(
-                    errors, "Expecting ')>>' to close a triple term, found TOKEN",
-                  )
+                  .error("Expecting ')>>' to close a triple term, found TOKEN")
                   .recognize_next(
                     token,
                     RdfContext::TriGRecognizerContext(context),
@@ -749,7 +757,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               _ => {
                 let reifier = BlankNode::default()
                 results.push(
-                  RdfStatement::Quad(
+                  RdfOut::Quad(
                     Quad::Quad(
                       reifier.as_enum(),
                       lwREIFIES.into_owned(),
@@ -773,7 +781,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ) => {
                 let reifier = NamedNodeRef::new_unchecked(iri)
                 results.push(
-                  RdfStatement::Quad(
+                  RdfOut::Quad(
                     Quad::Quad(
                       reifier.as_enum().into_owned(),
                       lwREIFIES.into_owned(),
@@ -800,7 +808,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   ) {
                   Ok(reifier) => {
                     results.push(
-                      RdfStatement::Quad(
+                      RdfOut::Quad(
                         Quad::Quad(
                           reifier.as_enum().into_owned(),
                           lwREIFIES.into_owned(),
@@ -815,7 +823,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                   Err(e) => {
                     let reifier = BlankNode::default()
                     results.push(
-                      RdfStatement::Quad(
+                      RdfOut::Quad(
                         Quad::Quad(
                           reifier.as_enum(),
                           lwREIFIES.into_owned(),
@@ -825,7 +833,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                       ),
                     )
                     self.cur_reifier.push(reifier.as_enum().as_ref())
-                    return self.error(errors, e)
+                    return self.error(e)
                   }
                 }
               LocatedTokenOrLineJump::LocatedN3Token(
@@ -833,7 +841,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ) => {
                 let reifier = BlankNodeRef::new_unchecked(bnode)
                 results.push(
-                  RdfStatement::Quad(
+                  RdfOut::Quad(
                     Quad::Quad(
                       reifier.as_enum().into_owned(),
                       lwREIFIES.into_owned(),
@@ -848,7 +856,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               _ => {
                 let reifier = BlankNode::default()
                 results.push(
-                  RdfStatement::Quad(
+                  RdfOut::Quad(
                     Quad::Quad(
                       reifier.as_enum(),
                       lwREIFIES.into_owned(),
@@ -908,7 +916,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     self.cur_subject.push(t.as_enum())
                     return self
                   }
-                  Err(e) => return self.error(errors, e)
+                  Err(e) => return self.error(e)
                 }
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::BlankNodeLabel(label), _)
@@ -932,7 +940,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               }
               _ =>
                 return self.error(
-                  errors, "TOKEN is not a valid RDF quoted triple subject: TOKEN",
+                  "TOKEN is not a valid RDF quoted triple subject: TOKEN",
                 )
             }
           }
@@ -977,7 +985,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     self.cur_object.push(t.as_term())
                     return self
                   }
-                  Err(e) => return self.error(errors, e)
+                  Err(e) => return self.error(e)
                 }
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::BlankNodeLabel(label), _)
@@ -1020,7 +1028,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     // }
                     return self
                   }
-                  Err(e) => return self.error(errors, e.to_string())
+                  Err(e) => return self.error(e.to_string())
                 }
               }
               LocatedTokenOrLineJump::LocatedN3Token(
@@ -1040,7 +1048,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     self.emit_quad(results)
                     return self
                   }
-                  Err(e) => return self.error(errors, e.to_string())
+                  Err(e) => return self.error(e.to_string())
                 }
               }
               LocatedTokenOrLineJump::LocatedN3Token(
@@ -1060,7 +1068,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                     self.emit_quad(results)
                     return self
                   }
-                  Err(e) => return self.error(errors, e.to_string())
+                  Err(e) => return self.error(e.to_string())
                 }
               }
               LocatedTokenOrLineJump::LocatedN3Token(
@@ -1111,7 +1119,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               }
               _ =>
                 return self.error(
-                  errors, "TOKEN is not a valid RDF quoted triple object",
+                  "TOKEN is not a valid RDF quoted triple object",
                 )
             }
           }
@@ -1127,7 +1135,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               ) => return self
               _ =>
                 return self.error(
-                  errors, "Anonymous blank node with a property list are not allowed in quoted triples",
+                  "Anonymous blank node with a property list are not allowed in quoted triples",
                 )
             }
           }
@@ -1161,18 +1169,9 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
               }
               _ =>
                 return self.error(
-                  errors, "Expected 'base', 'prefix', or 'version' after '@'",
+                  "Expected 'base', 'prefix', or 'version' after '@'",
                 )
             }
-          TriGState::WrappedGraphOrPredicateObjectList(term~) =>
-            return self.handle_wrapped_graph_or_predicate_object_list(
-              term, token, context, results,errors,
-            )
-          TriGState::InCollection => return self.handle_in_collection()
-          TriGState::CollectionElement =>
-            return self.handle_collection_element(token)
-          TriGState::CollectionEnd =>
-            return self.handle_collection_end(token, results, errors)
         }
       None => break
     }

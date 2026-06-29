@@ -33,7 +33,7 @@ async test "debug_trig_complete_triple" {
   // 完整的三元组：Subject Predicate Object .
   let input = "<http://a/b> <http://a/c> <http://a/d> ."
   let data = @utf8.encode(input).to_array()
-debug("Input length: \{input.length()}")
+  debug("Input length: \{input.length()}")
   let prefixes = Map([])
   let base_iri = None
 

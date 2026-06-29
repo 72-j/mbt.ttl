@@ -345,7 +345,7 @@ test "safe parse all punctuation" {
 //   let iter = triples.inner
 
 //   match iter.next() {
-//     Some(Ok(RdfStatement::Triple(triple))) => debug(triple)
+//     Some(Ok(RdfOut::Triple(triple))) => debug(triple)
 //     // ... 断言 ...
 //     _ => abort("something wrong")
 //   }

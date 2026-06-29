@@ -148,7 +148,7 @@ pub struct AsyncReaderNTriplesParser[RL] {
 ///|
 pub async fn[RL : TokenRecognizer] AsyncReaderNTriplesParser::next(
   self : AsyncReaderNTriplesParser[RL],
-) -> Result[RdfStatement, LexerError]? {
+) -> Result[RdfOut, LexerError]? {
   self.inner.next()
 }
 
@@ -195,10 +195,10 @@ pub fn[RL : TokenRecognizer] LowLevelNTriplesParser::parse_next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        RdfStatement::Triple(t) => t
-        RdfStatement::Quad(q) =>
+        RdfOut::Triple(t) => t
+        RdfOut::Quad(q) =>
           Triple::Triple(q.subject, q.predicate, q.object)
-        RdfStatement::N3Quad(n3quad) =>
+        RdfOut::N3Quad(n3quad) =>
           match n3quad.predicate.to_node() {
             NamedNode(node) =>
               Triple::Triple(
@@ -216,7 +216,7 @@ pub fn[RL : TokenRecognizer] LowLevelNTriplesParser::parse_next(
       }
     })
     .map_err(fn(e) {
-      TurtleError::InvalidToken(SourcePosition::default(), e.to_string())
+      TurtleError::InvalidToken(SourcePos::default(), e.to_string())
     }) // 根据实际错误类型调整
   })
 }

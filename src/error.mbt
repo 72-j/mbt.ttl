@@ -254,16 +254,21 @@ pub fn Range::utf8_range(self : Range, data : ArrayView[Byte]) -> String {
 
 ///|
 pub(all) struct SourceRange {
-  start : SourcePosition
-  end : SourcePosition
+  start : SourcePos
+  end : SourcePos
 } derive(Debug)
 
 ///|
 fn SourceRange::SourceRange(
-  start : SourcePosition,
-  end : SourcePosition,
+  start : SourcePos,
+  end : SourcePos,
 ) -> SourceRange {
   { start, end }
+}
+
+///|
+pub fn SourceRange::to_range(self : Self) -> Range {
+  Range::{ start: self.start.offset, end: self.end.offset }
 }
 
 ///|
@@ -347,7 +352,7 @@ pub(all) suberror TurtleError {
   TurtleSyntaxError(String, Range)
   InvalidEscapeSequence
   InvalidCharacter(String)
-  InvalidToken(SourcePosition, String)
+  InvalidToken(SourcePos, String)
 }
 
 ///|

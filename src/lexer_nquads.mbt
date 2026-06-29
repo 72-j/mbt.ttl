@@ -7,6 +7,7 @@ pub struct NQuadsRecognizer {
   lenient : Bool
   mut debug_logger : &DebugLogger
   mut last_range : Range
+  errors : Array[RuleRecognizerError]
 }
 // impl RuleRecognizer for NQuadsRecognizer with fn stack_signature(self: NQuadsRecognizer) ->  Option[(Int, Option[String])] {
 //       match self.stack.last() {
@@ -35,7 +36,7 @@ enum NQuadsState {
   ExpectLineJump
   RecoverToLineJump
   AfterQuotedTriple
-}
+} derive(Debug, Eq, Hash)
 
 ///|
 impl Show for NQuadsState with fn output(self, logger : &Logger) -> Unit {
@@ -80,7 +81,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn[DL : DebugLogger] debug_logger(
 impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
   self : NQuadsRecognizer,
   _context : RdfContext,
-  results : Array[RdfStatement],
+  results : Array[RdfOut],
   errors : Array[RuleRecognizerError],
 ) -> Unit {
   match self.stack {
@@ -146,6 +147,7 @@ pub fn NQuadsRecognizer::new_parser(
       lenient,
       debug_logger, // 修复：包装为 Option 类型
       last_range: Range::default(),
+      errors: [],
     },
     RdfContext::NQuadsRecognizerContext(initial_context),
   )
@@ -155,12 +157,11 @@ pub fn NQuadsRecognizer::new_parser(
 fn NQuadsRecognizer::error(
   self : NQuadsRecognizer,
   context : NQuadsRecognizerContext,
-  results : Array[RdfStatement],
-  errors : Array[RuleRecognizerError],
+  results : Array[RdfOut],
   token : LocatedTokenOrLineJump,
   msg : String,
 ) -> NQuadsRecognizer {
-  errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
+  self.errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
   let this = self.error_recovery_state()
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(_) => this
@@ -169,7 +170,7 @@ fn NQuadsRecognizer::error(
         token,
         RdfContext::NQuadsRecognizerContext(context),
         results,
-        errors,
+        self.errors,
       )
     LocatedTokenOrLineJump::End => this
   }
@@ -178,7 +179,7 @@ fn NQuadsRecognizer::error(
 ///|
 fn NQuadsRecognizer::emit_quad(
   self : NQuadsRecognizer,
-  results : Array[RdfStatement],
+  results : Array[RdfOut],
   errors : Array[RuleRecognizerError],
   graph_name : GraphNameRef,
 ) -> Unit {
@@ -189,7 +190,7 @@ fn NQuadsRecognizer::emit_quad(
   match (subject_opt, predicate_opt, object_opt) {
     (Some(subject), Some(predicate), Some(object)) =>
       results.push(
-        RdfStatement::Quad({
+        RdfOut::Quad({
           subject: subject.into_owned(),
           predicate: predicate.into_owned(),
           object: object.into_owned(),

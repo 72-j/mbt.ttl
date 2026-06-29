@@ -149,15 +149,15 @@ pub async fn[RL : TokenRecognizer] AsyncReaderTriGParser::next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        RdfStatement::Triple(triple) =>
+        RdfOut::Triple(triple) =>
           Quad::Quad(
             triple.subject,
             triple.predicate,
             triple.object,
             GraphName::default(),
           )
-        RdfStatement::Quad(quad) => quad
-        RdfStatement::N3Quad(n3quad) =>
+        RdfOut::Quad(quad) => quad
+        RdfOut::N3Quad(n3quad) =>
           match n3quad.predicate.to_node() {
             // 修复：使用 NamedNode(_) 忽略内部字段，消除警告
             NamedNode(node) =>
@@ -272,15 +272,15 @@ pub fn[RL : TokenRecognizer] LowLevelTriGParser::parse_next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        RdfStatement::Triple(triple) =>
+        RdfOut::Triple(triple) =>
           Quad::Quad(
             triple.subject,
             triple.predicate,
             triple.object,
             GraphName::default(),
           )
-        RdfStatement::Quad(quad) => quad
-        RdfStatement::N3Quad(n3quad) =>
+        RdfOut::Quad(quad) => quad
+        RdfOut::N3Quad(n3quad) =>
           match n3quad.predicate.to_node() {
             // 修复：使用 NamedNode(_) 忽略内部字段，消除警告
             NamedNode(node) =>

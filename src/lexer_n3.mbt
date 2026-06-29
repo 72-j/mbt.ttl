@@ -6,6 +6,7 @@ struct N3Recognizer {
   contexts : Array[BlankNode]
   mut debug_logger : &DebugLogger
   mut last_range : Range
+  errors : Array[RuleRecognizerError]
 }
 // impl RuleRecognizer for N3Recognizer with fn stack_signature(self: N3Recognizer) ->  Option[(Int, Option[String])] {
 //       match self.stack.last() {
@@ -52,7 +53,7 @@ impl RuleRecognizer for N3Recognizer with fn[DL : DebugLogger] debug_logger(
 impl RuleRecognizer for N3Recognizer with fn recognize_end(
   self : N3Recognizer,
   _state : RdfContext,
-  _results : Array[RdfStatement],
+  _results : Array[RdfOut],
   errors : Array[RuleRecognizerError],
 ) -> Unit {
   match self.stack {
@@ -101,6 +102,7 @@ pub fn N3Recognizer::new_parser(
       contexts: [],
       debug_logger,
       last_range: Range::default(),
+      errors: [],
     },
     // 修复点：使用 RdfContext ::N3RecognizerContext 包装记录
     RdfContext::N3RecognizerContext({ lexer_options: { base_iri, }, prefixes }),
@@ -108,12 +110,8 @@ pub fn N3Recognizer::new_parser(
 }
 
 ///|
-fn N3Recognizer::error(
-  self : N3Recognizer,
-  errors : Array[RuleRecognizerError],
-  msg : String,
-) -> N3Recognizer {
-  errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
+fn N3Recognizer::error(self : N3Recognizer, msg : String) -> N3Recognizer {
+  self.errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
   self.stack.clear()
 
   self
@@ -168,7 +166,7 @@ enum N3State {
   LiteralExpectDatatype(value~ : String)
   FormulaContent
   FormulaContentExpectDot
-} derive(Debug, Eq)
+} derive(Debug, Eq, Hash)
 
 ///|
 impl Show for N3State with fn output(self, logger : &Logger) -> Unit {

@@ -218,7 +218,7 @@ pub trait TokenRecognizer {
     data : ArrayView[Byte],
     is_ending : Bool,
     options : LexerOptions?,
-    location_ctx : SourcePosition,
+    location_ctx : SourcePos,
   ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])?
 }
 
@@ -230,13 +230,13 @@ pub trait RuleRecognizer {
     Self,
     token : LocatedTokenOrLineJump,
     context : RdfContext,
-    results : Array[RdfStatement],
+    results : Array[RdfOut],
     errors : Array[RuleRecognizerError],
   ) -> Self
   fn recognize_end(
     Self,
     context : RdfContext,
-    results : Array[RdfStatement],
+    results : Array[RdfOut],
     errors : Array[RuleRecognizerError],
   ) -> Unit
   fn lexer_options(context : RdfContext) -> LexerOptions?

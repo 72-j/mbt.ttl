@@ -39,34 +39,34 @@ struct Position {
 } derive(Debug, Default)
 
 ///|
-pub struct SourcePosition {
+pub struct SourcePos {
   line : Int
   column : Int
   offset : Int
 } derive(Debug)
 
 ///|
-fn SourcePosition::default() -> SourcePosition {
-  SourcePosition(0, 0, 0)
+fn SourcePos::default() -> SourcePos {
+  SourcePos(0, 0, 0)
 }
 
 ///|
-fn SourcePosition::SourcePosition(
+fn SourcePos::SourcePos(
   line : Int,
   column : Int,
   offset : Int,
-) -> SourcePosition {
+) -> SourcePos {
   { line, column, offset }
 }
 
 ///|
-pub fn SourcePosition::end_position(
+pub fn SourcePos::end_position(
   self : Self,
   consumed_bytes : Int,
-) -> SourcePosition {
+) -> SourcePos {
   // 注意：这里简化处理，假设消耗的都是单字节 ASCII 或者你希望在字节层面计算 offset
   // 如果需要精确的 UTF-8 列号计算，需要扫描 data[start..start+consumed]
-  SourcePosition::SourcePosition(
+  SourcePos::SourcePos(
     self.line,
     self.column + consumed_bytes, // 简化列计算，实际可能需要 utf8 解析
     self.offset + consumed_bytes,
@@ -74,12 +74,12 @@ pub fn SourcePosition::end_position(
 }
 
 ///|
-pub fn SourcePosition::start_position(self : Self) -> SourcePosition {
-  SourcePosition::SourcePosition(self.line, self.column, self.offset)
+pub fn SourcePos::start_position(self : Self) -> SourcePos {
+  SourcePos::SourcePos(self.line, self.column, self.offset)
 }
 
 ///|
-impl Show for SourcePosition with fn output(self, logger : &Logger) -> Unit {
+impl Show for SourcePos with fn output(self, logger : &Logger) -> Unit {
   logger.write_string("[")
   logger.write_string(self.line.to_string())
   logger.write_string(":")
@@ -385,12 +385,12 @@ pub fn[RL] Lexer::location_from_buffer_offset_range(
   }
 
   SourceRange::SourceRange(
-    SourcePosition::SourcePosition(
+    SourcePos::SourcePos(
       self.previous_position.global_line + start_extra_line_jumps,
       Lexer::column_from_bytes(self.data[start_line_start:start_offset]),
       self.previous_position.global_offset + offset_range.start,
     ),
-    SourcePosition::SourcePosition(
+    SourcePos::SourcePos(
       self.previous_position.global_line + end_extra_line_jumps,
       Lexer::column_from_bytes(self.data[end_line_start:end_offset]),
       self.previous_position.global_offset + offset_range.end,
@@ -401,9 +401,9 @@ pub fn[RL] Lexer::location_from_buffer_offset_range(
 ///|
 pub fn[RL] Lexer::current_token_start_location(
   self : Lexer[RL],
-) -> SourcePosition {
+) -> SourcePos {
   self.position_from_position(self.previous_position)
-  //  SourcePosition::new(self.position_from_position(self.previous_position),
+  //  SourcePos::new(self.position_from_position(self.previous_position),
   //  self.position_from_position(self.position),
   //  )
 }
@@ -412,7 +412,7 @@ pub fn[RL] Lexer::current_token_start_location(
 /// 获取当前 Token 的**结束**位置 (即 Lexer 指针当前位置)
 pub fn[RL] Lexer::current_token_end_location(
   self : Lexer[RL],
-) -> SourcePosition {
+) -> SourcePos {
   self.position_from_position(self.position)
 }
 
@@ -429,7 +429,7 @@ pub fn[RL] Lexer::current_token_source_range(self : Lexer[RL]) -> SourceRange {
 fn[RL] Lexer::position_from_position(
   self : Lexer[RL],
   position : Position,
-) -> SourcePosition {
+) -> SourcePos {
   let view = self.data[position.line_start_buffer_offset:position.buffer_offset]
 
   {
@@ -652,8 +652,8 @@ fn[T] Lexer::current_column(self : Lexer[T]) -> Int {
 
 ///|
 /// 获取当前位置（完整信息）
-fn[T] Lexer::current_position(self : Lexer[T]) -> SourcePosition {
-  SourcePosition::SourcePosition(
+fn[T] Lexer::current_position(self : Lexer[T]) -> SourcePos {
+  SourcePos::SourcePos(
     self.position.global_line,
     self.current_column(),
     self.current_offset(),
@@ -684,12 +684,12 @@ fn[T] Lexer::record_token_end(self : Lexer[T]) -> Unit {
 // fn[RL] Lexer::position_at_offset(
 //   self : Lexer[RL],
 //   offset : Int,
-// ) -> SourcePosition {
+// ) -> SourcePos {
 //   // 需要从 buffer 中计算行号
 //   // 这需要 line_starts 或扫描 buffer
 //   // 简化版本：使用当前位置估算
 //   // 更准确的方法：维护 line_starts 数组
-//   SourcePosition::SourcePosition(
+//   SourcePos::SourcePos(
 //     self.position.global_line,
 //     offset - self.position.line_start_buffer_offset + 1,
 //     offset,
@@ -698,13 +698,13 @@ fn[T] Lexer::record_token_end(self : Lexer[T]) -> Unit {
 
 ///|
 /// 获取上一个 token 的起始位置（解析完成后）
-pub fn[RL] Lexer::last_token_start(self : Lexer[RL]) -> SourcePosition {
+pub fn[RL] Lexer::last_token_start(self : Lexer[RL]) -> SourcePos {
   self.position_from_position(self.previous_position)
 }
 
 ///|
 /// 获取上一个 token 的结束位置
-pub fn[RL] Lexer::last_token_end(self : Lexer[RL]) -> SourcePosition {
+pub fn[RL] Lexer::last_token_end(self : Lexer[RL]) -> SourcePos {
   self.position_from_position(self.position)
 }
 
@@ -713,7 +713,7 @@ pub fn[RL] Lexer::last_token_range(self : Lexer[RL]) -> SourceRange {
   SourceRange(self.last_token_start(), self.last_token_end())
 }
 /// 获取当前 token 的起始位置（解析进行中）
-// pub fn[RL] Lexer::current_token_start_pos(self : Lexer[RL]) -> SourcePosition {
+// pub fn[RL] Lexer::current_token_start_pos(self : Lexer[RL]) -> SourcePos {
 //   self.position_at_offset(self.current_token_start)
 // }
 // fn[T] Lexer::add_global_offset(self: Lexer[T], delta: Int) -> Unit {

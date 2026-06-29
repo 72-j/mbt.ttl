@@ -1,37 +1,10 @@
-///|
-pub(all) enum RdfContext {
-  TriGRecognizerContext(TriGRecognizerContext)
-  NQuadsRecognizerContext(NQuadsRecognizerContext)
-  N3RecognizerContext(N3RecognizerContext)
-}
-
-///|
-pub(all) enum RdfStatement {
-  Quad(Quad)
-  Triple(Triple)
-  N3Quad(N3Quad)
-} derive(Debug)
-
-///|
-impl Show for RdfStatement with fn output(self, logger : &Logger) -> Unit {
-  match self {
-    Quad(quad) => logger.write_object(quad)
-    Triple(triple) => logger.write_object(triple)
-    N3Quad(n3_quad) => logger.write_object(n3_quad)
-  }
-}
-
-///|
-pub fn RdfStatement::new(quad : Quad) -> RdfStatement {
-  Quad(quad)
-}
 
 ///|
 pub struct Parser[TR, RR] {
   lexer : Lexer[TR]
   mut state : RR?
   context : RdfContext
-  results : Array[RdfStatement]
+  results : Array[RdfOut]
   errors : Array[RuleRecognizerError]
   //mut  pending_token : LocatedTokenOrLineJump? // ← 新增
 }
@@ -50,10 +23,11 @@ pub fn[TR, RR] Parser::Parser(
 pub fn[TR, RR] Parser::is_end(self : Parser[TR, RR]) -> Bool {
   self.state is None && self.results.is_empty() && self.errors.is_empty()
 }
+
 ///|
 pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
   self : Parser[TR, RR],
-) -> Result[RdfStatement, TurtleError]? {
+) -> Result[RdfOut, TurtleError]? {
   while true {
     // 1. 优先处理错误
     if self.errors.pop() is Some(e) {
@@ -129,290 +103,6 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
   // 逻辑上此行不可达
   return None
 }
-///|
-// pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
-//   self : Parser[TR, RR],
-// ) -> Result[RdfStatement, TurtleError]? {
-//   for ;; {
-//     // 1. 优先处理错误
-//     if self.errors.pop() is Some(e) {
-//       return Some(
-//         Err(
-//           TurtleError::InvalidToken(
-//             self.lexer.last_token_start(),
-//             "\{self.lexer.last_token_source()}\{e.to_string()} - TOKEN is not allowed here",
-//           ),
-//         ),
-//       )
-//     }
-
-//     // 2. 优先返回已缓冲的结果
-//     if self.results.pop() is Some(result) {
-//       return Some(Ok(result))
-//     }
-
-//     // 3. 尝试从 Lexer 获取下一个 Token
-//     match self.lexer.parse_next(RR::lexer_options(self.context)) {
-//       // Some(Ok(token)) => {
-//       //   self.state = self.state.map(fn(state) {
-//       //     state.recognize_next(token, self.context, self.results, self.errors)
-//       //   })
-//       //   continue
-//       // }
-//       Some(Ok(token)) => {
-//         debug("Parser: token before = \{token}")
-
-//         match self.state {
-//           Some(state) => {
-//             let new_state = state.recognize_next(
-//               token,
-//               self.context,
-//               self.results,
-//               self.errors,
-//             )
-//             debug("Parser: token after = \{token}")
-
-//             self.state = Some(new_state)
-//           }
-//           None => ()
-//         }
-//         continue
-//       }
-//       Some(Err(e)) => {
-//         self.state = self.state.map(fn(s) { RR::error_recovery_state(s) })
-//         return Some(
-//           Err(
-//             TurtleError::InvalidToken(
-//               self.lexer.last_token_start(),
-//               "- \{self.lexer.last_token_source()} \{e.to_string()}- TOKEN is not allowed here.",
-//             ),
-//           ),
-//         )
-//       }
-//       None =>
-//         if self.lexer.is_end() {
-//           // 处理结束逻辑
-//           match self.state {
-//             Some(state) => {
-//               state.recognize_end(self.context, self.results, self.errors)
-//               self.state = None
-//               // 继续循环，让下一轮返回 results 或 errors
-//               continue
-//             }
-//             None =>
-//               // 没有状态，没有结果，没有错误，真正结束
-//               return None
-//           }
-//         } else {
-//           return None
-//         }
-//     }
-//   }
-//   // Lexer 需要更多数据
-// }
-// pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
-//   self : Parser[TR, RR],
-// ) -> Result[RdfStatement, TurtleError]? {
-//   for ;; {
-//     // 1. 优先处理错误
-//     if self.errors.pop() is Some(e) {
-//       return Some(
-//         Err(
-//           TurtleError::InvalidToken(
-//             self.lexer.last_token_start(),
-//             "\{self.lexer.last_token_source()}\{e.to_string()} - TOKEN is not allowed here",
-//           ),
-//         ),
-//       )
-//     }
-
-//     // 2. 优先返回已缓冲的结果
-//     if self.results.pop() is Some(result) {
-//       return Some(Ok(result))
-//     }
-
-//     // 3. 获取 token（如果有待处理的，用待处理的）
-//     match self.pending_token {
-//       Some(token) => {
-//         self.pending_token = None
-//         // 重用 pending_token，逻辑与下方获取新 token 后一致
-//         match self.state {
-//           Some(state) => {
-//             let old_sig = RR::stack_signature(state).unwrap_or((0, None))
-
-//             let new_state = state.recognize_next(
-//               token,
-//               self.context,
-//               self.results,
-//               self.errors,
-//             )
-//             self.state = Some(new_state)
-//             let new_sig = RR::stack_signature(new_state).unwrap_or(
-//               (0, None),
-//             )
-//             // 如果签名变了（压入了新状态），用同一个 token 继续
-//             if old_sig != new_sig {
-//               self.pending_token = Some(token)
-//             }
-//           }
-//           None => ()
-//         }
-//         continue
-//       }
-//       None =>
-//         match self.lexer.parse_next(RR::lexer_options(self.context)) {
-//           Some(Ok(token)) => {
-//             match self.state {
-//               Some(state) => {
-//                 let old_sig = RR::stack_signature(state).unwrap_or((0, None))
-
-//                 let new_state = state.recognize_next(
-//                   token,
-//                   self.context,
-//                   self.results,
-//                   self.errors,
-//                 )
-//                 self.state = Some(new_state)
-//                 let new_sig = RR::stack_signature(new_state).unwrap_or(
-//                   (0, None),
-//                 )
-//                 // 如果签名变了（压入了新状态），用同一个 token 继续
-//                 if old_sig != new_sig {
-//                   self.pending_token = Some(token)
-//                 }
-//               }
-//               None => ()
-//             }
-//             continue
-//           }
-//           Some(Err(e)) => {
-//             self.state = self.state.map(fn(s) { RR::error_recovery_state(s) })
-//             return Some(
-//               Err(
-//                 TurtleError::InvalidToken(
-//                   self.lexer.last_token_start(),
-//                   "- \{self.lexer.last_token_source()} \{e.to_string()}- TOKEN is not allowed here.",
-//                 ),
-//               ),
-//             )
-//           }
-//           None =>
-//             if self.lexer.is_end() {
-//               // 处理结束逻辑
-//               match self.state {
-//                 Some(state) => {
-//                   state.recognize_end(self.context, self.results, self.errors)
-//                   self.state = None
-//                   // 继续循环，让下一轮返回 results 或 errors
-//                   continue
-//                 }
-//                 None =>
-//                   // 没有状态，没有结果，没有错误，真正结束
-//                   return None
-//               }
-//             } else {
-//               return None
-//             }
-//         }
-//     }
-//   }
-//   // Lexer 需要更多数据
-// }
-
-///|
-// pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
-//   self : Parser[TR, RR],
-// ) -> Result[RdfStatement, TurtleError]? {
-//   for ;; {
-//     debug(" Parser::parse_next Panding token \{self.pending_token} ")
-//     // 1. 优先处理错误
-//     if self.errors.pop() is Some(e) {
-//       return Some(
-//         Err(
-//           TurtleError::InvalidToken(
-//             self.lexer.last_token_start(),
-//             "\{self.lexer.last_token_source()}\{e.to_string()} - TOKEN is not allowed here",
-//           ),
-//         ),
-//       )
-//     }
-
-//     // 2. 优先返回已缓冲的结果
-//     if self.results.pop() is Some(result) {
-//       return Some(Ok(result))
-//     }
-
-//     // 3. 获取 token（如果有待处理的，用待处理的）
-//     match self.pending_token {
-//       Some(_t) => {
-//         self.pending_token = None
-//         // t
-//       }
-//       None =>
-//         match self.lexer.parse_next(RR::lexer_options(self.context)) {
-//           // Some(Ok(token)) => {
-//           //   self.state = self.state.map(fn(state) {
-//           //     state.recognize_next(token, self.context, self.results, self.errors)
-//           //   })
-//           //   continue
-//           // }
-//           Some(Ok(token)) => {
-//             match self.state {
-//               Some(state) => {
-//                 let old_sig = RR::stack_signature(state).unwrap_or((0, None))
-
-//                 let new_state = state.recognize_next(
-//                   token,
-//                   self.context,
-//                   self.results,
-//                   self.errors,
-//                 )
-//                 self.state = Some(new_state)
-//                 let new_sig = RR::stack_signature(new_state).unwrap_or(
-//                   (0, None),
-//                 )
-//                 // 如果签名变了（压入了新状态），用同一个 token 继续
-//                 if old_sig != new_sig {
-//                   self.pending_token = Some(token)
-//                 }
-//               }
-//               None => ()
-//             }
-//             continue
-//           }
-//           Some(Err(e)) => {
-//             self.state = self.state.map(fn(s) { RR::error_recovery_state(s) })
-//             return Some(
-//               Err(
-//                 TurtleError::InvalidToken(
-//                   self.lexer.last_token_start(),
-//                   "- \{self.lexer.last_token_source()} \{e.to_string()}- TOKEN is not allowed here.",
-//                 ),
-//               ),
-//             )
-//           }
-//           None =>
-//             if self.lexer.is_end() {
-//               // 处理结束逻辑
-//               match self.state {
-//                 Some(state) => {
-//                   state.recognize_end(self.context, self.results, self.errors)
-//                   self.state = None
-//                   // 继续循环，让下一轮返回 results 或 errors
-//                   continue
-//                 }
-//                 None =>
-//                   // 没有状态，没有结果，没有错误，真正结束
-//                   return None
-//               }
-//             } else {
-//               return None
-//             }
-//         }
-//     }
-//   }
-//   // Lexer 需要更多数据
-// }
 
 ///|
 pub fn[TR, RR] Parser::end(self : Parser[TR, RR]) -> Unit {
@@ -450,9 +140,9 @@ pub struct ReaderIterator[TR, RR] {
 }
 
 ///|
-pub async fn[RR : RuleRecognizer] ReaderIterator::next(
+pub async fn[RR : RuleRecognizer + StateMachine] ReaderIterator::next(
   self : ReaderIterator[RdfLexer, RR],
-) -> Result[RdfStatement, LexerError]? {
+) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
     if self.parser.parse_next() is Some(result) {
       debug("Parser::parse_next: \{result}")
@@ -491,7 +181,7 @@ pub struct AsyncReaderIterator[TR, RR] {
 ///|
 pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::next(
   self : AsyncReaderIterator[TR, RR],
-) -> Result[RdfStatement, LexerError]? {
+) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
     if self.parser.parse_next() is Some(result) {
       // 修复：将 TurtleError 转换为 String
@@ -514,29 +204,3 @@ pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::nex
 pub(all) struct SliceIterator[TR, RR] {
   parser : Parser[TR, RR]
 }
-
-///|
-pub fn[TR : TokenRecognizer, RR : RuleRecognizer] SliceIterator::next(
-  self : SliceIterator[TR, RR],
-) -> Result[RdfStatement, LexerError]? {
-  while !self.parser.is_end() {
-    if self.parser.parse_next() is Some(result) {
-      // 修复：将 TurtleError 转换为 String
-      return Some(
-        result.map_err(e => {
-          LexerError::SyntaxError("Syntax Error: \{e.to_string()}")
-        }),
-      )
-    }
-    // 对于 slice 迭代器，数据已经在 parser 中，不需要额外读取
-    break
-  }
-  None
-}
-
-// fn Parser::stack_signature(self: Parser[RdfLexer,TriGRecognizer]) -> Option[(Int, Option[TriGState])] {
-//   match self.state {
-//     Some(state) => Some((state.stack.length(), state.stack.last()))
-//     None => None
-//   }
-// }

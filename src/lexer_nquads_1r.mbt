@@ -3,7 +3,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,
-  results : Array[RdfStatement],
+  results : Array[RdfOut],
   errors : Array[RuleRecognizerError],
 ) -> NQuadsRecognizer {
   let ctx = match context {
@@ -44,7 +44,6 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           self.error(
             ctx,
             results,
-            errors,
             token,
             RuleRecognizerError::BlankNodeOrIriError.err_kind(),
           )
@@ -66,7 +65,6 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           self.error(
             ctx,
             results,
-            errors,
             token,
             RuleRecognizerError::PredicateNotAnIRI.err_kind(),
           )
@@ -112,7 +110,6 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           self.error(
             ctx,
             results,
-            errors,
             token,
             RuleRecognizerError::BlankNodeOrIriError.err_kind(),
           )
@@ -237,7 +234,6 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
           self.error(
             ctx,
             results,
-            errors,
             token,
             RuleRecognizerError::LiteralDatatypeError.err_kind(),
           )
@@ -287,7 +283,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
         ) => return self
         (false, _) =>
           self.error(
-            ctx, results, errors, token, "Expecting the end of a quoted triple ')>>'",
+            ctx, results, token, "Expecting the end of a quoted triple ')>>'",
           )
       }
     }

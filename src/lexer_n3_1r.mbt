@@ -3,7 +3,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,
-  results : Array[RdfStatement],
+  results : Array[RdfOut],
   errors : Array[RuleRecognizerError],
 ) -> N3Recognizer {
   match token {
@@ -97,9 +97,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               }
               return self
             } else {
-              return self.error(
-                errors, "The BASE keyword should be followed by an IRI",
-              )
+              return self.error("The BASE keyword should be followed by an IRI")
             }
           }
           N3State::PrefixExpectPrefix => {
@@ -117,7 +115,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               }
               _ =>
                 return self.error(
-                  errors, "The PREFIX keyword should be followed by a prefix like 'ex:'",
+                  "The PREFIX keyword should be followed by a prefix like 'ex:'",
                 )
             }
           }
@@ -139,7 +137,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               self
             } else {
               self.error(
-                errors, "The PREFIX declaration should be followed by a prefix and its value as an IRI",
+                "The PREFIX declaration should be followed by a prefix and its value as an IRI",
               )
             }
           }
@@ -302,9 +300,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             results.push(
               match predicate_opt {
                 Predicate::Regular(predicate) =>
-                  RdfStatement::N3Quad(self.quad(subject, predicate, object))
+                  RdfOut::N3Quad(self.quad(subject, predicate, object))
                 Predicate::Inverted(predicate) =>
-                  RdfStatement::N3Quad(self.quad(object, predicate, subject))
+                  RdfOut::N3Quad(self.quad(object, predicate, subject))
               },
             )
             // if token ==
@@ -467,7 +465,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               }
               _ =>
                 return self.error(
-                  errors, "The keyword 'is' should be followed by a predicate then by the keyword 'of'",
+                  "The keyword 'is' should be followed by a predicate then by the keyword 'of'",
                 )
             }
           }
@@ -533,9 +531,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             let current = BlankNode::default().as_n3term()
             results.push(
               if is_inverse {
-                RdfStatement::N3Quad(self.quad(current, predicate, previous))
+                RdfOut::N3Quad(self.quad(current, predicate, previous))
               } else {
-                RdfStatement::N3Quad(self.quad(previous, predicate, current))
+                RdfOut::N3Quad(self.quad(previous, predicate, current))
               },
             )
             self.terms.push(current)
@@ -570,7 +568,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 LocatedN3Token(N3Token::Punctuation("}"), _)
               ) => {
                 if self.contexts.is_empty() {
-                  return self.error(errors, "Unexpected '}' outside of formula")
+                  return self.error("Unexpected '}' outside of formula")
                 }
                 let ctx = self.contexts.pop().unwrap()
                 self.terms.push(ctx.as_n3term())
@@ -664,16 +662,14 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                         self.terms.push(t.as_n3term())
                         return self
                       }
-                      Err(e) => return self.error(errors, e.to_string())
+                      Err(e) => return self.error(e.to_string())
                     }
                   _ =>
-                    return self.error(
-                      errors, "Invalid context for prefix resolution",
-                    )
+                    return self.error("Invalid context for prefix resolution")
                 }
               _ =>
                 return self.error(
-                  errors, "The '[ id' construction should be followed by an IRI",
+                  "The '[ id' construction should be followed by an IRI",
                 )
             }
           }
@@ -728,14 +724,14 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
               }
             }
             results.push(
-              RdfStatement::N3Quad(self.quad(old, lwFIRST.as_n3term(), value)),
+              RdfOut::N3Quad(self.quad(old, lwFIRST.as_n3term(), value)),
             )
             if token
               is LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(N3Token::Punctuation(")"), _)
               ) {
               results.push(
-                RdfStatement::N3Quad(
+                RdfOut::N3Quad(
                   self.quad(old, lwREST.as_n3term(), lwNIL.as_n3term()),
                 ),
               )
@@ -743,7 +739,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
             }
             let new = BlankNode::default()
             results.push(
-              RdfStatement::N3Quad(
+              RdfOut::N3Quad(
                 self.quad(old, lwREST.as_n3term(), new.as_n3term()),
               ),
             )
@@ -762,9 +758,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                 LocatedN3Token(N3Token::LangTag(language~, direction~), _)
               ) => {
                 if direction is Some(_) {
-                  return self.error(
-                    errors, "rdf:dirLangString is not supported in N3",
-                  )
+                  return self.error("rdf:dirLangString is not supported in N3")
                 }
                 self.terms.push(
                   Literal::new_language_tagged_literal_unchecked(
@@ -827,15 +821,12 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
                         )
                         return self
                       }
-                      Err(e) => return self.error(errors, e)
+                      Err(e) => return self.error(e)
                     }
                   _ =>
-                    return self.error(
-                      errors, "Invalid context for prefix resolution",
-                    )
+                    return self.error("Invalid context for prefix resolution")
                 }
-              _ =>
-                return self.error(errors, "Unexpected token in formula content")
+              _ => return self.error("Unexpected token in formula content")
             }
           }
           N3State::FormulaContent => {

@@ -4,7 +4,7 @@ impl TokenRecognizer for RdfLexer with fn recognize_next_token(
   data : ArrayView[Byte],
   is_ending : Bool,
   options : LexerOptions?,
-  location_ctx : SourcePosition,
+  location_ctx : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let base_iri_opt = match options {
     Some(options) =>

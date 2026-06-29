@@ -133,7 +133,7 @@ pub struct AsyncReaderNQuadsParser[RL] {
 ///|
 pub async fn[RL : TokenRecognizer] AsyncReaderNQuadsParser::next(
   self : AsyncReaderNQuadsParser[RL],
-) -> Result[RdfStatement, LexerError]? {
+) -> Result[RdfOut, LexerError]? {
   self.inner.next()
 }
 
@@ -178,15 +178,15 @@ pub fn[RL : TokenRecognizer] LowLevelNQuadsParser::parse_next(
     res
     .map(fn(lex_output) {
       match lex_output {
-        RdfStatement::Triple(triple) =>
+        RdfOut::Triple(triple) =>
           Quad::Quad(
             triple.subject,
             triple.predicate,
             triple.object,
             GraphName::default(),
           )
-        RdfStatement::Quad(quad) => quad
-        RdfStatement::N3Quad(n3quad) =>
+        RdfOut::Quad(quad) => quad
+        RdfOut::N3Quad(n3quad) =>
           match n3quad.predicate.to_node() {
             // 修复：使用 NamedNode(_) 忽略内部字段，消除警告
             NamedNode(node) =>
