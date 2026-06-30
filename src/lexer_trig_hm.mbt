@@ -1,56 +1,5 @@
-// lexer_trig_1h1_refactored.mbt
-
-///|
-// fn TriGRecognizer::handle_trig_doc_m(
-//   self : TriGRecognizer,
-//   event : Event,
-//   context : RdfContext,
-// ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-//   let ctx = match context {
-//     RdfContext::TriGRecognizerContext(c) => c
-//     _ => return Err(RuleRecognizerError::SyntaxError("Invalid context", self.last_range))
-//   }
-
-//    // 假设 Event 包装了 token
-
-//   // 重置当前图为默认图 (如果需要每次进入 Doc 都重置，否则可能在 init 中做)
-//   let new_self = { ..self, cur_graph: GraphNameRef::DefaultGraph }
-
-//   // 注意：原代码 push TriGDoc 到 stack，这在新架构中可能不需要，因为 transition 返回的状态就是当前状态
-//   // 但如果内部 stack 用于其他目的，需保留。这里假设内部 stack 仅用于嵌套结构解析。
-
-//   match event {
-//     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::PlainKeyword(k), _)) if eq_ignore_ascii_case(k, "base") => {
-//       // 转移到 BaseExpectIri 状态
-//       Ok((new_self, TriGState::BaseExpectIri, None))
-//     }
-//     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::PlainKeyword(k), _)) if eq_ignore_ascii_case(k, "prefix") => {
-//       Ok((new_self, TriGState::PrefixExpectPrefix, None))
-//     }
-//     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::PlainKeyword(k), _)) if eq_ignore_ascii_case(k, "version") => {
-//       Ok((new_self, TriGState::VersionExpectVersion, None))
-//     }
-//     // ... 处理其他关键字 ...
-
-//     // 默认情况：进入三元组或图解析
-//     _ => {
-//       // 将当前 token “推回” 或让下一个状态处理？
-//       // 在新架构中，通常由引擎再次调用 transition 并传入同一个 event，或者我们在当前状态消耗它。
-//       // 原代码是 push TriplesOrGraph 然后 fallthrough。
-//       // 这里我们直接转移到 TriplesOrGraph，并期望引擎能重新处理当前 token？
-//       // 或者，TriplesOrGraph 的 handle 方法需要能处理“空”输入或重用 token？
-//       // 标准做法：如果当前状态决定下一个状态，且当前 token 未被消耗，通常需要一种机制“peek”或“unget”。
-//       // 鉴于原代码逻辑，这里我们假设转移到 TriplesOrGraph，并且该状态的 handle 函数会被立即用同一个 token 调用（如果引擎支持）
-//       // 或者，我们在这里直接调用 handle_triples_or_graph_m 的逻辑？不，这违背了状态机原则。
-
-//       // 修正：原代码中 handle_trig_doc 最后 push TriplesOrGraph 并返回 self。
-//       // 这意味着下一个 loop 迭代会用同一个 token 进入 TriplesOrGraph。
-//       // 在我们的架构中，我们返回新的状态 TriGState::TriplesOrGraph。
-//       // 引擎在下一次迭代时会用同一个 event 调用 transition(state=TriplesOrGraph, event=same_event)。
-//       Ok((new_self, TriGState::TriplesOrGraph, None))
-//     }
-//   }
-// }
+// ===== 状态: TriGState::TriplesOrGraph =====
+// 功能: 处理三元组或图的起始，识别主语或图名
 
 ///|
 fn TriGRecognizer::handle_triples_or_graph_m(
@@ -58,13 +7,16 @@ fn TriGRecognizer::handle_triples_or_graph_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-  let ctx = match context {
-    RdfContext::TriGRecognizerContext(c) => c
-    _ =>
-      return Err(
-        RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
-      )
-  }
+  // let ctx = match context {
+  //   RdfContext::TriGRecognizerContext(c) => c
+  //   _ =>
+  //     return Err(
+  //       RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
+  //     )
+  // }
+
+  self.debug_logger.info("TriplesOrGraph: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
@@ -101,6 +53,9 @@ fn TriGRecognizer::handle_triples_or_graph_m(
   }
 }
 
+// ===== 状态: TriGState::WrappedGraphOrPredicateObjectList =====
+// 功能: 根据term判断是进入图块还是谓词对象列表
+
 ///|
 fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
   self : TriGRecognizer,
@@ -116,8 +71,11 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
       )
   }
 
-  // 
-
+  self.debug_logger.info("WrappedGraphOrPredicateObjectList: event=\{event}")
+  self.debug_logger.info("Token stack: \{self.stack}")
+  self.debug_logger.info("Current subject: \{self.cur_subject}")
+  self.debug_logger.info("Current predicate: \{self.cur_predicate}")
+  self.debug_logger.info("Current object: \{self.cur_object}")
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("{"), _)
@@ -135,11 +93,12 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
 
       let new_stack = new_self.stack
       new_stack.push(TriGState::ExpectDot)
-      new_stack.push(TriGState::ObjectsList)
-
+      // 不再压入 ObjectsList，直接准备进入 Object 状态
+      // 但我们需要告诉引擎用同一个 token 调用 Object 状态
+      // 由于当前架构每次 transition 都消费 token，我们需要直接返回 Object
       let new_self_with_stack = { ..new_self, stack: new_stack }
-      // 转移到 ObjectsList
-      Ok((new_self_with_stack, TriGState::ObjectsList, None))
+      // 直接转移到 Object 状态，让引擎用同一个 token 处理
+      Ok((new_self_with_stack, TriGState::Object, None))
     }
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
       let new_self = self
@@ -148,10 +107,9 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
 
       let new_stack = new_self.stack
       new_stack.push(TriGState::ExpectDot)
-      new_stack.push(TriGState::ObjectsList)
-
+      // 直接转移到 Object 状态
       let new_self_with_stack = { ..new_self, stack: new_stack }
-      Ok((new_self_with_stack, TriGState::ObjectsList, None))
+      Ok((new_self_with_stack, TriGState::Object, None))
     }
     // ... 处理 PrefixedName ...
     _ =>
@@ -163,6 +121,9 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
       )
   }
 }
+
+// ===== 状态: TriGState::ObjectsList =====
+// 功能: 路由到Object状态处理对象列表
 
 ///|
 fn TriGRecognizer::handle_objects_list_m(
@@ -181,16 +142,21 @@ fn TriGRecognizer::handle_objects_list_m(
   // ObjectsList 只是路由到 Object
   // 原代码: push Object, then recognize_next (which processes same token)
   // 新架构: 直接转移到 Object 状态，引擎会用同一个 event 调用 handle_object_m
-  debug("TrigRecognizer::recognize_objects_list_m \{self.stack.to_string()}")
+  self.debug_logger.info("ObjectsList: routing to Object state")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   let new_stack = self.stack
   new_stack.push(TriGState::Object) // 如果内部栈需要记录返回点? 原代码似乎没 push 返回点到内部栈，而是直接切换逻辑
 
-  // 注意：原代码中 ObjectsList 是一个“瞬态”状态，它立即把控制权交给 Object。
+  // 注意：原代码中 ObjectsList 是一个"瞬态"状态，它立即把控制权交给 Object。
   // 如果我们的状态机引擎在一次 transition 中只走一步，那么返回 Object 状态是正确的。
 
   let new_self = { ..self, stack: new_stack } // 如果 stack 需要更新
   Ok((new_self, TriGState::Object, None))
 }
+
+// ===== 状态: TriGState::Object =====
+// 功能: 处理RDF对象（IRI、字面量、集合等）
 
 ///|
 fn TriGRecognizer::handle_object_m(
@@ -205,21 +171,24 @@ fn TriGRecognizer::handle_object_m(
   //       RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
   //     )
   // }
+  self.debug_logger.info("Object: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
       let obj_term = TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(iri))
-      let new_self = self
-      new_self.cur_object.push(obj_term)
-
+      // let new_self = self
+      self.cur_object.push(obj_term)
       // emit_quad 逻辑：生成一个 RdfOut
       // 假设 make_current_quad 或类似方法可用
-      let quad = new_self.make_current_quad() // 假设此方法存在并正确构建 Quad
+      let quad = self.make_current_quad() // 假设此方法存在并正确构建 Quad
+      self.debug_logger.info("[Step 2]Object: emitted quad: \{quad}")
 
       // 转移状态：根据原代码，push PredicateObjectListEnd
-      let new_stack = new_self.stack
+      let new_stack = self.stack
       new_stack.push(TriGState::PredicateObjectListEnd)
 
-      let final_self = { ..new_self, stack: new_stack }
+      let final_self = { ..self, stack: new_stack }
       // 返回生成的 Quad
       Ok((final_self, TriGState::PredicateObjectListEnd, Some(quad)))
     }
@@ -245,6 +214,9 @@ fn TriGRecognizer::handle_object_m(
   }
 }
 
+// ===== 状态: TriGState::ObjectCollectionBeginning =====
+// 功能: 处理 '(' 后的第一个元素或空集合情况
+
 ///|
 fn TriGRecognizer::handle_object_collection_beginning_m(
   self : TriGRecognizer,
@@ -258,6 +230,9 @@ fn TriGRecognizer::handle_object_collection_beginning_m(
   //       RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
   //     )
   // }
+
+  self.debug_logger.info("ObjectCollectionBeginning: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -304,6 +279,9 @@ fn TriGRecognizer::handle_object_collection_beginning_m(
   }
 }
 
+// ===== 状态: TriGState::ObjectCollectionPossibleEnd =====
+// 功能: 检查集合是否结束或继续处理下一个元素
+
 ///|
 fn TriGRecognizer::handle_object_collection_possible_end_m(
   self : TriGRecognizer,
@@ -317,6 +295,11 @@ fn TriGRecognizer::handle_object_collection_possible_end_m(
         RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
       )
   }
+
+  self.debug_logger.info(
+    "ObjectCollectionPossibleEnd: handling event: \{event}",
+  )
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   let old_subject = match self.cur_subject.pop() {
     Some(s) => s
@@ -393,12 +376,18 @@ fn TriGRecognizer::handle_object_collection_possible_end_m(
   }
 }
 
+// ===== 状态: TriGState::PredicateObjectListEnd =====
+// 功能: 处理谓词对象列表结束符（逗号、分号、句号）
+
 ///|
 fn TriGRecognizer::handle_predicate_object_list_end_m(
   self : TriGRecognizer,
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info("PredicateObjectListEnd: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation(","), _)
@@ -435,25 +424,25 @@ fn TriGRecognizer::handle_predicate_object_list_end_m(
   }
 }
 
-// ... 其他 handle_*_m 函数依此类推 ...
-
-// ===== 7. 文档和图 (修正版) =====
-// 对应状态: TriGState::TriGDoc
+// ===== 状态: TriGState::TriGDoc =====
+// 功能: TriG文档的顶层状态，处理指令和三文组
 
 ///|
-// ===== 修正 handle_trig_doc_m =====
-
 fn TriGRecognizer::handle_trig_doc_m(
-  self: TriGRecognizer,
-  event: Event,
-  context: RdfContext,
+  self : TriGRecognizer,
+  event : Event,
+  context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   let ctx = match context {
     RdfContext::TriGRecognizerContext(c) => c
-    _ => return Err(RuleRecognizerError::SyntaxError("Invalid context", self.last_range))
+    _ =>
+      return Err(
+        RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
+      )
   }
 
   self.debug_logger.info("[Step 1] Entering TriGDoc with event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   let new_self = { ..self, cur_graph: GraphNameRef::DefaultGraph }
 
@@ -529,17 +518,27 @@ fn TriGRecognizer::handle_trig_doc_m(
     // ✅ 处理 IRI 作为主语
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
       self.debug_logger.info("TriGDoc: IRI as subject = \{iri}")
-      let  new_self_with_subject = new_self
+      let new_self_with_subject = new_self
       new_self_with_subject.cur_subject.push(
-        NamedNodeRef::new_unchecked(iri).as_enum()
+        NamedNodeRef::new_unchecked(iri).as_enum(),
       )
       // 进入 WrappedGraphOrPredicateObjectList，等待谓词
       let new_stack = new_self_with_subject.stack
-      new_stack.push(TriGState::WrappedGraphOrPredicateObjectList(
-        term = NamedNodeRef::new_unchecked(iri).as_enum()
-      ))
+      new_stack.push(
+        TriGState::WrappedGraphOrPredicateObjectList(
+          term=NamedNodeRef::new_unchecked(iri).as_enum(),
+        ),
+      )
       let final_self = { ..new_self_with_subject, stack: new_stack }
-      Ok((final_self, TriGState::WrappedGraphOrPredicateObjectList(term = NamedNodeRef::new_unchecked(iri).as_enum()), None))
+      Ok(
+        (
+          final_self,
+          TriGState::WrappedGraphOrPredicateObjectList(
+            term=NamedNodeRef::new_unchecked(iri).as_enum(),
+          ),
+          None,
+        ),
+      )
     }
 
     // 处理 BlankNode 作为主语
@@ -547,37 +546,56 @@ fn TriGRecognizer::handle_trig_doc_m(
       LocatedN3Token(N3Token::BlankNodeLabel(label), _)
     ) => {
       self.debug_logger.info("TriGDoc: BlankNode as subject = \{label}")
-      let  new_self_with_subject = new_self
+      let new_self_with_subject = new_self
       new_self_with_subject.cur_subject.push(
-        BlankNodeRef::new_unchecked(label).as_enum()
+        BlankNodeRef::new_unchecked(label).as_enum(),
       )
       let new_stack = new_self_with_subject.stack
-      new_stack.push(TriGState::WrappedGraphOrPredicateObjectList(
-        term = BlankNodeRef::new_unchecked(label).as_enum()
-      ))
+      new_stack.push(
+        TriGState::WrappedGraphOrPredicateObjectList(
+          term=BlankNodeRef::new_unchecked(label).as_enum(),
+        ),
+      )
       let final_self = { ..new_self_with_subject, stack: new_stack }
-      Ok((final_self, TriGState::WrappedGraphOrPredicateObjectList(term = BlankNodeRef::new_unchecked(label).as_enum()), None))
+      Ok(
+        (
+          final_self,
+          TriGState::WrappedGraphOrPredicateObjectList(
+            term=BlankNodeRef::new_unchecked(label).as_enum(),
+          ),
+          None,
+        ),
+      )
     }
 
     // 处理 PrefixedName 作为主语
     LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~), _)
-    ) => {
-      match resolve_local_name(prefix, localx, might_be_invalid_iri, ctx.prefixes) {
+      LocatedN3Token(
+        N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+        _
+      )
+    ) =>
+      match
+        resolve_local_name(prefix, localx, might_be_invalid_iri, ctx.prefixes) {
         Ok(t) => {
           self.debug_logger.info("TriGDoc: PrefixedName as subject = \{t}")
-          let  new_self_with_subject = new_self
+          let new_self_with_subject = new_self
           new_self_with_subject.cur_subject.push(t.as_enum())
           let new_stack = new_self_with_subject.stack
-          new_stack.push(TriGState::WrappedGraphOrPredicateObjectList(
-            term = t.as_enum()
-          ))
+          new_stack.push(
+            TriGState::WrappedGraphOrPredicateObjectList(term=t.as_enum()),
+          )
           let final_self = { ..new_self_with_subject, stack: new_stack }
-          Ok((final_self, TriGState::WrappedGraphOrPredicateObjectList(term = t.as_enum()), None))
+          Ok(
+            (
+              final_self,
+              TriGState::WrappedGraphOrPredicateObjectList(term=t.as_enum()),
+              None,
+            ),
+          )
         }
         Err(e) => Err(RuleRecognizerError::SyntaxError(e, self.last_range))
       }
-    }
 
     // 处理集合开始 ( 作为主语
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -597,12 +615,16 @@ fn TriGRecognizer::handle_trig_doc_m(
       let new_stack = new_self.stack
       new_stack.push(TriGState::WrappedGraphBlankNodePropertyListCurrent)
       let final_self = { ..new_self, stack: new_stack }
-      Ok((final_self, TriGState::WrappedGraphBlankNodePropertyListCurrent, None))
+      Ok(
+        (final_self, TriGState::WrappedGraphBlankNodePropertyListCurrent, None),
+      )
     }
 
     // 默认情况
     _ => {
-      self.debug_logger.info("TriGDoc: unexpected token, pushing TriplesOrGraph")
+      self.debug_logger.info(
+        "TriGDoc: unexpected token, pushing TriplesOrGraph",
+      )
       let new_stack = new_self.stack
       new_stack.push(TriGState::TriplesOrGraph)
       let final_self = { ..new_self, stack: new_stack }
@@ -611,8 +633,8 @@ fn TriGRecognizer::handle_trig_doc_m(
   }
 }
 
-// ===== 8. 图内三元组解析 (修正版) =====
-// 对应状态: TriGState::Triples
+// ===== 状态: TriGState::Triples =====
+// 功能: 处理图内的三元组，识别主语
 
 ///|
 fn TriGRecognizer::handle_triples_m(
@@ -705,8 +727,8 @@ fn TriGRecognizer::handle_triples_m(
   }
 }
 
-// ===== 15. Verb 处理 (修正版) =====
-// 对应状态: TriGState::Verb
+// ===== 状态: TriGState::Verb =====
+// 功能: 处理谓词（包括 'a' 关键字和IRI）
 
 ///|
 fn TriGRecognizer::handle_verb_m(
@@ -723,6 +745,7 @@ fn TriGRecognizer::handle_verb_m(
   }
 
   self.debug_logger.info("Verb: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   match event {
     // 'a' 表示 rdf:type
@@ -866,8 +889,8 @@ fn TriGRecognizer::handle_verb_m(
 //   }
 // }
 
-
-// ===== ExpectDot 处理 =====
+// ===== 状态: TriGState::ExpectDot =====
+// 功能: 期望遇到句号，用于指令结束
 
 ///|
 fn TriGRecognizer::handle_expect_dot_m(
@@ -875,6 +898,9 @@ fn TriGRecognizer::handle_expect_dot_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info("ExpectDot: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("."), _)
@@ -892,7 +918,8 @@ fn TriGRecognizer::handle_expect_dot_m(
   }
 }
 
-// ===== BaseExpectIri 处理 =====
+// ===== 状态: TriGState::BaseExpectIri =====
+// 功能: BASE指令后期望IRI
 
 ///|
 fn TriGRecognizer::handle_base_expect_iri_m(
@@ -907,6 +934,9 @@ fn TriGRecognizer::handle_base_expect_iri_m(
         RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
       )
   }
+
+  self.debug_logger.info("BaseExpectIri: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -949,7 +979,8 @@ fn TriGRecognizer::handle_base_expect_iri_m(
   }
 }
 
-// ===== PrefixExpectPrefix 处理 =====
+// ===== 状态: TriGState::PrefixExpectPrefix =====
+// 功能: PREFIX指令后期望前缀名
 
 ///|
 fn TriGRecognizer::handle_prefix_expect_prefix_m(
@@ -964,6 +995,9 @@ fn TriGRecognizer::handle_prefix_expect_prefix_m(
         RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
       )
   }
+
+  self.debug_logger.info("PrefixExpectPrefix: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -992,7 +1026,8 @@ fn TriGRecognizer::handle_prefix_expect_prefix_m(
   }
 }
 
-// ===== PrefixExpectIri 处理 =====
+// ===== 状态: TriGState::PrefixExpectIri =====
+// 功能: 前缀名后期望IRI值
 
 ///|
 fn TriGRecognizer::handle_prefix_expect_iri_m(
@@ -1008,6 +1043,9 @@ fn TriGRecognizer::handle_prefix_expect_iri_m(
         RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
       )
   }
+
+  self.debug_logger.info("PrefixExpectIri: name=\{name}, event=\{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1032,7 +1070,8 @@ fn TriGRecognizer::handle_prefix_expect_iri_m(
   }
 }
 
-// ===== VersionExpectVersion 处理 =====
+// ===== 状态: TriGState::VersionExpectVersion =====
+// 功能: VERSION指令后期望版本号字符串
 
 ///|
 fn TriGRecognizer::handle_version_expect_version_m(
@@ -1040,6 +1079,9 @@ fn TriGRecognizer::handle_version_expect_version_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info("VersionExpectVersion: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::String(_), _)
@@ -1054,7 +1096,8 @@ fn TriGRecognizer::handle_version_expect_version_m(
   }
 }
 
-// ===== WrappedGraphBlankNodePropertyListCurrent 处理 =====
+// ===== 状态: TriGState::WrappedGraphBlankNodePropertyListCurrent =====
+// 功能: 处理图中空白节点属性列表的当前状态
 
 ///|
 fn TriGRecognizer::handle_wrapped_graph_blank_node_property_list_current_m(
@@ -1062,6 +1105,11 @@ fn TriGRecognizer::handle_wrapped_graph_blank_node_property_list_current_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info(
+    "WrappedGraphBlankNodePropertyListCurrent: handling event: \{event}",
+  )
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("]"), _)
@@ -1083,7 +1131,8 @@ fn TriGRecognizer::handle_wrapped_graph_blank_node_property_list_current_m(
   }
 }
 
-// ===== SubjectBlankNodePropertyListEnd 处理 =====
+// ===== 状态: TriGState::SubjectBlankNodePropertyListEnd =====
+// 功能: 主语空白节点属性列表结束，期望']'
 
 ///|
 fn TriGRecognizer::handle_subject_blank_node_property_list_end_m(
@@ -1091,6 +1140,11 @@ fn TriGRecognizer::handle_subject_blank_node_property_list_end_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info(
+    "SubjectBlankNodePropertyListEnd: handling event: \{event}",
+  )
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("]"), _)
@@ -1103,7 +1157,8 @@ fn TriGRecognizer::handle_subject_blank_node_property_list_end_m(
   }
 }
 
-// ===== SubjectBlankNodePropertyListAfter 处理 =====
+// ===== 状态: TriGState::SubjectBlankNodePropertyListAfter =====
+// 功能: 主语空白节点属性列表结束后处理
 
 ///|
 fn TriGRecognizer::handle_subject_blank_node_property_list_after_m(
@@ -1111,6 +1166,11 @@ fn TriGRecognizer::handle_subject_blank_node_property_list_after_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info(
+    "SubjectBlankNodePropertyListAfter: handling event: \{event}",
+  )
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("."), _)
@@ -1176,52 +1236,9 @@ fn TriGRecognizer::handle_subject_collection_beginning_m(
     }
   }
 }
-// ===== SubjectCollectionBeginning 处理 =====
-// fn TriGRecognizer::handle_subject_collection_beginning_m(
-//   self : TriGRecognizer,
-//   event : Event,
-//   context : RdfContext,
-// ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-//   match event {
-//     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(")"), _)) => {
-//       let new_cur_subject = self.cur_subject +[lwNIL.as_enum()]
-//       let new_self = { ..self, cur_subject: new_cur_subject }
-//       Ok((new_self, TriGState::SubjectCollectionBeginning, None)) // 或者返回上一个状态？原代码是 return self，意味着栈顶变化后继续。这里假设下一个状态由栈决定，或者我们需要显式返回栈顶状态。
-//       // 在新架构中，如果栈用于模拟递归，我们通常返回一个“继续解析”的状态，或者让引擎检查栈。
-//       // 鉴于原代码逻辑，这里可能应该返回 TriGState::PredicateObjectList 或类似，取决于栈顶。
-//       // 为了简化，假设引擎会处理栈，或者我们返回一个通用状态。
-//       // *修正*：原代码 push 后 return self。在新架构中，我们通常需要返回下一个要执行的具体 Handler 对应的状态。
-//       // 如果栈顶是 PredicateObjectList，我们应该返回它。
-//       // 但这里为了保持一致性，我们先返回当前状态，实际项目中可能需要更复杂的栈管理逻辑暴露给引擎。
-//       // 假设：引擎在 Ok 后，如果 stack 非空，会优先处理 stack 顶部的状态？
-//       // 如果不，我们需要手动弹出栈顶并返回。
-//       // 让我们假设：返回的状态是下一步要调用的 handler。
-//       // 原代码: push ExpectDot, PredicateObjectList, SubjectCollectionBeginning. 
-//       // 这里的逻辑是进入集合解析。
-//       // 让我们返回 TriGState::Object (因为集合元素是对象) 或者专门的集合状态。
-//       // 原代码后续是 push SubjectCollectionPossibleEnd, Object.
-//       // 这里如果是空集合 ()，则 push lwNIL 到 subject。
-//       // 让我们返回 TriGState::PredicateObjectList (假设栈顶是这个)
-//       // 由于无法确切知道栈管理机制，这里暂且返回一个占位状态，实际需根据引擎实现调整。
-//       // *更安全的做法*：如果原代码是 push 然后 return self (loop)，那么新架构应该返回栈顶状态。
-//       // 这里我们假设栈顶是 PredicateObjectList
-//       Ok((new_self, TriGState::PredicateObjectList, None))
-//     }
-//     _ => {
-//       let root = NamedOrBlankNodeRef::BlankNodeRef(BlankNode::default().as_ref())
-//       let new_cur_subject = self.cur_subject +[root]
-//       let new_cur_predicate = self.cur_predicate+[lwFIRST]
 
-//       let new_stack = self.stack.copy()
-//       new_stack.push(TriGState::SubjectCollectionPossibleEnd)
-//       new_stack.push(TriGState::Object)
-
-//       let new_self = { ..self, cur_subject: new_cur_subject, cur_predicate: new_cur_predicate, stack: new_stack }
-//       Ok((new_self, TriGState::Object, None))
-//     }
-//   }
-// }
-// ===== SubjectCollectionPossibleEnd 状态 =====
+// ===== 状态: TriGState::SubjectCollectionPossibleEnd =====
+// 功能: 检查主语集合是否结束或继续处理下一个元素
 
 ///|
 fn TriGRecognizer::handle_subject_collection_possible_end_m(
@@ -1229,6 +1246,11 @@ fn TriGRecognizer::handle_subject_collection_possible_end_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info(
+    "SubjectCollectionPossibleEnd: handling event: \{event}",
+  )
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   // 弹出当前 subject 和 object
   let old = match self.cur_subject.pop() {
     Some(s) => s
@@ -1300,58 +1322,9 @@ fn TriGRecognizer::handle_subject_collection_possible_end_m(
     }
   }
 }
-// ===== SubjectCollectionPossibleEnd 处理 =====
-// fn TriGRecognizer::handle_subject_collection_possible_end_m(
-//   self : TriGRecognizer,
-//   event : Event,
-//   context : RdfContext,
-// ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-//   let (old, new_cur_subject) = match self.cur_subject.unsnoc() {
-//     Some((init, last)) => (last, init)
-//     None => return Err(RuleRecognizerError::SyntaxError("Internal error: subject stack is empty", self.last_range))
-//   }
 
-//   let new_cur_object = self.cur_object // pop last
-
-//   match event {
-//     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(")"), _)) => {
-//       let new_cur_predicate = self.cur_predicate
-//       let quad = RdfOut::Quad(
-//         Quad::Quad(
-//           old.into_owned(),
-//           lwREST.into_owned(),
-//           lwNIL.into_owned().as_term(),
-//           self.cur_graph.into_owned(),
-//         ),
-//       )
-//       let new_self = { ..self, cur_subject: new_cur_subject, cur_object: new_cur_object, cur_predicate: new_cur_predicate }
-//       Ok((new_self, TriGState::SubjectCollectionPossibleEnd, Some(quad)))
-//     }
-//     _ => {
-//       let new_bnode = BlankNode::default()
-//       let quad = RdfOut::Quad(
-//         Quad::Quad(
-//           old.into_owned(),
-//           lwREST.into_owned(),
-//           lwNIL.as_term().into_owned(), // 注意：原代码此处可能有误，应为 new_bnode
-//           self.cur_graph.into_owned(),
-//         ),
-//       )
-
-//       let new_cur_subject = new_cur_subject+[NamedOrBlankNodeRef::BlankNodeRef(new_bnode.as_ref())]
-//       let new_stack = self.stack.copy()
-//       new_stack.push(TriGState::ObjectCollectionPossibleEnd) // 注意：原代码 push 的是 ObjectCollectionPossibleEnd? 不，是 SubjectCollection...
-//       // 原代码: self.stack.push(TriGState::ObjectCollectionPossibleEnd) -> 这可能是笔误，应该是 Subject...
-//       // 但为了忠实于原代码，我们保留。
-//       new_stack.push(TriGState::Object)
-
-//       let new_self = { ..self, cur_subject: new_cur_subject, cur_object: new_cur_object, stack: new_stack }
-//       Ok((new_self, TriGState::Object, Some(quad)))
-//     }
-//   }
-// }
-
-// ===== TriplesBlankNodePropertyListCurrent 处理 =====
+// ===== 状态: TriGState::TriplesBlankNodePropertyListCurrent =====
+// 功能: 处理三元组中空白节点属性列表的当前状态
 
 ///|
 fn TriGRecognizer::handle_triples_blank_node_property_list_current_m(
@@ -1359,6 +1332,11 @@ fn TriGRecognizer::handle_triples_blank_node_property_list_current_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info(
+    "TriplesBlankNodePropertyListCurrent: handling event: \{event}",
+  )
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("]"), _)
@@ -1373,8 +1351,8 @@ fn TriGRecognizer::handle_triples_blank_node_property_list_current_m(
   }
 }
 
-// ===== GraphName 处理 =====
-// ===== 修正后的 handle_graph_name_m =====
+// ===== 状态: TriGState::GraphName =====
+// 功能: 处理图名的解析（IRI、前缀名、空白节点等）
 
 ///|
 fn TriGRecognizer::handle_graph_name_m(
@@ -1389,6 +1367,9 @@ fn TriGRecognizer::handle_graph_name_m(
         RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
       )
   }
+
+  self.debug_logger.info("GraphName: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   match event {
     // ✅ IRI 作为图名
@@ -1459,8 +1440,8 @@ fn TriGRecognizer::handle_graph_name_m(
       )
   }
 }
-// ===== GraphNameAnonEnd 处理 =====
-// ===== 修正后的 handle_graph_name_anon_end_m =====
+// ===== 状态: TriGState::GraphNameAnonEnd =====
+// 功能: 匿名图名结束，期望']'
 
 ///|
 fn TriGRecognizer::handle_graph_name_anon_end_m(
@@ -1468,6 +1449,9 @@ fn TriGRecognizer::handle_graph_name_anon_end_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info("GraphNameAnonEnd: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     // ✅ 收到 ']'，匿名图名结束
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1494,7 +1478,8 @@ fn TriGRecognizer::handle_graph_name_anon_end_m(
   }
 }
 
-// ===== MaybePredicateObjectList 处理 =====
+// ===== 状态: TriGState::MaybePredicateObjectList =====
+// 功能: 可选的谓词对象列表，处理特殊情况
 
 ///|
 fn TriGRecognizer::handle_maybe_predicate_object_list_m(
@@ -1502,6 +1487,9 @@ fn TriGRecognizer::handle_maybe_predicate_object_list_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info("MaybePredicateObjectList: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("."), _)
@@ -1515,7 +1503,8 @@ fn TriGRecognizer::handle_maybe_predicate_object_list_m(
   }
 }
 
-// ===== AnnotationEnd 处理 =====
+// ===== 状态: TriGState::AnnotationEnd =====
+// 功能: 注释结束，期望'|}'
 
 ///|
 fn TriGRecognizer::handle_annotation_end_m(
@@ -1524,6 +1513,11 @@ fn TriGRecognizer::handle_annotation_end_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info(
+    "AnnotationEnd: with_reifier=\{with_reifier}, event=\{event}",
+  )
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   let new_cur_subject = self.cur_subject // pop
   let new_self = { ..self, cur_subject: new_cur_subject }
 
@@ -1541,7 +1535,8 @@ fn TriGRecognizer::handle_annotation_end_m(
   }
 }
 
-// ===== ObjectBlankNodePropertyListCurrent 处理 =====
+// ===== 状态: TriGState::ObjectBlankNodePropertyListCurrent =====
+// 功能: 对象空白节点属性列表的当前状态
 
 ///|
 fn TriGRecognizer::handle_object_blank_node_property_list_current_m(
@@ -1549,6 +1544,11 @@ fn TriGRecognizer::handle_object_blank_node_property_list_current_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info(
+    "ObjectBlankNodePropertyListCurrent: handling event: \{event}",
+  )
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("]"), _)
@@ -1572,7 +1572,8 @@ fn TriGRecognizer::handle_object_blank_node_property_list_current_m(
   }
 }
 
-// ===== LiteralExpectDatatype 处理 =====
+// ===== 状态: TriGState::LiteralExpectDatatype =====
+// 功能: 字面量后期望数据类型IRI
 
 ///|
 fn TriGRecognizer::handle_literal_expect_datatype_m(
@@ -1589,6 +1590,11 @@ fn TriGRecognizer::handle_literal_expect_datatype_m(
         RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
       )
   }
+
+  self.debug_logger.info(
+    "LiteralExpectDatatype: value='\{value}', emit=\{emit}, event=\{event}",
+  )
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1688,8 +1694,8 @@ fn TriGRecognizer::handle_literal_expect_datatype_m(
   }
 }
 
-// ===== SubjectReifiedTripleEnd 处理 =====
-// ===== SubjectReifiedTripleEnd 处理 =====
+// ===== 状态: TriGState::SubjectReifiedTripleEnd =====
+// 功能: 引用三元组主语结束，期望'>>'
 
 ///|
 fn TriGRecognizer::handle_subject_reified_triple_end_m(
@@ -1697,6 +1703,9 @@ fn TriGRecognizer::handle_subject_reified_triple_end_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info("SubjectReifiedTripleEnd: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   // 使用 pop() 弹出 reifier
   let reifier = match self.cur_reifier.pop() {
     Some(r) => r
@@ -1750,7 +1759,8 @@ fn TriGRecognizer::handle_subject_reified_triple_end_m(
 //     }
 //   }
 // }
-// ===== TripleTermEnd 处理 =====
+// ===== 状态: TriGState::TripleTermEnd =====
+// 功能: 三元组项结束，期望')>>'
 
 ///|
 fn TriGRecognizer::handle_triple_term_end_m(
@@ -1759,6 +1769,9 @@ fn TriGRecognizer::handle_triple_term_end_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info("TripleTermEnd: emit=\{emit}, event=\{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   // 使用 pop() 替代 unsnoc()
   let subject = match self.cur_subject.pop() {
     Some(s) => s
@@ -1853,8 +1866,8 @@ fn TriGRecognizer::handle_triple_term_end_m(
 //   }
 // }
 
-// ===== EndOfReifiedTripleBeforeReifier 处理 =====
-// ===== EndOfReifiedTripleBeforeReifier 处理 =====
+// ===== 状态: TriGState::EndOfReifiedTripleBeforeReifier =====
+// 功能: 引用三元组结束后处理reifier
 
 ///|
 fn TriGRecognizer::handle_end_of_reified_triple_before_reifier_m(
@@ -1862,6 +1875,11 @@ fn TriGRecognizer::handle_end_of_reified_triple_before_reifier_m(
   event : Event,
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  self.debug_logger.info(
+    "EndOfReifiedTripleBeforeReifier: handling event: \{event}",
+  )
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+
   // 使用 pop() 弹出 subject, predicate, object
   let subject = match self.cur_subject.pop() {
     Some(s) => s
@@ -1930,49 +1948,9 @@ fn TriGRecognizer::handle_end_of_reified_triple_before_reifier_m(
     }
   }
 }
-// fn TriGRecognizer::handle_end_of_reified_triple_before_reifier_m(
-//   self : TriGRecognizer,
-//   event : Event,
-//   context : RdfContext,
-// ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-//   let (subject, new_cur_subject) = match self.cur_subject.unsnoc() {
-//     Some((init, last)) => (last, init)
-//     None => return Err(RuleRecognizerError::SyntaxError("Internal error: subject stack empty", self.last_range))
-//   }
-//   let (predicate, new_cur_predicate) = match self.cur_predicate.unsnoc() {
-//     Some((init, last)) => (last, init)
-//     None => return Err(RuleRecognizerError::SyntaxError("Internal error: predicate stack empty", self.last_range))
-//   }
-//   let (object, new_cur_object) = match self.cur_object.unsnoc() {
-//     Some((init, last)) => (last, init)
-//     None => return Err(RuleRecognizerError::SyntaxError("Internal error: object stack empty", self.last_range))
-//   }
 
-//   let triple = TripleRef::TripleRef(subject, predicate, object)
-//   let intermediate_self = { ..self, cur_subject: new_cur_subject, cur_predicate: new_cur_predicate, cur_object: new_cur_object }
-
-//   match event {
-//     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("~"), _)) => {
-//       Ok((intermediate_self, TriGState::Reifier(triple=triple.into_owned()), None))
-//     }
-//     _ => {
-//       let reifier = BlankNode::default()
-//       let quad = RdfOut::Quad(
-//         Quad::Quad(
-//           reifier.as_enum(),
-//           lwREIFIES.into_owned(),
-//           TermRef::TripleRef(triple).into_owned(),
-//           intermediate_self.cur_graph.into_owned(),
-//         ),
-//       )
-//       let new_cur_reifier = intermediate_self.cur_reifier + [reifier.as_enum().as_ref()]
-//       let new_self = { ..intermediate_self, cur_reifier: new_cur_reifier }
-//       Ok((new_self, TriGState::EndOfReifiedTripleBeforeReifier, Some(quad)))
-//     }
-//   }
-// }
-
-// ===== Reifier 处理 =====
+// ===== 状态: TriGState::Reifier =====
+// 功能: 处理reifier（引用节点）
 
 ///|
 fn TriGRecognizer::handle_reifier_m(
@@ -1988,6 +1966,9 @@ fn TriGRecognizer::handle_reifier_m(
         RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
       )
   }
+
+  self.debug_logger.info("Reifier: triple=\{triple}, event=\{event}")
+  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {

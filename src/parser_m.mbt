@@ -145,7 +145,7 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer + StateMachine] SliceIterator::
 
 ///|
 pub struct ParserM[TR, M] {
- mut lexer : Lexer[TR]
+  mut lexer : Lexer[TR]
   mut engine : GenericStateMachine[M] // ← 泛型状态机引擎
   context : RdfContext
   errors : Array[RuleRecognizerError]
@@ -165,7 +165,7 @@ pub fn[TR, M] ParserM::ParserM(
 pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] ParserM::parse_next(
   self : ParserM[TR, M],
 ) -> Result[RdfOut, TurtleError]? {
-  for ;;  {
+  for ;; {
     // 1. 优先处理错误
     if self.errors.pop() is Some(e) {
       return Some(
@@ -321,7 +321,7 @@ fn[TR, M : StateMachine] ParserM::try_finish(
     // 已接受但无输出，可能是一个空的成功状态，继续解析
     return None
   } else {
-      debug("ParserM: Engine is accepting but no output generated yet.")
+    debug("ParserM: Engine is accepting but no output generated yet.")
 
     // 尚未接受，属于中间状态，继续获取下一个 Token
     return None

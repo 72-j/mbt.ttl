@@ -15,7 +15,7 @@ repository = ""
 
 license = "Apache-2.0"
 
-keywords = [ ]
+keywords = ["ttl","rdf"]
 
 description = ""
 
@@ -23,4 +23,5 @@ preferred_target = "native"
 
 options(
   source: "src",
+  warn: false,
 )

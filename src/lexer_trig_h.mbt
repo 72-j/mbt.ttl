@@ -930,7 +930,6 @@ fn TriGRecognizer::handle_collection_end(
   }
 }
 
-
 // 8. 图内三元组解析
 // 对应状态: TriGState::Triples
 

@@ -168,6 +168,7 @@ pub(all) enum N3Token {
   LangTag(language~ : String, direction~ : BaseDirection?)
   Punctuation(String)
   PlainKeyword(String)
+  // Literal(String)
 } derive(Debug, Eq)
 
 ///|
@@ -207,5 +208,6 @@ pub impl Show for N3Token with fn output(self : N3Token, f : &Logger) -> Unit {
     }
     N3Token::Punctuation(punct) => f.write(punct)
     N3Token::PlainKeyword(keyword) => f.write(keyword)
+    // N3Token::Literal(literal) => f.write(literal)
   }
 }

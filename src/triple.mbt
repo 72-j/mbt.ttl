@@ -85,6 +85,23 @@ pub struct TripleRef {
 } derive(Eq, Debug, Hash)
 
 ///|
+impl Show for TripleRef with fn output(self : TripleRef, logger : &Logger) -> Unit {
+  // logger.write_fmt(format!("Triple {{ subject: {}, predicate: {}, object: {} }}",
+  //   self.subject, self.predicate, self.object));
+  logger.write("Triple")
+  logger.write(" {")
+  logger.write(" subject: ")
+  self.subject.output(logger)
+  logger.write(", ")
+  logger.write(" predicate: ")
+  self.predicate.output(logger)
+  logger.write(", ")
+  logger.write(" object: ")
+  self.object.output(logger)
+  logger.write(" }")
+}
+
+///|
 pub fn TripleRef::TripleRef(
   subject : NamedOrBlankNodeRef,
   predicate : NamedNodeRef,

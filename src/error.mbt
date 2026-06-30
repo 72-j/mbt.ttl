@@ -259,10 +259,7 @@ pub(all) struct SourceRange {
 } derive(Debug)
 
 ///|
-fn SourceRange::SourceRange(
-  start : SourcePos,
-  end : SourcePos,
-) -> SourceRange {
+fn SourceRange::SourceRange(start : SourcePos, end : SourcePos) -> SourceRange {
   { start, end }
 }
 

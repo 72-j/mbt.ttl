@@ -196,8 +196,7 @@ pub fn[RL : TokenRecognizer] LowLevelNTriplesParser::parse_next(
     .map(fn(lex_output) {
       match lex_output {
         RdfOut::Triple(t) => t
-        RdfOut::Quad(q) =>
-          Triple::Triple(q.subject, q.predicate, q.object)
+        RdfOut::Quad(q) => Triple::Triple(q.subject, q.predicate, q.object)
         RdfOut::N3Quad(n3quad) =>
           match n3quad.predicate.to_node() {
             NamedNode(node) =>

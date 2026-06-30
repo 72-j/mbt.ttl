@@ -1,4 +1,3 @@
-
 ///|
 pub struct Parser[TR, RR] {
   lexer : Lexer[TR]

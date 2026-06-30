@@ -22,7 +22,7 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
   // 2. 记录 Token 起始状态
   // 【关键】在调用识别器之前，将当前位置保存为 previous_position
   self.previous_position = self.position
-  
+
   // token_start_pos 包含了起始的全局偏移量、行号等信息
   let token_start_pos = self.position_from_position(self.previous_position)
 
@@ -50,11 +50,13 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
       if consumed == 0 {
         // 如果识别器返回了结果但消耗为0，强制推进1个字符以避免死循环
         // 或者视为错误
-        debug("WARNING: Lexer recognized token with 0 consumption at offset \{self.position.buffer_offset}")
+        debug(
+          "WARNING: Lexer recognized token with 0 consumption at offset \{self.position.buffer_offset}",
+        )
         // 这里可以选择报错或强制推进，视具体需求而定。通常这是识别器的bug。
         // 为了调试，我们暂时让它继续，但期望 consumed > 0
       }
-      
+
       debug_assert(() => consumed > 0)
 
       // 4. 更新 Lexer 内部状态 (Position)
@@ -98,10 +100,10 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
 
               // 注意：这里截取数据用于错误信息，确保范围有效
               let error_snippet = if global_start < self.data.length() {
-                 let end_idx = Int::min(global_end, self.data.length())
-                 self.data[global_start:end_idx]
+                let end_idx = Int::min(global_end, self.data.length())
+                self.data[global_start:end_idx]
               } else {
-                 []
+                []
               }
 
               TokenRecognizerError::InvalidToken(

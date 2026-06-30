@@ -539,17 +539,17 @@ fn TriGRecognizer::reset_to_tri_gdoc(self : TriGRecognizer) -> TriGRecognizer {
 ///|
 fn TriGRecognizer::make_current_quad(self : TriGRecognizer) -> RdfOut {
   // 1. 获取主语、谓词、对象
-  let subject = match self.cur_subject.last() {
+  let subject = match self.cur_subject.pop() {
     Some(s) => s
     None => abort("Subject stack is empty when making quad")
   }
 
-  let predicate = match self.cur_predicate.last() {
+  let predicate = match self.cur_predicate.pop() {
     Some(p) => p
     None => abort("Predicate stack is empty when making quad")
   }
 
-  let object = match self.cur_object.last() {
+  let object = match self.cur_object.pop() {
     Some(o) => o
     None => abort("Object stack is empty when making quad")
   }

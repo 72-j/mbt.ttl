@@ -51,19 +51,12 @@ fn SourcePos::default() -> SourcePos {
 }
 
 ///|
-fn SourcePos::SourcePos(
-  line : Int,
-  column : Int,
-  offset : Int,
-) -> SourcePos {
+fn SourcePos::SourcePos(line : Int, column : Int, offset : Int) -> SourcePos {
   { line, column, offset }
 }
 
 ///|
-pub fn SourcePos::end_position(
-  self : Self,
-  consumed_bytes : Int,
-) -> SourcePos {
+pub fn SourcePos::end_position(self : Self, consumed_bytes : Int) -> SourcePos {
   // 注意：这里简化处理，假设消耗的都是单字节 ASCII 或者你希望在字节层面计算 offset
   // 如果需要精确的 UTF-8 列号计算，需要扫描 data[start..start+consumed]
   SourcePos::SourcePos(
@@ -399,9 +392,7 @@ pub fn[RL] Lexer::location_from_buffer_offset_range(
 }
 
 ///|
-pub fn[RL] Lexer::current_token_start_location(
-  self : Lexer[RL],
-) -> SourcePos {
+pub fn[RL] Lexer::current_token_start_location(self : Lexer[RL]) -> SourcePos {
   self.position_from_position(self.previous_position)
   //  SourcePos::new(self.position_from_position(self.previous_position),
   //  self.position_from_position(self.position),
@@ -410,9 +401,7 @@ pub fn[RL] Lexer::current_token_start_location(
 
 ///|
 /// 获取当前 Token 的**结束**位置 (即 Lexer 指针当前位置)
-pub fn[RL] Lexer::current_token_end_location(
-  self : Lexer[RL],
-) -> SourcePos {
+pub fn[RL] Lexer::current_token_end_location(self : Lexer[RL]) -> SourcePos {
   self.position_from_position(self.position)
 }
 

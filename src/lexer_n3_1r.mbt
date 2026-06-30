@@ -1,3 +1,16 @@
+// 1. 定义状态处理器的函数签名
+// 注意：由于需要修改 self 并访问其他参数，我们传递可变引用或通过返回值更新状态
+// 在 MoonBit 中，通常通过返回新的 Self 实例来体现状态变更
+
+///|
+type StateHandler = (
+  N3Recognizer,
+  LocatedTokenOrLineJump,
+  RdfContext,
+  Array[RdfOut],
+  Array[RuleRecognizerError],
+) -> N3Recognizer
+
 ///|
 impl RuleRecognizer for N3Recognizer with fn recognize_next(
   self : N3Recognizer,
@@ -6,6 +19,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
   results : Array[RdfOut],
   errors : Array[RuleRecognizerError],
 ) -> N3Recognizer {
+  // 记录最后范围逻辑保持不变
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(located) =>
       match located {
@@ -13,896 +27,132 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
       }
     _ => ()
   }
+
   while true {
     match self.stack.pop() {
       Some(rule) =>
-        match rule {
-          N3State::N3Doc => {
-            self.debug_logger.info("Entering N3Doc with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+        // 2. 获取对应状态的 Handler
+        // let handler = self.get_state_handler(rule)
 
-            self.stack.push(N3State::N3Doc)
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword(k), _)
-              ) if eq_ignore_ascii_case(k, "base") => {
-                self.stack.push(N3State::BaseExpectIri)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword(k), _)
-              ) if eq_ignore_ascii_case(k, "prefix") => {
-                self.stack.push(N3State::PrefixExpectPrefix)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::LangTag(language="prefix", direction=None),
-                  _
-                )
-              ) => {
-                self.stack.push(N3State::N3DocExpectDot)
-                self.stack.push(N3State::PrefixExpectPrefix)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::LangTag(language="base", direction=None),
-                  _
-                )
-              ) => {
-                self.stack.push(N3State::N3DocExpectDot)
-                self.stack.push(N3State::BaseExpectIri)
-                return self
-              }
-              _ => {
-                self.stack.push(N3State::N3DocExpectDot)
-                self.stack.push(N3State::Triples)
-              }
-            }
-          }
-          N3State::N3DocExpectDot => {
-            self.debug_logger.info(
-              "Entering N3DocExpectDot with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+        // 3. 执行 Handler
+        // 注意：如果 Handler 内部改变了 stack 并需要立即返回（如遇到 return self），
+        // 这种函数式风格可能需要 Handler 返回一个包含“是否继续循环”标志的结构体，
+        // 或者保持原有逻辑：如果 Handler 决定停止解析当前 Token，它应该通过某种方式信号告知。
+        // 但在原有的命令式代码中，return self 会跳出 while 循环。
+        // 为了完全兼容原有逻辑（即某些状态处理后直接返回，不再处理栈中下一个状态），
+        // 我们需要 Handler 能够指示“提前终止”。
 
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("."), _)
-              ) => return self
-              _ => ()
-            }
-            errors.push(
-              RuleRecognizerError::SyntaxError(
-                "A dot is expected at the end of N3 statements",
-                Range::default(),
-              ),
-            )
-          }
-          N3State::BaseExpectIri => {
-            self.debug_logger.info(
-              "Entering BaseExpectIri with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+        // 简化方案：让 Handler 返回 Result<N3Recognizer, Bool> 或者类似结构？
+        // 或者，我们保留 while 循环，但约定：如果 Handler 消费了 token 并准备结束本轮 recognize_next，
+        // 它可以通过检查栈是否为空或特定标志来决定。
 
-            if token
-              is LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Iri(iri), _)
-              ) {
-              match context {
-                RdfContext::N3RecognizerContext(ctx) =>
-                  ctx.lexer_options.base_iri = Some(Iri::Iri(iri))
-                _ => ()
-              }
-              return self
-            } else {
-              return self.error("The BASE keyword should be followed by an IRI")
-            }
-          }
-          N3State::PrefixExpectPrefix => {
-            self.debug_logger.info(
-              "Entering PrefixExpectPrefix with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+        // 鉴于 MoonBit 的简洁性，最直接的映射是将每个 case 变成函数调用。
+        // 如果原代码中有 `return self`，这意味着退出 `recognize_next`。
+        // 如果原代码只是修改状态并继续 while 循环，则继续。
 
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PrefixedName(prefix~, localx~, ..), _)
-              ) if localx.is_empty() => {
-                self.stack.push(N3State::PrefixExpectIri(name=prefix))
-                return self
-              }
-              _ =>
-                return self.error(
-                  "The PREFIX keyword should be followed by a prefix like 'ex:'",
-                )
-            }
-          }
-          N3State::PrefixExpectIri(name~) => {
-            self.debug_logger.info(
-              "Entering PrefixExpectIri(\{name}) with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+        // 为了保持行为一致，我们可以让 handler 返回一个枚举：
+        // enum HandleResult { Continue(N3Recognizer), Stop(N3Recognizer) }
 
-            return if token
-              is LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Iri(iri), _)
-              ) {
-              match context {
-                RdfContext::N3RecognizerContext(ctx) =>
-                  ctx.prefixes.set(name, Iri::Iri(iri))
-                _ => ()
-              }
-              self
-            } else {
-              self.error(
-                "The PREFIX declaration should be followed by a prefix and its value as an IRI",
-              )
-            }
-          }
-          N3State::Triples => {
-            self.debug_logger.info("Entering Triples with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            self.stack.push(N3State::TriplesMiddle)
-            self.stack.push(N3State::Path)
-          }
-          N3State::TriplesMiddle => {
-            self.debug_logger.info(
-              "Entering TriplesMiddle with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            if token
-              is LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("." | "]" | "}" | ")"), _)
-              ) {
-
-            } else {
-              self.stack.push(N3State::TriplesEnd)
-              self.stack.push(N3State::PredicateObjectList)
-            }
-          }
-          N3State::TriplesEnd => {
-            self.debug_logger.info("Entering TriplesEnd with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            let _ = self.terms.pop()
-          }
-          N3State::PredicateObjectList => {
-            self.debug_logger.info(
-              "Entering PredicateObjectList with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            self.stack.push(N3State::PredicateObjectListEnd)
-            self.stack.push(N3State::ObjectsList)
-            self.stack.push(N3State::Verb)
-          }
-          N3State::PredicateObjectListEnd => {
-            self.debug_logger.info(
-              "Entering PredicateObjectListEnd with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            let _ = self.predicates.pop()
-            // if token ==
-            //   LocatedTokenOrLineJump::LocatedN3Token(
-            //     LocatedN3Token(N3Token::Punctuation(";"), _),
-            //   ) {
-            //   self.stack.push(N3State::PredicateObjectListPossibleContinuation)
-            //   return self
-            // }
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(";"), _)
-              ) => {
-                self.stack.push(
-                  N3State::PredicateObjectListPossibleContinuation,
-                )
-                return self
-              }
-              _ => ()
-            }
-          }
-          N3State::PredicateObjectListPossibleContinuation => {
-            self.debug_logger.info(
-              "Entering PredicateObjectListPossibleContinuation with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(";"), _)
-              ) => {
-                self.stack.push(
-                  N3State::PredicateObjectListPossibleContinuation,
-                )
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("."), _)
-              ) =>
-                // 处理句号
-                return self
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("}"), _)
-              ) =>
-                // 处理右花括号
-                return self
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("]"), _)
-              ) =>
-                // 处理右方括号
-                return self
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(")"), _)
-              ) =>
-                // 处理右括号
-                return self
-              _ => {
-                self.stack.push(N3State::PredicateObjectListEnd)
-                self.stack.push(N3State::ObjectsList)
-                self.stack.push(N3State::Verb)
-              }
-            }
-          }
-          N3State::ObjectsList => {
-            self.debug_logger.info("Entering ObjectsList with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            self.stack.push(N3State::ObjectsListEnd)
-            self.stack.push(N3State::Path)
-          }
-          N3State::ObjectsListEnd => {
-            self.debug_logger.info(
-              "Entering ObjectsListEnd with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            let object = match self.terms.pop() {
-              Some(o) => o
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: terms stack empty (object)",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-            let subject = match self.terms.last() {
-              Some(s) => s
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: terms stack empty (subject)",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-            let predicate_opt = match self.predicates.last() {
-              Some(p) => p
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: predicates stack empty",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-            results.push(
-              match predicate_opt {
-                Predicate::Regular(predicate) =>
-                  RdfOut::N3Quad(self.quad(subject, predicate, object))
-                Predicate::Inverted(predicate) =>
-                  RdfOut::N3Quad(self.quad(object, predicate, subject))
-              },
-            )
-            // if token ==
-            //   LocatedTokenOrLineJump::LocatedN3Token(
-            //     LocatedN3Token(N3Token::Punctuation(","), _),
-            //   ) {
-            //   self.stack.push(N3State::ObjectsListEnd)
-            //   self.stack.push(N3State::Path)
-            //   return self
-            // }
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(","), _)
-              ) => {
-                self.stack.push(N3State::ObjectsListEnd)
-                self.stack.push(N3State::Path)
-                return self
-              }
-              _ => ()
-            }
-          }
-          N3State::Verb => {
-            self.debug_logger.info("Entering Verb with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword("a"), _)
-              ) => {
-                self.predicates.push(Predicate::Regular(lwTYPE.as_n3term()))
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword("has"), _)
-              ) => {
-                self.stack.push(N3State::AfterRegularVerb)
-                self.stack.push(N3State::Path)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword("is"), _)
-              ) => {
-                self.stack.push(N3State::AfterVerbIs)
-                self.stack.push(N3State::Path)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("="), _)
-              ) => {
-                self.predicates.push(
-                  Predicate::Regular(
-                    NamedNodeRef::new_unchecked(
-                      "http://www.w3.org/2002/07/owl#sameAs",
-                    ).as_n3term(),
-                  ),
-                )
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("=>"), _)
-              ) => {
-                self.predicates.push(
-                  Predicate::Regular(
-                    NamedNodeRef::new_unchecked(
-                      "http://www.w3.org/2000/10/swap/log#implies",
-                    ).as_n3term(),
-                  ),
-                )
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("<="), _)
-              ) => {
-                self.predicates.push(
-                  Predicate::Inverted(
-                    NamedNodeRef::new_unchecked(
-                      "http://www.w3.org/2000/10/swap/log#implies",
-                    ).as_n3term(),
-                  ),
-                )
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("<-"), _)
-              ) => {
-                self.stack.push(N3State::AfterInvertedVerb)
-                self.stack.push(N3State::Path)
-                return self
-              }
-              _ => {
-                self.stack.push(N3State::AfterRegularVerb)
-                self.stack.push(N3State::Path)
-              }
-            }
-          }
-          N3State::AfterRegularVerb => {
-            self.debug_logger.info(
-              "Entering AfterRegularVerb with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            let term = match self.terms.pop() {
-              Some(t) => t
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: terms stack empty in AfterRegularVerb",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-            self.predicates.push(Predicate::Regular(term))
-            return self
-          }
-          N3State::AfterInvertedVerb => {
-            self.debug_logger.info(
-              "Entering AfterInvertedVerb with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            let term = match self.terms.pop() {
-              Some(t) => t
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: terms stack empty in AfterInvertedVerb",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-            self.predicates.push(Predicate::Inverted(term))
-            return self
-          }
-          N3State::AfterVerbIs => {
-            self.debug_logger.info("Entering AfterVerbIs with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword("of"), _)
-              ) => {
-                let term = match self.terms.pop() {
-                  Some(t) => t
-                  None => {
-                    errors.push(
-                      RuleRecognizerError::SyntaxError(
-                        "Internal error: terms stack empty in AfterVerbIs",
-                        Range::default(),
-                      ),
-                    )
-                    return self
-                  }
-                }
-                self.predicates.push(Predicate::Inverted(term))
-                return self
-              }
-              _ =>
-                return self.error(
-                  "The keyword 'is' should be followed by a predicate then by the keyword 'of'",
-                )
-            }
-          }
-          N3State::Path => {
-            self.debug_logger.info("Entering Path with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            self.stack.push(N3State::PathFollowUp)
-            self.stack.push(N3State::PathItem)
-          }
-          N3State::PathFollowUp => {
-            self.debug_logger.info("Entering PathFollowUp with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("!"), _)
-              ) => {
-                self.stack.push(N3State::PathAfterIndicator(is_inverse=false))
-                self.stack.push(N3State::PathItem)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("^"), _)
-              ) => {
-                self.stack.push(N3State::PathAfterIndicator(is_inverse=false))
-                self.stack.push(N3State::PathItem)
-                return self
-              }
-              _ => ()
-            }
-          }
-          N3State::PathAfterIndicator(is_inverse~) => {
-            self.debug_logger.info(
-              "Entering PathAfterIndicator(is_inverse=\{is_inverse}) with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            let predicate = match self.terms.pop() {
-              Some(p) => p
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: terms stack empty (predicate) in PathAfterIndicator",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-            let previous = match self.terms.pop() {
-              Some(prev) => prev
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: terms stack empty (previous) in PathAfterIndicator",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-            let current = BlankNode::default().as_n3term()
-            results.push(
-              if is_inverse {
-                RdfOut::N3Quad(self.quad(current, predicate, previous))
-              } else {
-                RdfOut::N3Quad(self.quad(previous, predicate, current))
-              },
-            )
-            self.terms.push(current)
-            self.stack.push(N3State::PathFollowUp)
-          }
-          N3State::PathItem => {
-            self.debug_logger.info("Entering PathItem with token: \{token}")
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("["), _)
-              ) => {
-                self.stack.push(N3State::PropertyListMiddle)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("("), _)
-              ) => {
-                self.stack.push(N3State::CollectionBeginning)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("{"), _)
-              ) => {
-                self.contexts.push(BlankNode::default())
-                self.stack.push(N3State::FormulaContent)
-                return self
-              }
-              // 修复：处理公式结束符 }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("}"), _)
-              ) => {
-                if self.contexts.is_empty() {
-                  return self.error("Unexpected '}' outside of formula")
-                }
-                let ctx = self.contexts.pop().unwrap()
-                self.terms.push(ctx.as_n3term())
-                if self.stack.last() == Some(N3State::PathFollowUp) {
-                  let _ = self.stack.pop()
-                }
-
-                return self
-              }
-              _ =>
-                // 使用辅助函数处理其他 Term
-                return self.handle_term_token(token, context, errors)
-            }
-          }
-          N3State::PropertyListMiddle => {
-            self.debug_logger.info(
-              "Entering PropertyListMiddle with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("]"), _)
-              ) => {
-                self.terms.push(BlankNode::default().as_n3term())
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword("id"), _)
-              ) => {
-                self.stack.push(N3State::IriPropertyList)
-                return self
-              }
-              _ => {
-                self.terms.push(BlankNode::default().as_n3term())
-                self.stack.push(N3State::PropertyListEnd)
-                self.stack.push(N3State::PredicateObjectList)
-              }
-            }
-          }
-          N3State::PropertyListEnd => {
-            self.debug_logger.info(
-              "Entering PropertyListEnd with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("]"), _)
-              ) => return self
-              _ =>
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "blank node property lists should end with a ']'",
-                    Range::default(),
-                  ),
-                )
-            }
-          }
-          N3State::IriPropertyList => {
-            self.debug_logger.info(
-              "Entering IriPropertyList with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Iri(id), _)
-              ) => {
-                self.terms.push(NamedNodeRef::new_unchecked(id).as_n3term())
-                self.stack.push(N3State::PropertyListEnd)
-                self.stack.push(N3State::PredicateObjectList)
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-                  _
-                )
-              ) =>
-                match context {
-                  RdfContext::N3RecognizerContext(ctx) =>
-                    match
-                      resolve_local_name(
-                        prefix,
-                        localx,
-                        might_be_invalid_iri,
-                        ctx.prefixes,
-                      ) {
-                      Ok(t) => {
-                        self.terms.push(t.as_n3term())
-                        return self
-                      }
-                      Err(e) => return self.error(e.to_string())
-                    }
-                  _ =>
-                    return self.error("Invalid context for prefix resolution")
-                }
-              _ =>
-                return self.error(
-                  "The '[ id' construction should be followed by an IRI",
-                )
-            }
-          }
-          N3State::CollectionBeginning => {
-            self.debug_logger.info(
-              "Entering CollectionBeginning with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            if token
-              is LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(")"), _)
-              ) {
-              self.terms.push(lwNIL.as_n3term())
-              return self
-            } else {
-              let root = BlankNode::default()
-              self.terms.push(root.as_n3term())
-              self.terms.push(root.as_n3term())
-              self.stack.push(N3State::CollectionPossibleEnd)
-              self.stack.push(N3State::Path)
-            }
-          }
-          N3State::CollectionPossibleEnd => {
-            self.debug_logger.info(
-              "Entering CollectionPossibleEnd with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            let value = match self.terms.pop() {
-              Some(v) => v
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: terms stack empty (value) in CollectionPossibleEnd",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-            let old = match self.terms.pop() {
-              Some(o) => o
-              None => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "Internal error: terms stack empty (old) in CollectionPossibleEnd",
-                    Range::default(),
-                  ),
-                )
-                return self
-              }
-            }
-            results.push(
-              RdfOut::N3Quad(self.quad(old, lwFIRST.as_n3term(), value)),
-            )
-            if token
-              is LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation(")"), _)
-              ) {
-              results.push(
-                RdfOut::N3Quad(
-                  self.quad(old, lwREST.as_n3term(), lwNIL.as_n3term()),
-                ),
-              )
-              return self
-            }
-            let new = BlankNode::default()
-            results.push(
-              RdfOut::N3Quad(
-                self.quad(old, lwREST.as_n3term(), new.as_n3term()),
-              ),
-            )
-            self.terms.push(new.as_n3term())
-            self.stack.push(N3State::CollectionPossibleEnd)
-            self.stack.push(N3State::Path)
-          }
-          N3State::LiteralPossibleSuffix(value~) => {
-            self.debug_logger.info(
-              "Entering LiteralPossibleSuffix(\{value}) with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::LangTag(language~, direction~), _)
-              ) => {
-                if direction is Some(_) {
-                  return self.error("rdf:dirLangString is not supported in N3")
-                }
-                self.terms.push(
-                  Literal::new_language_tagged_literal_unchecked(
-                    value,
-                    language.to_lower(),
-                  ).as_n3term(),
-                )
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("^^"), _)
-              ) => {
-                self.stack.push(N3State::LiteralExpectDatatype(value~))
-                return self
-              }
-              _ =>
-                self.terms.push(Literal::new_simple_literal(value).as_n3term())
-            }
-          }
-          N3State::LiteralExpectDatatype(value~) => {
-            self.debug_logger.info(
-              "Entering LiteralExpectDatatype(\{value}) with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Iri(datatype), _)
-              ) => {
-                let datatype = NamedNodeRef::new_unchecked(datatype)
-                self.terms.push(
-                  LiteralRef::new_typed_literal(
-                    datatype.into_datatype(value),
-                    datatype,
-                  ).as_n3term(),
-                )
-                return self
-              }
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-                  _
-                )
-              ) =>
-                match context {
-                  RdfContext::N3RecognizerContext(ctx) =>
-                    match
-                      resolve_local_name(
-                        prefix,
-                        localx,
-                        might_be_invalid_iri,
-                        ctx.prefixes,
-                      ) {
-                      Ok(datatype) => {
-                        self.terms.push(
-                          LiteralRef::new_typed_literal(
-                            datatype.into_datatype(value),
-                            datatype,
-                          ).as_n3term(),
-                        )
-                        return self
-                      }
-                      Err(e) => return self.error(e)
-                    }
-                  _ =>
-                    return self.error("Invalid context for prefix resolution")
-                }
-              _ => return self.error("Unexpected token in formula content")
-            }
-          }
-          N3State::FormulaContent => {
-            self.debug_logger.info(
-              "Entering FormulaContent with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("}"), _)
-              ) =>
-                // 调用辅助函数处理结束逻辑
-                return self.finish_formula(errors)
-              // ... 其他 case 保持不变
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::PlainKeyword(k), _)
-              ) if eq_ignore_ascii_case(k, "base") => {
-                self.stack.push(N3State::FormulaContent)
-                self.stack.push(N3State::BaseExpectIri)
-                return self
-              }
-              // ...
-              _ => {
-                self.stack.push(N3State::FormulaContentExpectDot)
-                self.stack.push(N3State::Triples)
-              }
-            }
-          }
-          N3State::FormulaContentExpectDot => {
-            self.debug_logger.info(
-              "Entering FormulaContentExpectDot with token: \{token}",
-            )
-            self.debug_logger.info("Token stack: \{self.stack.to_string()}")
-
-            match token {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("}"), _)
-              ) =>
-                // 调用辅助函数处理结束逻辑
-                // 注意：在 ExpectDot 状态下遇到 }，说明公式内最后一个三元组省略了 .
-                // 或者 } 直接结束了公式。finish_formula 会处理上下文弹出。
-                return self.finish_formula(errors)
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(N3Token::Punctuation("."), _)
-              ) => {
-                self.stack.push(N3State::FormulaContent)
-                return self
-              }
-              _ => {
-                errors.push(
-                  RuleRecognizerError::SyntaxError(
-                    "A dot or '}' is expected at the end of N3 statements inside formula",
-                    Range::default(),
-                  ),
-                )
-                // 尝试恢复，推回 FormulaContent 继续解析
-                self.stack.push(N3State::FormulaContent)
-              }
-            }
-          }
+        match self.handle_state(rule, token, context, results, errors) {
+          HandleResult::Continue(new_self) => return new_self
+          // 继续 while 循环处理栈中下一个状态
+          HandleResult::Stop(new_self) => return new_self
         }
       _ => break
     }
   }
-  // if token ==
-  //   LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(Punctuation(".")), _) {
-  //   self.stack.push(N3State::N3Doc)
-  //   self
-  // } else {
-  //   self
-  // }
+
+  // 末尾的标点处理逻辑
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("."), _)
     ) => return self
     _ => self
+  }
+}
+
+// 辅助枚举，用于控制 while 循环的流程
+
+///|
+enum HandleResult {
+  Continue(N3Recognizer)
+  Stop(N3Recognizer)
+}
+
+// 主分派函数
+
+///|
+fn N3Recognizer::handle_state(
+  self : N3Recognizer,
+  state : N3State,
+  token : LocatedTokenOrLineJump,
+  context : RdfContext,
+  results : Array[RdfOut],
+  errors : Array[RuleRecognizerError],
+) -> HandleResult {
+  match state {
+    N3State::N3Doc => self.handle_n3_doc(token, context, results, errors)
+    N3State::N3DocExpectDot =>
+      self.handle_n3_doc_expect_dot(token, context, results, errors)
+    N3State::BaseExpectIri =>
+      self.handle_base_expect_iri(token, context, results, errors)
+    N3State::PrefixExpectPrefix =>
+      self.handle_prefix_expect_prefix(token, context, results, errors)
+    N3State::PrefixExpectIri(name~) =>
+      self.handle_prefix_expect_iri(name, token, context, results, errors)
+    N3State::Triples => self.handle_triples(token, context, results, errors)
+    N3State::TriplesMiddle =>
+      self.handle_triples_middle(token, context, results, errors)
+    N3State::TriplesEnd =>
+      self.handle_triples_end(token, context, results, errors)
+    N3State::PredicateObjectList =>
+      self.handle_predicate_object_list(token, context, results, errors)
+    N3State::PredicateObjectListEnd =>
+      self.handle_predicate_object_list_end(token, context, results, errors)
+    N3State::PredicateObjectListPossibleContinuation =>
+      self.handle_predicate_object_list_possible_continuation(
+        token, context, results, errors,
+      )
+    N3State::ObjectsList =>
+      self.handle_objects_list(token, context, results, errors)
+    N3State::ObjectsListEnd =>
+      self.handle_objects_list_end(token, context, results, errors)
+    N3State::Verb => self.handle_verb(token, context, results, errors)
+    N3State::AfterRegularVerb =>
+      self.handle_after_regular_verb(token, context, results, errors)
+    N3State::AfterInvertedVerb =>
+      self.handle_after_inverted_verb(token, context, results, errors)
+    N3State::AfterVerbIs =>
+      self.handle_after_verb_is(token, context, results, errors)
+    N3State::Path => self.handle_path(token, context, results, errors)
+    N3State::PathFollowUp =>
+      self.handle_path_follow_up(token, context, results, errors)
+    N3State::PathAfterIndicator(is_inverse~) =>
+      self.handle_path_after_indicator(
+        is_inverse, token, context, results, errors,
+      )
+    N3State::PathItem => self.handle_path_item(token, context, results, errors)
+    N3State::PropertyListMiddle =>
+      self.handle_property_list_middle(token, context, results, errors)
+    N3State::PropertyListEnd =>
+      self.handle_property_list_end(token, context, results, errors)
+    N3State::IriPropertyList =>
+      self.handle_iri_property_list(token, context, results, errors)
+    N3State::CollectionBeginning =>
+      self.handle_collection_beginning(token, context, results, errors)
+    N3State::CollectionPossibleEnd =>
+      self.handle_collection_possible_end(token, context, results, errors)
+    N3State::LiteralPossibleSuffix(value~) =>
+      self.handle_literal_possible_suffix(
+        value, token, context, results, errors,
+      )
+    N3State::LiteralExpectDatatype(value~) =>
+      self.handle_literal_expect_datatype(
+        value, token, context, results, errors,
+      )
+    N3State::FormulaContent =>
+      self.handle_formula_content(token, context, results, errors)
+    N3State::FormulaContentExpectDot =>
+      self.handle_formula_content_expect_dot(token, context, results, errors)
   }
 }

@@ -5,6 +5,21 @@ pub enum NamedOrBlankNodeRef {
 } derive(Debug, Eq, Hash)
 
 ///|
+impl Show for NamedOrBlankNodeRef with fn output(
+  self : NamedOrBlankNodeRef,
+  f : &Logger,
+) -> Unit {
+  match self {
+    NamedOrBlankNodeRef::NamedNodeRef(v) => f.write_string(v.iri.to_owned())
+    NamedOrBlankNodeRef::BlankNodeRef(v) =>
+      match v {
+        BlankNodeRef::Named(v) => f.write_string(v.to_owned())
+        BlankNodeRef::Anonymous(v) => f.write_string(v.str)
+      }
+  }
+}
+
+///|
 pub fn NamedOrBlankNodeRef::is_named_node(self : NamedOrBlankNodeRef) -> Bool {
   match self {
     NamedOrBlankNodeRef::NamedNodeRef(_) => true
@@ -309,6 +324,14 @@ pub(all) enum BlankNodeRef {
   Named(StringView)
   Anonymous(Anonymous)
 } derive(Debug, Eq, Hash)
+
+///|
+impl Show for BlankNodeRef with fn to_string(self : BlankNodeRef) -> String {
+  match self {
+    BlankNodeRef::Named(v) => v.to_owned()
+    BlankNodeRef::Anonymous(v) => v.str
+  }
+}
 
 ///|
 pub fn BlankNodeRef::as_enum(self : BlankNodeRef) -> NamedOrBlankNodeRef {
@@ -661,14 +684,15 @@ pub(all) enum TermRef {
   TripleRef(TripleRef)
 } derive(Debug, Eq, Hash)
 
-// impl Show for TermRef with to_string(self : TermRef) -> String {
-//   match self {
-//     TermRef::NamedNodeRef(v) => v.to_string()
-//     TermRef::BlankNodeRef(v) => v
-//     TermRef::LiteralRef(v) => v.to_string()
-//     TermRef::TripleRef(v) => v
-//   }
-// }
+///|
+impl Show for TermRef with fn output(self : TermRef, logger : &Logger) -> Unit {
+  match self {
+    TermRef::NamedNodeRef(v) => logger.write(v.to_string())
+    TermRef::BlankNodeRef(v) => logger.write(v)
+    TermRef::LiteralRef(v) => logger.write(v.to_string())
+    TermRef::TripleRef(v) => logger.write(v)
+  }
+}
 
 ///|
 pub fn TermRef::into_owned(self : TermRef) -> Term {
