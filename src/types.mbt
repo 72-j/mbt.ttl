@@ -1,10 +1,17 @@
 // type Read= &@io.Reader
 
+///|
 type Decimal = StringView
+
 ///|
 pub type Event = LocatedTokenOrLineJump
+
+///|
 pub type Ctx = RdfContext
+
+///|
 pub type O = RdfOut
+
 ///|
 using @io {trait Reader}
 

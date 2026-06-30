@@ -15,13 +15,14 @@ repository = ""
 
 license = "Apache-2.0"
 
-keywords = ["ttl","rdf"]
+keywords = [ "ttl", "rdf" ]
 
 description = ""
 
 preferred_target = "native"
 
+source = "src"
+
 options(
-  source: "src",
   warn: false,
 )

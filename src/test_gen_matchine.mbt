@@ -1,4 +1,5 @@
 // ===== parser_m_test.mbt =====
+
 ///|
 async test "ParserM_basic_with_lexer_working" {
   let input = "<http://a/b> <http://a/c> <http://a/d> ."
@@ -86,7 +87,7 @@ async test "ParserM_basic_with_lexer_working" {
   assert_eq(quads.length(), 0)
 }
 
-
+///|
 async test "ParserM_basic_with_lexer_working for NQuads" {
   let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .\n"
   let data = @utf8.encode(input).to_array()
@@ -110,15 +111,15 @@ async test "ParserM_basic_with_lexer_working for NQuads" {
     subjects: [],
     predicates: [],
     objects: [],
-        lenient: false,
-    debug_logger:logger, // 修复：包装为 Option 类型
+    lenient: false,
+    debug_logger: logger, // 修复：包装为 Option 类型
     last_range: Range::default(),
     errors: [],
   }
 
   let context = RdfContext::NQuadsRecognizerContext(NQuadsRecognizerContext::{
-    with_graph_name:false,
-    lexer_options: { base_iri: None }
+    with_graph_name: false,
+    lexer_options: { base_iri: None },
   })
 
   // 创建 GenericStateMachine

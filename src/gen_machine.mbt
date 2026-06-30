@@ -192,7 +192,6 @@ impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn set_conte
   { machine: self.machine, context: new_context, outputs: self.outputs }
 }
 
-
 ///|
 pub fn[M] GenericStateMachine::remove_first_output(
   self : GenericStateMachine[M],

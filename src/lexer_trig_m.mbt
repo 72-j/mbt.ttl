@@ -28,7 +28,6 @@ pub trait StateWrapper {
 ///|
 pub type TransitionResult[TR, S, O] = Result[(TR, S, O?), RuleRecognizerError]
 
-
 // 为 RdfState 实现 StateWrapper，使其成为统一的状态载体
 
 ///|

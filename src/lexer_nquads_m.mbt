@@ -187,7 +187,7 @@ impl StateMachine for NQuadsRecognizer with fn[ST : StateWrapper] set_current_st
       debug("[Step 3] Set current state: \{s}")
       let new_stack = self.stack
       if !new_stack.is_empty() {
-       let _= new_stack.pop() // 移除旧状态
+        let _ = new_stack.pop() // 移除旧状态
       }
       new_stack.push(s)
       { ..self, stack: new_stack }

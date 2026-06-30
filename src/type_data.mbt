@@ -1,4 +1,3 @@
-
 ///|
 enum VarDataType {
   IntVar(String)
@@ -32,7 +31,6 @@ impl Show for VarDataType with fn output(self : VarDataType, logger : &Logger) -
     DurationVar(v) => logger.write(v)
   }
 }
-
 
 ///|
 fn VarDataType::into_value(self : VarDataType) -> String {
