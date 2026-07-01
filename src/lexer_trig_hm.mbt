@@ -101,12 +101,15 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
       Ok((new_self_with_stack, TriGState::Object, None))
     }
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
+       self.debug_logger.info("[Step 2] WrappedGraphOrPredicateObjectList: event=\{event}")
+
       let new_self = self
       new_self.cur_subject.push(term)
       new_self.cur_predicate.push(NamedNodeRef::new_unchecked(iri))
 
       let new_stack = new_self.stack
       new_stack.push(TriGState::ExpectDot)
+      
       // 直接转移到 Object 状态
       let new_self_with_stack = { ..new_self, stack: new_stack }
       Ok((new_self_with_stack, TriGState::Object, None))
@@ -182,7 +185,7 @@ fn TriGRecognizer::handle_object_m(
       // emit_quad 逻辑：生成一个 RdfOut
       // 假设 make_current_quad 或类似方法可用
       let quad = self.make_current_quad() // 假设此方法存在并正确构建 Quad
-      self.debug_logger.info("[Step 2]Object: emitted quad: \{quad}")
+      self.debug_logger.info("[Step 4]Object: emitted quad: \{quad}")
 
       // 转移状态：根据原代码，push PredicateObjectListEnd
       let new_stack = self.stack

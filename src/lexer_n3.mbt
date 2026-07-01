@@ -169,6 +169,11 @@ enum N3State {
 } derive(Debug, Eq, Hash)
 
 ///|
+fn N3State::as_state_enum(self : N3State) -> RdfState {
+  RdfState::N3State(self)
+}
+
+///|
 impl Show for N3State with fn output(self, logger : &Logger) -> Unit {
   match self {
     N3State::N3Doc => logger.write("N3Doc")
