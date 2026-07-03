@@ -39,7 +39,7 @@ enum NQuadsState {
 } derive(Debug, Eq, Hash)
 
 ///|
-fn NQuadsState::as_state_enum(self : NQuadsState) -> RdfState {
+impl StateWrapper for NQuadsState with fn as_state_enum(self : NQuadsState) -> RdfState {
   RdfState::NQuadsState(self)
 }
 
@@ -87,24 +87,23 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
   self : NQuadsRecognizer,
   _context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> Unit {
   match self.stack {
     [NQuadsState::ExpectSubject | NQuadsState::ExpectLineJump] | [] => ()
     [NQuadsState::ExpectDot] =>
-      errors.push(RuleRecognizerError::TripleMissingDot)
+      self.errors.push(RuleRecognizerError::TripleMissingDot)
     [NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple] => {
-      self.emit_quad(results, errors, GraphName::DefaultGraph.as_ref())
-      errors.push(RuleRecognizerError::TripleMissingDot)
+      self.emit_quad(results, GraphName::DefaultGraph.as_ref())
+      self.errors.push(RuleRecognizerError::TripleMissingDot)
     }
     [NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~)] => {
       let literal = LiteralRef::new_simple_literal(value)
       self.objects.push(TermRef::LiteralRef(literal))
-      self.emit_quad(results, errors, GraphName::DefaultGraph.as_ref())
-      errors.push(RuleRecognizerError::TripleMissingDot)
+      self.emit_quad(results, GraphName::DefaultGraph.as_ref())
+      self.errors.push(RuleRecognizerError::TripleMissingDot)
     }
     _ =>
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError("Unexpected end", Range::default()),
       )
   }
@@ -176,7 +175,6 @@ fn NQuadsRecognizer::error(
         token,
         RdfContext::NQuadsRecognizerContext(context),
         results,
-        self.errors,
       )
     LocatedTokenOrLineJump::End => this
   }
@@ -186,7 +184,6 @@ fn NQuadsRecognizer::error(
 fn NQuadsRecognizer::emit_quad(
   self : NQuadsRecognizer,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
   graph_name : GraphNameRef,
 ) -> Unit {
   let subject_opt = self.subjects.pop()
@@ -205,7 +202,7 @@ fn NQuadsRecognizer::emit_quad(
       )
     _ =>
       // 栈中元素不足，记录内部错误
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: incomplete quad on stack during emission",
           Range::default(),

@@ -5,7 +5,6 @@ fn N3Recognizer::handle_term_token(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,
-  errors : Array[RuleRecognizerError],
 ) -> N3Recognizer {
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(located) =>
@@ -93,14 +92,11 @@ fn N3Recognizer::handle_term_token(
 // 辅助函数：统一处理公式结束逻辑
 
 ///|
-fn N3Recognizer::finish_formula(
-  self : N3Recognizer,
-  errors : Array[RuleRecognizerError],
-) -> N3Recognizer {
+fn N3Recognizer::finish_formula(self : N3Recognizer) -> N3Recognizer {
   let ctx = match self.contexts.pop() {
     Some(c) => c
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: contexts stack empty in finish_formula",
           Range::default(),
@@ -129,7 +125,7 @@ fn N3Recognizer::finish_formula(
   // 但如果栈顶是 PathFollowUp 的上一层（例如 Path），我们需要确保不会再次进入 PathFollowUp 的错误逻辑。
 
   // 调试建议：打印此时的栈状态
-  // self.debug_logger.info("Stack after finish_formula: \{self.stack.to_string()}")
+  // self.debug_logger.info("Stack after finish_formula: \{@debug.to_string(self.stack)}")
 
   self
 }
@@ -140,10 +136,9 @@ fn N3Recognizer::handle_n3_doc(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering N3Doc with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   self.stack.push(N3State::N3Doc)
   match token {
@@ -187,17 +182,16 @@ fn N3Recognizer::handle_n3_doc_expect_dot(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering N3DocExpectDot with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("."), _)
     ) => HandleResult::Stop(self)
     _ => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "A dot is expected at the end of N3 statements",
           Range::default(),
@@ -214,10 +208,9 @@ fn N3Recognizer::handle_base_expect_iri(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering BaseExpectIri with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   if token
     is LocatedTokenOrLineJump::LocatedN3Token(
@@ -242,10 +235,9 @@ fn N3Recognizer::handle_prefix_expect_prefix(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering PrefixExpectPrefix with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -270,12 +262,11 @@ fn N3Recognizer::handle_prefix_expect_iri(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info(
     "Entering PrefixExpectIri(\{name}) with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   if token
     is LocatedTokenOrLineJump::LocatedN3Token(
@@ -302,10 +293,9 @@ fn N3Recognizer::handle_triples(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering Triples with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   self.stack.push(N3State::TriplesMiddle)
   self.stack.push(N3State::Path)
@@ -318,10 +308,9 @@ fn N3Recognizer::handle_triples_middle(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering TriplesMiddle with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   if token
     is LocatedTokenOrLineJump::LocatedN3Token(
@@ -341,10 +330,9 @@ fn N3Recognizer::handle_triples_end(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering TriplesEnd with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let _ = self.terms.pop()
   HandleResult::Continue(self)
@@ -356,10 +344,9 @@ fn N3Recognizer::handle_predicate_object_list(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering PredicateObjectList with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   self.stack.push(N3State::PredicateObjectListEnd)
   self.stack.push(N3State::ObjectsList)
@@ -373,10 +360,9 @@ fn N3Recognizer::handle_predicate_object_list_end(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering PredicateObjectListEnd with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let _ = self.predicates.pop()
 
@@ -397,12 +383,11 @@ fn N3Recognizer::handle_predicate_object_list_possible_continuation(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info(
     "Entering PredicateObjectListPossibleContinuation with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -438,10 +423,9 @@ fn N3Recognizer::handle_objects_list(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering ObjectsList with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   self.stack.push(N3State::ObjectsListEnd)
   self.stack.push(N3State::Path)
@@ -454,15 +438,14 @@ fn N3Recognizer::handle_objects_list_end(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering ObjectsListEnd with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let object = match self.terms.pop() {
     Some(o) => o
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: terms stack empty (object)",
           Range::default(),
@@ -474,7 +457,7 @@ fn N3Recognizer::handle_objects_list_end(
   let subject = match self.terms.last() {
     Some(s) => s
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: terms stack empty (subject)",
           Range::default(),
@@ -486,7 +469,7 @@ fn N3Recognizer::handle_objects_list_end(
   let predicate_opt = match self.predicates.last() {
     Some(p) => p
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: predicates stack empty",
           Range::default(),
@@ -522,10 +505,9 @@ fn N3Recognizer::handle_verb(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering Verb with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -603,15 +585,14 @@ fn N3Recognizer::handle_after_regular_verb(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering AfterRegularVerb with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let term = match self.terms.pop() {
     Some(t) => t
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: terms stack empty in AfterRegularVerb",
           Range::default(),
@@ -630,15 +611,14 @@ fn N3Recognizer::handle_after_inverted_verb(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering AfterInvertedVerb with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let term = match self.terms.pop() {
     Some(t) => t
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: terms stack empty in AfterInvertedVerb",
           Range::default(),
@@ -657,10 +637,9 @@ fn N3Recognizer::handle_after_verb_is(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering AfterVerbIs with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -669,7 +648,7 @@ fn N3Recognizer::handle_after_verb_is(
       let term = match self.terms.pop() {
         Some(t) => t
         None => {
-          errors.push(
+          self.errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: terms stack empty in AfterVerbIs",
               Range::default(),
@@ -696,10 +675,9 @@ fn N3Recognizer::handle_path(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering Path with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   self.stack.push(N3State::PathFollowUp)
   self.stack.push(N3State::PathItem)
@@ -712,10 +690,9 @@ fn N3Recognizer::handle_path_follow_up(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering PathFollowUp with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -743,17 +720,16 @@ fn N3Recognizer::handle_path_after_indicator(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info(
     "Entering PathAfterIndicator(is_inverse=\{is_inverse}) with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let predicate = match self.terms.pop() {
     Some(p) => p
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: terms stack empty (predicate) in PathAfterIndicator",
           Range::default(),
@@ -765,7 +741,7 @@ fn N3Recognizer::handle_path_after_indicator(
   let previous = match self.terms.pop() {
     Some(prev) => prev
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: terms stack empty (previous) in PathAfterIndicator",
           Range::default(),
@@ -793,10 +769,9 @@ fn N3Recognizer::handle_path_item(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering PathItem with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -835,7 +810,7 @@ fn N3Recognizer::handle_path_item(
     }
     _ =>
       // 使用之前重构的 handle_term_token
-      HandleResult::Stop(self.handle_term_token(token, context, errors))
+      HandleResult::Stop(self.handle_term_token(token, context))
   }
 }
 
@@ -845,10 +820,9 @@ fn N3Recognizer::handle_property_list_middle(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering PropertyListMiddle with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -878,17 +852,16 @@ fn N3Recognizer::handle_property_list_end(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering PropertyListEnd with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("]"), _)
     ) => HandleResult::Stop(self)
     _ => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "blank node property lists should end with a ']'",
           Range::default(),
@@ -905,10 +878,9 @@ fn N3Recognizer::handle_iri_property_list(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering IriPropertyList with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(id), _)) => {
@@ -956,10 +928,9 @@ fn N3Recognizer::handle_collection_beginning(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering CollectionBeginning with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   if token
     is LocatedTokenOrLineJump::LocatedN3Token(
@@ -983,15 +954,14 @@ fn N3Recognizer::handle_collection_possible_end(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering CollectionPossibleEnd with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let value = match self.terms.pop() {
     Some(v) => v
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: terms stack empty (value) in CollectionPossibleEnd",
           Range::default(),
@@ -1003,7 +973,7 @@ fn N3Recognizer::handle_collection_possible_end(
   let old = match self.terms.pop() {
     Some(o) => o
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: terms stack empty (old) in CollectionPossibleEnd",
           Range::default(),
@@ -1040,12 +1010,11 @@ fn N3Recognizer::handle_literal_possible_suffix(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info(
     "Entering LiteralPossibleSuffix(\{value}) with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1084,12 +1053,11 @@ fn N3Recognizer::handle_literal_expect_datatype(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info(
     "Entering LiteralExpectDatatype(\{value}) with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1142,15 +1110,14 @@ fn N3Recognizer::handle_formula_content(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info("Entering FormulaContent with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("}"), _)
-    ) => HandleResult::Stop(self.finish_formula(errors))
+    ) => HandleResult::Stop(self.finish_formula())
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::PlainKeyword(k), _)
     ) if eq_ignore_ascii_case(k, "base") => {
@@ -1172,17 +1139,16 @@ fn N3Recognizer::handle_formula_content_expect_dot(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   self.debug_logger.info(
     "Entering FormulaContentExpectDot with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("}"), _)
-    ) => HandleResult::Stop(self.finish_formula(errors))
+    ) => HandleResult::Stop(self.finish_formula())
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("."), _)
     ) => {
@@ -1190,7 +1156,7 @@ fn N3Recognizer::handle_formula_content_expect_dot(
       HandleResult::Stop(self)
     }
     _ => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "A dot or '}' is expected at the end of N3 statements inside formula",
           Range::default(),

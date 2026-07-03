@@ -17,7 +17,6 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> N3Recognizer {
   // 记录最后范围逻辑保持不变
   match token {
@@ -53,7 +52,7 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
         // 为了保持行为一致，我们可以让 handler 返回一个枚举：
         // enum HandleResult { Continue(N3Recognizer), Stop(N3Recognizer) }
 
-        match self.handle_state(rule, token, context, results, errors) {
+        match self.handle_state(rule, token, context, results) {
           HandleResult::Continue(new_self) => return new_self
           // 继续 while 循环处理栈中下一个状态
           HandleResult::Stop(new_self) => return new_self
@@ -88,71 +87,60 @@ fn N3Recognizer::handle_state(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> HandleResult {
   match state {
-    N3State::N3Doc => self.handle_n3_doc(token, context, results, errors)
+    N3State::N3Doc => self.handle_n3_doc(token, context, results)
     N3State::N3DocExpectDot =>
-      self.handle_n3_doc_expect_dot(token, context, results, errors)
+      self.handle_n3_doc_expect_dot(token, context, results)
     N3State::BaseExpectIri =>
-      self.handle_base_expect_iri(token, context, results, errors)
+      self.handle_base_expect_iri(token, context, results)
     N3State::PrefixExpectPrefix =>
-      self.handle_prefix_expect_prefix(token, context, results, errors)
+      self.handle_prefix_expect_prefix(token, context, results)
     N3State::PrefixExpectIri(name~) =>
-      self.handle_prefix_expect_iri(name, token, context, results, errors)
-    N3State::Triples => self.handle_triples(token, context, results, errors)
+      self.handle_prefix_expect_iri(name, token, context, results)
+    N3State::Triples => self.handle_triples(token, context, results)
     N3State::TriplesMiddle =>
-      self.handle_triples_middle(token, context, results, errors)
-    N3State::TriplesEnd =>
-      self.handle_triples_end(token, context, results, errors)
+      self.handle_triples_middle(token, context, results)
+    N3State::TriplesEnd => self.handle_triples_end(token, context, results)
     N3State::PredicateObjectList =>
-      self.handle_predicate_object_list(token, context, results, errors)
+      self.handle_predicate_object_list(token, context, results)
     N3State::PredicateObjectListEnd =>
-      self.handle_predicate_object_list_end(token, context, results, errors)
+      self.handle_predicate_object_list_end(token, context, results)
     N3State::PredicateObjectListPossibleContinuation =>
       self.handle_predicate_object_list_possible_continuation(
-        token, context, results, errors,
+        token, context, results,
       )
-    N3State::ObjectsList =>
-      self.handle_objects_list(token, context, results, errors)
+    N3State::ObjectsList => self.handle_objects_list(token, context, results)
     N3State::ObjectsListEnd =>
-      self.handle_objects_list_end(token, context, results, errors)
-    N3State::Verb => self.handle_verb(token, context, results, errors)
+      self.handle_objects_list_end(token, context, results)
+    N3State::Verb => self.handle_verb(token, context, results)
     N3State::AfterRegularVerb =>
-      self.handle_after_regular_verb(token, context, results, errors)
+      self.handle_after_regular_verb(token, context, results)
     N3State::AfterInvertedVerb =>
-      self.handle_after_inverted_verb(token, context, results, errors)
-    N3State::AfterVerbIs =>
-      self.handle_after_verb_is(token, context, results, errors)
-    N3State::Path => self.handle_path(token, context, results, errors)
-    N3State::PathFollowUp =>
-      self.handle_path_follow_up(token, context, results, errors)
+      self.handle_after_inverted_verb(token, context, results)
+    N3State::AfterVerbIs => self.handle_after_verb_is(token, context, results)
+    N3State::Path => self.handle_path(token, context, results)
+    N3State::PathFollowUp => self.handle_path_follow_up(token, context, results)
     N3State::PathAfterIndicator(is_inverse~) =>
-      self.handle_path_after_indicator(
-        is_inverse, token, context, results, errors,
-      )
-    N3State::PathItem => self.handle_path_item(token, context, results, errors)
+      self.handle_path_after_indicator(is_inverse, token, context, results)
+    N3State::PathItem => self.handle_path_item(token, context, results)
     N3State::PropertyListMiddle =>
-      self.handle_property_list_middle(token, context, results, errors)
+      self.handle_property_list_middle(token, context, results)
     N3State::PropertyListEnd =>
-      self.handle_property_list_end(token, context, results, errors)
+      self.handle_property_list_end(token, context, results)
     N3State::IriPropertyList =>
-      self.handle_iri_property_list(token, context, results, errors)
+      self.handle_iri_property_list(token, context, results)
     N3State::CollectionBeginning =>
-      self.handle_collection_beginning(token, context, results, errors)
+      self.handle_collection_beginning(token, context, results)
     N3State::CollectionPossibleEnd =>
-      self.handle_collection_possible_end(token, context, results, errors)
+      self.handle_collection_possible_end(token, context, results)
     N3State::LiteralPossibleSuffix(value~) =>
-      self.handle_literal_possible_suffix(
-        value, token, context, results, errors,
-      )
+      self.handle_literal_possible_suffix(value, token, context, results)
     N3State::LiteralExpectDatatype(value~) =>
-      self.handle_literal_expect_datatype(
-        value, token, context, results, errors,
-      )
+      self.handle_literal_expect_datatype(value, token, context, results)
     N3State::FormulaContent =>
-      self.handle_formula_content(token, context, results, errors)
+      self.handle_formula_content(token, context, results)
     N3State::FormulaContentExpectDot =>
-      self.handle_formula_content_expect_dot(token, context, results, errors)
+      self.handle_formula_content_expect_dot(token, context, results)
   }
 }

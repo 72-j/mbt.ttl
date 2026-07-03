@@ -17,7 +17,7 @@ async test "debug_trig_subj_only" {
     debug_logger=make_console_logger(),
   )
 
-  debug("Initial State: \{parser.state}")
+  // inspect("Initial State: \{parser.state}")
 
   match parser.parse_next() {
     Some(Ok(t)) => debug("✓ Success: \{t.to_string()}")
@@ -25,7 +25,7 @@ async test "debug_trig_subj_only" {
     None => debug("⚠ None")
   }
 
-  debug("Final State: \{parser.state}")
+  // inspect("Final State: \{parser.state}")
 }
 
 ///|
@@ -47,7 +47,7 @@ async test "debug_trig_complete_triple" {
     debug_logger=make_console_logger(),
   )
 
-  debug("Initial State: \{parser.state}")
+  // debug("Initial State: \{parser.state}")
 
   match parser.parse_next() {
     Some(Ok(t)) => debug("✓ Success: \{t.to_string()}")
@@ -55,7 +55,7 @@ async test "debug_trig_complete_triple" {
     None => debug("⚠ None")
   }
 
-  debug("Final State: \{parser.state}")
+  // debug("Final State: \{parser.state}")
 }
 
 ///|

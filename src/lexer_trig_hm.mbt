@@ -16,7 +16,7 @@ fn TriGRecognizer::handle_triples_or_graph_m(
   // }
 
   self.debug_logger.info("TriplesOrGraph: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
@@ -101,7 +101,9 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
       Ok((new_self_with_stack, TriGState::Object, None))
     }
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
-       self.debug_logger.info("[Step 2] WrappedGraphOrPredicateObjectList: event=\{event}")
+      self.debug_logger.info(
+        "[Step 2] WrappedGraphOrPredicateObjectList: event=\{event}",
+      )
 
       let new_self = self
       new_self.cur_subject.push(term)
@@ -109,7 +111,7 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
 
       let new_stack = new_self.stack
       new_stack.push(TriGState::ExpectDot)
-      
+
       // 直接转移到 Object 状态
       let new_self_with_stack = { ..new_self, stack: new_stack }
       Ok((new_self_with_stack, TriGState::Object, None))
@@ -146,7 +148,7 @@ fn TriGRecognizer::handle_objects_list_m(
   // 原代码: push Object, then recognize_next (which processes same token)
   // 新架构: 直接转移到 Object 状态，引擎会用同一个 event 调用 handle_object_m
   self.debug_logger.info("ObjectsList: routing to Object state")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let new_stack = self.stack
   new_stack.push(TriGState::Object) // 如果内部栈需要记录返回点? 原代码似乎没 push 返回点到内部栈，而是直接切换逻辑
@@ -175,7 +177,7 @@ fn TriGRecognizer::handle_object_m(
   //     )
   // }
   self.debug_logger.info("Object: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
@@ -235,7 +237,7 @@ fn TriGRecognizer::handle_object_collection_beginning_m(
   // }
 
   self.debug_logger.info("ObjectCollectionBeginning: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -302,7 +304,7 @@ fn TriGRecognizer::handle_object_collection_possible_end_m(
   self.debug_logger.info(
     "ObjectCollectionPossibleEnd: handling event: \{event}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let old_subject = match self.cur_subject.pop() {
     Some(s) => s
@@ -389,7 +391,7 @@ fn TriGRecognizer::handle_predicate_object_list_end_m(
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("PredicateObjectListEnd: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -445,7 +447,7 @@ fn TriGRecognizer::handle_trig_doc_m(
   }
 
   self.debug_logger.info("[Step 1] Entering TriGDoc with event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let new_self = { ..self, cur_graph: GraphNameRef::DefaultGraph }
 
@@ -654,7 +656,7 @@ fn TriGRecognizer::handle_triples_m(
   }
 
   self.debug_logger.info("Entering Triples with event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -748,7 +750,7 @@ fn TriGRecognizer::handle_verb_m(
   }
 
   self.debug_logger.info("Verb: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     // 'a' 表示 rdf:type
@@ -828,7 +830,7 @@ fn TriGRecognizer::handle_verb_m(
 //   self.debug_logger.info(
 //     "Entering LiteralPossibleSuffix(\{value}, emit=\{emit}) with event: \{event}",
 //   )
-//   self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+//   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
 //   match event {
 //     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::LangTag(language~, direction~), _)) => {
@@ -902,7 +904,7 @@ fn TriGRecognizer::handle_expect_dot_m(
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("ExpectDot: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -939,7 +941,7 @@ fn TriGRecognizer::handle_base_expect_iri_m(
   }
 
   self.debug_logger.info("BaseExpectIri: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1000,7 +1002,7 @@ fn TriGRecognizer::handle_prefix_expect_prefix_m(
   }
 
   self.debug_logger.info("PrefixExpectPrefix: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1048,7 +1050,7 @@ fn TriGRecognizer::handle_prefix_expect_iri_m(
   }
 
   self.debug_logger.info("PrefixExpectIri: name=\{name}, event=\{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1083,7 +1085,7 @@ fn TriGRecognizer::handle_version_expect_version_m(
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("VersionExpectVersion: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1111,7 +1113,7 @@ fn TriGRecognizer::handle_wrapped_graph_blank_node_property_list_current_m(
   self.debug_logger.info(
     "WrappedGraphBlankNodePropertyListCurrent: handling event: \{event}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1146,7 +1148,7 @@ fn TriGRecognizer::handle_subject_blank_node_property_list_end_m(
   self.debug_logger.info(
     "SubjectBlankNodePropertyListEnd: handling event: \{event}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1172,7 +1174,7 @@ fn TriGRecognizer::handle_subject_blank_node_property_list_after_m(
   self.debug_logger.info(
     "SubjectBlankNodePropertyListAfter: handling event: \{event}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1252,7 +1254,7 @@ fn TriGRecognizer::handle_subject_collection_possible_end_m(
   self.debug_logger.info(
     "SubjectCollectionPossibleEnd: handling event: \{event}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   // 弹出当前 subject 和 object
   let old = match self.cur_subject.pop() {
@@ -1338,7 +1340,7 @@ fn TriGRecognizer::handle_triples_blank_node_property_list_current_m(
   self.debug_logger.info(
     "TriplesBlankNodePropertyListCurrent: handling event: \{event}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1372,7 +1374,7 @@ fn TriGRecognizer::handle_graph_name_m(
   }
 
   self.debug_logger.info("GraphName: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     // ✅ IRI 作为图名
@@ -1453,7 +1455,7 @@ fn TriGRecognizer::handle_graph_name_anon_end_m(
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("GraphNameAnonEnd: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     // ✅ 收到 ']'，匿名图名结束
@@ -1491,7 +1493,7 @@ fn TriGRecognizer::handle_maybe_predicate_object_list_m(
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("MaybePredicateObjectList: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1519,7 +1521,7 @@ fn TriGRecognizer::handle_annotation_end_m(
   self.debug_logger.info(
     "AnnotationEnd: with_reifier=\{with_reifier}, event=\{event}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let new_cur_subject = self.cur_subject // pop
   let new_self = { ..self, cur_subject: new_cur_subject }
@@ -1550,7 +1552,7 @@ fn TriGRecognizer::handle_object_blank_node_property_list_current_m(
   self.debug_logger.info(
     "ObjectBlankNodePropertyListCurrent: handling event: \{event}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1597,7 +1599,7 @@ fn TriGRecognizer::handle_literal_expect_datatype_m(
   self.debug_logger.info(
     "LiteralExpectDatatype: value='\{value}', emit=\{emit}, event=\{event}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1707,7 +1709,7 @@ fn TriGRecognizer::handle_subject_reified_triple_end_m(
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("SubjectReifiedTripleEnd: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   // 使用 pop() 弹出 reifier
   let reifier = match self.cur_reifier.pop() {
@@ -1773,7 +1775,7 @@ fn TriGRecognizer::handle_triple_term_end_m(
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("TripleTermEnd: emit=\{emit}, event=\{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   // 使用 pop() 替代 unsnoc()
   let subject = match self.cur_subject.pop() {
@@ -1881,7 +1883,7 @@ fn TriGRecognizer::handle_end_of_reified_triple_before_reifier_m(
   self.debug_logger.info(
     "EndOfReifiedTripleBeforeReifier: handling event: \{event}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   // 使用 pop() 弹出 subject, predicate, object
   let subject = match self.cur_subject.pop() {
@@ -1971,7 +1973,7 @@ fn TriGRecognizer::handle_reifier_m(
   }
 
   self.debug_logger.info("Reifier: triple=\{triple}, event=\{event}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {

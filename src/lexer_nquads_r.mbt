@@ -4,7 +4,6 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
   token : LocatedTokenOrLineJump,
   context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> NQuadsRecognizer {
   let ctx = match context {
     RdfContext::NQuadsRecognizerContext(c) => c
@@ -26,28 +25,27 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
   // 分发到具体的 Handler 回调函数
   match current_state {
     NQuadsState::ExpectSubject =>
-      self.handle_expect_subject(token, ctx, results, errors)
+      self.handle_expect_subject(token, ctx, results)
     NQuadsState::ExpectPredicate =>
-      self.handle_expect_predicate(token, ctx, results, errors)
+      self.handle_expect_predicate(token, ctx, results)
     NQuadsState::ExpectedObject =>
-      self.handle_expected_object(token, ctx, results, errors)
+      self.handle_expected_object(token, ctx, results)
     NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~) =>
       self.handle_expect_literal_annotation_or_graph_name_or_dot(
-        value, token, ctx, results, errors,
+        value, token, ctx, results,
       )
     NQuadsState::ExpectLiteralDatatype(value~) =>
-      self.handle_expect_literal_datatype(value, token, ctx, results, errors)
+      self.handle_expect_literal_datatype(value, token, ctx, results)
     NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple =>
       self.handle_expect_possible_graph_or_end_of_quoted_triple(
-        token, ctx, results, errors,
+        token, ctx, results,
       )
-    NQuadsState::ExpectDot =>
-      self.handle_expect_dot(token, ctx, results, errors)
+    NQuadsState::ExpectDot => self.handle_expect_dot(token, ctx, results)
     NQuadsState::ExpectLineJump =>
-      self.handle_expect_line_jump(token, ctx, results, errors)
+      self.handle_expect_line_jump(token, ctx, results)
     NQuadsState::AfterQuotedTriple =>
-      self.handle_after_quoted_triple(token, ctx, results, errors)
+      self.handle_after_quoted_triple(token, ctx, results)
     NQuadsState::RecoverToLineJump =>
-      self.handle_recover_to_line_jump(token, ctx, results, errors)
+      self.handle_recover_to_line_jump(token, ctx, results)
   }
 }

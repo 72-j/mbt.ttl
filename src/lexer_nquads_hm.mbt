@@ -11,7 +11,7 @@ fn NQuadsRecognizer::handle_expect_subject_m(
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectSubject with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(s), _)) => {
@@ -40,7 +40,7 @@ fn NQuadsRecognizer::handle_expect_predicate_m(
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectPredicate with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(p), _)) => {
@@ -61,7 +61,7 @@ fn NQuadsRecognizer::handle_expected_object_m(
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectedObject with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(o), _)) => {
@@ -122,7 +122,7 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
   // }
 
   // self.debug_logger.info("Entering ExpectLiteralAnnotation... value: \{value}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -219,7 +219,7 @@ fn NQuadsRecognizer::handle_expect_literal_datatype_m(
   // }
 
   self.debug_logger.info("Entering ExpectLiteralDatatype with value: \{value}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(d), _)) => {
@@ -262,7 +262,7 @@ fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectPossibleGraphOrEndOfQuotedTriple")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   // 检查是否是引用的三元组结束
   if !self.stack.is_empty() {
@@ -338,7 +338,7 @@ fn NQuadsRecognizer::handle_expect_dot_m(
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectDot with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -363,7 +363,7 @@ fn NQuadsRecognizer::handle_expect_line_jump_m(
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectLineJump with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   // 原文直接 push error 并返回 self。在新架构中，这应该是一个错误，或者如果允许宽松模式，则警告。
   // 假设这是严格错误
@@ -384,7 +384,7 @@ fn NQuadsRecognizer::handle_after_quoted_triple_m(
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering AfterQuotedTriple with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let subject_opt = self.subjects.pop()
   let predicate_opt = self.predicates.pop()
@@ -435,7 +435,7 @@ fn NQuadsRecognizer::handle_recover_to_line_jump_m(
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering RecoverToLineJump with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LineJump(_) =>

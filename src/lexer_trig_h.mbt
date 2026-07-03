@@ -10,7 +10,6 @@ fn TriGRecognizer::handle_object_collection_beginning(
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -56,12 +55,11 @@ fn TriGRecognizer::handle_object_collection_possible_end(
   token : LocatedTokenOrLineJump,
   _context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   let old = match self.cur_subject.pop() {
     Some(s) => s
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: subject stack is empty",
           self.last_range,
@@ -153,10 +151,9 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list(
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info(
-    "[Step 3] Token stack: \{self.stack.to_string()} Token: \{token}",
+    "[Step 3] Token stack: \{@debug.to_string(self.stack)} Token: \{token}",
   )
 
   match token {
@@ -172,7 +169,6 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list(
         token,
         RdfContext::TriGRecognizerContext(context),
         results,
-        errors,
       )
     }
 
@@ -190,7 +186,6 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list(
         token,
         RdfContext::TriGRecognizerContext(context),
         results,
-        errors,
       )
     }
 
@@ -240,7 +235,6 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list(
             token,
             RdfContext::TriGRecognizerContext(context),
             results,
-            errors,
           )
         }
         Err(e) => self.error(e)
@@ -264,10 +258,9 @@ fn TriGRecognizer::handle_object(
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info(
-    "[Step 5] Token stack: \{self.stack.to_string()} Token: \{token}",
+    "[Step 5] Token stack: \{@debug.to_string(self.stack)} Token: \{token}",
   )
   self.debug_logger.info("Token: \{token}")
 
@@ -396,11 +389,11 @@ fn TriGRecognizer::handle_triples_or_graph(
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
   // results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
+
 ) -> TriGRecognizer {
   self.debug_logger.info("TriplesOrGraph: handle_triples_or_graph")
   self.debug_logger.info(
-    "[Step 2] Token stack: \{self.stack.to_string()} Token: \{token}",
+    "[Step 2] Token stack: \{@debug.to_string(self.stack)} Token: \{token}",
   )
   // self.debug_logger.info("Cur subject lenth: \{self.cur_subject.length()}")
 
@@ -485,9 +478,10 @@ fn TriGRecognizer::handle_predicate_object_list(
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
-  self.debug_logger.info("[Step 5] Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info(
+    "[Step 5] Token stack: \{@debug.to_string(self.stack)}",
+  )
   self.stack.push(TriGState::PredicateObjectListEnd)
   self.stack.push(TriGState::Object)
 
@@ -496,7 +490,6 @@ fn TriGRecognizer::handle_predicate_object_list(
     token,
     RdfContext::TriGRecognizerContext(context),
     results,
-    errors,
   )
 }
 
@@ -511,7 +504,7 @@ fn TriGRecognizer::handle_predicate_object_list_end(
   token : LocatedTokenOrLineJump,
   // context : TriGRecognizerContext,
   // results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
+
 ) -> TriGRecognizer {
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -552,10 +545,9 @@ fn TriGRecognizer::handle_objects_list(
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info(
-    "[Step 4] Token stack: \{self.stack.to_string()} Token: \{token}",
+    "[Step 4] Token stack: \{@debug.to_string(self.stack)} Token: \{token}",
   )
   // 原逻辑 L1030-L1035:
   // self.stack.push(TriGState::Object)
@@ -570,13 +562,12 @@ fn TriGRecognizer::handle_objects_list(
 
   // return self.handle_object(token, context, results, errors);
   // self.debug_logger.info(
-  //   "[Step 4] Token stack: \{self.stack.to_string()} Token: \{token}",
+  //   "[Step 4] Token stack: \{@debug.to_string(self.stack)} Token: \{token}",
   // )
   self.recognize_next(
     token,
     RdfContext::TriGRecognizerContext(context),
     results,
-    errors,
   )
   // self
 }
@@ -591,10 +582,9 @@ fn TriGRecognizer::handle_trig_doc(
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
   // results : Array[RdfOut],
-  _errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info("[Step 1] Entering TriGDoc with token: \{token}")
-  // self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  // self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
   //   self.debug_logger.info(
   //   "Subject length: \{self.cur_subject.length()}"
   // )
@@ -679,10 +669,9 @@ fn TriGRecognizer::handle_wrapped_graph(
   token : LocatedTokenOrLineJump,
   _context : TriGRecognizerContext,
   _results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info("Entering WrappedGraph with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -819,7 +808,6 @@ fn TriGRecognizer::handle_collection_end(
   self : TriGRecognizer,
   token : LocatedTokenOrLineJump,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info("Handling CollectionEnd with token: \{token}")
 
@@ -939,10 +927,10 @@ fn TriGRecognizer::handle_triples(
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
   // results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
+
 ) -> TriGRecognizer {
   self.debug_logger.info("Entering Triples with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1023,12 +1011,11 @@ fn TriGRecognizer::handle_annotation_block(
   token : LocatedTokenOrLineJump,
   // context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info(
     "Entering AnnotationBlock(with_reifier=\{with_reifier}) with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1048,7 +1035,7 @@ fn TriGRecognizer::handle_annotation_block(
       let cur_sub = match self.cur_subject.last() {
         Some(s) => s
         None => {
-          errors.push(
+          self.errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: subject stack empty",
               self.last_range,
@@ -1060,7 +1047,7 @@ fn TriGRecognizer::handle_annotation_block(
       let cur_pred = match self.cur_predicate.last() {
         Some(p) => p
         None => {
-          errors.push(
+          self.errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: predicate stack empty",
               self.last_range,
@@ -1072,7 +1059,7 @@ fn TriGRecognizer::handle_annotation_block(
       let cur_obj = match self.cur_object.last() {
         Some(o) => o
         None => {
-          errors.push(
+          self.errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: object stack empty",
               self.last_range,
@@ -1096,7 +1083,7 @@ fn TriGRecognizer::handle_annotation_block(
       let cur_sub = match self.cur_subject.last() {
         Some(s) => s
         None => {
-          errors.push(
+          self.errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: subject stack empty",
               self.last_range,
@@ -1108,7 +1095,7 @@ fn TriGRecognizer::handle_annotation_block(
       let cur_pred = match self.cur_predicate.last() {
         Some(p) => p
         None => {
-          errors.push(
+          self.errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: predicate stack empty",
               self.last_range,
@@ -1120,7 +1107,7 @@ fn TriGRecognizer::handle_annotation_block(
       let cur_obj = match self.cur_object.last() {
         Some(o) => o
         None => {
-          errors.push(
+          self.errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: object stack empty",
               self.last_range,
@@ -1133,7 +1120,7 @@ fn TriGRecognizer::handle_annotation_block(
         match self.cur_reifier.last() {
           Some(r) => r
           None => {
-            errors.push(
+            self.errors.push(
               RuleRecognizerError::SyntaxError(
                 "Internal error: reifier stack empty",
                 self.last_range,
@@ -1184,12 +1171,11 @@ fn TriGRecognizer::handle_literal_possible_suffix(
   token : LocatedTokenOrLineJump,
   // context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info(
     "Entering LiteralPossibleSuffix(\{value}, emit=\{emit}) with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1205,7 +1191,7 @@ fn TriGRecognizer::handle_literal_possible_suffix(
           let resolved_lang_tag = match lang_tag {
             Ok(tag) => tag
             Err(e) => {
-              errors.push(
+              self.errors.push(
                 RuleRecognizerError::SyntaxError(e.to_string(), self.last_range),
               )
               return self
@@ -1258,17 +1244,16 @@ fn TriGRecognizer::handle_object_reified_triple_end(
   token : LocatedTokenOrLineJump,
   // context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info(
     "Entering ObjectReifiedTripleEnd(emit=\{emit}) with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let subject = match self.cur_subject.pop() {
     Some(s) => s
     None => {
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Internal error: subject stack is empty",
           self.last_range,
@@ -1304,12 +1289,11 @@ fn TriGRecognizer::handle_object_blank_node_property_list_end(
   token : LocatedTokenOrLineJump,
   // context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info(
     "Entering ObjectBlankNodePropertyListEnd with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1318,7 +1302,7 @@ fn TriGRecognizer::handle_object_blank_node_property_list_end(
       let subject = match self.cur_subject.pop() {
         Some(s) => s
         None => {
-          errors.push(
+          self.errors.push(
             RuleRecognizerError::SyntaxError(
               "Internal error: subject stack is empty",
               self.last_range,
@@ -1354,7 +1338,7 @@ fn TriGRecognizer::handle_predicate_object_list_possible_continuation(
   self.debug_logger.info(
     "Entering PredicateObjectListPossibleContinuation with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1384,12 +1368,12 @@ fn TriGRecognizer::handle_wrapped_graph_possible_end(
   token : LocatedTokenOrLineJump,
   // context : TriGRecognizerContext,
   // results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
+
 ) -> TriGRecognizer {
   self.debug_logger.info(
     "Entering WrappedGraphPossibleEnd with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1403,7 +1387,7 @@ fn TriGRecognizer::handle_wrapped_graph_possible_end(
       self
     }
     _ => {
-      errors.push(RuleRecognizerError::TripleMissingDot)
+      self.errors.push(RuleRecognizerError::TripleMissingDot)
       self
     }
   }
@@ -1417,7 +1401,6 @@ fn TriGRecognizer::handle_verb(
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> TriGRecognizer {
   self.debug_logger.info("Verb: handling token: \{token}")
 

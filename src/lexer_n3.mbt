@@ -54,12 +54,11 @@ impl RuleRecognizer for N3Recognizer with fn recognize_end(
   self : N3Recognizer,
   _state : RdfContext,
   _results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> Unit {
   match self.stack {
     [] | [N3State::N3Doc] => ()
     _ =>
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError("Unexpected end", Range::default()),
       )
   }
@@ -169,7 +168,7 @@ enum N3State {
 } derive(Debug, Eq, Hash)
 
 ///|
-fn N3State::as_state_enum(self : N3State) -> RdfState {
+impl StateWrapper for N3State with fn as_state_enum(self : N3State) -> RdfState {
   RdfState::N3State(self)
 }
 

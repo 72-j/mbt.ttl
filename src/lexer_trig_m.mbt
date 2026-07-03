@@ -14,15 +14,6 @@ impl Show for RdfState with fn to_string(self) -> String {
   }
 }
 
-///|
-/// 状态包装 Trait（用于类型擦除和统一处理）
-pub trait StateWrapper {
-  // fn to_str(Self) -> String
-  fn as_state_enum(Self) -> RdfState
-  // fn eq(Self, other : Self) -> Bool
-  // fn clone(Self) -> Self
-}
-
 // ===== 定义 Result 类型 =====
 
 ///|
@@ -264,22 +255,22 @@ impl StateMachine for TriGRecognizer with fn transition(
 // 新增或修改辅助方法，只返回元组，不处理 Result 包装
 
 ///|
-fn TriGRecognizer::process_transition_result_to_tuple(
-  self : TriGRecognizer,
-  current_state : TriGState,
-  result : TransitionResult[TriGRecognizer, TriGState, RdfOut], // 这里的 TransitionResult 可能是指 handle_xxx 的返回类型？
-  // 假设 handle_xxx 返回的是 Result<(TriGRecognizer, TriGState, RdfOut?), RuleRecognizerError>
-  // 或者它们直接返回元组？看原代码 process_transition_result 接收的是 TransitionResult
-) -> (TriGRecognizer, RdfState, RdfOut?) {
-  match result {
-    Ok((new_self, new_state, output)) =>
-      (new_self, new_state.as_state_enum(), output)
-    Err(e) => {
-      let new_self = self.add_error(e)
-      (new_self, current_state.as_state_enum(), None)
-    }
-  }
-}
+// fn TriGRecognizer::process_transition_result_to_tuple(
+//   self : TriGRecognizer,
+//   current_state : TriGState,
+//   result : TransitionResult[TriGRecognizer, TriGState, RdfOut], // 这里的 TransitionResult 可能是指 handle_xxx 的返回类型？
+//   // 假设 handle_xxx 返回的是 Result<(TriGRecognizer, TriGState, RdfOut?), RuleRecognizerError>
+//   // 或者它们直接返回元组？看原代码 process_transition_result 接收的是 TransitionResult
+// ) -> (TriGRecognizer, RdfState, RdfOut?) {
+//   match result {
+//     Ok((new_self, new_state, output)) =>
+//       (new_self, new_state.as_state_enum(), output)
+//     Err(e) => {
+//       let new_self = self.add_error(e)
+//       (new_self, current_state.as_state_enum(), None)
+//     }
+//   }
+// }
 
 ///|
 impl StateMachine for TriGRecognizer with fn is_accepting(self : TriGRecognizer) -> Bool {
@@ -299,7 +290,7 @@ impl StateMachine for TriGRecognizer with fn context(self : TriGRecognizer) -> R
 ///|
 impl StateMachine for TriGRecognizer with fn set_context(
   self : TriGRecognizer,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TriGRecognizer {
   // 假设 TriGRecognizer 有一个 context 字段或者通过其他方式管理
   // 这里简单返回 self，实际可能需要更新内部状态

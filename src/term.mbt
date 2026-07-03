@@ -531,7 +531,7 @@ pub struct Quad {
   predicate : NamedNode
   object : Term
   graph_name : GraphName
-} derive(Debug)
+} derive(Debug, Hash, Eq)
 
 ///|
 impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {

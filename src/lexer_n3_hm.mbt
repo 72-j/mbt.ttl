@@ -4,7 +4,7 @@
 fn N3Recognizer::handle_n3_doc_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering N3Doc with token: \{token}")
 
@@ -44,7 +44,7 @@ fn N3Recognizer::handle_n3_doc_m(
 fn N3Recognizer::handle_n3_doc_expect_dot_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering N3DocExpectDot with token: \{token}")
 
@@ -111,7 +111,7 @@ fn N3Recognizer::handle_base_expect_iri_m(
 fn N3Recognizer::handle_prefix_expect_prefix_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PrefixExpectPrefix with token: \{token}")
 
@@ -179,7 +179,7 @@ fn N3Recognizer::handle_prefix_expect_iri_m(
 fn N3Recognizer::handle_triples_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering Triples with token: \{token}")
 
@@ -199,7 +199,7 @@ fn N3Recognizer::handle_triples_m(
 fn N3Recognizer::handle_triples_middle_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering TriplesMiddle with token: \{token}")
 
@@ -236,7 +236,7 @@ fn N3Recognizer::handle_triples_middle_m(
 fn N3Recognizer::handle_triples_end_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering TriplesEnd with token: \{token}")
 
@@ -262,7 +262,7 @@ fn N3Recognizer::handle_triples_end_m(
 fn N3Recognizer::handle_predicate_object_list_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PredicateObjectList with token: \{token}")
 
@@ -282,7 +282,7 @@ fn N3Recognizer::handle_predicate_object_list_m(
 fn N3Recognizer::handle_predicate_object_list_end_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PredicateObjectListEnd with token: \{token}")
 
@@ -323,7 +323,7 @@ fn N3Recognizer::handle_predicate_object_list_end_m(
 fn N3Recognizer::handle_predicate_object_list_possible_continuation_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info(
     "Entering PredicateObjectListPossibleContinuation with token: \{token}",
@@ -369,7 +369,7 @@ fn N3Recognizer::handle_predicate_object_list_possible_continuation_m(
 fn N3Recognizer::handle_objects_list_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering ObjectsList with token: \{token}")
 
@@ -388,7 +388,7 @@ fn N3Recognizer::handle_objects_list_m(
 fn N3Recognizer::handle_objects_list_end_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering ObjectsListEnd with token: \{token}")
 
@@ -467,7 +467,7 @@ fn N3Recognizer::handle_objects_list_end_m(
 fn N3Recognizer::handle_verb_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering Verb with token: \{token}")
 
@@ -608,7 +608,7 @@ fn N3Recognizer::handle_verb_m(
 fn N3Recognizer::handle_after_regular_verb_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering AfterRegularVerb with token: \{token}")
 
@@ -645,7 +645,7 @@ fn N3Recognizer::handle_after_regular_verb_m(
 fn N3Recognizer::handle_after_inverted_verb_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering AfterInvertedVerb with token: \{token}")
 
@@ -681,7 +681,7 @@ fn N3Recognizer::handle_after_inverted_verb_m(
 fn N3Recognizer::handle_after_verb_is_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering AfterVerbIs with token: \{token}")
 
@@ -729,7 +729,7 @@ fn N3Recognizer::handle_after_verb_is_m(
 fn N3Recognizer::handle_path_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering Path with token: \{token}")
 
@@ -748,7 +748,7 @@ fn N3Recognizer::handle_path_m(
 fn N3Recognizer::handle_path_follow_up_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PathFollowUp with token: \{token}")
 
@@ -800,7 +800,7 @@ fn N3Recognizer::handle_path_after_indicator_m(
   self : N3Recognizer,
   is_inverse : Bool,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PathAfterIndicator with token: \{token}")
 
@@ -884,7 +884,7 @@ fn N3Recognizer::handle_path_item_m(
           ),
         )
       }
-      let ctx = self.contexts.last().unwrap() // peek
+      // let ctx = self.contexts.last().unwrap() // peek
       // 注意：这里不应该 pop contexts，应该由 FormulaContent 处理 pop
       // 但如果是在 PathItem 中遇到 }，说明公式作为项结束
       // 原逻辑: pop contexts, push term, pop PathFollowUp
@@ -939,7 +939,7 @@ fn N3Recognizer::handle_path_item_m(
 fn N3Recognizer::handle_term_token_internal(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> Result[N3Recognizer, RuleRecognizerError] {
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(located) =>
@@ -974,10 +974,10 @@ fn N3Recognizer::handle_term_token_internal(
 fn N3Recognizer::handle_property_list_middle_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PropertyListMiddle with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1025,10 +1025,10 @@ fn N3Recognizer::handle_property_list_middle_m(
 fn N3Recognizer::handle_property_list_end_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PropertyListEnd with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1064,7 +1064,7 @@ fn N3Recognizer::handle_iri_property_list_m(
   context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering IriPropertyList with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(id), _)) => {
@@ -1132,10 +1132,10 @@ fn N3Recognizer::handle_iri_property_list_m(
 fn N3Recognizer::handle_collection_beginning_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering CollectionBeginning with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   if token
     is LocatedTokenOrLineJump::LocatedN3Token(
@@ -1179,10 +1179,10 @@ fn N3Recognizer::handle_collection_beginning_m(
 fn N3Recognizer::handle_collection_possible_end_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering CollectionPossibleEnd with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   let value = match self.terms.pop() {
     Some(v) => v
@@ -1258,12 +1258,12 @@ fn N3Recognizer::handle_literal_possible_suffix_m(
   self : N3Recognizer,
   value : String,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info(
     "Entering LiteralPossibleSuffix(\{value}) with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1333,7 +1333,7 @@ fn N3Recognizer::handle_literal_expect_datatype_m(
   self.debug_logger.info(
     "Entering LiteralExpectDatatype(\{value}) with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1420,10 +1420,10 @@ fn N3Recognizer::handle_literal_expect_datatype_m(
 fn N3Recognizer::handle_formula_content_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering FormulaContent with token: \{token}")
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1495,12 +1495,12 @@ fn N3Recognizer::handle_formula_content_m(
 fn N3Recognizer::handle_formula_content_expect_dot_m(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info(
     "Entering FormulaContentExpectDot with token: \{token}",
   )
-  self.debug_logger.info("Token stack: \{self.stack.to_string()}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(

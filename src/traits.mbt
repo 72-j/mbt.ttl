@@ -18,6 +18,15 @@ pub trait StateMachine {
 }
 
 ///|
+/// 状态包装 Trait（用于类型擦除和统一处理）
+pub trait StateWrapper {
+  // fn to_str(Self) -> String
+  fn as_state_enum(Self) -> RdfState
+  // fn eq(Self, other : Self) -> Bool
+  // fn clone(Self) -> Self
+}
+
+///|
 pub trait IriComponents {
   fn query(self : Self) -> String?
   fn is_absolute(self : Self) -> Bool
@@ -250,14 +259,8 @@ pub trait RuleRecognizer {
     token : LocatedTokenOrLineJump,
     context : RdfContext,
     results : Array[RdfOut],
-    errors : Array[RuleRecognizerError],
   ) -> Self
-  fn recognize_end(
-    Self,
-    context : RdfContext,
-    results : Array[RdfOut],
-    errors : Array[RuleRecognizerError],
-  ) -> Unit
+  fn recognize_end(Self, context : RdfContext, results : Array[RdfOut]) -> Unit
   fn lexer_options(context : RdfContext) -> LexerOptions?
   fn[DL : DebugLogger] debug_logger(Self, debug_logger : DL) -> Unit
   // fn stack_signature(Self) -> Option[(Int, Option[String])]

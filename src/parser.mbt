@@ -56,7 +56,6 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
               token,
               self.context,
               self.results,
-              self.errors,
             )
             debug("Parser: token after = \{token}")
 
@@ -83,7 +82,7 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(
           // 处理结束逻辑
           match self.state {
             Some(state) => {
-              state.recognize_end(self.context, self.results, self.errors)
+              state.recognize_end(self.context, self.results)
               self.state = None
               // 继续循环，让下一轮返回 results 或 errors
               continue

@@ -7,6 +7,8 @@ import {
   "moonbitlang/async@0.19.1",
   "brickfrog/tempo@0.8.0",
   "justjavac/itoa@0.2.2",
+  "moonbit-community/quickcheck_statemachine@0.0.1",
+  "moonbitlang/quickcheck@0.14.0",
 }
 
 readme = "README.mbt.md"

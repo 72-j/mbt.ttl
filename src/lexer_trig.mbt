@@ -218,10 +218,9 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
   self : TriGRecognizer,
   _context : RdfContext,
   results : Array[RdfOut],
-  errors : Array[RuleRecognizerError],
 ) -> Unit {
   self.debug_logger.info(
-    "TriGRecognizer :: recognize_end \{self.stack.to_string()}",
+    "TriGRecognizer :: recognize_end \{@debug.to_string(self.stack)}",
   )
   match self.stack {
     [] | [TriGState::TriGDoc] => {
@@ -232,7 +231,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
     [.., TriGState::LiteralPossibleSuffix(value~, emit=true)] => {
       self.cur_object.push(LiteralRef::new_simple_literal(value).as_term())
       self.emit_quad(results)
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError(
           "Triples should be followed by a dot",
           self.last_range,
@@ -240,7 +239,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
       )
     }
     _ =>
-      errors.push(
+      self.errors.push(
         RuleRecognizerError::SyntaxError("Unexpected end", self.last_range),
       )
   }
@@ -414,7 +413,7 @@ enum TriGState {
 } derive(Debug, Eq, Hash)
 
 ///|
-fn TriGState::as_state_enum(self : TriGState) -> RdfState {
+impl StateWrapper for TriGState with fn as_state_enum(self : TriGState) -> RdfState {
   RdfState::TriGState(self)
 }
 

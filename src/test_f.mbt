@@ -67,7 +67,7 @@
 //       } else {
 //         "Should have passed but failed"
 //       }
-//       errors.push("\{file}: \{status}")
+//       self.errors.push("\{file}: \{status}")
 //     }
 //   }
 
@@ -156,7 +156,7 @@
 //       } else {
 //         "Should have passed but failed (or returned None)"
 //       }
-//       errors.push("\{file}: \{status}")
+//       self.errors.push("\{file}: \{status}")
 //     }
 //   }
 
