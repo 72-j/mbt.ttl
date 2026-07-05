@@ -269,7 +269,7 @@ pub fn SourceRange::to_range(self : Self) -> Range {
 }
 
 ///|
-impl Show for SourceRange with fn output(self, logger : &Logger) -> Unit {
+pub impl Show for SourceRange with fn output(self, logger : &Logger) -> Unit {
   logger.write_string("[")
   logger.write_string(self.start.to_string())
   logger.write_string(":")
@@ -350,7 +350,7 @@ pub(all) suberror TurtleError {
   InvalidEscapeSequence
   InvalidCharacter(String)
   InvalidToken(SourcePos, String)
-}
+} derive(Debug)
 
 ///|
 pub impl ErrOut for TurtleError with fn message(self : TurtleError) -> String {
@@ -464,13 +464,13 @@ impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-enum SerializationError {
+pub(all) enum SerializationError {
   FormatError(String)
   IoError(String)
 }
 
 ///|
-impl Show for SerializationError with fn output(self, logger : &Logger) -> Unit {
+pub impl Show for SerializationError with fn output(self, logger : &Logger) -> Unit {
   match self {
     SerializationError::FormatError(msg) => {
       logger.write_string("Serialization Error: ")

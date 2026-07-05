@@ -5,7 +5,7 @@
 fn TriGRecognizer::handle_triples_or_graph_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   // let ctx = match context {
   //   RdfContext::TriGRecognizerContext(c) => c
@@ -72,10 +72,14 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
   }
 
   self.debug_logger.info("WrappedGraphOrPredicateObjectList: event=\{event}")
-  self.debug_logger.info("Token stack: \{self.stack}")
-  self.debug_logger.info("Current subject: \{self.cur_subject}")
-  self.debug_logger.info("Current predicate: \{self.cur_predicate}")
-  self.debug_logger.info("Current object: \{self.cur_object}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "Current subject: \{@debug.to_string(self.cur_subject)}",
+  )
+  self.debug_logger.info(
+    "Current predicate: \{@debug.to_string(self.cur_predicate)}",
+  )
+  self.debug_logger.info("Current object: \{@debug.to_string(self.cur_object)}")
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("{"), _)
@@ -133,8 +137,8 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
 ///|
 fn TriGRecognizer::handle_objects_list_m(
   self : TriGRecognizer,
-  event : Event,
-  context : RdfContext,
+  _event : Event,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   // let ctx = match context {
   //   RdfContext::TriGRecognizerContext(c) => c
@@ -167,7 +171,7 @@ fn TriGRecognizer::handle_objects_list_m(
 fn TriGRecognizer::handle_object_m(
   self : TriGRecognizer,
   event : Event,
-  _context : RdfContext,
+  __context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   // let ctx = match context {
   //   RdfContext::TriGRecognizerContext(c) => c
@@ -226,7 +230,7 @@ fn TriGRecognizer::handle_object_m(
 fn TriGRecognizer::handle_object_collection_beginning_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   // let ctx = match context {
   //   RdfContext::TriGRecognizerContext(c) => c
@@ -291,15 +295,15 @@ fn TriGRecognizer::handle_object_collection_beginning_m(
 fn TriGRecognizer::handle_object_collection_possible_end_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-  let ctx = match context {
-    RdfContext::TriGRecognizerContext(c) => c
-    _ =>
-      return Err(
-        RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
-      )
-  }
+  // let ctx = match context {
+  //   RdfContext::TriGRecognizerContext(c) => c
+  //   _ =>
+  //     return Err(
+  //       RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
+  //     )
+  // }
 
   self.debug_logger.info(
     "ObjectCollectionPossibleEnd: handling event: \{event}",
@@ -388,7 +392,7 @@ fn TriGRecognizer::handle_object_collection_possible_end_m(
 fn TriGRecognizer::handle_predicate_object_list_end_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("PredicateObjectListEnd: handling event: \{event}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -824,7 +828,7 @@ fn TriGRecognizer::handle_verb_m(
 //   value : String,
 //   emit : Bool,
 //   event : Event,
-//   context : RdfContext,
+//   _context : RdfContext,
 // ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
 
 //   self.debug_logger.info(
@@ -901,7 +905,7 @@ fn TriGRecognizer::handle_verb_m(
 fn TriGRecognizer::handle_expect_dot_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("ExpectDot: handling event: \{event}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -949,13 +953,10 @@ fn TriGRecognizer::handle_base_expect_iri_m(
     ) => {
       let iri_ref = Iri::new(iri_str)
       let new_ctx_options = if self.lenient {
-        {
-          ..ctx.lexer_options,
-          base_iri: Some(IriRef::parse_unchecked(iri_ref)),
-        }
+        { base_iri: Some(IriRef::parse_unchecked(iri_ref)) }
       } else {
         match IriRef::parse(iri_ref) {
-          Ok(parsed_iri) => { ..ctx.lexer_options, base_iri: Some(parsed_iri) }
+          Ok(parsed_iri) => { base_iri: Some(parsed_iri) }
           Err(e) => {
             let err = RuleRecognizerError::SyntaxError(
               "Invalid BASE IRI: \{e.to_string()}",
@@ -991,15 +992,15 @@ fn TriGRecognizer::handle_base_expect_iri_m(
 fn TriGRecognizer::handle_prefix_expect_prefix_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-  let ctx = match context {
-    RdfContext::TriGRecognizerContext(c) => c
-    _ =>
-      return Err(
-        RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
-      )
-  }
+  // let ctx = match context {
+  //   RdfContext::TriGRecognizerContext(c) => c
+  //   _ =>
+  //     return Err(
+  //       RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
+  //     )
+  // }
 
   self.debug_logger.info("PrefixExpectPrefix: handling event: \{event}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -1082,7 +1083,7 @@ fn TriGRecognizer::handle_prefix_expect_iri_m(
 fn TriGRecognizer::handle_version_expect_version_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("VersionExpectVersion: handling event: \{event}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -1108,7 +1109,7 @@ fn TriGRecognizer::handle_version_expect_version_m(
 fn TriGRecognizer::handle_wrapped_graph_blank_node_property_list_current_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info(
     "WrappedGraphBlankNodePropertyListCurrent: handling event: \{event}",
@@ -1143,7 +1144,7 @@ fn TriGRecognizer::handle_wrapped_graph_blank_node_property_list_current_m(
 fn TriGRecognizer::handle_subject_blank_node_property_list_end_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info(
     "SubjectBlankNodePropertyListEnd: handling event: \{event}",
@@ -1169,7 +1170,7 @@ fn TriGRecognizer::handle_subject_blank_node_property_list_end_m(
 fn TriGRecognizer::handle_subject_blank_node_property_list_after_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info(
     "SubjectBlankNodePropertyListAfter: handling event: \{event}",
@@ -1197,7 +1198,7 @@ fn TriGRecognizer::handle_subject_blank_node_property_list_after_m(
 fn TriGRecognizer::handle_subject_collection_beginning_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   match event {
     // ===== 情况1：空集合 () =====
@@ -1249,7 +1250,7 @@ fn TriGRecognizer::handle_subject_collection_beginning_m(
 fn TriGRecognizer::handle_subject_collection_possible_end_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info(
     "SubjectCollectionPossibleEnd: handling event: \{event}",
@@ -1335,7 +1336,7 @@ fn TriGRecognizer::handle_subject_collection_possible_end_m(
 fn TriGRecognizer::handle_triples_blank_node_property_list_current_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info(
     "TriplesBlankNodePropertyListCurrent: handling event: \{event}",
@@ -1452,7 +1453,7 @@ fn TriGRecognizer::handle_graph_name_m(
 fn TriGRecognizer::handle_graph_name_anon_end_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("GraphNameAnonEnd: handling event: \{event}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -1490,7 +1491,7 @@ fn TriGRecognizer::handle_graph_name_anon_end_m(
 fn TriGRecognizer::handle_maybe_predicate_object_list_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("MaybePredicateObjectList: handling event: \{event}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -1516,7 +1517,7 @@ fn TriGRecognizer::handle_annotation_end_m(
   self : TriGRecognizer,
   with_reifier : Bool,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info(
     "AnnotationEnd: with_reifier=\{with_reifier}, event=\{event}",
@@ -1547,7 +1548,7 @@ fn TriGRecognizer::handle_annotation_end_m(
 fn TriGRecognizer::handle_object_blank_node_property_list_current_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info(
     "ObjectBlankNodePropertyListCurrent: handling event: \{event}",
@@ -1706,7 +1707,7 @@ fn TriGRecognizer::handle_literal_expect_datatype_m(
 fn TriGRecognizer::handle_subject_reified_triple_end_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("SubjectReifiedTripleEnd: handling event: \{event}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -1745,7 +1746,7 @@ fn TriGRecognizer::handle_subject_reified_triple_end_m(
 // fn TriGRecognizer::handle_subject_reified_triple_end_m(
 //   self : TriGRecognizer,
 //   event : Event,
-//   context : RdfContext,
+//   _context : RdfContext,
 // ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
 //   let (reifier, new_cur_reifier) = match self.cur_reifier.unsnoc() {
 //     Some((init, last)) => (last, init)
@@ -1772,7 +1773,7 @@ fn TriGRecognizer::handle_triple_term_end_m(
   self : TriGRecognizer,
   emit : Bool,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("TripleTermEnd: emit=\{emit}, event=\{event}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -1836,7 +1837,7 @@ fn TriGRecognizer::handle_triple_term_end_m(
 //   self : TriGRecognizer,
 //   emit : Bool,
 //   event : Event,
-//   context : RdfContext,
+//   _context : RdfContext,
 // ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
 //   let (subject, new_cur_subject) = match self.cur_subject.unsnoc() {
 //     Some((init, last)) => (last, init)
@@ -1878,7 +1879,7 @@ fn TriGRecognizer::handle_triple_term_end_m(
 fn TriGRecognizer::handle_end_of_reified_triple_before_reifier_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info(
     "EndOfReifiedTripleBeforeReifier: handling event: \{event}",
@@ -2324,7 +2325,7 @@ fn TriGRecognizer::handle_reified_triple_object_m(
 fn TriGRecognizer::handle_quoted_anon_end_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -2388,7 +2389,7 @@ fn TriGRecognizer::handle_expect_at_keyword_m(
 fn TriGRecognizer::handle_wrapped_graph_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   match event {
     // ✅ 收到 '{'，开始图内容
@@ -2416,7 +2417,7 @@ fn TriGRecognizer::handle_wrapped_graph_m(
 fn TriGRecognizer::handle_wrapped_graph_possible_end_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   match event {
     // ✅ 情况1：收到 `}` → 图结束
@@ -2521,7 +2522,7 @@ fn TriGRecognizer::handle_object_reified_triple_end_m(
   self : TriGRecognizer,
   emit : Bool,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info("ObjectReifiedTripleEnd: emit=\{emit}, event=\{event}")
 
@@ -2624,7 +2625,7 @@ fn TriGRecognizer::handle_literal_possible_suffix_m(
   value : String,
   emit : Bool,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info(
     "LiteralPossibleSuffix: value='\{value}', emit=\{emit}, event=\{event}",
@@ -2752,7 +2753,7 @@ fn TriGRecognizer::handle_literal_possible_suffix_m(
 fn TriGRecognizer::handle_object_blank_node_property_list_end_m(
   self : TriGRecognizer,
   event : Event,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(

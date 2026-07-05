@@ -7,39 +7,39 @@ test "debug single" {
 
 ///|
 test "formatting" {
-  assert_eq(
+  @debug.assert_eq(
     "mn-Cyrl-MN",
     LanguageTag::parse_and_normalize("mn-Cyrl-MN").unwrap().to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "mn-Cyrl-MN",
     LanguageTag::parse_and_normalize("MN-cYRL-mn").unwrap().to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "mn-Cyrl-MN",
     LanguageTag::parse_and_normalize("mN-cYrL-Mn").unwrap().to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "en-CA-x-ca",
     LanguageTag::parse_and_normalize("en-CA-x-ca").unwrap().to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "sgn-BE-FR",
     LanguageTag::parse_and_normalize("sgn-BE-FR").unwrap().to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "az-Latn-x-latn",
     LanguageTag::parse_and_normalize("az-Latn-x-latn").unwrap().to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "i-ami",
     LanguageTag::parse_and_normalize("i-ami").unwrap().to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "i-ami",
     LanguageTag::parse_and_normalize("I-AMI").unwrap().to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "sl-afb-Latn-005-nedis",
     LanguageTag::parse_and_normalize("SL-AFB-lATN-005-nEdis")
     .unwrap()
@@ -49,27 +49,27 @@ test "formatting" {
 
 ///|
 test "primary language" {
-  assert_eq(
+  @debug.assert_eq(
     "fr",
     LanguageTag::parse_and_normalize("fr").unwrap().primary_language(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "de",
     LanguageTag::parse_and_normalize("de").unwrap().primary_language(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "x-fr-ch",
     LanguageTag::parse_and_normalize("x-fr-CH").unwrap().primary_language(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "i-klingon",
     LanguageTag::parse_and_normalize("i-klingon").unwrap().primary_language(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "i-bnn",
     LanguageTag::parse_and_normalize("i-bnn").unwrap().primary_language(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "zh-hakka",
     LanguageTag::parse_and_normalize("zh-hakka").unwrap().primary_language(),
   )
@@ -79,149 +79,164 @@ test "primary language" {
 test "extended language" {
   // 使用专用 getter 替代 parts
   let tag_zh = LanguageTag::parse("zh").unwrap()
-  assert_eq("zh", tag_zh.full_language())
-  assert_eq("zh", tag_zh.primary_language())
-  assert_eq(None, tag_zh.extended_language())
+  @debug.assert_eq("zh", tag_zh.full_language())
+  @debug.assert_eq("zh", tag_zh.primary_language())
+  @debug.assert_eq(None, tag_zh.extended_language())
   // debug("tag_zh extended subtags: \{tag_zh.extended_language_subtags()}")
-  assert_eq([], tag_zh.extended_language_subtags())
+  @debug.assert_eq([], tag_zh.extended_language_subtags())
 
   let tag_zh_gan = LanguageTag::parse("zh-gan").unwrap()
-  assert_eq("zh-gan", tag_zh_gan.full_language())
-  assert_eq("zh", tag_zh_gan.primary_language())
-  assert_eq(Some("gan"), tag_zh_gan.extended_language())
-  assert_eq(["gan"], tag_zh_gan.extended_language_subtags())
+  @debug.assert_eq("zh-gan", tag_zh_gan.full_language())
+  @debug.assert_eq("zh", tag_zh_gan.primary_language())
+  @debug.assert_eq(Some("gan"), tag_zh_gan.extended_language())
+  @debug.assert_eq(["gan"], tag_zh_gan.extended_language_subtags())
 
   let tag_zh_gan_foo = LanguageTag::parse("zh-gan-foo").unwrap()
-  assert_eq("zh-gan-foo", tag_zh_gan_foo.full_language())
-  assert_eq("zh", tag_zh_gan_foo.primary_language())
-  assert_eq(Some("gan-foo"), tag_zh_gan_foo.extended_language())
-  assert_eq(["gan", "foo"], tag_zh_gan_foo.extended_language_subtags())
+  @debug.assert_eq("zh-gan-foo", tag_zh_gan_foo.full_language())
+  @debug.assert_eq("zh", tag_zh_gan_foo.primary_language())
+  @debug.assert_eq(Some("gan-foo"), tag_zh_gan_foo.extended_language())
+  @debug.assert_eq(["gan", "foo"], tag_zh_gan_foo.extended_language_subtags())
 
   let tag_zh_min_nan = LanguageTag::parse("zh-min-nan").unwrap()
-  assert_eq("zh-min-nan", tag_zh_min_nan.full_language())
-  assert_eq("zh-min-nan", tag_zh_min_nan.primary_language())
-  assert_eq(None, tag_zh_min_nan.extended_language())
+  @debug.assert_eq("zh-min-nan", tag_zh_min_nan.full_language())
+  @debug.assert_eq("zh-min-nan", tag_zh_min_nan.primary_language())
+  @debug.assert_eq(None, tag_zh_min_nan.extended_language())
   // 修复
-  assert_eq(0, tag_zh_min_nan.extended_language_subtags().length())
+  @debug.assert_eq(0, tag_zh_min_nan.extended_language_subtags().length())
 
   let tag_i_tsu = LanguageTag::parse("i-tsu").unwrap()
-  assert_eq("i-tsu", tag_i_tsu.full_language())
-  assert_eq("i-tsu", tag_i_tsu.primary_language())
-  assert_eq(None, tag_i_tsu.extended_language())
+  @debug.assert_eq("i-tsu", tag_i_tsu.full_language())
+  @debug.assert_eq("i-tsu", tag_i_tsu.primary_language())
+  @debug.assert_eq(None, tag_i_tsu.extended_language())
   // 修复
-  assert_eq(0, tag_i_tsu.extended_language_subtags().length())
+  @debug.assert_eq(0, tag_i_tsu.extended_language_subtags().length())
 
   let tag_zh_cn = LanguageTag::parse("zh-CN").unwrap()
-  assert_eq("zh", tag_zh_cn.full_language())
-  assert_eq("zh", tag_zh_cn.primary_language())
-  assert_eq(None, tag_zh_cn.extended_language())
+  @debug.assert_eq("zh", tag_zh_cn.full_language())
+  @debug.assert_eq("zh", tag_zh_cn.primary_language())
+  @debug.assert_eq(None, tag_zh_cn.extended_language())
   // 修复
-  assert_eq(0, tag_zh_cn.extended_language_subtags().length())
+  @debug.assert_eq(0, tag_zh_cn.extended_language_subtags().length())
 
   let tag_zh_gan_cn = LanguageTag::parse("zh-gan-CN").unwrap()
-  assert_eq("zh-gan", tag_zh_gan_cn.full_language())
-  assert_eq("zh", tag_zh_gan_cn.primary_language())
-  assert_eq(Some("gan"), tag_zh_gan_cn.extended_language())
-  assert_eq(["gan"], tag_zh_gan_cn.extended_language_subtags())
+  @debug.assert_eq("zh-gan", tag_zh_gan_cn.full_language())
+  @debug.assert_eq("zh", tag_zh_gan_cn.primary_language())
+  @debug.assert_eq(Some("gan"), tag_zh_gan_cn.extended_language())
+  @debug.assert_eq(["gan"], tag_zh_gan_cn.extended_language_subtags())
 
   let tag_ar_afb = LanguageTag::parse("ar-afb").unwrap()
-  assert_eq("ar-afb", tag_ar_afb.full_language())
-  assert_eq("ar", tag_ar_afb.primary_language())
+  @debug.assert_eq("ar-afb", tag_ar_afb.full_language())
+  @debug.assert_eq("ar", tag_ar_afb.primary_language())
   match tag_ar_afb.extended_language() {
-    Some(ext) => assert_eq(ext, "afb")
+    Some(ext) => @debug.assert_eq(ext, "afb")
     None => fail("Expected extended language 'afb', got None")
   }
-  assert_eq(["afb"], tag_ar_afb.extended_language_subtags())
-  assert_eq(["afb"], tag_ar_afb.extended_language_subtags())
+  @debug.assert_eq(["afb"], tag_ar_afb.extended_language_subtags())
+  @debug.assert_eq(["afb"], tag_ar_afb.extended_language_subtags())
 }
 
 ///|
 test "script" {
-  assert_eq(Some("Latn"), LanguageTag::parse("sr-Latn").unwrap().script())
-  assert_eq(Some("Latn"), LanguageTag::parse("ar-afb-Latn").unwrap().script())
+  @debug.assert_eq(
+    Some("Latn"),
+    LanguageTag::parse("sr-Latn").unwrap().script(),
+  )
+  @debug.assert_eq(
+    Some("Latn"),
+    LanguageTag::parse("ar-afb-Latn").unwrap().script(),
+  )
 }
 
 ///|
 test "region" {
-  assert_eq(Some("AT"), LanguageTag::parse("de-AT").unwrap().region())
-  assert_eq(Some("RS"), LanguageTag::parse("sr-Latn-RS").unwrap().region())
-  assert_eq(Some("419"), LanguageTag::parse("es-419").unwrap().region())
-  assert_eq(Some("DE"), LanguageTag::parse("ar-DE").unwrap().region())
-  assert_eq(Some("005"), LanguageTag::parse("ar-005").unwrap().region())
+  @debug.assert_eq(Some("AT"), LanguageTag::parse("de-AT").unwrap().region())
+  @debug.assert_eq(
+    Some("RS"),
+    LanguageTag::parse("sr-Latn-RS").unwrap().region(),
+  )
+  @debug.assert_eq(Some("419"), LanguageTag::parse("es-419").unwrap().region())
+  @debug.assert_eq(Some("DE"), LanguageTag::parse("ar-DE").unwrap().region())
+  @debug.assert_eq(Some("005"), LanguageTag::parse("ar-005").unwrap().region())
 }
 
 ///|
 test "variant" {
-  assert_eq([], LanguageTag::parse("sl").unwrap().variant_subtags())
-  assert_eq(
+  @debug.assert_eq([], LanguageTag::parse("sl").unwrap().variant_subtags())
+  @debug.assert_eq(
     ["nedis"],
     LanguageTag::parse("sl-nedis").unwrap().variant_subtags(),
   )
-  assert_eq(
+  @debug.assert_eq(
     ["1996"],
     LanguageTag::parse("de-CH-1996").unwrap().variant_subtags(),
   )
-  assert_eq([], LanguageTag::parse("art-lojban").unwrap().variant_subtags())
+  @debug.assert_eq(
+    [],
+    LanguageTag::parse("art-lojban").unwrap().variant_subtags(),
+  )
 }
 
 ///|
 test "extension" {
   // 简单测试 extension 存在性及内容，具体子标签解析依赖 extension_subtags 迭代器
-  assert_eq(None, LanguageTag::parse("en").unwrap().extension())
+  @debug.assert_eq(None, LanguageTag::parse("en").unwrap().extension())
   let tag_ext = LanguageTag::parse("en-a-bbb-x-a-ccc").unwrap()
-  assert_eq(Some("a-bbb"), tag_ext.extension())
+  @debug.assert_eq(Some("a-bbb"), tag_ext.extension())
 
   let tag_multi_ext = LanguageTag::parse("en-a-babble-b-warble").unwrap()
-  assert_eq(Some("a-babble-b-warble"), tag_multi_ext.extension())
+  @debug.assert_eq(Some("a-babble-b-warble"), tag_multi_ext.extension())
 
   let tag_fr = LanguageTag::parse("fr-a-Latn").unwrap()
-  assert_eq(Some("a-Latn"), tag_fr.extension())
+  @debug.assert_eq(Some("a-Latn"), tag_fr.extension())
 
   let tag_complex = LanguageTag::parse(
     "en-Latn-GB-boont-r-extended-sequence-x-private",
   ).unwrap()
-  assert_eq(Some("r-extended-sequence"), tag_complex.extension())
+  @debug.assert_eq(Some("r-extended-sequence"), tag_complex.extension())
 
   let tag_r = LanguageTag::parse("en-r-az-r-qt").unwrap()
-  assert_eq(Some("r-az-r-qt"), tag_r.extension())
+  @debug.assert_eq(Some("r-az-r-qt"), tag_r.extension())
 
-  assert_eq(None, LanguageTag::parse("i-tsu").unwrap().extension())
+  @debug.assert_eq(None, LanguageTag::parse("i-tsu").unwrap().extension())
 }
 
 // ///|
 
 ///|
 test "privateuse" {
-  assert_eq(None, LanguageTag::parse("en").unwrap().private_use())
-  assert_eq(Some("x-US"), LanguageTag::parse("en-x-US").unwrap().private_use())
-  assert_eq(
+  @debug.assert_eq(None, LanguageTag::parse("en").unwrap().private_use())
+  @debug.assert_eq(
+    Some("x-US"),
+    LanguageTag::parse("en-x-US").unwrap().private_use(),
+  )
+  @debug.assert_eq(
     ["US"],
     LanguageTag::parse("en-x-US").unwrap().private_use_subtags(),
   )
 
-  assert_eq(
+  @debug.assert_eq(
     Some("x-koine"),
     LanguageTag::parse("el-x-koine").unwrap().private_use(),
   )
-  assert_eq(
+  @debug.assert_eq(
     ["koine"],
     LanguageTag::parse("el-x-koine").unwrap().private_use_subtags(),
   )
 
-  assert_eq(
+  @debug.assert_eq(
     Some("x-fr-ch"),
     LanguageTag::parse("x-fr-ch").unwrap().private_use(),
   )
-  assert_eq(
+  @debug.assert_eq(
     ["fr", "ch"],
     LanguageTag::parse("x-fr-ch").unwrap().private_use_subtags(),
   )
 
-  assert_eq(
+  @debug.assert_eq(
     Some("x-foobar-AT-007"),
     LanguageTag::parse("es-x-foobar-AT-007").unwrap().private_use(),
   )
-  assert_eq(
+  @debug.assert_eq(
     ["foobar", "AT", "007"],
     LanguageTag::parse("es-x-foobar-AT-007").unwrap().private_use_subtags(),
   )
@@ -229,37 +244,37 @@ test "privateuse" {
 
 ///|
 test "fmt" {
-  assert_eq(
+  @debug.assert_eq(
     "ar-arb-Latn-DE-nedis-foobar",
     LanguageTag::parse_and_normalize("ar-arb-Latn-DE-nedis-foobar")
     .unwrap()
     .to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "ar-arb-Latn-DE-nedis-foobar",
     LanguageTag::parse_and_normalize("ar-arb-latn-de-nedis-foobar")
     .unwrap()
     .to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "ar-arb-Latn-DE-nedis-foobar",
     LanguageTag::parse_and_normalize("AR-ARB-LATN-DE-NEDIS-FOOBAR")
     .unwrap()
     .to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "xx-z-foo-a-bar-f-spam-b-eggs",
     LanguageTag::parse_and_normalize("xx-z-foo-a-bar-F-spam-b-eggs")
     .unwrap()
     .to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "hkgnmerm-x-e5-zf-vddjcpz-1v6",
     LanguageTag::parse_and_normalize("HkgnmerM-x-e5-zf-VdDjcpz-1V6")
     .unwrap()
     .to_string(),
   )
-  assert_eq(
+  @debug.assert_eq(
     "mgxqa-Ywep-8lcw-7bvt-h-dp1md-0h7-0z3ir",
     LanguageTag::parse_and_normalize("MgxQa-ywEp-8lcW-7bvT-h-dP1Md-0h7-0Z3ir")
     .unwrap()
@@ -274,7 +289,7 @@ test "unicode" {
 
 ///|
 test "cmp" {
-  assert_eq(
+  @debug.assert_eq(
     LanguageTag::parse_and_normalize("dE-AraB-lY").unwrap(),
     LanguageTag::parse_and_normalize("DE-aRaB-LY").unwrap(),
   )
@@ -301,7 +316,7 @@ test "wellformed tags" {
   for tag in tags {
     let result = LanguageTag::parse(tag)
     match result {
-      Ok(v) => ()
+      Ok(_v) => ()
       // Ok(v) => debug("✓ \{tag} correctly rejected: \{v}")
       // assert_true(false, "\{tag} should be considered not well-formed")
       Err(e) => debug("✗ \{tag} should be  passed: \{e}")
@@ -430,9 +445,9 @@ test "random bad tags" {
 ///|
 test "eq" {
   let tag = LanguageTag::parse("en-fr").unwrap()
-  assert_eq(tag.tag, "en-fr")
+  @debug.assert_eq(tag.tag, "en-fr")
   assert_not_eq(tag.tag, "en-FR")
-  assert_eq("en-fr", tag.tag)
+  @debug.assert_eq("en-fr", tag.tag)
 }
 
 ///|
@@ -440,18 +455,18 @@ test "hash eq" {
   let tag = LanguageTag::parse("en-fr").unwrap()
 
   // 测试字段访问或基本属性
-  assert_eq(tag.tag, "en-fr")
+  @debug.assert_eq(tag.tag, "en-fr")
 
   // 测试相等性：自身等于自身
-  assert_eq(tag, tag)
+  @debug.assert_eq(tag, tag)
 
   // 测试哈希一致性：自身哈希等于自身哈希
-  assert_eq(tag.hash(), tag.hash())
+  @debug.assert_eq(tag.hash(), tag.hash())
 
   // 如果有另一个相同的标签
   let tag2 = LanguageTag::parse("en-fr").unwrap()
-  assert_eq(tag, tag2)
-  assert_eq(tag.hash(), tag2.hash())
+  @debug.assert_eq(tag, tag2)
+  @debug.assert_eq(tag.hash(), tag2.hash())
 }
 
 ///|
@@ -593,7 +608,7 @@ test "extension_subtags iteration" {
     collected.push(subtag.to_string())
   }
 
-  assert_eq(collected, ["u", "co", "phonebk", "ca", "gregory"])
+  @debug.assert_eq(collected, ["u", "co", "phonebk", "ca", "gregory"])
 }
 
 ///|
@@ -604,11 +619,11 @@ test "extension_subtags empty" {
   let lang_tag = LanguageTag::parse(tag_str).unwrap()
 
   let mut count = 0
-  for subtag in lang_tag.extension_subtags().subtags {
+  for _subtag in lang_tag.extension_subtags().subtags {
     count += 1
   }
 
-  assert_eq(count, 0)
+  @debug.assert_eq(count, 0)
 }
 
 ///|
@@ -625,7 +640,7 @@ test "extension_subtags single extension intro" {
     collected.push(subtag.to_string())
   }
 
-  assert_eq(collected, ["u", "co"])
+  @debug.assert_eq(collected, ["u", "co"])
 }
 
 ///|
@@ -642,5 +657,5 @@ test "extension_subtags multiple extensions" {
   }
 
   // 期望: ["u", "co", "phonebk", "t", "it"]
-  assert_eq(collected, ["u", "co", "phonebk", "t", "it"])
+  @debug.assert_eq(collected, ["u", "co", "phonebk", "t", "it"])
 }

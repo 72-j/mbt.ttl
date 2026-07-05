@@ -2,7 +2,7 @@
 pub struct LanguageTag {
   tag : String
   positions : TagElementsPositions
-} derive(Default, Hash, Eq)
+} derive(Debug, Default, Hash, Eq)
 // 状态定义
 
 ///|
@@ -43,7 +43,7 @@ struct TagElementsPositions {
   region_end : Int
   variant_end : Int
   extension_end : Int
-} derive(Default, Hash, Eq)
+} derive(Debug, Default, Hash, Eq)
 
 ///|
 pub fn LanguageTag::parse(tag : StringView) -> Result[LanguageTag, TagParseErr] {
@@ -627,37 +627,37 @@ pub fn ExtensionsIterator::next(
 }
 
 ///|
-// fn classify_subtag(s : StringView) -> SubtagType {
-//   if s.is_empty() {
-//     return SubtagType::Invalid
-//   }
+pub fn classify_subtag(s : StringView) -> SubtagType {
+  if s.is_empty() {
+    return SubtagType::Invalid
+  }
 
-//   if s == "x" || s == "X" {
-//     return SubtagType::PrivateUseIntro
-//   }
-//   if s.length() == 1 && is_alphanumeric(s) {
-//     match StringView::get_char(s, 0) {
-//       Some(c) => return SubtagType::ExtensionIntro(c)
-//       None => return SubtagType::Invalid // 理论上不会执行
-//     }
-//   }
+  if s == "x" || s == "X" {
+    return SubtagType::PrivateUseIntro
+  }
+  if s.length() == 1 && is_alphanumeric(s) {
+    match StringView::get_char(s, 0) {
+      Some(c) => return SubtagType::ExtensionIntro(c)
+      None => return SubtagType::Invalid // 理论上不会执行
+    }
+  }
 
-//   let is_alpha = is_alphabetic(s)
-//   let is_num = is_numeric(s)
-//   let len = s.length()
+  let is_alpha = is_alphabetic(s)
+  let is_num = is_numeric(s)
+  let len = s.length()
 
-//   if is_alpha {
-//     return SubtagType::Alphabetic(len)
-//   }
-//   if is_num {
-//     return SubtagType::Numeric(len)
-//   }
-//   if is_alphanumeric(s) {
-//     return SubtagType::Alphanumeric(len)
-//   }
+  if is_alpha {
+    return SubtagType::Alphabetic(len)
+  }
+  if is_num {
+    return SubtagType::Numeric(len)
+  }
+  if is_alphanumeric(s) {
+    return SubtagType::Alphanumeric(len)
+  }
 
-//   SubtagType::Invalid
-// }
+  SubtagType::Invalid
+}
 
 ///|
 let grandfathereds : Array[StringView] = [

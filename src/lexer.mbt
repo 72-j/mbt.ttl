@@ -627,7 +627,7 @@ fn[T] Lexer::current_offset(self : Lexer[T]) -> Int {
 
 ///|
 /// 获取当前行号
-fn[T] Lexer::current_line(self : Lexer[T]) -> Int {
+pub fn[T] Lexer::current_line(self : Lexer[T]) -> Int {
   self.position.global_line
 }
 
@@ -641,7 +641,7 @@ fn[T] Lexer::current_column(self : Lexer[T]) -> Int {
 
 ///|
 /// 获取当前位置（完整信息）
-fn[T] Lexer::current_position(self : Lexer[T]) -> SourcePos {
+pub fn[T] Lexer::current_position(self : Lexer[T]) -> SourcePos {
   SourcePos::SourcePos(
     self.position.global_line,
     self.current_column(),
@@ -651,20 +651,20 @@ fn[T] Lexer::current_position(self : Lexer[T]) -> SourcePos {
 
 ///|
 /// 获取 token 范围
-fn[T] Lexer::current_token_range(self : Lexer[T]) -> Range {
+pub fn[T] Lexer::current_token_range(self : Lexer[T]) -> Range {
   Range::Range(self.current_token_start, self.current_token_end)
 }
 
 ///|
 /// 记录 token 起始
-fn[T] Lexer::record_token_start(self : Lexer[T]) -> Unit {
+pub fn[T] Lexer::record_token_start(self : Lexer[T]) -> Unit {
   // 使用 global_offset 确保位置在数据收缩后依然有效
   self.current_token_start = self.position.global_offset
 }
 
 ///|
 /// 记录 token 结束
-fn[T] Lexer::record_token_end(self : Lexer[T]) -> Unit {
+pub fn[T] Lexer::record_token_end(self : Lexer[T]) -> Unit {
   // 使用 global_offset 确保位置在数据收缩后依然有效
   self.current_token_end = self.position.global_offset
 }

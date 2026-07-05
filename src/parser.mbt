@@ -138,12 +138,12 @@ pub struct ReaderIterator[TR, RR] {
 }
 
 ///|
-pub async fn[RR : RuleRecognizer + StateMachine] ReaderIterator::next(
+pub async fn[RR : RuleRecognizer] ReaderIterator::next(
   self : ReaderIterator[RdfLexer, RR],
 ) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
     if self.parser.parse_next() is Some(result) {
-      debug("Parser::parse_next: \{result}")
+      debug("Parser::parse_next: \{@debug.to_string(result)}")
       return Some(
         result.map_err(e => {
           LexerError::SyntaxError("Syntax Error: \{e.to_string()}")

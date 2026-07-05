@@ -1,17 +1,10 @@
-///|
-// pub(all) enum TokenOrLineJump[T] {
-//   Token(T)
-//   LineJump
-// } derive(Eq, Debug)
-
-///|
 
 ///|
 /// 带位置的 N3Token
 pub struct LocatedN3Token(N3Token, Range) derive(Debug)
 
 ///|
-fn LocatedN3Token::into_token(self : Self) -> N3Token {
+pub fn LocatedN3Token::into_token(self : Self) -> N3Token {
   self.0
 }
 
@@ -45,7 +38,7 @@ fn LocatedTokenOrLineJump::into_token(
 }
 
 ///|
-fn LocatedTokenOrLineJump::range(self : LocatedTokenOrLineJump) -> Range? {
+pub fn LocatedTokenOrLineJump::range(self : LocatedTokenOrLineJump) -> Range? {
   match self {
     LocatedN3Token(t) => Some(t.1)
     LineJump(pos) => Some(Range::{ start: pos, end: pos })

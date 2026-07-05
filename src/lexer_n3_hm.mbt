@@ -80,8 +80,8 @@ fn N3Recognizer::handle_base_expect_iri_m(
     ) {
     match context {
       RdfContext::N3RecognizerContext(ctx) => {
-        let new_options = { ..ctx.lexer_options, base_iri: Some(Iri::Iri(iri)) }
-        let new_ctx = { ..ctx, lexer_options: new_options }
+        let new_options = { base_iri: Some(Iri::Iri(iri)) }
+        let _new_ctx = { ..ctx, lexer_options: new_options }
         // 注意：context 通常是通过 StateMachine 的 set_context 更新的，或者存储在 self 中
         // 这里假设我们需要更新 self 中的 context 或者返回新的 self 携带更新后的 context
         // 由于 signature 限制，我们只能返回 self。通常 context 是外部传入的。
@@ -1206,7 +1206,7 @@ fn N3Recognizer::handle_collection_possible_end_m(
   }
 
   let quad1 = self.quad(old, lwFIRST.as_n3term(), value)
-  let output1 = Some(RdfOut::N3Quad(quad1))
+  let _output1 = Some(RdfOut::N3Quad(quad1))
 
   if token
     is LocatedTokenOrLineJump::LocatedN3Token(

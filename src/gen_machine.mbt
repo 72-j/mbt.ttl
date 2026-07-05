@@ -58,7 +58,7 @@ impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
       // ✅ 新增调试：打印转换结果
       debug("step: transition successful")
       debug("step: new_state = \{new_state}")
-      debug("step: output received = \{output}")
+      debug("step: output received = \{@debug.to_string(output)}")
 
       let outputs = self.outputs
       if output is Some(o) {
@@ -144,7 +144,7 @@ impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
 }
 
 ///|
-fn[M : StateMachine] GenericStateMachine::run(
+pub fn[M : StateMachine] GenericStateMachine::run(
   self : GenericStateMachine[M],
   events : Array[Event],
 ) -> Result[Array[O], RuleRecognizerError]? {

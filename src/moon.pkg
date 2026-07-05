@@ -10,7 +10,6 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/core/quickcheck/splitmix",
   "moonbit-community/quickcheck_statemachine" @qs,
-  // "tonyfettes/utf8",
   "brickfrog/tempo",
   // "justjavac/itoa",
 }

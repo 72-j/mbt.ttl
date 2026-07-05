@@ -61,7 +61,7 @@ pub fn get_ntriples_slice_chunks(
 
 ///|
 /// 在指定范围内搜索换行符，返回换行符的绝对位置
-fn find_newline_in_range(bytes : BytesView, start : Int, end : Int) -> Int? {
+pub fn find_newline_in_range(bytes : BytesView, start : Int, end : Int) -> Int? {
   for i in start..<end {
     if bytes[i] == b'\n' {
       return Some(i)
@@ -207,7 +207,7 @@ pub fn get_turtle_slice_chunks(
 }
 
 ///|
-fn next_terminating_char(parser : TurtleParser, input : BytesView) -> Int? {
+pub fn next_terminating_char(parser : TurtleParser, input : BytesView) -> Int? {
   let mut input = input
   let mut total_pos = 0
 

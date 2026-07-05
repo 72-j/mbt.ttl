@@ -33,76 +33,6 @@ impl Show for TriGRecognizer with fn output(self, logger : &Logger) -> Unit {
       logger.write(", ")
     }
     logger.write(self.stack[i])
-    // match self.stack[i] {
-    //   TriGState::TriGDoc => logger.write("TriGDoc")
-    //   TriGState::ExpectDot => logger.write("ExpectDot")
-    //   TriGState::BaseExpectIri => logger.write("BaseExpectIri")
-    //   TriGState::PrefixExpectPrefix => logger.write("PrefixExpectPrefix")
-    //   TriGState::PrefixExpectIri(name~) =>
-    //     logger.write("PrefixExpectIri(\{name})")
-    //   TriGState::VersionExpectVersion => logger.write("VersionExpectVersion")
-    //   TriGState::TriplesOrGraph => logger.write("TriplesOrGraph")
-    //   TriGState::WrappedGraph => logger.write("WrappedGraph")
-    //   TriGState::WrappedGraphPossibleEnd =>
-    //     logger.write("WrappedGraphPossibleEnd")
-    //   TriGState::GraphName => logger.write("GraphName")
-    //   TriGState::ExpectAtKeyword => logger.write("ExpectAtKeyword")
-    //   TriGState::PredicateObjectList => logger.write("PredicateObjectList")
-    //   TriGState::PredicateObjectListEnd =>
-    //     logger.write("PredicateObjectListEnd")
-    //   TriGState::ObjectsList => logger.write("ObjectsList")
-    //   TriGState::Object => logger.write("Object")
-    //   TriGState::Verb => logger.write("Verb")
-    //   TriGState::LiteralPossibleSuffix(value~, emit~) =>
-    //     logger.write("LiteralPossibleSuffix(\{value} emit=\{emit})")
-    //   TriGState::SubjectCollectionBeginning =>
-    //     logger.write("SubjectCollectionBeginning")
-    //   TriGState::ObjectCollectionBeginning =>
-    //     logger.write("ObjectCollectionBeginning")
-    //   TriGState::WrappedGraphOrPredicateObjectList(_) =>
-    //     logger.write("WrappedGraphOrPredicateObjectList")
-    //   TriGState::AnnotationBlock(_) => logger.write("AnnotationBlock")
-    //   TriGState::Reifier(_) => logger.write("Reifier")
-    //   TriGState::ReifiedTripleSubject(_) => logger.write("ReifiedTripleSubject")
-    //   TriGState::ReifiedTripleObject(_) => logger.write("ReifiedTripleObject")
-    //   TriGState::ObjectReifiedTripleEnd(_) =>
-    //     logger.write("ObjectReifiedTripleEnd")
-    //   TriGState::SubjectReifiedTripleEnd =>
-    //     logger.write("SubjectReifiedTripleEnd")
-    //   TriGState::EndOfReifiedTripleBeforeReifier =>
-    //     logger.write("EndOfReifiedTripleBeforeReifier")
-    //   TriGState::MaybePredicateObjectList =>
-    //     logger.write("MaybePredicateObjectList")
-    //   TriGState::PredicateObjectListPossibleContinuation =>
-    //     logger.write("PredicateObjectListPossibleContinuation")
-    //   TriGState::ObjectBlankNodePropertyListCurrent =>
-    //     logger.write("ObjectBlankNodePropertyListCurrent")
-    //   TriGState::ObjectBlankNodePropertyListEnd =>
-    //     logger.write("ObjectBlankNodePropertyListEnd")
-    //   TriGState::ObjectCollectionPossibleEnd =>
-    //     logger.write("ObjectCollectionPossibleEnd")
-    //   TriGState::SubjectBlankNodePropertyListEnd =>
-    //     logger.write("SubjectBlankNodePropertyListEnd")
-    //   TriGState::SubjectBlankNodePropertyListAfter =>
-    //     logger.write("SubjectBlankNodePropertyListAfter")
-    //   TriGState::WrappedGraphBlankNodePropertyListCurrent =>
-    //     logger.write("WrappedGraphBlankNodePropertyListCurrent")
-    //   TriGState::Triples => logger.write("Triples")
-    //   TriGState::TriplesBlankNodePropertyListCurrent =>
-    //     logger.write("TriplesBlankNodePropertyListCurrent")
-    //   TriGState::GraphNameAnonEnd => logger.write("GraphNameAnonEnd")
-    //   TriGState::QuotedAnonEnd => logger.write("QuotedAnonEnd")
-    //   TriGState::AnnotationEnd(_) => logger.write("AnnotationEnd")
-    //   TriGState::LiteralExpectDatatype(..) =>
-    //     logger.write("LiteralExpectDatatype")
-    //   TriGState::TripleTermEnd(_) => logger.write("TripleTermEnd")
-    //   TriGState::SubjectCollectionPossibleEnd =>
-    //     logger.write("SubjectCollectionPossibleEnd")
-    // TriGState::CollectionElement => logger.write("CollectionElement")
-    // TriGState::CollectionEnd => logger.write("CollectionEnd")
-    // TriGState::InCollection => logger.write("InCollection")
-    //   // _ => logger.write("UnknownState")
-    // }
   }
   logger.write("]\n")
 
@@ -139,9 +69,9 @@ impl Show for TriGRecognizer with fn output(self, logger : &Logger) -> Unit {
     }
     match self.cur_object[i] {
       TermRef::NamedNodeRef(n) => logger.write(n.to_string())
-      TermRef::BlankNodeRef(b) => logger.write("_:b")
+      TermRef::BlankNodeRef(_b) => logger.write("_:b")
       TermRef::LiteralRef(l) => logger.write(l.to_string())
-      TermRef::TripleRef(t) => logger.write("<<...>>") // 简化显示，避免递归过深
+      TermRef::TripleRef(_t) => logger.write("<<...>>") // 简化显示，避免递归过深
     }
   }
   logger.write("]\n")
@@ -154,7 +84,7 @@ impl Show for TriGRecognizer with fn output(self, logger : &Logger) -> Unit {
     }
     match self.cur_reifier[i] {
       NamedOrBlankNodeRef::NamedNodeRef(n) => logger.write(n.to_string())
-      NamedOrBlankNodeRef::BlankNodeRef(b) => logger.write("_:b")
+      NamedOrBlankNodeRef::BlankNodeRef(_b) => logger.write("_:b")
     }
   }
   logger.write("]\n")
@@ -164,7 +94,7 @@ impl Show for TriGRecognizer with fn output(self, logger : &Logger) -> Unit {
   match self.cur_graph {
     GraphNameRef::DefaultGraph => logger.write("DEFAULT")
     GraphNameRef::NamedNodeRef(n) => logger.write(n.to_string())
-    GraphNameRef::BlankNodeRef(b) => logger.write("_:b")
+    GraphNameRef::BlankNodeRef(_b) => logger.write("_:b")
   }
   logger.write("\n")
 }
@@ -177,7 +107,7 @@ pub struct TriGRecognizerContext {
 }
 
 ///|
-fn TriGRecognizerContext::TriGRecognizerContext(
+pub fn TriGRecognizerContext::TriGRecognizerContext(
   lexer_options : LexerOptions,
   with_graph_name : Bool,
   prefixes : Map[String, Iri],
@@ -442,7 +372,6 @@ impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
     TriGState::VersionExpectVersion => logger.write("VersionExpectVersion")
     TriGState::WrappedGraph => logger.write("WrappedGraph")
     TriGState::GraphName => logger.write("GraphName")
-    TriGState::ExpectAtKeyword => logger.write("ExpectAtKeyword")
     TriGState::LiteralPossibleSuffix(..) =>
       logger.write("LiteralPossibleSuffix")
     TriGState::SubjectCollectionBeginning =>
@@ -478,14 +407,8 @@ impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
     TriGState::WrappedGraphBlankNodePropertyListCurrent =>
       logger.write("WrappedGraphBlankNodePropertyListCurrent")
     TriGState::Triples => logger.write("Triples")
-    TriGState::TriplesBlankNodePropertyListCurrent =>
-      logger.write("TriplesBlankNodePropertyListCurrent")
-    TriGState::GraphNameAnonEnd => logger.write("GraphNameAnonEnd")
     TriGState::QuotedAnonEnd => logger.write("QuotedAnonEnd")
     TriGState::AnnotationEnd(_) => logger.write("AnnotationEnd")
-    TriGState::LiteralExpectDatatype(..) =>
-      logger.write("LiteralExpectDatatype")
-    TriGState::TripleTermEnd(_) => logger.write("TripleTermEnd")
     TriGState::SubjectCollectionPossibleEnd =>
       logger.write("SubjectCollectionPossibleEnd")
     TriGState::WrappedGraphPossibleEnd =>
@@ -498,7 +421,7 @@ impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-fn TriGRecognizer::replace_top(
+pub fn TriGRecognizer::replace_top(
   stack : Array[TriGState],
   new_state : TriGState,
 ) -> Array[TriGState] {
@@ -508,7 +431,7 @@ fn TriGRecognizer::replace_top(
 }
 
 ///|
-fn TriGRecognizer::set_state(
+pub fn TriGRecognizer::set_state(
   self : TriGRecognizer,
   new_state : TriGState,
 ) -> TriGRecognizer {

@@ -19,62 +19,25 @@ impl Show for RdfState with fn to_string(self) -> String {
 ///|
 pub type TransitionResult[TR, S, O] = Result[(TR, S, O?), RuleRecognizerError]
 
-// 为 RdfState 实现 StateWrapper，使其成为统一的状态载体
-
-///|
-// impl StateWrapper for RdfState with fn to_str(self) -> String {
-//   match self {
-//     RdfState::TriGState(s) => s.to_string()
-//     RdfState::NQuadsState(s) => s.to_string()
-//     RdfState::N3State(s) => s.to_string()
-//   }
-// }
-
 ///|
 impl StateWrapper for RdfState with fn as_state_enum(self) -> RdfState {
   self
 }
 
 ///|
-// impl StateWrapper for RdfState with fn eq(self, other : RdfState) -> Bool {
-//   self == other
-// }
-
-// ///|
-// impl StateWrapper for RdfState with fn clone(self) -> RdfState {
-//   self
-// }
-
-// 为 TriGState 实现辅助方法以便转换
-
-///|
-// fn TriGState::as_state_enum(self : TriGState) -> RdfState {
-//   RdfState::TriGState(self)
-// }
-
-///|
-fn TriGState::to_str(self : TriGState) -> String {
+pub fn TriGState::to_str(self : TriGState) -> String {
   Show::to_string(self)
 }
 
-// ===== TriGRecognizer 实现 =====
-
 ///|
 impl StateMachine for TriGRecognizer with fn initial_state(
-  self : TriGRecognizer,
+  _self : TriGRecognizer,
 ) -> RdfState {
   RdfState::TriGState(TriGState::TriGDoc)
 }
 
 ///|
 impl StateMachine for TriGRecognizer with fn error_recovery_statemachine(self) -> TriGRecognizer {
-  // self.stack.clear()
-  // self.stack.push(TriGState::TriGDoc)
-  // self.cur_subject.clear()
-  // self.cur_predicate.clear()
-  // self.cur_object.clear()
-  // self.cur_reifier.clear()
-  // self.cur_graph = GraphName::DefaultGraph.as_ref()
   self.error_recovery_state()
 }
 
@@ -92,7 +55,7 @@ impl StateMachine for TriGRecognizer with fn step(self, event : Event) -> TriGRe
     self.context(),
   )
   match result {
-    Ok((new_machine, new_state, output)) => {
+    Ok((new_machine, new_state, _output)) => {
       let new_context = new_machine.context()
       let new_machine = new_machine.set_context(new_context)
       let new_machine = new_machine.set_current_state(new_state)
@@ -104,19 +67,6 @@ impl StateMachine for TriGRecognizer with fn step(self, event : Event) -> TriGRe
 
 ///|
 impl StateMachine for TriGRecognizer with fn reset(self) -> TriGRecognizer {
-  // 重置栈
-  // self.stack.clear()
-  // self.stack.push(TriGState::TriGDoc)
-
-  // // 清空数据
-  // self.cur_subject.clear()
-  // self.cur_predicate.clear()
-  // self.cur_object.clear()
-  // self.cur_reifier.clear()
-
-  // // 重置图
-  // self.cur_graph = GraphName::DefaultGraph.as_ref()
-
   self.error_recovery_state()
 }
 
@@ -252,26 +202,6 @@ impl StateMachine for TriGRecognizer with fn transition(
   }
 }
 
-// 新增或修改辅助方法，只返回元组，不处理 Result 包装
-
-///|
-// fn TriGRecognizer::process_transition_result_to_tuple(
-//   self : TriGRecognizer,
-//   current_state : TriGState,
-//   result : TransitionResult[TriGRecognizer, TriGState, RdfOut], // 这里的 TransitionResult 可能是指 handle_xxx 的返回类型？
-//   // 假设 handle_xxx 返回的是 Result<(TriGRecognizer, TriGState, RdfOut?), RuleRecognizerError>
-//   // 或者它们直接返回元组？看原代码 process_transition_result 接收的是 TransitionResult
-// ) -> (TriGRecognizer, RdfState, RdfOut?) {
-//   match result {
-//     Ok((new_self, new_state, output)) =>
-//       (new_self, new_state.as_state_enum(), output)
-//     Err(e) => {
-//       let new_self = self.add_error(e)
-//       (new_self, current_state.as_state_enum(), None)
-//     }
-//   }
-// }
-
 ///|
 impl StateMachine for TriGRecognizer with fn is_accepting(self : TriGRecognizer) -> Bool {
   self.current_state() == RdfState::TriGState(TriGState::TriGDoc) &&
@@ -279,7 +209,7 @@ impl StateMachine for TriGRecognizer with fn is_accepting(self : TriGRecognizer)
 }
 
 ///|
-impl StateMachine for TriGRecognizer with fn context(self : TriGRecognizer) -> RdfContext {
+impl StateMachine for TriGRecognizer with fn context(_self : TriGRecognizer) -> RdfContext {
   RdfContext::TriGRecognizerContext({
     lexer_options: LexerOptions::{ base_iri: None },
     with_graph_name: false,
@@ -306,9 +236,8 @@ impl StateMachine for TriGRecognizer with fn[ST : StateWrapper] set_current_stat
   match state {
     RdfState::TriGState(s) => {
       // 返回一个新的 TriGRecognizer 实例，其中 stack 被更新
-      // 假设有一个 with_stack 或类似的方法，或者直接构造新实例
-      // 这里简化处理，实际需要根据 TriGRecognizer 的结构体定义来更新
-      let new_stack = self.stack.clone()
+
+      let new_stack = self.stack
       new_stack.push(s)
       { ..self, stack: new_stack }
     }
@@ -316,10 +245,8 @@ impl StateMachine for TriGRecognizer with fn[ST : StateWrapper] set_current_stat
   }
 }
 
-// 辅助方法：统一处理 TransitionResult 并返回更新后的 Self
-
 ///|
-fn TriGRecognizer::process_transition_result(
+pub fn TriGRecognizer::process_transition_result(
   self : TriGRecognizer,
   current_state : TriGState,
   result : TransitionResult[TriGRecognizer, TriGState, RdfOut],
@@ -339,7 +266,7 @@ fn TriGRecognizer::add_error(
   self : TriGRecognizer,
   err : RuleRecognizerError,
 ) -> TriGRecognizer {
-  let new_errors = self.errors.clone()
+  let new_errors = self.errors
   new_errors.push(err)
   { ..self, errors: new_errors }
 }

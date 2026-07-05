@@ -22,10 +22,10 @@ test "parse basic quad" {
 ///|
 test "parser lenient mode" {
   let parser_strict = NQuadsParser::new()
-  assert_eq(parser_strict.lenient, false)
+  @debug.assert_eq(parser_strict.lenient, false)
 
   let parser_lenient = NQuadsParser::new().lenient()
-  assert_eq(parser_lenient.lenient, true)
+  @debug.assert_eq(parser_lenient.lenient, true)
 }
 
 ///|

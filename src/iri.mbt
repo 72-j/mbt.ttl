@@ -602,10 +602,7 @@ pub fn Iri::remove_dot_segments(_self : Iri, path : StringView) -> String {
 
   if is_absolute {
     // 确保绝对路径以 / 开头
-    // 如果 join 后的结果不以 / 开头（例如 segments 是 ["", "a"] -> "/a" 或 ["a"] -> "a"）
-    // split 行为决定了一切。假设 split("/") on "/a/b" 产生 ["", "a", "b"]
-    // join 后变成 "/a/b"。如果 pop 掉 "a", 变成 ["", "b"] -> "/b"。
-    // 如果所有段都被 pop 掉，剩下 [""] -> ""。此时应返回 "/"
+
     if result == "" {
       return "/"
     } else if !result.has_prefix("/") {
@@ -650,8 +647,7 @@ pub fn IriRef::resolve(
   // 1. 解析参考 IRI (Relative Reference)
   let ref_parser = Iri::new(ref_iri_str)
   // let ref_parser = IriRef::of_ref(ref_parser)
-  // 注意：parse 会修改内部 state，所以我们需要一个解析后的副本或者确保后续只读
-  // 由于 parse 返回 Result[Iri, ...]，我们直接使用解析后的对象
+
   let parsed_ref = ref_parser.parse_unchecked()
   // 2. 如果参考 IRI 是绝对的，直接返回它
   // 利用 trait 方法 is_absolute
@@ -751,28 +747,6 @@ pub fn IriRef::resolve(
       }
   }
 
-  // Query: 如果参考 IRI 有 query，使用它；否则如果参考 IRI 有路径或 authority 或 scheme，则无 query；否则使用 Base query
-  // 简化逻辑：RFC 3986 规定，如果 ref 有 query，用 ref 的；如果 ref 没有 query 但有其他非空部分（scheme/auth/path），则 query 为空；只有当 ref 几乎为空时才继承 base query? 
-  // 实际上 RFC 说: If the URI reference defines a query component, then set the URI's query to that component; otherwise, set the URI's query to the base URI's query (if any).
-  // 但是，如果 ref 定义了 path 或 authority 或 scheme，通常意味着它是一个新的资源定位，query 应该重置，除非显式指定。
-  // 标准行为：
-  // let target_query = match ref_query {
-  //   Some(q) => Some(q)
-  //   None => {
-  //     // 如果 ref 有 scheme, authority, 或 path，则 query 为 None (除非 ref 显式给了 ?)
-  //     // 这里 ref_query 是 None 意味着没给 ?
-  //     if ref_scheme != None || ref_authority != None || ref_path != None {
-  //       None
-  //     } else {
-  //       // ref 什么都没给，继承 base
-  //       parsed_base.query()
-  //     }
-  //   }
-  // }
-
-  // 更严格的 RFC 3986 Section 5.2.2:
-  // "If the URI reference defines a query component, then set the URI's query to that component; otherwise, set the URI's query to the base URI's query (if any)."
-  // 这里的 "defines" 指的是语法上存在。在我们的 trait 中，query() 返回 None 表示不存在。
   let target_query = match ref_query {
     Some(q) => Some(q)
     None => parsed_base.query()
@@ -831,8 +805,6 @@ pub fn IriRef::resolve(
   // 7. 返回新的 Iri 对象
   let final_parser = Iri::new(final_str)
   // let final_parser = IriRef::of_ref(final_parser)
-  // 再次解析以确保内部状态一致，或者直接返回未解析但字符串正确的对象？
-  // 通常 resolve 应该返回一个有效的 Iri 对象，所以再次 parse 是安全的
   final_parser.parse()
 }
 
@@ -845,7 +817,6 @@ pub fn IriRef::resolve_unchecked(
   // 1. 解析参考 IRI (Relative Reference) - Unchecked
   let ref_parser = Iri::new(ref_iri_str)
   // let ref_parser = IriRef::of_ref(ref_parser)
-  // 忽略错误，如果解析失败，parsed_ref 将是一个处于初始状态或部分解析状态的对象
   let parsed_ref = ref_parser.parse_unchecked()
 
   // 2. 如果参考 IRI 是绝对的，直接返回它 (Unchecked)
@@ -1039,16 +1010,12 @@ pub fn IriRef::resolve_into(
               "\{base_prefix}\{rel_path}"
             }
             None =>
-              // 基础路径没有 /，完全替换？或者根据 RFC 3986，如果基础路径没有 authority，行为可能不同。
-              // 简单实现：如果基础路径不包含 /，则相对路径替换它，除非基础路径为空
               if base_path.is_empty() {
                 rel_path
               } else if base_authority is Some(_) && base_path.is_empty() {
                 "/\{rel_path}"
               } else {
                 // 移除基础路径的最后一段
-                // 注意：原代码这里逻辑有点重复，如果 last_slash_idx 是 None，说明没有 /
-                // 如果 base_path 不为空且没有 /，通常意味着 base_path 是一个文件名，应该被替换
                 rel_path
               }
           }
@@ -1093,8 +1060,6 @@ pub fn IriRef::resolve_into(
       buffer.write_string(f)
     }
     None =>
-      // 同样，如果相对引用没有 fragment，保留基础的？
-      // RFC 5.2.2: "If the reference's fragment component is defined, it is used; otherwise, the base's is used."
       if parsed_relative.fragment() is None(_) {
         match self.fragment() {
           Some(f) => {
@@ -1162,15 +1127,8 @@ pub fn IriRef::relativize(
       } else {
         base_path.length()
       }
-      // 如果 base_path 不是空的且不以 / 结尾，我们需要跳过那个 /
-      // 但上面的 is_prefix_valid 检查确保了如果 base_path 不空且非 / 结尾，target 必须有 /
 
       let rel_p = target_path[suffix_start:]
-
-      // 如果 base_path 是 /a/b 且 target 是 /a/b/c，suffix_start 是 4 (/a/b)，rel_p 是 /c? 
-      // 不，StringView slice 是字节索引还是字符索引？假设是标准的 substring。
-      // 如果 base_path = "/a/b", len=4. target="/a/b/c".
-      // target[4:] is "/c". We want "c".
 
       if !base_path.is_empty() && !base_path.has_suffix("/") {
         // 跳过前面的 /
@@ -1187,9 +1145,6 @@ pub fn IriRef::relativize(
       return IriRef::parse(target)
     }
   } else {
-    // 路径没有公共前缀，或者目标不在基础之下
-    // 可以尝试计算 ../ 但为了简单起见，如果不在子目录下，通常返回绝对路径
-    // 或者实现简单的 ../ 逻辑
 
     // 简单实现：返回绝对路径
     return IriRef::parse(target)
@@ -1203,8 +1158,7 @@ pub fn IriRef::relativize(
     result.write_string(relative_path)
   } else {
     // 如果路径相同，检查 query 和 fragment
-    // 如果也没有 query 和 fragment，结果是空字符串？
-    // 或者如果是 same document reference, 可能是 "" 或 "#fragment"
+
     result.write_string("")
   }
 
@@ -1219,9 +1173,7 @@ pub fn IriRef::relativize(
         result.write_string(q)
       }
       None => ()
-      // 如果目标没有 query，但基础有，相对引用中不包含 query 意味着继承？
-      // 不，相对引用中省略 query 意味着解析时保留基础的 query。
-      // 所以如果我们要消除基础的 query，我们需要显式写 ? 吗？
+
       // RFC 3986: If the reference's query component is empty, it means the resulting URI has no query.
       // But our Option<String> doesn't distinguish empty vs undefined easily.
       // Assuming None means undefined (inherit), Some("") means empty.
@@ -1249,7 +1201,173 @@ pub fn IriRef::relativize(
   let final_str = result.to_string()
 
   let final_iri = Iri::new(final_str)
-  // 如果结果是空的，且没有 query/fragment，它可能是一个空字符串。
   // parse 空字符串应该返回一个有效的相对 IriRef。
   IriRef::parse(final_iri)
+}
+
+
+
+///|
+pub impl IriComponents for Iri with fn query(self : Iri) -> String? {
+  if self.state.positions.query_end > self.state.positions.path_end + 1 {
+    Some(
+      self.base_iri
+      .sub(
+        start=self.state.positions.path_end + 1,
+        end=self.state.positions.query_end,
+      )
+      .to_owned(),
+    )
+  } else {
+    None
+  }
+}
+
+///|
+pub impl IriComponents for Iri with fn is_absolute(self : Iri) -> Bool {
+  self.state.positions.scheme_end > 0
+}
+
+///|
+pub impl IriComponents for Iri with fn scheme(self : Iri) -> String? {
+  if self.state.positions.scheme_end > 0 {
+    Some(
+      self.base_iri
+      .sub(start=0, end=self.state.positions.scheme_end - 1)
+      .to_owned(),
+    )
+  } else {
+    None
+  }
+}
+
+///|
+pub impl IriComponents for Iri with fn authority(self : Iri) -> String? {
+  if self.state.positions.authority_end > self.state.positions.scheme_end + 2 {
+    Some(
+      self.base_iri
+      .sub(
+        start=self.state.positions.scheme_end + 2,
+        end=self.state.positions.authority_end,
+      )
+      .to_owned(),
+    )
+  } else {
+    None
+  }
+}
+
+///|
+pub impl IriComponents for Iri with fn path(self : Iri) -> String? {
+  Some(
+    self.base_iri
+    .sub(
+      start=self.state.positions.authority_end,
+      end=self.state.positions.path_end,
+    )
+    .to_owned(),
+  )
+}
+
+///|
+pub impl IriComponents for Iri with fn fragment(self : Iri) -> String? {
+  if self.state.positions.query_end + 1 < self.base_iri.length() { // 简单判断是否有 fragment
+    if self.state.positions.query_end + 1 > 0 {
+      Some(
+        self.base_iri
+        .sub(
+          start=self.state.positions.query_end + 1,
+          end=self.base_iri.length(),
+        )
+        .to_owned(),
+      )
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+pub impl IriComponents for IriRef with fn query(self : IriRef) -> String? {
+  if self.val.state.positions.query_end > self.val.state.positions.path_end + 1 {
+    Some(
+      self.val.base_iri
+      .sub(
+        start=self.val.state.positions.path_end + 1,
+        end=self.val.state.positions.query_end,
+      )
+      .to_owned(),
+    )
+  } else {
+    None
+  }
+}
+
+///|
+pub impl IriComponents for IriRef with fn is_absolute(self : IriRef) -> Bool {
+  self.val.state.positions.scheme_end > 0
+}
+
+///|
+pub impl IriComponents for IriRef with fn scheme(self : IriRef) -> String? {
+  if self.val.state.positions.scheme_end > 0 {
+    Some(
+      self.val.base_iri
+      .sub(start=0, end=self.val.state.positions.scheme_end - 1)
+      .to_owned(),
+    )
+  } else {
+    None
+  }
+}
+
+///|
+pub impl IriComponents for IriRef with fn authority(self : IriRef) -> String? {
+  if self.val.state.positions.authority_end >
+    self.val.state.positions.scheme_end + 2 {
+    Some(
+      self.val.base_iri
+      .sub(
+        start=self.val.state.positions.scheme_end + 2,
+        end=self.val.state.positions.authority_end,
+      )
+      .to_owned(),
+    )
+  } else {
+    None
+  }
+}
+
+///|
+pub impl IriComponents for IriRef with fn path(self : IriRef) -> String? {
+  Some(
+    self.val.base_iri
+    .sub(
+      start=self.val.state.positions.authority_end,
+      end=self.val.state.positions.path_end,
+    )
+    .to_owned(),
+  )
+}
+
+///|
+pub impl IriComponents for IriRef with fn fragment(self : IriRef) -> String? {
+  if self.val.state.positions.query_end + 1 < self.val.base_iri.length() { // 简单判断是否有 fragment
+    if self.val.state.positions.query_end + 1 > 0 {
+      Some(
+        self.val.base_iri
+        .sub(
+          start=self.val.state.positions.query_end + 1,
+          end=self.val.base_iri.length(),
+        )
+        .to_owned(),
+      )
+    } else {
+      None
+    }
+  } else {
+    None
+  }
 }

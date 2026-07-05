@@ -118,8 +118,8 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot(
   self : NQuadsRecognizer,
   value : String,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
-  results : Array[RdfOut],
+  _ctx : NQuadsRecognizerContext,
+  _results : Array[RdfOut],
 ) -> NQuadsRecognizer {
   self.debug_logger.info("Entering ExpectLiteralAnnotation... value: \{value}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -305,8 +305,8 @@ fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(
 fn NQuadsRecognizer::handle_expect_dot(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
-  results : Array[RdfOut],
+  _ctx : NQuadsRecognizerContext,
+  _results : Array[RdfOut],
 ) -> NQuadsRecognizer {
   self.debug_logger.info("Entering ExpectDot with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -336,8 +336,8 @@ fn NQuadsRecognizer::handle_expect_dot(
 fn NQuadsRecognizer::handle_expect_line_jump(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
-  results : Array[RdfOut],
+  _ctx : NQuadsRecognizerContext,
+  _results : Array[RdfOut],
 ) -> NQuadsRecognizer {
   self.debug_logger.info("Entering ExpectLineJump with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -357,8 +357,8 @@ fn NQuadsRecognizer::handle_expect_line_jump(
 fn NQuadsRecognizer::handle_after_quoted_triple(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
-  results : Array[RdfOut],
+  _ctx : NQuadsRecognizerContext,
+  _results : Array[RdfOut],
 ) -> NQuadsRecognizer {
   self.debug_logger.info("Entering AfterQuotedTriple with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -392,8 +392,8 @@ fn NQuadsRecognizer::handle_after_quoted_triple(
 fn NQuadsRecognizer::handle_recover_to_line_jump(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
-  results : Array[RdfOut],
+  _ctx : NQuadsRecognizerContext,
+  _results : Array[RdfOut],
 ) -> NQuadsRecognizer {
   self.debug_logger.info("Entering RecoverToLineJump with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")

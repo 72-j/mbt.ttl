@@ -112,16 +112,16 @@ fn is_ascii_alphanumeric(c : Char) -> Bool {
 }
 
 ///|
-fn memchr2(c1 : Byte, c2 : Byte, data : BytesView) -> Int? {
-  // 实现逻辑：遍历 data，返回第一个匹配 c1 或 c2 的索引
-  for i in 0..<data.length() {
-    let b = data.at(i)
-    if b == c1 || b == c2 {
-      return Some(i)
-    }
-  }
-  None
-}
+// fn memchr2(c1 : Byte, c2 : Byte, data : BytesView) -> Int? {
+//   // 实现逻辑：遍历 data，返回第一个匹配 c1 或 c2 的索引
+//   for i in 0..<data.length() {
+//     let b = data.at(i)
+//     if b == c1 || b == c2 {
+//       return Some(i)
+//     }
+//   }
+//   None
+// }
 
 ///|
 pub fn array_view_memchr(target : Byte, data : ArrayView[Byte]) -> Int? {
@@ -146,34 +146,34 @@ pub fn array_view_memchr2(c1 : Byte, c2 : Byte, data : ArrayView[Byte]) -> Int? 
 }
 
 ///|
-fn char_to_utf8_bytes(c : Char) -> ArrayView[Byte] {
-  let codepoint = Char::to_int(c)
-  if codepoint < 0x80 {
-    // 1 byte: 0xxxxxxx
-    [Int::to_byte(codepoint)]
-  } else if codepoint < 0x800 {
-    // 2 bytes: 110xxxxx 10xxxxxx
-    [
-      Int::to_byte(0xC0 | (codepoint >> 6)),
-      Int::to_byte(0x80 | (codepoint & 0x3F)),
-    ]
-  } else if codepoint < 0x10000 {
-    // 3 bytes: 1110xxxx 10xxxxxx 10xxxxxx
-    [
-      Int::to_byte(0xE0 | (codepoint >> 12)),
-      Int::to_byte(0x80 | ((codepoint >> 6) & 0x3F)),
-      Int::to_byte(0x80 | (codepoint & 0x3F)),
-    ]
-  } else {
-    // 4 bytes: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-    [
-      Int::to_byte(0xF0 | (codepoint >> 18)),
-      Int::to_byte(0x80 | ((codepoint >> 12) & 0x3F)),
-      Int::to_byte(0x80 | ((codepoint >> 6) & 0x3F)),
-      Int::to_byte(0x80 | (codepoint & 0x3F)),
-    ]
-  }
-}
+// fn char_to_utf8_bytes(c : Char) -> ArrayView[Byte] {
+//   let codepoint = Char::to_int(c)
+//   if codepoint < 0x80 {
+//     // 1 byte: 0xxxxxxx
+//     [Int::to_byte(codepoint)]
+//   } else if codepoint < 0x800 {
+//     // 2 bytes: 110xxxxx 10xxxxxx
+//     [
+//       Int::to_byte(0xC0 | (codepoint >> 6)),
+//       Int::to_byte(0x80 | (codepoint & 0x3F)),
+//     ]
+//   } else if codepoint < 0x10000 {
+//     // 3 bytes: 1110xxxx 10xxxxxx 10xxxxxx
+//     [
+//       Int::to_byte(0xE0 | (codepoint >> 12)),
+//       Int::to_byte(0x80 | ((codepoint >> 6) & 0x3F)),
+//       Int::to_byte(0x80 | (codepoint & 0x3F)),
+//     ]
+//   } else {
+//     // 4 bytes: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+//     [
+//       Int::to_byte(0xF0 | (codepoint >> 18)),
+//       Int::to_byte(0x80 | ((codepoint >> 12) & 0x3F)),
+//       Int::to_byte(0x80 | ((codepoint >> 6) & 0x3F)),
+//       Int::to_byte(0x80 | (codepoint & 0x3F)),
+//     ]
+//   }
+// }
 
 ///|
 fn memchr(target : Byte, data : BytesView) -> Int? {

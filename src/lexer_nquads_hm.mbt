@@ -8,7 +8,7 @@
 fn NQuadsRecognizer::handle_expect_subject_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
+  _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectSubject with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -37,7 +37,7 @@ fn NQuadsRecognizer::handle_expect_subject_m(
 fn NQuadsRecognizer::handle_expect_predicate_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
+  _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectPredicate with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -58,7 +58,7 @@ fn NQuadsRecognizer::handle_expect_predicate_m(
 fn NQuadsRecognizer::handle_expected_object_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
+  _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectedObject with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -112,7 +112,7 @@ fn NQuadsRecognizer::handle_expected_object_m(
 fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
+  _ctx : NQuadsRecognizerContext,
   value : String,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   // 获取之前存储的 literal value
@@ -132,14 +132,12 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
         Some(d) => d
         None => BaseDirection::Ltr
       }
-      let lang_tag = try
-        LanguageTag::from_str(language.to_lower()) |> Ok
-      catch {
+      let lang_tag = LanguageTag::from_str(language.to_lower()) catch {
         _e => return Err(RuleRecognizerError::InvalidLanguageTag) // 简化错误处理
       }
 
       match lang_tag {
-        Ok(lang_tag) => {
+        lang_tag => {
           let new_self = self
           let literal = LiteralRef::new_directional_language_tagged_literal_unchecked(
             value, lang_tag, dir,
@@ -154,19 +152,17 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
             ),
           )
         }
-        Err(_e) => Err(RuleRecognizerError::InvalidLanguageTag)
+        // Err(_e) => Err(RuleRecognizerError::InvalidLanguageTag)
       }
     }
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::LangTag(language~, direction~), _)
     ) if direction is None => {
-      let lang_tag = try
-        LanguageTag::from_str(language.to_lower()) |> Ok
-      catch {
+      let lang_tag = LanguageTag::from_str(language.to_lower()) catch {
         _e => return Err(RuleRecognizerError::InvalidLanguageTag)
       }
       match lang_tag {
-        Ok(lang_tag) => {
+        lang_tag => {
           let new_self = self
           let literal = TermRef::LiteralRef(
             Literal::new_language_tagged_literal_unchecked(
@@ -184,7 +180,7 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
             ),
           )
         }
-        Err(_e) => Err(RuleRecognizerError::InvalidLanguageTag)
+        // Err(_e) => Err(RuleRecognizerError::InvalidLanguageTag)
       }
     }
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -207,10 +203,10 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
 // ===== State: ExpectLiteralDatatype =====
 
 ///|
-fn NQuadsRecognizer::handle_expect_literal_datatype_m(
+pub fn NQuadsRecognizer::handle_expect_literal_datatype_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
+  _ctx : NQuadsRecognizerContext,
   value : String,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   // let value = match self.temp_literal_value {
@@ -256,7 +252,7 @@ fn NQuadsRecognizer::handle_expect_literal_datatype_m(
 // ===== State: ExpectPossibleGraphOrEndOfQuotedTriple =====
 
 ///|
-fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
+pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   ctx : NQuadsRecognizerContext,
@@ -335,7 +331,7 @@ fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
 fn NQuadsRecognizer::handle_expect_dot_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
+  _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectDot with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -357,10 +353,10 @@ fn NQuadsRecognizer::handle_expect_dot_m(
 // ===== State: ExpectLineJump =====
 
 ///|
-fn NQuadsRecognizer::handle_expect_line_jump_m(
+pub fn NQuadsRecognizer::handle_expect_line_jump_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
+  _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectLineJump with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -378,10 +374,10 @@ fn NQuadsRecognizer::handle_expect_line_jump_m(
 // ===== State: AfterQuotedTriple =====
 
 ///|
-fn NQuadsRecognizer::handle_after_quoted_triple_m(
+pub fn NQuadsRecognizer::handle_after_quoted_triple_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
+  _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering AfterQuotedTriple with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -429,10 +425,10 @@ fn NQuadsRecognizer::handle_after_quoted_triple_m(
 // ===== State: RecoverToLineJump =====
 
 ///|
-fn NQuadsRecognizer::handle_recover_to_line_jump_m(
+pub fn NQuadsRecognizer::handle_recover_to_line_jump_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  ctx : NQuadsRecognizerContext,
+  _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering RecoverToLineJump with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")

@@ -711,6 +711,14 @@ pub struct TryFromTermError {
 } derive(Debug)
 
 ///|
+pub fn TryFromTermError::TryFromTermError(
+  term : Term,
+  target : String,
+) -> TryFromTermError {
+  TryFromTermError::{ term, target }
+}
+
+///|
 pub fn TryFromTermError::as_term(self : TryFromTermError) -> Term {
   self.term
 }

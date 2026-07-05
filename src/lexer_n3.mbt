@@ -24,7 +24,7 @@ struct N3RecognizerContext {
 }
 
 ///|
-fn N3RecognizerContext::as_ctx(self : N3RecognizerContext) -> RdfContext {
+pub fn N3RecognizerContext::as_ctx(self : N3RecognizerContext) -> RdfContext {
   RdfContext::N3RecognizerContext(self)
 }
 

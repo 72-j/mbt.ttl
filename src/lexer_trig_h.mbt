@@ -8,7 +8,7 @@
 fn TriGRecognizer::handle_object_collection_beginning(
   self : TriGRecognizer,
   token : LocatedTokenOrLineJump,
-  context : TriGRecognizerContext,
+  _context : TriGRecognizerContext,
   results : Array[RdfOut],
 ) -> TriGRecognizer {
   match token {
@@ -1400,7 +1400,7 @@ fn TriGRecognizer::handle_verb(
   self : TriGRecognizer,
   token : LocatedTokenOrLineJump,
   context : TriGRecognizerContext,
-  results : Array[RdfOut],
+  _results : Array[RdfOut],
 ) -> TriGRecognizer {
   self.debug_logger.info("Verb: handling token: \{token}")
 

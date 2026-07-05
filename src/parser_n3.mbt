@@ -422,7 +422,7 @@ pub fn[RL] LowLevelN3Parser::base_iri(self : LowLevelN3Parser[RL]) -> String? {
 }
 
 ///|
-enum Predicate {
+pub enum Predicate {
   Regular(N3Term)
   Inverted(N3Term)
 }

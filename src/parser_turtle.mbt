@@ -410,7 +410,7 @@ pub struct AsyncWriterTurtleSerializer[W] {
 }
 
 ///|
-pub async fn[W] AsyncWriterTurtleSerializer::serialize_triple(
+pub fn[W] AsyncWriterTurtleSerializer::serialize_triple(
   self : AsyncWriterTurtleSerializer[W],
   t : Triple,
 ) -> Result[String, Unit] {

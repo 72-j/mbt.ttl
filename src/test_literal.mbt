@@ -2,13 +2,13 @@
 /// Tests for Literal creation
 test "simple literal creation" {
   let lit = Literal::new_simple_literal("hello")
-  assert_eq(lit.value(), "hello")
+  @debug.assert_eq(lit.value(), "hello")
 }
 
 ///|
 test "simple literal with empty string" {
   let lit = Literal::new_simple_literal("")
-  assert_eq(lit.value(), "")
+  @debug.assert_eq(lit.value(), "")
 }
 
 ///|
@@ -17,8 +17,8 @@ test "typed literal with non-string datatype" {
     VarDataType::TrueVar,
     NamedNodeRef::NamedNodeRef(lwBOOLEAN.to_string()),
   )
-  assert_eq(lit.into_owned().value(), "true")
-  // assert_eq(lit.datatype().to_string(), lwBOOLEAN.to_string())
+  @debug.assert_eq(lit.into_owned().value(), "true")
+  // @debug.assert_eq(lit.datatype().to_string(), lwBOOLEAN.to_string())
 }
 
 ///|
@@ -28,7 +28,7 @@ test "typed literal with string datatype normalizes to simple" {
     NamedNodeRef::NamedNodeRef(lwSTRING.to_string()),
   )
   // Should be normalized to simple literal since xsd:string is the default
-  assert_eq(lit.into_owned().value(), "hello")
+  @debug.assert_eq(lit.into_owned().value(), "hello")
 }
 
 ///|
@@ -37,8 +37,8 @@ test "typed literal with integer datatype" {
     VarDataType::IntVar("42"),
     NamedNodeRef::NamedNodeRef(lwINTEGER.to_string()),
   )
-  assert_eq(lit.into_owned().value(), "42")
-  assert_eq(lit.datatype().to_string(), lwINTEGER.to_string())
+  @debug.assert_eq(lit.into_owned().value(), "42")
+  @debug.assert_eq(lit.datatype().to_string(), lwINTEGER.to_string())
 }
 
 ///|
@@ -46,7 +46,7 @@ test "typed literal with integer datatype" {
 test "language-tagged literal creation" {
   let lit = Literal::new_language_tagged_literal("hello", "en")
   match lit {
-    Ok(l) => assert_eq(l.value(), "hello")
+    Ok(l) => @debug.assert_eq(l.value(), "hello")
     Err(e) => fail("Failed to create language-tagged literal: \{e}")
   }
 }
@@ -55,7 +55,7 @@ test "language-tagged literal creation" {
 test "language-tagged literal case normalization" {
   let lit = Literal::new_language_tagged_literal("hello", "EN")
   match lit {
-    Ok(l) => assert_eq(l.value(), "hello")
+    Ok(l) => @debug.assert_eq(l.value(), "hello")
     Err(e) => fail("Failed to create language-tagged literal: \{e}")
   }
 }
@@ -66,7 +66,7 @@ test "language-tagged literal language extraction" {
   match lit {
     Ok(l) =>
       match l.language() {
-        Some(lang) => assert_eq(lang, "en")
+        Some(lang) => @debug.assert_eq(lang, "en")
         None => fail("Expected language 'en', got None")
       }
     Err(_) => fail("Failed")
@@ -85,12 +85,12 @@ test "language-tagged literal invalid tag" {
 ///|
 test "language-tagged literal without direction" {
   let lit = LiteralRef::new_language_tagged_literal_unchecked("hello", "en")
-  assert_eq(lit.into_owned().value(), "hello")
+  @debug.assert_eq(lit.into_owned().value(), "hello")
   match lit.language() {
-    Some(lang) => assert_eq(lang, "en")
+    Some(lang) => @debug.assert_eq(lang, "en")
     None => fail("Expected language 'en', got None")
   }
-  assert_eq(lit.direction(), None)
+  @debug.assert_eq(lit.direction(), None)
 }
 
 // Tests for directional language-tagged literals
@@ -104,9 +104,9 @@ test "directional language-tagged literal ltr" {
   )
   match lit {
     Ok(l) => {
-      assert_eq(l.value(), "hello")
-      assert_eq(l.language(), Some("en"))
-      assert_eq(l.direction(), Some(BaseDirection::Ltr))
+      @debug.assert_eq(l.value(), "hello")
+      @debug.assert_eq(l.language(), Some("en"))
+      @debug.assert_eq(l.direction(), Some(BaseDirection::Ltr))
     }
     Err(e) => fail("Failed: \{e}")
   }
@@ -121,9 +121,9 @@ test "directional language-tagged literal rtl" {
   )
   match lit {
     Ok(l) => {
-      assert_eq(l.value(), "مرحبا")
-      assert_eq(l.language(), Some("ar"))
-      assert_eq(l.direction(), Some(BaseDirection::Rtl))
+      @debug.assert_eq(l.value(), "مرحبا")
+      @debug.assert_eq(l.language(), Some("ar"))
+      @debug.assert_eq(l.direction(), Some(BaseDirection::Rtl))
     }
     Err(e) => fail("Failed: \{e}")
   }
@@ -137,16 +137,16 @@ test "directional language-tagged literal unchecked" {
     tag,
     BaseDirection::Ltr,
   )
-  assert_eq(lit.value(), "hello")
-  assert_eq(lit.language(), Some("en"))
-  assert_eq(lit.direction(), Some(BaseDirection::Ltr))
+  @debug.assert_eq(lit.value(), "hello")
+  @debug.assert_eq(lit.language(), Some("en"))
+  @debug.assert_eq(lit.direction(), Some(BaseDirection::Ltr))
 }
 
 ///|
 /// Tests for value extraction
 test "literal value extraction for simple literal" {
   let lit = Literal::new_simple_literal("test")
-  assert_eq(lit.value(), "test")
+  @debug.assert_eq(lit.value(), "test")
 }
 
 ///|
@@ -155,20 +155,20 @@ test "literal value extraction for typed literal" {
     VarDataType::IntVar("123"),
     NamedNodeRef::NamedNodeRef(lwINTEGER.to_string()),
   )
-  assert_eq(lit.into_owned().value(), "123")
+  @debug.assert_eq(lit.into_owned().value(), "123")
 }
 
 ///|
 test "literal value extraction for language-tagged" {
   let lit = Literal::new_language_tagged_literal("test", "en").unwrap()
-  assert_eq(lit.value(), "test")
+  @debug.assert_eq(lit.value(), "test")
 }
 
 ///|
 /// Tests for datatype extraction
 test "datatype for simple literal" {
   let lit = Literal::new_simple_literal("test")
-  assert_eq(lit.datatype(), lwSTRING)
+  @debug.assert_eq(lit.datatype(), lwSTRING)
 }
 
 ///|
@@ -177,13 +177,13 @@ test "datatype for typed literal" {
     VarDataType::TrueVar,
     NamedNodeRef::NamedNodeRef(lwBOOLEAN.to_string()),
   )
-  assert_eq(lit.datatype(), lwBOOLEAN)
+  @debug.assert_eq(lit.datatype(), lwBOOLEAN)
 }
 
 ///|
 test "datatype for language-tagged literal" {
   let lit = Literal::new_language_tagged_literal("test", "en").unwrap()
-  assert_eq(lit.datatype(), lwLANG_STRING)
+  @debug.assert_eq(lit.datatype(), lwLANG_STRING)
 }
 
 ///|
@@ -194,7 +194,7 @@ test "datatype for directional language-tagged literal" {
     tag,
     BaseDirection::Ltr,
   )
-  assert_eq(lit.datatype(), lwDIR_LANG_STRING)
+  @debug.assert_eq(lit.datatype(), lwDIR_LANG_STRING)
 }
 
 ///|
@@ -202,10 +202,10 @@ test "datatype for directional language-tagged literal" {
 test "destruct simple literal" {
   let lit = Literal::new_simple_literal("hello")
   let (value, datatype, language, direction) = lit.destruct()
-  assert_eq(value, "hello")
-  assert_eq(datatype, None)
-  assert_eq(language, None)
-  assert_eq(direction, None)
+  @debug.assert_eq(value, "hello")
+  @debug.assert_eq(datatype, None)
+  @debug.assert_eq(language, None)
+  @debug.assert_eq(direction, None)
 }
 
 ///|
@@ -215,20 +215,20 @@ test "destruct typed literal" {
     NamedNodeRef::NamedNodeRef(lwINTEGER.to_string()),
   )
   let (value, datatype, language, direction) = lit.into_owned().destruct()
-  assert_eq(value, "42")
+  @debug.assert_eq(value, "42")
   assert_true(datatype is Some(_lwINTEGER))
-  assert_eq(language, None)
-  assert_eq(direction, None)
+  @debug.assert_eq(language, None)
+  @debug.assert_eq(direction, None)
 }
 
 ///|
 test "destruct language-tagged literal" {
   let lit = Literal::new_language_tagged_literal("hello", "en").unwrap()
   let (value, datatype, language, direction) = lit.destruct()
-  assert_eq(value, "hello")
-  assert_eq(datatype, None)
-  assert_eq(language, Some("en"))
-  assert_eq(direction, None)
+  @debug.assert_eq(value, "hello")
+  @debug.assert_eq(datatype, None)
+  @debug.assert_eq(language, Some("en"))
+  @debug.assert_eq(direction, None)
 }
 
 ///|
@@ -240,17 +240,17 @@ test "destruct directional language-tagged literal" {
     BaseDirection::Rtl,
   )
   let (value, datatype, language, direction) = lit.destruct()
-  assert_eq(value, "hello")
-  assert_eq(datatype, None)
-  assert_eq(language, Some("en"))
-  assert_eq(direction, Some(BaseDirection::Rtl))
+  @debug.assert_eq(value, "hello")
+  @debug.assert_eq(datatype, None)
+  @debug.assert_eq(language, Some("en"))
+  @debug.assert_eq(direction, Some(BaseDirection::Rtl))
 }
 
 ///|
 /// Tests for LiteralRef
 test "literalref simple literal creation" {
   let literalref = LiteralRef::new_simple_literal("hello")
-  assert_eq(literalref.into_value(), "hello")
+  @debug.assert_eq(literalref.into_value(), "hello")
 }
 
 ///|
@@ -259,8 +259,8 @@ test "literalref typed literal" {
     VarDataType::TrueVar,
     lwBOOLEAN,
   )
-  assert_eq(literalref.into_value(), "true")
-  assert_eq(literalref.datatype(), lwBOOLEAN)
+  @debug.assert_eq(literalref.into_value(), "true")
+  @debug.assert_eq(literalref.datatype(), lwBOOLEAN)
 }
 
 ///|
@@ -269,16 +269,16 @@ test "literalref typed literal with string normalizes to simple" {
     VarDataType::StringVar("hello".to_string()),
     lwSTRING,
   )
-  assert_eq(literalref.into_value(), "hello")
-  assert_eq(literalref.datatype(), lwSTRING)
+  @debug.assert_eq(literalref.into_value(), "hello")
+  @debug.assert_eq(literalref.datatype(), lwSTRING)
 }
 
 ///|
 test "literalref language-tagged literal" {
   let literalref = Literal::new_language_tagged_literal_unchecked("hello", "en")
-  assert_eq(literalref.as_ref().into_value(), "hello")
-  assert_eq(literalref.language(), Some("en".to_string()))
-  assert_eq(literalref.datatype(), lwLANG_STRING)
+  @debug.assert_eq(literalref.as_ref().into_value(), "hello")
+  @debug.assert_eq(literalref.language(), Some("en".to_string()))
+  @debug.assert_eq(literalref.datatype(), lwLANG_STRING)
 }
 
 ///|
@@ -289,17 +289,17 @@ test "literalref directional language-tagged literal" {
     tag,
     BaseDirection::Ltr,
   )
-  assert_eq(literalref.into_value(), "hello")
-  assert_eq(literalref.language(), Some("en".to_string()))
-  assert_eq(literalref.direction(), Some(BaseDirection::Ltr))
-  assert_eq(literalref.datatype(), lwDIR_LANG_STRING)
+  @debug.assert_eq(literalref.into_value(), "hello")
+  @debug.assert_eq(literalref.language(), Some("en".to_string()))
+  @debug.assert_eq(literalref.direction(), Some(BaseDirection::Ltr))
+  @debug.assert_eq(literalref.datatype(), lwDIR_LANG_STRING)
 }
 
 ///|
 test "literalref into_owned" {
   let literalref = LiteralRef::new_simple_literal("hello")
   let owned = literalref.into_owned()
-  assert_eq(owned.value(), "hello")
+  @debug.assert_eq(owned.value(), "hello")
 }
 
 ///|
@@ -308,9 +308,9 @@ test "literalref to_owned" {
     "hello", "en",
   )
   let owned = literalref.into_owned()
-  assert_eq(owned.value(), "hello")
+  @debug.assert_eq(owned.value(), "hello")
   match owned.language() {
-    Some(lang) => assert_eq(lang, "en")
+    Some(lang) => @debug.assert_eq(lang, "en")
     None => fail("Expected language 'en', got None")
   }
 }
@@ -323,7 +323,7 @@ test "literal equality simple vs typed string" {
     VarDataType::StringVar("foo"),
     NamedNodeRef::NamedNodeRef(lwSTRING.to_string()),
   )
-  assert_eq(simple, typed.into_owned())
+  @debug.assert_eq(simple, typed.into_owned())
 }
 
 ///|
@@ -333,7 +333,7 @@ test "literalref equality simple vs typed string" {
     VarDataType::StringVar("foo"),
     lwSTRING,
   )
-  assert_eq(simple, typed)
+  @debug.assert_eq(simple, typed)
 }
 
 ///|
@@ -343,27 +343,27 @@ test "literal as_ref equality with typed literal" {
     NamedNodeRef::NamedNodeRef(lwSTRING.to_string()),
   )
   let literalref = LiteralRef::new_simple_literal("foo")
-  assert_eq(literalref, literal.into_owned().as_ref())
+  @debug.assert_eq(literalref, literal.into_owned().as_ref())
 }
 
 ///|
 test "literal vs literalref equality" {
   let lit = Literal::new_simple_literal("foo")
   let literalref = LiteralRef::new_simple_literal("foo")
-  assert_eq(lit, literalref.into_owned()) // This tests Literal == LiteralRef via derived Eq
+  @debug.assert_eq(lit, literalref.into_owned()) // This tests Literal == LiteralRef via derived Eq
 }
 
 ///|
 /// Tests for Show (to_string)
 test "literal show simple" {
   let lit = LiteralRef::new_simple_literal("hello")
-  assert_eq(lit.to_string(), "\"hello\"")
+  @debug.assert_eq(lit.to_string(), "\"hello\"")
 }
 
 ///|
 test "literal show language-tagged" {
   let lit = Literal::new_language_tagged_literal("hello", "en").unwrap()
-  assert_eq(lit.to_string(), "\"hello\"@en")
+  @debug.assert_eq(lit.to_string(), "\"hello\"@en")
 }
 
 ///|
@@ -374,7 +374,7 @@ test "literal show directional language-tagged" {
     tag,
     BaseDirection::Rtl,
   )
-  assert_eq(lit.to_string(), "\"hello\"@en-rtl")
+  @debug.assert_eq(lit.to_string(), "\"hello\"@en-rtl")
 }
 
 ///|
@@ -383,7 +383,10 @@ test "literal show typed literal" {
     VarDataType::IntVar("42"),
     NamedNodeRef::NamedNodeRef(lwINTEGER.to_string()),
   )
-  assert_eq(lit.to_string(), "\"42\"^^http://www.w3.org/2001/XMLSchema#integer")
+  @debug.assert_eq(
+    lit.to_string(),
+    "\"42\"^^http://www.w3.org/2001/XMLSchema#integer",
+  )
 }
 
 ///|
@@ -409,5 +412,5 @@ test "serialize literal with all punctuation marks" {
   // 序列化结果应该包含转义的双引号
   let expected_serialized = "\" !\\\"#$%&():;<=>?@[]^_`{|}~\""
   debug(serialized)
-  assert_eq(serialized, expected_serialized)
+  @debug.assert_eq(serialized, expected_serialized)
 }

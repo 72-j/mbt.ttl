@@ -1,5 +1,5 @@
 ///|
-fn NQuadsState::to_str(self : NQuadsState) -> String {
+pub fn NQuadsState::to_str(self : NQuadsState) -> String {
   Show::to_string(self)
 }
 
@@ -7,7 +7,7 @@ fn NQuadsState::to_str(self : NQuadsState) -> String {
 
 ///|
 impl StateMachine for NQuadsRecognizer with fn initial_state(
-  self : NQuadsRecognizer,
+  _self : NQuadsRecognizer,
 ) -> RdfState {
   RdfState::NQuadsState(NQuadsState::ExpectSubject)
 }
@@ -38,7 +38,7 @@ impl StateMachine for NQuadsRecognizer with fn step(self, event : Event) -> NQua
     self.context(),
   )
   match result {
-    Ok((new_machine, new_state, output)) => {
+    Ok((new_machine, new_state, _output)) => {
       let new_context = new_machine.context()
       let new_machine = new_machine.set_context(new_context)
       let new_machine = new_machine.set_current_state(new_state)
@@ -130,7 +130,7 @@ impl StateMachine for NQuadsRecognizer with fn transition(
 // 新增或修改辅助方法，只返回元组，不处理 Result 包装
 
 ///|
-fn NQuadsRecognizer::process_transition_result_to_tuple(
+pub fn NQuadsRecognizer::process_transition_result_to_tuple(
   self : NQuadsRecognizer,
   current_state : NQuadsState,
   result : TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut], // 这里的 TransitionResult 可能是指 handle_xxx 的返回类型？
@@ -156,7 +156,7 @@ impl StateMachine for NQuadsRecognizer with fn is_accepting(
 }
 
 ///|
-impl StateMachine for NQuadsRecognizer with fn context(self : NQuadsRecognizer) -> RdfContext {
+impl StateMachine for NQuadsRecognizer with fn context(_self : NQuadsRecognizer) -> RdfContext {
   RdfContext::NQuadsRecognizerContext({
     lexer_options: LexerOptions::{ base_iri: None },
     with_graph_name: false,
@@ -166,7 +166,7 @@ impl StateMachine for NQuadsRecognizer with fn context(self : NQuadsRecognizer) 
 ///|
 impl StateMachine for NQuadsRecognizer with fn set_context(
   self : NQuadsRecognizer,
-  context : RdfContext,
+  _context : RdfContext,
 ) -> NQuadsRecognizer {
   // 假设 NQuadsRecognizer 有一个 context 字段或者通过其他方式管理
   // 这里简单返回 self，实际可能需要更新内部状态
@@ -199,7 +199,7 @@ impl StateMachine for NQuadsRecognizer with fn[ST : StateWrapper] set_current_st
 // 辅助方法：统一处理 TransitionResult 并返回更新后的 Self
 
 ///|
-fn NQuadsRecognizer::process_transition_result(
+pub fn NQuadsRecognizer::process_transition_result(
   self : NQuadsRecognizer,
   current_state : NQuadsState,
   result : TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut],
@@ -219,7 +219,7 @@ fn NQuadsRecognizer::add_error(
   self : NQuadsRecognizer,
   err : RuleRecognizerError,
 ) -> NQuadsRecognizer {
-  let new_errors = self.errors.clone()
+  let new_errors = self.errors
   new_errors.push(err)
   { ..self, errors: new_errors }
 }

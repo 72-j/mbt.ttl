@@ -1,15 +1,3 @@
-
-///|
-// ============================================================
-// 1. 核心类型定义
-// ============================================================
-
-
-///|
-// ============================================================
-// 2. Command / Response 定义
-// ============================================================
-
 ///|
 /// 可生成的命令：模拟逐行输入 N-Quads
 pub(all) enum Command {
@@ -579,7 +567,7 @@ fn mock(
 /// 7️⃣ response_vars
 /// 意图：返回响应引入的新符号变量
 /// N-Quads 不生成新引用，返回空
-fn response_vars(response : Response) -> Array[@qs.Var] {
+fn response_vars(_response : Response) -> Array[@qs.Var] {
   []
 }
 
@@ -820,9 +808,9 @@ test "nquads specific scenario" {
     transition(model, cmd, resp)
   })
 
-  assert_eq(model.quads.length(), 4)
-  assert_eq(model.quads[0].graph_name, DefaultGraph)
-  assert_eq(
+  @debug.assert_eq(model.quads.length(), 4)
+  @debug.assert_eq(model.quads[0].graph_name, DefaultGraph)
+  @debug.assert_eq(
     model.quads[1].graph_name,
     GraphName::NamedNode(
       NamedNodeRef::new_unchecked("http://example.org/graph1").into_owned(),

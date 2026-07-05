@@ -22,6 +22,8 @@ keywords = [ "ttl", "rdf" ]
 description = ""
 
 preferred_target = "native"
+// supported_targets = "+wasm+wasm-gc"
+
 
 source = "src"
 

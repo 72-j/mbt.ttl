@@ -325,7 +325,7 @@ fn RdfLexer::recognize_variable(
               ),
             ),
           )
-        Ok((name, _)) =>
+        Ok((_name, _)) =>
           Err(
             TokenRecognizerError::InvalidErrMessage(
               data[0:total_consumed],

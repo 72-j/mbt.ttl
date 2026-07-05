@@ -122,7 +122,6 @@ impl RuleRecognizer for NQuadsRecognizer with fn lexer_options(
 ///|
 pub fn NQuadsRecognizer::new_parser(
   data : Array[Byte],
-  is_ending : Bool,
   with_graph_name : Bool,
   lenient : Bool,
   debug_logger? : &DebugLogger = make_mute_logger(),

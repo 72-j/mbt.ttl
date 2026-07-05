@@ -8,7 +8,7 @@ test "lenient parsing" {
 
   // 注意：以上行可能仍不直接实现 Reader，需查阅具体 API。
   // 另一种常见模式是使用 Cursor<Bytes> 实现 Reader
-  let triples = NTriplesParser::new().lenient().for_slice(slice)
+  let _triples = NTriplesParser::new().lenient().for_slice(slice)
   // 构建期望的 TripleRef，注意类型转换
   let expected_subject = NamedNodeRef::new_unchecked("foo").as_enum() // 转为 NamedOrBlankNodeRef
   let expected_predicate = NamedNodeRef::new_unchecked("bar") // 转为 NamedNodeRef (通常 predicate 也是 NamedNode)
@@ -109,41 +109,41 @@ test "parse basic ntriples with error handling" {
 // 简化版调试
 
 ///|
-async test "debug single file safe" {
-  let path = "test/rdf/rdf11/n-triples/nt-syntax-file-04.nt"
-  debug("Reading: \{path}")
-  let content = @fs.read_file(path).binary()
-  debug("Read done")
+// async test "debug single file safe" {
+//   let path = "test/rdf/rdf11/n-triples/nt-syntax-file-04.nt"
+//   debug("Reading: \{path}")
+//   let content = @fs.read_file(path).binary()
+//   debug("Read done")
 
-  let parser = NTriplesParser::new()
-  let low_level = parser.low_level()
+//   let parser = NTriplesParser::new()
+//   let low_level = parser.low_level()
 
-  // 尝试先打印长度，确保数据可读
-  // debug("Content length: \{content.len()}") 
-  // let input =
-  //   #|<http://example/s> <http://example/p> "o"@en .
+//   // 尝试先打印长度，确保数据可读
+//   // debug("Content length: \{content.len()}") 
+//   // let input =
+//   //   #|<http://example/s> <http://example/p> "o"@en .
 
-  low_level.extend_from_slice(content)
-  low_level.end()
+//   low_level.extend_from_slice(content)
+//   low_level.end()
 
-  let result = low_level.parse_next()
-  if result is None {
-    debug("parse_next returned None")
-    // panic()
-  }
+//   let result = low_level.parse_next()
+//   if result is None {
+//     debug("parse_next returned None")
+//     // panic()
+//   }
 
-  match result.unwrap() {
-    Ok(triple) => {
-      debug(triple)
-      // 验证 triple 的内容
-      assert_true(true)
-    }
-    Err(e) =>
-      // 3. 打印具体错误信息（使用 {} 进行字符串插值）
-      debug("Parse error: \{e}")
-    // panic()
-  }
-}
+//   match result.unwrap() {
+//     Ok(triple) => {
+//       debug(triple)
+//       // 验证 triple 的内容
+//       assert_true(true)
+//     }
+//     Err(e) =>
+//       // 3. 打印具体错误信息（使用 {} 进行字符串插值）
+//       debug("Parse error: \{e}")
+//     // panic()
+//   }
+// }
 
 ///|
 async test "run official n-triples test suite" {

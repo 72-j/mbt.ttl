@@ -53,7 +53,6 @@ pub fn NTriplesParser::for_slice(
   let parser = NQuadsRecognizer::new_parser(
     slice.to_array(),
     true,
-    true,
     self.lenient,
   )
   { inner: { parser, } }
@@ -131,7 +130,7 @@ pub async fn NTriplesParser::split_file_for_parallel_parsing(
 pub fn NTriplesParser::low_level(
   self : NTriplesParser,
 ) -> LowLevelNTriplesParser[RdfLexer] {
-  { parser: NQuadsRecognizer::new_parser([], false, false, self.lenient) }
+  { parser: NQuadsRecognizer::new_parser([], false, self.lenient) }
 }
 
 ///|

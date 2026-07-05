@@ -1,11 +1,11 @@
 ///|
 test "VarDataType: IntVar" {
   let int_val = IntVar("42")
-  assert_eq(int_val, IntVar("42"))
+  @debug.assert_eq(int_val, IntVar("42"))
 
   // 测试匹配
   match int_val {
-    IntVar(v) => assert_eq(v, "42")
+    IntVar(v) => @debug.assert_eq(v, "42")
     _ => fail("Expected IntVar")
   }
 }
@@ -13,10 +13,10 @@ test "VarDataType: IntVar" {
 ///|
 test "VarDataType: IntegerVar (Int64)" {
   let large_int = IntegerVar("9223372036854775807L")
-  assert_eq(large_int, IntegerVar("9223372036854775807L"))
+  @debug.assert_eq(large_int, IntegerVar("9223372036854775807L"))
 
   match large_int {
-    IntegerVar(v) => assert_eq(v, "9223372036854775807L")
+    IntegerVar(v) => @debug.assert_eq(v, "9223372036854775807L")
     _ => fail("Expected IntegerVar")
   }
 }
@@ -24,11 +24,11 @@ test "VarDataType: IntegerVar (Int64)" {
 ///|
 test "VarDataType: DoubleVar" {
   let double_val = DoubleVar("3.14159")
-  assert_eq(double_val, DoubleVar("3.14159"))
+  @debug.assert_eq(double_val, DoubleVar("3.14159"))
   assert_not_eq(double_val, DoubleVar("2.71828"))
 
   match double_val {
-    DoubleVar(v) => assert_eq(v, "3.14159")
+    DoubleVar(v) => @debug.assert_eq(v, "3.14159")
     _ => fail("Expected DoubleVar")
   }
 }
@@ -36,10 +36,10 @@ test "VarDataType: DoubleVar" {
 ///|
 test "VarDataType: StringVar" {
   let string_val = StringVar("Hello RDF")
-  assert_eq(string_val, StringVar("Hello RDF"))
+  @debug.assert_eq(string_val, StringVar("Hello RDF"))
 
   match string_val {
-    StringVar(v) => assert_eq(v, "Hello RDF")
+    StringVar(v) => @debug.assert_eq(v, "Hello RDF")
     _ => fail("Expected StringVar")
   }
 }
@@ -49,8 +49,8 @@ test "VarDataType: Boolean (TrueVar/FalseVar)" {
   let true_val = TrueVar
   let false_val = FalseVar
 
-  assert_eq(true_val, TrueVar)
-  assert_eq(false_val, FalseVar)
+  @debug.assert_eq(true_val, TrueVar)
+  @debug.assert_eq(false_val, FalseVar)
   assert_not_eq(true_val, false_val)
 
   match true_val {
@@ -67,10 +67,10 @@ test "VarDataType: Boolean (TrueVar/FalseVar)" {
 ///|
 test "VarDataType: DecimalVar" {
   let decimal_val = DecimalVar("123.456")
-  assert_eq(decimal_val, DecimalVar("123.456"))
+  @debug.assert_eq(decimal_val, DecimalVar("123.456"))
 
   match decimal_val {
-    DecimalVar(v) => assert_eq(v.to_owned(), "123.456")
+    DecimalVar(v) => @debug.assert_eq(v.to_owned(), "123.456")
     _ => fail("Expected DecimalVar")
   }
 }
@@ -78,10 +78,10 @@ test "VarDataType: DecimalVar" {
 ///|
 test "VarDataType: DateVar" {
   let date_val = DateVar("2024-03-15")
-  assert_eq(date_val, DateVar("2024-03-15"))
+  @debug.assert_eq(date_val, DateVar("2024-03-15"))
 
   match date_val {
-    DateVar(v) => assert_eq(v, "2024-03-15")
+    DateVar(v) => @debug.assert_eq(v, "2024-03-15")
     // 验证格式
     // assert!(@regex.is_match(r"^\d{4}-\d{2}-\d{2}$", v))
     _ => fail("Expected DateVar1")
@@ -91,11 +91,11 @@ test "VarDataType: DateVar" {
 ///|
 test "VarDataType: TimeVar" {
   let time_val = TimeVar("10:30:00")
-  assert_eq(time_val, TimeVar("10:30:00"))
+  @debug.assert_eq(time_val, TimeVar("10:30:00"))
 
   match time_val {
     TimeVar(v) => {
-      assert_eq(v, "10:30:00")
+      @debug.assert_eq(v, "10:30:00")
 
       // 验证格式
       let regex = @string.Regex(
@@ -111,7 +111,7 @@ test "VarDataType: TimeVar" {
 ///|
 test "VarDataType: DateTimeVar" {
   let datetime_val = DateTimeVar("2024-03-15T10:30:00Z")
-  assert_eq(datetime_val, DateTimeVar("2024-03-15T10:30:00Z"))
+  @debug.assert_eq(datetime_val, DateTimeVar("2024-03-15T10:30:00Z"))
 
   match datetime_val {
     DateTimeVar(v) => {
@@ -128,7 +128,7 @@ test "VarDataType: DateTimeVar" {
 ///|
 test "VarDataType: DurationVar" {
   let duration_val = DurationVar("P1DT12H")
-  assert_eq(duration_val, DurationVar("P1DT12H"))
+  @debug.assert_eq(duration_val, DurationVar("P1DT12H"))
 
   match duration_val {
     DurationVar(v) => {
@@ -146,7 +146,7 @@ test "VarDataType: equality and hash" {
   let val2 = IntVar("42")
   let val3 = IntVar("100")
 
-  assert_eq(val1, val2)
+  @debug.assert_eq(val1, val2)
   assert_not_eq(val1, val3)
 
   // 不同类型不应相等
@@ -193,28 +193,28 @@ test "VarDataType: from xsd conversion" {
   let int_node = lwINT
   let result = int_node.into_datatype("123")
   match result {
-    IntVar(v) => assert_eq(v, "123")
+    IntVar(v) => @debug.assert_eq(v, "123")
     _ => fail("Expected IntVar")
   }
 
   let date_node = lwDATE
   let result2 = date_node.into_datatype("2024-03-15")
   match result2 {
-    DateVar(v) => assert_eq(v, "2024-03-15")
+    DateVar(v) => @debug.assert_eq(v, "2024-03-15")
     _ => fail("Expected DateVar")
   }
 
   let duration_node = lwDURATION
   let result3 = duration_node.into_datatype("PT1H30M")
   match result3 {
-    DurationVar(v) => assert_eq(v, "PT1H30M")
+    DurationVar(v) => @debug.assert_eq(v, "PT1H30M")
     _ => fail("Expected DurationVar")
   }
 
   let invalid_node = lwINT
   let result4 = invalid_node.into_datatype("not a number")
   match result4 {
-    StringVar(v) => assert_eq(v, "NAN")
+    StringVar(v) => @debug.assert_eq(v, "NAN")
     _ => fail("Expected StringVar for invalid input")
   }
 }
@@ -242,20 +242,20 @@ test "into_datatype: duration types" {
 
   let result1 = duration_node.into_datatype("PT1H30M")
   match result1 {
-    DurationVar(v) => assert_eq(v, "PT1H30M")
+    DurationVar(v) => @debug.assert_eq(v, "PT1H30M")
     _ => fail("Expected DurationVar1")
   }
 
   let result2 = duration_node.into_datatype("P2DT12H")
   match result2 {
-    DurationVar(v) => assert_eq(v, "P2DT12H")
+    DurationVar(v) => @debug.assert_eq(v, "P2DT12H")
     _ => fail("Expected DurationVar")
   }
 
   let result3 = duration_node.into_datatype("invalid")
   debug(result3)
   match result3 {
-    StringVar(v) => assert_eq(v, "NAN")
+    StringVar(v) => @debug.assert_eq(v, "NAN")
     _ => fail("Expected StringVar for invalid input")
   }
 }
@@ -393,7 +393,7 @@ test "VarDataType: equality" {
   let val2 = IntVar("42")
   let val3 = IntVar("100")
 
-  assert_eq(val1, val2)
+  @debug.assert_eq(val1, val2)
   assert_not_eq(val1, val3)
 
   // 不同类型不应相等
@@ -402,11 +402,11 @@ test "VarDataType: equality" {
 
   let time_val = TimeVar("10:30:00")
   let time_val2 = TimeVar("10:30:00")
-  assert_eq(time_val, time_val2)
+  @debug.assert_eq(time_val, time_val2)
 
   let date_val = DateVar("2024-03-15")
   let date_val2 = DateVar("2024-03-15")
-  assert_eq(date_val, date_val2)
+  @debug.assert_eq(date_val, date_val2)
 }
 
 ///|
