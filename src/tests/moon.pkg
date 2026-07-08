@@ -6,12 +6,9 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/test",
   "moonbitlang/core/encoding/utf8",
-  "moonbitlang/async/io",
   "moonbitlang/async",
-  "moonbitlang/async/fs",
   "moonbitlang/core/quickcheck/splitmix",
   "thy7/moonttl" @lib,
-  // "justjavac/itoa",
 } for "test"
 
 options(
