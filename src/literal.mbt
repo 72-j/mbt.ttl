@@ -1,5 +1,5 @@
 ///|
-pub struct Literal(LiteralContent) derive(Eq, Debug, Hash)
+pub(all) struct Literal(LiteralContent) derive(Eq, Debug, Hash)
 
 ///|
 pub fn Literal::as_n3term(self : Literal) -> N3Term {
@@ -7,7 +7,7 @@ pub fn Literal::as_n3term(self : Literal) -> N3Term {
 }
 
 ///|
-impl Show for Literal with fn to_string(self : Literal) -> String {
+pub impl Show for Literal with fn to_string(self : Literal) -> String {
   let f = StringBuilder::new()
   match self.0 {
     LiteralContent::String(value) => print_quoted_str(f, value)
@@ -40,7 +40,7 @@ impl Show for Literal with fn to_string(self : Literal) -> String {
 }
 
 ///|
-enum LiteralContent {
+pub(all) enum LiteralContent {
   String(String)
   LanguageTaggedString(value~ : String, language~ : String)
   DirectionalLanguageTaggedString(
@@ -64,9 +64,6 @@ pub fn Literal::new_language_tagged_literal(
   let language = String::to_lower(language)
   match LanguageTag::parse(language) {
     Ok(lang_tag) =>
-      // 假设 LanguageTag 实现了 ToString trait，或者通过 .to_string() 方法获取其字符串表示
-      // 如果 LanguageTag 是一个 struct 且其原始字符串被保留，可能需要访问特定字段
-      // 这里使用通用的 .to_string() 进行转换
       Ok(
         Literal::new_language_tagged_literal_unchecked(
           value,
@@ -94,9 +91,6 @@ pub fn Literal::new_directional_language_tagged_literal(
   let language = String::to_lower(language)
   match LanguageTag::parse(language) {
     Ok(lang_tag) =>
-      // 假设 LanguageTag 实现了 ToString trait，或者通过 .to_string() 方法获取其字符串表示
-      // 如果 LanguageTag 是一个 struct 且其原始字符串被保留，可能需要访问特定字段
-      // 这里使用通用的 .to_string() 进行转换
       Ok(
         Literal::new_directional_language_tagged_literal_unchecked(
           value, lang_tag, direction,
@@ -119,11 +113,6 @@ pub fn Literal::new_directional_language_tagged_literal_unchecked(
     direction~,
   )
 }
-
-///|
-// pub fn Literal::value(self : Literal) -> String {
-//   self.value()
-// }
 
 ///|
 pub fn Literal::value(self : Literal) -> String {
@@ -213,10 +202,10 @@ pub fn Literal::destruct(
 }
 
 ///|
-pub struct LiteralRef(LiteralRefContent) derive(Eq, Debug, Hash)
+pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Debug, Hash)
 
 ///|
-enum LiteralRefContent {
+pub(all) enum LiteralRefContent {
   String(StringView)
   LanguageTaggedString(value~ : String, language~ : StringView)
   DirectionalLanguageTaggedString(
@@ -228,7 +217,7 @@ enum LiteralRefContent {
 } derive(Eq, Debug, Hash)
 
 ///|
-fn LiteralRef::into_value(self : LiteralRef) -> StringView {
+pub fn LiteralRef::into_value(self : LiteralRef) -> StringView {
   match self.0 {
     LiteralRefContent::String(s) => s
     LiteralRefContent::LanguageTaggedString(value~, ..) => value
@@ -253,43 +242,6 @@ pub fn LiteralRef::as_n3term(self : LiteralRef) -> N3Term {
     LiteralRef(_) => N3Term::Literal(self.into_owned())
   }
 }
-
-///|
-// pub fn LiteralRef::to_owned(self : LiteralRef) -> Literal {
-//   match self.0 {
-//     LiteralRefContent::String(v) => Literal::new_simple_literal(v.to_owned())
-//     LiteralRefContent::LanguageTaggedString(value~, language~) =>
-//       Literal::new_language_tagged_literal_unchecked(value, language.to_owned())
-//     LiteralRefContent::DirectionalLanguageTaggedString(
-//       value~,
-//       language~,
-//       direction~
-//     ) =>
-//       Literal::new_directional_language_tagged_literal_unchecked(
-//         value.to_owned(),
-//         LanguageTag::parse(language.to_owned()).unwrap(),
-//         direction,
-//       )
-//     _ => panic()
-//   }
-// }
-
-// pub fn LiteralRef::destruct(
-//   self : LiteralRef,
-// ) -> (StringView, NamedNode?, String?, BaseDirection?) {
-//   match self.0 {
-//     LiteralRefContent::String(s) => (s, None, None, None)
-//     LiteralRefContent::LanguageTaggedString(value~, language~) =>
-//       (value, None, Some(language), None)
-//     LiteralRefContent::DirectionalLanguageTaggedString(
-//       value~,
-//       language~,
-//       direction~
-//     ) => (value, None, Some(language), Some(direction))
-//     LiteralRefContent::TypedLiteral(value~, datatype~) =>
-//       (value.into_value(), Some(datatype), None, None)
-//   }
-// }
 
 ///|
 pub fn LiteralRef::new_typed_literal(
@@ -386,7 +338,7 @@ pub fn LiteralRef::into_owned(self : LiteralRef) -> Literal {
 }
 
 ///|
-impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
+pub impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
   let f = StringBuilder::new()
   match self.0 {
     LiteralRefContent::String(value) => print_quoted_str(f, value.to_owned())

@@ -6,9 +6,9 @@ pub struct Triple {
 } derive(Eq, Debug, Hash)
 
 ///|
-impl Show for Triple with fn output(self : Triple, logger : &Logger) -> Unit {
+pub impl Show for Triple with fn output(self : Triple, logger : &Logger) -> Unit {
   // logger.write_fmt(format!("Triple {{ subject: {}, predicate: {}, object: {} }}",
-  //   self.subject, self.predicate, self.object));
+  // self.subject, self.predicate, self.object));
   logger.write("Triple")
   logger.write(" {")
   logger.write(" subject: ")
@@ -73,9 +73,6 @@ pub fn Triple::as_n3term(self : Triple) -> N3Term {
 pub fn Triple::as_term(self : Triple) -> Term {
   Term::Triple(self)
 }
-// impl fmt::Show for Triple with fmt(self : Triple, f : Formatter) -> Result {
-//   self.fmt(f)
-// }
 
 ///|
 pub struct TripleRef {

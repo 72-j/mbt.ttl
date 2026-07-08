@@ -1,5 +1,5 @@
 ///|
-enum VarDataType {
+pub(all) enum VarDataType {
   IntVar(String)
   IntegerVar(String)
   DoubleVar(String)
@@ -16,7 +16,10 @@ enum VarDataType {
 } derive(Debug, Eq, Hash)
 
 ///|
-impl Show for VarDataType with fn output(self : VarDataType, logger : &Logger) -> Unit {
+pub impl Show for VarDataType with fn output(
+  self : VarDataType,
+  logger : &Logger,
+) -> Unit {
   match self {
     IntVar(i) => logger.write(i)
     IntegerVar(i) => logger.write(i)
@@ -48,66 +51,3 @@ fn VarDataType::into_value(self : VarDataType) -> String {
     DurationVar(value) => value
   }
 }
-
-// fn VarDataType::new(value: String, data_type:VarDataType ) -> VarDataType {
-//   match (data_type, value) {
-//     (TrueVar, _) => TrueVar
-//     (FalseVar, _) => FalseVar
-//     (StringVar(_), value) => StringVar(value)
-//     (DoubleVar(_), value) => {
-//       let value =try? @string.parse_double(value)
-//       match value {
-//         Ok(value) => DoubleVar(value)
-//         Err(_) => StringVar("")
-//       }
-//     }
-//     (IntVar(_), value) => {
-//       let value = try? @string.parse_int(value)
-//      match value {
-//       Ok(value) => IntVar(value)
-//       Err(_) => StringVar("")
-//      }
-//     }
-//     (DecimalVar(_), value) => {
-//       let value = try? @string.parse_double(value)
-//       match value {
-//         Ok(value) => DecimalVar(value.to_string())
-//         Err(_) => StringVar("")
-//       }
-//     }
-//     // IntVar(_) => ...
-//     // DecimalVar(_) => ...
-//   }
-// }
-
-///|
-// fn VarDataType::from_name_node(data_type : NamedNode) -> VarDataType {
-//   match data_type {
-//     lwINT => IntVar(0)
-//     lwFLOAT => DoubleVar(0.0)
-//     lwDECIMAL => DecimalVar("")
-//     lwSTRING => StringVar("")
-//   }
-// }
-
-// trait Into {
-//   fn into() -> Self
-// }
-
-///|
-// trait IntoValue {
-//   fn into_value(self : Self) -> Literal
-// }
-
-///|
-// impl IntoValue for LiteralContent with fn into_value(self : LiteralContent) -> Literal {
-//   match self {
-//     String(s) => Literal(LiteralContent::String(s))
-//     LanguageTaggedString(value~, language~) => Literal(LiteralContent::LanguageTaggedString(value~, language~))
-//     DirectionalLanguageTaggedString(value~, language~, direction~) => Literal(LiteralContent::DirectionalLanguageTaggedString(value~, language~, direction~))
-//     TypedLiteral(value~, ..) =>
-//       match value {
-//         VarDataType::BoolVar(_) =>  Literal(LiteralContent::TypedLiteral(value="Bool", datatype=lwBOOLEAN.into_owned()))
-//       }
-//   }
-// }

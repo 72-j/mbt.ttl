@@ -1,5 +1,5 @@
 ///|
-impl TokenRecognizer for RdfLexer with fn recognize_next_token(
+pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
   self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,

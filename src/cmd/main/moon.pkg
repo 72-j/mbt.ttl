@@ -1,6 +1,7 @@
-// import {
-//   "username/moonttl" @lib,
-// }
+import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/debug",
+}
 
 options(
   "is-main": true,

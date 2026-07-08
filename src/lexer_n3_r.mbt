@@ -1,6 +1,4 @@
 // 1. 定义状态处理器的函数签名
-// 注意：由于需要修改 self 并访问其他参数，我们传递可变引用或通过返回值更新状态
-// 在 MoonBit 中，通常通过返回新的 Self 实例来体现状态变更
 
 ///|
 // type StateHandler = (
@@ -12,7 +10,7 @@
 // ) -> N3Recognizer
 
 ///|
-impl RuleRecognizer for N3Recognizer with fn recognize_next(
+pub impl RuleRecognizer for N3Recognizer with fn recognize_next(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,
@@ -34,20 +32,6 @@ impl RuleRecognizer for N3Recognizer with fn recognize_next(
         // let handler = self.get_state_handler(rule)
 
         // 3. 执行 Handler
-        // 注意：如果 Handler 内部改变了 stack 并需要立即返回（如遇到 return self），
-        // 这种函数式风格可能需要 Handler 返回一个包含“是否继续循环”标志的结构体，
-        // 或者保持原有逻辑：如果 Handler 决定停止解析当前 Token，它应该通过某种方式信号告知。
-        // 但在原有的命令式代码中，return self 会跳出 while 循环。
-        // 为了完全兼容原有逻辑（即某些状态处理后直接返回，不再处理栈中下一个状态），
-        // 我们需要 Handler 能够指示“提前终止”。
-
-        // 简化方案：让 Handler 返回 Result<N3Recognizer, Bool> 或者类似结构？
-        // 或者，我们保留 while 循环，但约定：如果 Handler 消费了 token 并准备结束本轮 recognize_next，
-        // 它可以通过检查栈是否为空或特定标志来决定。
-
-        // 鉴于 MoonBit 的简洁性，最直接的映射是将每个 case 变成函数调用。
-        // 如果原代码中有 `return self`，这意味着退出 `recognize_next`。
-        // 如果原代码只是修改状态并继续 while 循环，则继续。
 
         // 为了保持行为一致，我们可以让 handler 返回一个枚举：
         // enum HandleResult { Continue(N3Recognizer), Stop(N3Recognizer) }

@@ -71,13 +71,6 @@ pub(all) enum NamedOrBlankNode {
   BlankNode(BlankNode)
 } derive(Debug, Eq, Hash)
 
-// fn NamedOrBlankNode::to_node(self : NamedOrBlankNode) -> NamedNode {
-//   match self {
-//     NamedOrBlankNode::NamedNode(v) => v
-//     NamedOrBlankNode::BlankNode(_v) => NamedNode::default()
-//   }
-// }
-
 ///|
 fn NamedOrBlankNode::as_term(self : NamedOrBlankNode) -> Term {
   match self {
@@ -94,33 +87,6 @@ pub fn NamedOrBlankNode::as_n3term(self : NamedOrBlankNode) -> N3Term {
   }
 }
 
-// fn NamedOrBlankNode::default() -> NamedOrBlankNode {
-//   NamedOrBlankNode::BlankNode(BlankNode::default())
-// }
-
-// pub fn[T] NamedOrBlankNode::from(node : T) -> NamedOrBlankNode {
-//   match node {
-//     NamedNode::NamedNode(node) => NamedOrBlankNode::NamedNode(node)
-//     BlankNode::BlankNode(node) => NamedOrBlankNode::BlankNode(node)
-//   }
-// }
-
-///|
-// pub fn NamedOrBlankNode::into_graph(self : NamedOrBlankNode) -> GraphName {
-//   match self {
-//     NamedOrBlankNode::NamedNode(v) => GraphName::NamedNode(v)
-//     NamedOrBlankNode::BlankNode(v) => GraphName::BlankNode(v)
-//   }
-// }
-
-// ///|
-// pub fn NamedOrBlankNode::as_term(self : NamedOrBlankNode) -> Term {
-//   match self {
-//     NamedOrBlankNode::NamedNode(v) => Term::NamedNode(v)
-//     NamedOrBlankNode::BlankNode(v) => Term::BlankNode(v)
-//   }
-// }
-
 ///|
 pub fn NamedOrBlankNode::as_ref(self : NamedOrBlankNode) -> NamedOrBlankNodeRef {
   match self {
@@ -130,18 +96,6 @@ pub fn NamedOrBlankNode::as_ref(self : NamedOrBlankNode) -> NamedOrBlankNodeRef 
       NamedOrBlankNodeRef::BlankNodeRef(node.as_ref())
   }
 }
-
-// pub fn NamedNode::into(
-//   self : NamedNode,
-// ) -> NamedOrBlankNode {
-//   NamedOrBlankNode::NamedNode(self)
-// }
-
-// pub fn BlankNode::into(
-//   self : BlankNode,
-// ) -> NamedOrBlankNode {
-//   NamedOrBlankNode::BlankNode(self)
-// }
 
 ///|
 pub fn NamedOrBlankNode::is_named_node(self : NamedOrBlankNode) -> Bool {
@@ -184,11 +138,6 @@ fn NamedNode::NamedNode(iri : String) -> NamedNode {
 }
 
 ///|
-// pub fn NamedNode::new_unchecked(iri : String) -> NamedNode {
-//   NamedNode::NamedNode(iri)
-// }
-
-///|
 pub fn NamedNode::as_term(self : NamedNode) -> Term {
   Term::NamedNode(self)
 }
@@ -219,12 +168,12 @@ pub fn NamedNodeRef::as_enum(self : NamedNodeRef) -> NamedOrBlankNodeRef {
 }
 
 ///|
-impl Show for NamedNodeRef with fn to_string(self : NamedNodeRef) -> String {
+pub impl Show for NamedNodeRef with fn to_string(self : NamedNodeRef) -> String {
   self.iri.to_owned()
 }
 
 ///|
-fn NamedNodeRef::NamedNodeRef(iri : StringView) -> NamedNodeRef {
+pub fn NamedNodeRef::NamedNodeRef(iri : StringView) -> NamedNodeRef {
   NamedNodeRef::{ iri, }
 }
 
@@ -389,11 +338,6 @@ pub fn BlankNode::new(content : BlankNode) -> BlankNode {
 }
 
 ///|
-// pub fn BlankNode::new(iri : String) -> BlankNode {
-//   BlankNode::Named(iri)
-// }
-
-///|
 pub fn BlankNode::as_ref(self : BlankNode) -> BlankNodeRef {
   match self {
     BlankNode::Named(v) => BlankNodeRef::Named(v)
@@ -431,7 +375,6 @@ pub fn Anonymous::default() -> Anonymous {
 pub fn Anonymous::Anonymous(id : UInt64, str : String) -> Anonymous {
   Anonymous(id, str)
 }
-// type Triple
 
 ///|
 pub(all) enum GraphName {
@@ -458,11 +401,6 @@ pub fn GraphName::into_owned(self : GraphName) -> GraphName {
 pub fn GraphName::default() -> GraphName {
   DefaultGraph
 }
-
-///|
-// fn GraphName::new_unchecked(iri : String) -> GraphName {
-//   GraphName::NamedNode(NamedNode::new_unchecked(iri))
-// }
 
 ///|
 pub fn GraphName::is_named_node(self : GraphName) -> Bool {
@@ -494,13 +432,7 @@ pub fn GraphName::as_n3term(self : GraphName) -> N3Term {
     GraphName::NamedNode(v) => N3Term::NamedNode(v)
     GraphName::BlankNode(v) => N3Term::BlankNode(v)
     GraphName::DefaultGraph =>
-      // DefaultGraph 不是一个标准的 RDF Term，无法直接转换为 N3Term。
-      // 这里根据具体业务逻辑处理，通常应避免在此处调用。
-      // 作为一种妥协，可以 panic 或返回一个特殊的 BlankNode。
-      // 假设项目中不允许将 DefaultGraph 转为 Term，这里抛出异常或断言失败。
       abort("DefaultGraph cannot be converted to N3Term.")
-    // panic()
-
   }
 }
 
@@ -543,7 +475,6 @@ impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
   self.object.output(logger)
 
   // 如果是默认图，某些规范可能省略，但为了调试清晰，这里保留输出
-  // 如果希望严格遵循 N-Quads，默认图可能输出为 "<>" 或省略，具体取决于你的 Logger/Show 约定
   if !self.graph_name.is_default_graph() {
     logger.write(" ")
     self.graph_name.output(logger)
@@ -579,16 +510,6 @@ pub struct QuadRef {
 }
 
 ///|
-// pub fn QuadRef::new(
-//   subject : NamedOrBlankNodeRef,
-//   predicate : NamedNodeRef,
-//   object : TermRef,
-//   graph_name : GraphNameRef,
-// ) -> QuadRef {
-//   { subject, predicate, object, graph_name }
-// }
-
-///|
 pub fn QuadRef::into_owned(self : QuadRef) -> Quad {
   {
     subject: self.subject.into_owned(),
@@ -597,16 +518,6 @@ pub fn QuadRef::into_owned(self : QuadRef) -> Quad {
     graph_name: self.graph_name.into_owned(),
   }
 }
-
-///|
-// pub fn Quad::new(
-//   subject : NamedOrBlankNode,
-//   predicate : NamedNode,
-//   object : Term,
-//   graph_name : GraphName,
-// ) -> Quad {
-//   { subject, predicate, object, graph_name }
-// }
 
 ///|
 pub fn Quad::as_ref(self : Quad) -> QuadRef {

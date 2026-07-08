@@ -37,7 +37,7 @@ pub fn IriError::position(self : IriError) -> Int {
 }
 
 ///|
-impl ErrOut for IriError with fn message(self : IriError) -> String {
+pub impl ErrOut for IriError with fn message(self : IriError) -> String {
   match self {
     IriError::NoScheme(_) => "The IRI does not have a scheme"
     IriError::Expected(_, _) => "An expected character was not found"
@@ -54,12 +54,11 @@ impl ErrOut for IriError with fn message(self : IriError) -> String {
     IriError::PathStartingWithTwoSlashes(_) =>
       "The path starts with two slashes"
     IriError::InvalidErrMessage(msg) => msg
-    // _ => "An unknown error occurred" // 默认错误信息
   }
 }
 
 ///|
-impl ErrOut for IriError with fn err_kind(self : IriError) -> String {
+pub impl ErrOut for IriError with fn err_kind(self : IriError) -> String {
   match self {
     IriError::NoScheme(_) => "NoScheme"
     IriError::Expected(_, _) => "Expected"
@@ -76,8 +75,7 @@ impl ErrOut for IriError with fn err_kind(self : IriError) -> String {
 }
 
 ///|
-impl Show for IriError with fn output(self : IriError, logger : &Logger) -> Unit {
-  // 使用 trait 方法获取信息
+pub impl Show for IriError with fn output(self : IriError, logger : &Logger) -> Unit {
   let msg = self.message()
   let pos = self.position()
   let err_kind = self.err_kind()
@@ -129,7 +127,7 @@ pub fn TokenRecognizerError::range(self : TokenRecognizerError) -> Range {
 }
 
 ///|
-impl ErrOut for TokenRecognizerError with fn message(
+pub impl ErrOut for TokenRecognizerError with fn message(
   self : TokenRecognizerError,
 ) -> String {
   match self {
@@ -153,7 +151,7 @@ impl ErrOut for TokenRecognizerError with fn message(
 }
 
 ///|
-impl ErrOut for TokenRecognizerError with fn err_kind(
+pub impl ErrOut for TokenRecognizerError with fn err_kind(
   self : TokenRecognizerError,
 ) -> String {
   match self {
@@ -174,7 +172,7 @@ impl ErrOut for TokenRecognizerError with fn err_kind(
 }
 
 ///|
-impl Show for TokenRecognizerError with fn output(
+pub impl Show for TokenRecognizerError with fn output(
   self : TokenRecognizerError,
   logger : &Logger,
 ) -> Unit {
@@ -215,12 +213,10 @@ pub(all) suberror RuleRecognizerError {
   TripleMissingDot
   InvalidLanguageTag
   BlankNodePropertyListMissingEndBracket
-  //  UnexpectedToken(UnexpectedToken)
-  // RecoveryError(RecoveryError)
 }
 
 ///|
-struct Range {
+pub(all) struct Range {
   start : Int
   end : Int
 } derive(Debug, Default, Eq)
@@ -375,7 +371,7 @@ pub impl ErrOut for TurtleError with fn err_kind(self : TurtleError) -> String {
 }
 
 ///|
-impl Show for TurtleError with fn output(self, logger : &Logger) -> Unit {
+pub impl Show for TurtleError with fn output(self, logger : &Logger) -> Unit {
   let msg = self.message()
   let err_kind = self.err_kind()
   logger.write_string(err_kind)
@@ -409,7 +405,7 @@ pub impl ErrOut for LexerError with fn err_kind(self : LexerError) -> String {
 }
 
 ///|
-impl Show for LexerError with fn output(self, logger : &Logger) -> Unit {
+pub impl Show for LexerError with fn output(self, logger : &Logger) -> Unit {
   let msg = self.message()
   let err_kind = self.err_kind()
   logger.write_string("Error: ")
@@ -425,7 +421,7 @@ pub(all) suberror LanguageTagParseError {
 }
 
 ///|
-impl Show for LanguageTagParseError with fn output(self, logger : &Logger) -> Unit {
+pub impl Show for LanguageTagParseError with fn output(self, logger : &Logger) -> Unit {
   match self {
     LanguageTagParseError::TagParseErr(e) => {
       logger.write_string("Error: Language Tag Parse Error - ")
@@ -448,7 +444,7 @@ pub(all) suberror TagParseErr {
 }
 
 ///|
-impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
+pub impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
   match self {
     TagParseErr::EmptyExtension => logger.write_string("EmptyExtension")
     TagParseErr::EmptyPrivateUse => logger.write_string("EmptyPrivateUse")

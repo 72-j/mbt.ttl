@@ -5,7 +5,6 @@ pub struct Parser[TR, RR] {
   context : RdfContext
   results : Array[RdfOut]
   errors : Array[RuleRecognizerError]
-  //mut  pending_token : LocatedTokenOrLineJump? // ← 新增
 }
 
 ///|
@@ -15,7 +14,6 @@ pub fn[TR, RR] Parser::Parser(
   context : RdfContext,
 ) -> Parser[TR, RR] {
   { lexer, state: Some(recognizer), context, results: [], errors: [] }
-  // pending_token: None,
 }
 
 ///|

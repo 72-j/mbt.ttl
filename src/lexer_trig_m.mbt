@@ -1,12 +1,12 @@
 ///|
-pub enum RdfState {
+pub(all) enum RdfState {
   TriGState(TriGState)
   NQuadsState(NQuadsState)
   N3State(N3State)
 } derive(Eq, Hash)
 
 ///|
-impl Show for RdfState with fn to_string(self) -> String {
+pub impl Show for RdfState with fn to_string(self) -> String {
   match self {
     RdfState::TriGState(s) => s.to_string()
     RdfState::NQuadsState(s) => s.to_string()
@@ -20,7 +20,7 @@ impl Show for RdfState with fn to_string(self) -> String {
 pub type TransitionResult[TR, S, O] = Result[(TR, S, O?), RuleRecognizerError]
 
 ///|
-impl StateWrapper for RdfState with fn as_state_enum(self) -> RdfState {
+pub impl StateWrapper for RdfState with fn as_state_enum(self) -> RdfState {
   self
 }
 
@@ -30,24 +30,26 @@ pub fn TriGState::to_str(self : TriGState) -> String {
 }
 
 ///|
-impl StateMachine for TriGRecognizer with fn initial_state(
+pub impl StateMachine for TriGRecognizer with fn initial_state(
   _self : TriGRecognizer,
 ) -> RdfState {
   RdfState::TriGState(TriGState::TriGDoc)
 }
 
 ///|
-impl StateMachine for TriGRecognizer with fn error_recovery_statemachine(self) -> TriGRecognizer {
+pub impl StateMachine for TriGRecognizer with fn error_recovery_statemachine(
+  self,
+) -> TriGRecognizer {
   self.error_recovery_state()
 }
 
 ///|
-impl StateMachine for TriGRecognizer with fn current_state(self) -> RdfState {
+pub impl StateMachine for TriGRecognizer with fn current_state(self) -> RdfState {
   self.stack.last().unwrap_or(TriGState::TriGDoc).as_state_enum()
 }
 
 ///|
-impl StateMachine for TriGRecognizer with fn step(self, event : Event) -> TriGRecognizer {
+pub impl StateMachine for TriGRecognizer with fn step(self, event : Event) -> TriGRecognizer {
   let current_state = self.current_state()
   let result = self.transition(
     current_state.as_state_enum(),
@@ -66,14 +68,14 @@ impl StateMachine for TriGRecognizer with fn step(self, event : Event) -> TriGRe
 }
 
 ///|
-impl StateMachine for TriGRecognizer with fn reset(self) -> TriGRecognizer {
+pub impl StateMachine for TriGRecognizer with fn reset(self) -> TriGRecognizer {
   self.error_recovery_state()
 }
 
 ///|
 
 ///|
-impl StateMachine for TriGRecognizer with fn transition(
+pub impl StateMachine for TriGRecognizer with fn transition(
   self : TriGRecognizer,
   state : RdfState,
   event : Event,
@@ -90,11 +92,6 @@ impl StateMachine for TriGRecognizer with fn transition(
         ),
       ) // 2. 错误返回 Err
   }
-
-  // let context = match context {
-  //   RdfContext::TriGRecognizerContext(c) => c
-  //   _ => return Err(RuleRecognizerError::SyntaxError("Invalid context for TriG", self.last_range)) // 2. 错误返回 Err
-  // }
 
   self.debug_logger.info("TriG State: \{trig_state}, Event: \{event}")
 
@@ -203,13 +200,15 @@ impl StateMachine for TriGRecognizer with fn transition(
 }
 
 ///|
-impl StateMachine for TriGRecognizer with fn is_accepting(self : TriGRecognizer) -> Bool {
+pub impl StateMachine for TriGRecognizer with fn is_accepting(
+  self : TriGRecognizer,
+) -> Bool {
   self.current_state() == RdfState::TriGState(TriGState::TriGDoc) &&
   self.stack.is_empty()
 }
 
 ///|
-impl StateMachine for TriGRecognizer with fn context(_self : TriGRecognizer) -> RdfContext {
+pub impl StateMachine for TriGRecognizer with fn context(_self : TriGRecognizer) -> RdfContext {
   RdfContext::TriGRecognizerContext({
     lexer_options: LexerOptions::{ base_iri: None },
     with_graph_name: false,
@@ -218,17 +217,15 @@ impl StateMachine for TriGRecognizer with fn context(_self : TriGRecognizer) -> 
 }
 
 ///|
-impl StateMachine for TriGRecognizer with fn set_context(
+pub impl StateMachine for TriGRecognizer with fn set_context(
   self : TriGRecognizer,
   _context : RdfContext,
 ) -> TriGRecognizer {
-  // 假设 TriGRecognizer 有一个 context 字段或者通过其他方式管理
-  // 这里简单返回 self，实际可能需要更新内部状态
   self
 }
 
 ///|
-impl StateMachine for TriGRecognizer with fn[ST : StateWrapper] set_current_state(
+pub impl StateMachine for TriGRecognizer with fn[ST : StateWrapper] set_current_state(
   self : TriGRecognizer,
   state : ST,
 ) -> TriGRecognizer {
@@ -259,7 +256,6 @@ pub fn TriGRecognizer::process_transition_result(
     }
   }
 }
-// 辅助方法：添加错误并返回新的实例
 
 ///|
 fn TriGRecognizer::add_error(

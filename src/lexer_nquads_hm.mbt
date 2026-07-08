@@ -1,7 +1,3 @@
-// 假设类型定义如下（需根据实际项目调整）
-// pub type TransitionResult[T, S, Stmt] = Result[(T, S, Stmt?), RuleRecognizerError]
-// pub type RdfOut = Quad | Triple // 假设存在这样的联合类型或枚举
-
 // ===== State: ExpectSubject =====
 
 ///|
@@ -82,9 +78,7 @@ fn NQuadsRecognizer::handle_expected_object_m(
       LocatedN3Token(N3Token::String(value), _)
     ) => {
       let new_self = self
-      // 需要携带 value 进入下一个状态，通常通过修改 self 或状态参数
-      // 这里假设 NQuadsState::ExpectLiteralAnnotation... 可以携带数据，或者我们存储在 self 中
-      // 为了简化，假设有一个临时字段或状态变体携带 value
+
       // new_self.temp_literal_value = Some(value) 
       Ok(
         (
@@ -115,11 +109,6 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
   _ctx : NQuadsRecognizerContext,
   value : String,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  // 获取之前存储的 literal value
-  // let value = match self.temp_literal_value {
-  //   Some(v) => v
-  //   None => return Err(RuleRecognizerError::SyntaxError("Missing literal value", Range::default()))
-  // }
 
   // self.debug_logger.info("Entering ExpectLiteralAnnotation... value: \{value}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
@@ -152,7 +141,6 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
             ),
           )
         }
-        // Err(_e) => Err(RuleRecognizerError::InvalidLanguageTag)
       }
     }
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -267,7 +255,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
         LocatedN3Token(N3Token::Punctuation(")>>"), _)
       ) =>
         // 结束引用三元组，返回当前解析器状态，不产生顶层语句
-        return Ok((self, NQuadsState::AfterQuotedTriple, None)) // 或者保持当前栈顶状态？原逻辑是 return self
+        return Ok((self, NQuadsState::AfterQuotedTriple, None))
       _ => ()
     }
     // 如果在栈中且不是结束符，可能是错误，或者原逻辑中的 error 调用
@@ -287,14 +275,12 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
         graph_name=GraphNameRef::new_unchecked(g).into_owned(),
       )
       let new_self = self
-      let _ = new_self.error_recovery_state() // 假设有一个方法清空 subjects/predicates/objects
+      let _ = new_self.error_recovery_state()
       Ok((new_self, NQuadsState::ExpectDot, Some(stmt)))
     }
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::BlankNodeLabel(_g), _)
     ) if ctx.with_graph_name => {
-      // 原文逻辑似乎对 BlankNode Graph Name 有特定处理，这里简化为 DefaultGraph 或报错
-      // 原文: self.emit_quad(results, errors, GraphNameRef::DefaultGraph)
       let stmt = self.make_current_quad()
       let new_self = self
       let _ = new_self.error_recovery_state()
@@ -310,12 +296,6 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
       // 或者返回一个特殊状态指示需要重新消费 token。
       // 这里为了简化，我们返回 ExpectDot，但如果 token 不是 Dot，主循环会报错。
       // 更好的方式是返回一个状态，告诉主循环“我完成了一个语句，请重新用这个 token 开始新的解析”
-      // 这通常需要主循环支持 "reconsume" 或返回一个特殊的 Transition。
-      // 暂时返回 Ok，并在主循环中处理“如果产生了 Statement 且 Token 未消耗”的情况
-
-      // 注意：原代码中 self.recognize_next 是递归调用。在新架构中，这通常由外部循环处理。
-      // 我们返回当前完成的语句，并将状态重置为 ExpectSubject，以便主循环可以用同一个 token 再次调用 handle_expect_subject_m
-      // 但这需要主循环支持“不前进 token”。
 
       // 妥协方案：返回语句，状态设为 ExpectSubject，并标记需要重新消费 token（如果框架支持）
       // 如果不支持，可能需要将 token 压回输入流。
@@ -395,10 +375,6 @@ pub fn NQuadsRecognizer::handle_after_quoted_triple_m(
 
       // 弹出 AfterQuotedTriple 状态，回到之前的状态
       // 原逻辑: self.stack.push(NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple)
-      // 这里我们需要知道上一个状态是什么。原代码使用 stack。
-      // 在新架构中，如果我们要完全消除 stack，需要更复杂的状态传递。
-      // 鉴于原代码严重依赖 stack，我们可能需要在 TransitionResult 中返回新的 Stack 或者保持 stack 在 self 中。
-      // 假设 stack 仍在 self 中管理
 
       let prev_state = new_self.stack.pop()
       match prev_state {

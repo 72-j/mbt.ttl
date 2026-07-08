@@ -13,7 +13,7 @@ import {
 
 readme = "README.mbt.md"
 
-repository = ""
+repository = "https://www.gitlink.org.cn/thy7/mbt.ttl"
 
 license = "Apache-2.0"
 
@@ -23,7 +23,6 @@ description = ""
 
 preferred_target = "native"
 // supported_targets = "+wasm+wasm-gc"
-
 
 source = "src"
 

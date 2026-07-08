@@ -1,9 +1,8 @@
 ///|
-pub struct LanguageTag {
+pub(all) struct LanguageTag {
   tag : String
   positions : TagElementsPositions
 } derive(Debug, Default, Hash, Eq)
-// 状态定义
 
 ///|
 enum State {
@@ -234,7 +233,7 @@ fn parse_primary_language(subtag : String) -> Result[String, TagParseErr] {
 }
 
 ///|
-impl Show for LanguageTag with fn to_string(self : LanguageTag) -> String {
+pub impl Show for LanguageTag with fn to_string(self : LanguageTag) -> String {
   self.tag
 }
 
@@ -374,7 +373,6 @@ fn calculate_positions(
           return Err(TagParseErr::InvalidSubtag)
         }
         // 不检查 is_alphanumeric
-        // extension_end = end
         state = State::InPrivateUse(false)
       }
       _ => {
@@ -513,7 +511,6 @@ fn calculate_positions(
 
 ///|
 fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
-  // 修复：祖父级标签应返回预定义列表中的规范形式，保持原有大小写
   for record in grandfathereds {
     if eq_ignore_ascii_case(record, input) {
       return Ok(record.to_owned())
@@ -597,7 +594,7 @@ fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
 }
 
 ///|
-struct ExtensionsIterator {
+pub(all) struct ExtensionsIterator {
   input : String
   subtags : Array[String]
   index : Int

@@ -4,22 +4,24 @@ pub fn N3State::to_str(self : N3State) -> String {
 }
 
 ///|
-impl StateMachine for N3Recognizer with fn initial_state(_self : N3Recognizer) -> RdfState {
+pub impl StateMachine for N3Recognizer with fn initial_state(
+  _self : N3Recognizer,
+) -> RdfState {
   RdfState::N3State(N3State::N3Doc)
 }
 
 ///|
-impl StateMachine for N3Recognizer with fn error_recovery_statemachine(self) -> N3Recognizer {
+pub impl StateMachine for N3Recognizer with fn error_recovery_statemachine(self) -> N3Recognizer {
   self.error_recovery_state()
 }
 
 ///|
-impl StateMachine for N3Recognizer with fn current_state(self) -> RdfState {
+pub impl StateMachine for N3Recognizer with fn current_state(self) -> RdfState {
   self.stack.last().unwrap_or(N3State::N3Doc).as_state_enum()
 }
 
 ///|
-impl StateMachine for N3Recognizer with fn step(self, event : Event) -> N3Recognizer {
+pub impl StateMachine for N3Recognizer with fn step(self, event : Event) -> N3Recognizer {
   let current_state = self.current_state()
   let result = self.transition(
     current_state.as_state_enum(),
@@ -38,16 +40,12 @@ impl StateMachine for N3Recognizer with fn step(self, event : Event) -> N3Recogn
 }
 
 ///|
-impl StateMachine for N3Recognizer with fn reset(self) -> N3Recognizer {
-  // 重置栈
-
+pub impl StateMachine for N3Recognizer with fn reset(self) -> N3Recognizer {
   self.error_recovery_state()
 }
 
 ///|
-
-///|
-impl StateMachine for N3Recognizer with fn transition(
+pub impl StateMachine for N3Recognizer with fn transition(
   self : N3Recognizer,
   state : RdfState,
   event : Event,
@@ -112,17 +110,7 @@ impl StateMachine for N3Recognizer with fn transition(
     N3State::FormulaContent => self.handle_formula_content_m(event, context)
     N3State::FormulaContentExpectDot =>
       self.handle_formula_content_expect_dot_m(event, context)
-
-    // _ => {
-    //   let err = RuleRecognizerError::SyntaxError(
-    //     "Unhandled state: \{n3_state.to_string()}",
-    //     self.last_range,
-    //   )
-    //   let new_self = self.add_error(err)
-    //   Ok((new_self, n3_state, None))
-    // }
   }
-  // 将元组包装为 Ok
   match result {
     Ok((new_self, new_state, output)) =>
       Ok((new_self, new_state.as_state_enum(), output))
@@ -131,13 +119,13 @@ impl StateMachine for N3Recognizer with fn transition(
 }
 
 ///|
-impl StateMachine for N3Recognizer with fn is_accepting(self : N3Recognizer) -> Bool {
+pub impl StateMachine for N3Recognizer with fn is_accepting(self : N3Recognizer) -> Bool {
   self.current_state() == RdfState::N3State(N3State::N3Doc) &&
   self.stack.is_empty()
 }
 
 ///|
-impl StateMachine for N3Recognizer with fn context(_self : N3Recognizer) -> RdfContext {
+pub impl StateMachine for N3Recognizer with fn context(_self : N3Recognizer) -> RdfContext {
   RdfContext::N3RecognizerContext({
     lexer_options: LexerOptions::{ base_iri: None },
     prefixes: Map([]),
@@ -145,7 +133,7 @@ impl StateMachine for N3Recognizer with fn context(_self : N3Recognizer) -> RdfC
 }
 
 ///|
-impl StateMachine for N3Recognizer with fn set_context(
+pub impl StateMachine for N3Recognizer with fn set_context(
   self : N3Recognizer,
   _context : RdfContext,
 ) -> N3Recognizer {
@@ -155,7 +143,7 @@ impl StateMachine for N3Recognizer with fn set_context(
 }
 
 ///|
-impl StateMachine for N3Recognizer with fn[ST : StateWrapper] set_current_state(
+pub impl StateMachine for N3Recognizer with fn[ST : StateWrapper] set_current_state(
   self : N3Recognizer,
   state : ST,
 ) -> N3Recognizer {

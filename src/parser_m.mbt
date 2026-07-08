@@ -13,7 +13,7 @@ pub(all) enum RdfOut {
 } derive(Debug)
 
 ///|
-impl Show for RdfOut with fn output(self, logger : &Logger) -> Unit {
+pub impl Show for RdfOut with fn output(self, logger : &Logger) -> Unit {
   match self {
     Quad(quad) => logger.write_object(quad)
     Triple(triple) => logger.write_object(triple)
@@ -25,7 +25,6 @@ impl Show for RdfOut with fn output(self, logger : &Logger) -> Unit {
 pub fn RdfOut::new(quad : Quad) -> RdfOut {
   Quad(quad)
 }
-
 
 ///|
 pub fn[TR : TokenRecognizer, RR : RuleRecognizer] SliceIterator::next(
@@ -47,7 +46,7 @@ pub fn[TR : TokenRecognizer, RR : RuleRecognizer] SliceIterator::next(
 }
 
 ///|
-pub struct ParserM[TR, M] {
+pub(all) struct ParserM[TR, M] {
   mut lexer : Lexer[TR]
   mut engine : GenericStateMachine[M] // ← 泛型状态机引擎
   context : RdfContext
@@ -85,15 +84,6 @@ pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] ParserM::parse_n
     if self.try_output() is Some(result) {
       return Some(result)
     }
-    // if self.engine.outputs.length() > 0 {
-    //   // ✅ 取出第一个输出（解包 Option）
-    //   let output = match self.engine.outputs.get(0) {
-    //     Some(o) => o
-    //     None => return None
-    //   }
-    //   self.engine = self.engine.remove_first_output()
-    //   return Some(Ok(output))
-    // }
 
     // 3. 尝试从 Lexer 获取下一个 Token
     match self.lexer.parse_next(M::lexer_options(self.context)) {
@@ -108,19 +98,6 @@ pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] ParserM::parse_n
         if self.try_finish() is Some(result) {
           return Some(result)
         }
-        // if self.engine.is_accepting() {
-        //   // 如果还有输出，返回
-        //   if self.engine.outputs.length() > 0 {
-        //     let output = match self.engine.outputs.pop() {
-        //       Some(o) => o
-        //       None => return None
-        //     }
-        //     self.engine = self.engine.remove_first_output()
-        //     return Some(Ok(output))
-        //   }
-        //   // 没有更多输出，结束
-        //   return None
-        // }
 
         continue
       }
@@ -192,7 +169,7 @@ pub fn[TR, M] ParserM::end(self : ParserM[TR, M]) -> Bool {
 
 ///|
 /// 尝试返回一个输出
-fn[TR, M] ParserM::try_output(
+pub fn[TR, M] ParserM::try_output(
   self : ParserM[TR, M],
 ) -> Result[RdfOut, TurtleError]? {
   if self.engine.outputs.length() > 0 {
@@ -209,7 +186,7 @@ fn[TR, M] ParserM::try_output(
 
 ///|
 /// 检查并处理完成状态
-fn[TR, M : StateMachine] ParserM::try_finish(
+pub fn[TR, M : StateMachine] ParserM::try_finish(
   self : ParserM[TR, M],
 ) -> Result[RdfOut, TurtleError]? {
   if self.engine.is_accepting() {
@@ -230,101 +207,3 @@ fn[TR, M : StateMachine] ParserM::try_finish(
     return None
   }
 }
-
-
-
-///|
-// pub fn[TR, RR] ParserM::extend_from_slice(
-//   self : ParserM[TR, RR],
-//   other : Bytes,
-// ) -> Unit {
-//   self.lexer.extend_from_slice(other)
-// }
-
-///|
-// pub fn[TR, RR] ParserM::for_reader(
-//   self : ParserM[TR, RR],
-//   reader : &Reader,
-// ) -> ReaderIterator[TR, RR] {
-//   { reader, parser: self }
-// }
-
-// ///|
-// pub fn[TR, RR] ParserM::for_async_reader(
-//   self : ParserM[TR, RR],
-//   reader : &Reader,
-// ) -> AsyncReaderIterator[TR, RR] {
-//   { reader, parser: self }
-// }
-
-///|
-// pub struct ReaderIterator[TR, RR] {
-//   reader : &Reader
-//   parser : ParserM[TR, RR]
-// }
-
-///|
-// pub async fn[RR : RuleRecognizer+StateMachine] ReaderIterator::next(
-//   self : ReaderIterator[RdfLexer, RR],
-// ) -> Result[RdfOut, LexerError]? {
-//   while !self.parser.is_end() {
-//     if self.parser.parse_next() is Some(result) {
-//       debug("ParserM::parse_next: \{result}")
-//       return Some(
-//         result.map_err(e => {
-//           LexerError::SyntaxError("Syntax Error: \{e.to_string()}")
-//         }),
-//       )
-//     }
-
-//     // 尝试从 Reader 填充数据
-//     match self.parser.lexer.extend_from_reader(self.reader) {
-//       Ok(bytes_read) =>
-//         if bytes_read == 0 {
-//           // EOF reached
-//           self.parser.lexer.end()
-//           // 如果此时 parser 还没有结束，下一轮循环会处理结束逻辑或报错
-//         } else {
-//           // 成功读取数据，继续循环让 parse_next 尝试解析
-//         }
-//       Err(e) =>
-//         return Some(
-//           Err(LexerError::IoReadError("IO Read Error: \{e.to_string()}")),
-//         )
-//     }
-//   }
-//   None
-// }
-
-///|
-// pub struct AsyncReaderIterator[TR, RR] {
-//   reader : &Reader
-//   parser : ParserM[TR, RR]
-// }
-
-///|
-// pub async fn[TR : TokenRecognizer, RR : RuleRecognizer+StateMachine] AsyncReaderIterator::next(
-//   self : AsyncReaderIterator[TR, RR],
-// ) -> Result[RdfOut, LexerError]? {
-//   while !self.parser.is_end() {
-//     if self.parser.parse_next() is Some(result) {
-//       // 修复：将 TurtleError 转换为 String
-//       return Some(
-//         result.map_err(e => {
-//           LexerError::SyntaxError("Syntax Error: \{e.to_string()}")
-//         }),
-//       )
-//     }
-//     if self.parser.lexer.extend_from_async_read(self.reader) is Err(e) {
-//       return Some(
-//         Err(LexerError::IoReadError("IO Read Error: \{e.to_string()}")),
-//       )
-//     }
-//   }
-//   None
-// }
-
-///|
-// pub(all) struct SliceIterator[TR, RR] {
-//   parser : ParserM[TR, RR]
-// }

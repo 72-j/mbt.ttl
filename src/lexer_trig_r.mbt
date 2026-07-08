@@ -1,5 +1,5 @@
 ///|
-impl RuleRecognizer for TriGRecognizer with fn recognize_next(
+pub impl RuleRecognizer for TriGRecognizer with fn recognize_next(
   self : TriGRecognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,
@@ -1052,14 +1052,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_next(
                         lwINTEGER,
                       ).as_term(),
                     )
-                    //                     self.emit_quad(results)
 
-                    // // 关键：根据 in_collection 决定下一个状态
-                    // if self.in_collection {
-                    //   self.stack.push(TriGState::ObjectCollectionPossibleEnd)
-                    // } else {
-                    //   self.stack.push(TriGState::PredicateObjectListEnd)
-                    // }
                     return self
                   }
                   Err(e) => return self.error(e.to_string())

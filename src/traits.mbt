@@ -1,13 +1,12 @@
 ///|
 pub trait StateMachine {
-  // 修改：返回 (Self, RdfState, RdfOut?) 以支持不可变状态更新
   fn initial_state(Self) -> RdfState
   fn transition(Self, state : RdfState, event : Event, context : RdfContext) -> TransitionResult[
     Self,
     RdfState,
     RdfOut,
   ]
-  fn current_state(Self) -> RdfState // ← 必须提供
+  fn current_state(Self) -> RdfState
   fn step(Self, event : Event) -> Self
   fn reset(Self) -> Self
   fn is_accepting(Self) -> Bool
@@ -37,7 +36,7 @@ pub trait IriComponents {
 }
 
 ///|
-trait StringRepr {
+pub trait StringRepr {
   fn as_stringview(self : Self) -> StringView
   fn into_string(self : Self) -> String
 }
@@ -61,7 +60,6 @@ pub impl StringRepr for IriRef with fn as_stringview(self : IriRef) -> StringVie
 pub impl StringRepr for IriRef with fn into_string(self : IriRef) -> String {
   self.val.base_iri
 }
-
 
 ///|
 pub trait TokenRecognizer {
@@ -90,22 +88,3 @@ pub trait RuleRecognizer {
   // fn stack_signature(Self) -> Option[(Int, Option[String])]
 
 }
-
-// trait From {
-//   fn[T] from(self : Self, T) -> Self
-// }
-
-// trait AsRef {
-//  fn as_ref(self: Self) -> Ref[Self]
-// }
-
-// pub trait IriRefInput {
-//   fn to_str(self : Self) -> String
-//   fn len(self : Self) -> Int
-//   fn sub(self : Self, start~ : Int, end~ : Int) -> StringView
-// }
-
-
-// trait Into[T] {
-//   into(Self) -> T
-// }

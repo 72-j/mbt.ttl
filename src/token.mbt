@@ -1,4 +1,3 @@
-
 ///|
 /// 带位置的 N3Token
 pub struct LocatedN3Token(N3Token, Range) derive(Debug)
@@ -14,12 +13,14 @@ fn LocatedN3Token::new(token : N3Token, range : Range) -> Self {
 }
 
 ///|
-impl Show for LocatedN3Token with fn output(self : LocatedN3Token, f : &Logger) -> Unit {
+pub impl Show for LocatedN3Token with fn output(
+  self : LocatedN3Token,
+  f : &Logger,
+) -> Unit {
   self.0.output(f)
 }
 
 ///|
-/// 带位置的 TokenOrLineJump
 pub enum LocatedTokenOrLineJump {
   LocatedN3Token(LocatedN3Token)
   LineJump(Int) // 换行位置
@@ -27,7 +28,7 @@ pub enum LocatedTokenOrLineJump {
 } derive(Debug)
 
 ///|
-fn LocatedTokenOrLineJump::into_token(
+pub fn LocatedTokenOrLineJump::into_token(
   self : LocatedTokenOrLineJump,
 ) -> N3Token? {
   match self {
@@ -47,7 +48,7 @@ pub fn LocatedTokenOrLineJump::range(self : LocatedTokenOrLineJump) -> Range? {
 }
 
 ///|
-impl Show for LocatedTokenOrLineJump with fn output(
+pub impl Show for LocatedTokenOrLineJump with fn output(
   self : LocatedTokenOrLineJump,
   f : &Logger,
 ) -> Unit {
@@ -57,25 +58,6 @@ impl Show for LocatedTokenOrLineJump with fn output(
     LocatedTokenOrLineJump::End => f.write_string("EOF")
   }
 }
-
-///|
-// impl Show for TokenOrLineJump[N3Token] with fn output(
-//   self : TokenOrLineJump[N3Token],
-//   f : &Logger,
-// ) -> Unit {
-//   match self {
-//     TokenOrLineJump::LocatedN3Token(t) => t.output(f)
-//     TokenOrLineJump::LineJump => f.write_string("\\n")
-//   }
-// }
-
-///|
-// pub fn[T] TokenOrLineJump::into_token(self : TokenOrLineJump[T]) -> T? {
-//   match self {
-//     TokenOrLineJump::LocatedN3Token(t) => Some(t)
-//     TokenOrLineJump::LineJump => None
-//   }
-// }
 
 ///|
 pub(all) enum Token {
@@ -134,7 +116,7 @@ pub impl Show for Token with fn output(self : Token, f : &Logger) -> Unit {
 }
 
 ///|
-pub enum BaseDirection {
+pub(all) enum BaseDirection {
   Ltr
   Rtl
 } derive(Eq, Debug, Hash)

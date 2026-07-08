@@ -83,10 +83,6 @@ pub async fn NQuadsParser::split_file_for_parallel_parsing(
     Ok(c) => c
     Err(e) => return Err(e)
   }
-  // 由于 map 闭包内可能涉及复杂的 IO 初始化，且 for_reader 需要 Reader
-  // 这里假设我们需要为每个 chunk 创建一个独立的 Reader 视图
-  // 如果 File 不支持并发读取或切片，可能需要重新打开文件或其他方式
-  // 此处修正主要解决语法和类型错误
 
   let parsers = Array::new()
   for chunk in chunks {
@@ -94,15 +90,6 @@ pub async fn NQuadsParser::split_file_for_parallel_parsing(
     let end = chunk.1
     let length = (end - start).to_int()
 
-    // 假设存在一种方式从现有文件句柄创建一个限定范围的 Reader
-    // 例如：file.slice(start, length) 或类似 API
-    // 由于原代码尝试使用 read_exactly_at (这通常用于读取数据而非创建 Reader)，
-    // 且报错显示类型和异步问题，这里改为使用一个假设的 safe_reader_at 或类似逻辑
-    // 如果 Moonbit 标准库中 File 实现了 Reader 且支持 seek，我们可以包装它
-
-    // 临时方案：如果无法直接切片，可能需要重新打开文件或使用其他机制
-    // 这里为了演示修复，假设 file 有一个 .take_at(offset, len) 方法返回 Reader
-    // 请根据实际 Moonbit IO API 调整此行
     let reader = file.read_exactly_at(length, position=start)
 
     parsers.push(self.for_slice(reader))
@@ -122,7 +109,6 @@ pub fn NQuadsParser::low_level(
 pub struct ReaderNQuadsParser[RL] {
   inner : ReaderIterator[RL, NQuadsRecognizer]
 }
-// Iterator impl converted: use .iter() method or for-in loop
 
 ///|
 pub struct AsyncReaderNQuadsParser[RL] {
@@ -140,7 +126,6 @@ pub async fn[RL : TokenRecognizer] AsyncReaderNQuadsParser::next(
 pub struct SliceNQuadsParser[RL] {
   inner : SliceIterator[RdfLexer, RL]
 }
-// Iterator impl converted: use .iter() method or for-in loop
 
 ///|
 pub struct LowLevelNQuadsParser[RL] {
@@ -212,16 +197,6 @@ pub fn[RL : TokenRecognizer] LowLevelNQuadsParser::parse_next(
 
 ///|
 pub struct NQuadsSerializer {} derive(Default)
-
-///|
-// impl Writer for NQuadsSerializer with fn write_once(
-//   self : NQuadsSerializer,
-//   bytes : Bytes,
-//   offset~,
-//   len~,
-// ) -> Int {
-//   ...
-// }
 
 ///|
 pub fn NQuadsSerializer::new() -> NQuadsSerializer {
@@ -325,18 +300,9 @@ pub async fn[W : Writer] AsyncWriterNQuadsSerializer::finish(
   self : AsyncWriterNQuadsSerializer[W],
 ) -> Result[BufferedWriter[W], Unit] {
   // 将缓冲区内容写入 writer
-  // if self.buffer.length() > 0 {
-  //   let data = Bytes::from_array(self.buffer)
-  //   self.writer.write(data)
-  // }
+
   let buffer_writer = self.buffer_writer
   buffer_writer.flush()
-  // let buffer = self.buffer
-
-  // if buffer.length() > 0 {
-  //   let data = Bytes::from_array(buffer)
-  //   writer.write(data) // 写入剩余数据
-  // }
 
   Ok(buffer_writer)
 }
@@ -349,10 +315,8 @@ pub fn LowLevelNQuadsSerializer::serialize_quad(
   _self : LowLevelNQuadsSerializer,
   q : Quad,
 ) -> Result[String, Unit] {
-  // writeln(writer , "{} ." , q)
   let res = StringBuilder::new()
   res.write_string(q.to_string())
   res.write_string(".\n")
-
   Ok(res.to_string())
 }

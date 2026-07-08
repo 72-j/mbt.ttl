@@ -1,7 +1,7 @@
 // ===== 泛型状态机引擎 =====
 
 ///|
-pub struct GenericStateMachine[M] {
+pub(all) struct GenericStateMachine[M] {
   machine : M
   context : Ctx
   outputs : Array[O]
@@ -11,7 +11,7 @@ pub struct GenericStateMachine[M] {
 // }
 
 ///|
-fn[M] GenericStateMachine::GenericStateMachine(
+pub fn[M] GenericStateMachine::GenericStateMachine(
   machine : M,
   context : Ctx,
 ) -> GenericStateMachine[M] {
@@ -19,21 +19,21 @@ fn[M] GenericStateMachine::GenericStateMachine(
 }
 
 ///|
-impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn initial_state(
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn initial_state(
   self : GenericStateMachine[M],
 ) -> RdfState {
   self.machine.initial_state()
 }
 
 ///|
-impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn error_recovery_statemachine(
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn error_recovery_statemachine(
   self : GenericStateMachine[M],
 ) -> GenericStateMachine[M] {
   self.error_recovery_statemachine()
 }
 
 ///|
-impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn current_state(
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn current_state(
   self,
 ) -> RdfState {
   // 从栈中获取当前状态
@@ -41,7 +41,7 @@ impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn current_s
 }
 
 ///|
-impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   self,
   event : Event,
 ) -> GenericStateMachine[M] {
@@ -71,9 +71,9 @@ impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
       // ✅ 新增调试：打印新引擎的状态
       debug("step: new_engine outputs length = \{outputs.length()}")
       debug("step: new_machine is_accepting = \{new_machine.is_accepting()}")
-
+      let updated_machine = new_machine.set_current_state(new_state)
       let new_engine = GenericStateMachine::{
-        machine: new_machine,
+        machine: updated_machine,
         context: self.context,
         outputs,
       }
@@ -87,7 +87,7 @@ impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
 }
 
 ///|
-impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn reset(
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn reset(
   self,
 ) -> GenericStateMachine[M] {
   let new_machine = self.machine.error_recovery_statemachine()
@@ -100,9 +100,7 @@ impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn reset(
 }
 
 ///|
-
-///|
-impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn transition(
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn transition(
   self : GenericStateMachine[M],
   state : RdfState,
   event : Event,
@@ -127,14 +125,14 @@ impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn transitio
 }
 
 ///|
-impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn is_accepting(
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn is_accepting(
   self : GenericStateMachine[M],
 ) -> Bool {
   self.machine.is_accepting()
 }
 
 ///|
-impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
   ST : StateWrapper,
 ] set_current_state(self : GenericStateMachine[M], state : ST) -> GenericStateMachine[
   M,
@@ -178,14 +176,14 @@ pub fn[M : StateMachine] GenericStateMachine::run(
 }
 
 ///|
-impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn context(
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn context(
   self : GenericStateMachine[M],
 ) -> Ctx {
   self.context
 }
 
 ///|
-impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn set_context(
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn set_context(
   self : GenericStateMachine[M],
   new_context : Ctx,
 ) -> GenericStateMachine[M] {

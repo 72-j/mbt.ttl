@@ -1,5 +1,3 @@
-// lexer_trig_1h.mbt
-
 // 1. 集合处理 - 最核心
 // 对应状态: TriGState::ObjectCollectionBeginning
 // 功能: 处理 '(' 后的第一个元素或空集合情况
@@ -553,17 +551,8 @@ fn TriGRecognizer::handle_objects_list(
   // self.stack.push(TriGState::Object)
   // return self.recognize_next(...)
 
-  // 注意：ObjectsList 通常是在解析完谓词后进入的。
-  // 它需要立即处理下一个 Token 作为 Object。
-  // 由于这是一个辅助函数，我们不能简单地递归调用 recognize_next 而不改变结构，
-  // 但为了保持与原代码行为一致，我们模拟这个过程。
-
   self.stack.push(TriGState::Object)
 
-  // return self.handle_object(token, context, results, errors);
-  // self.debug_logger.info(
-  //   "[Step 4] Token stack: \{@debug.to_string(self.stack)} Token: \{token}",
-  // )
   self.recognize_next(
     token,
     RdfContext::TriGRecognizerContext(context),
@@ -722,12 +711,6 @@ fn TriGRecognizer::handle_collection_element(
       // 空集合直接对应 rdf:nil
       self.cur_object.push(TermRef::NamedNodeRef(lwNIL))
       // 注意：空集合不需要 emit_quad，因为 nil 是直接作为对象使用的
-      // 但是，如果这个集合是某个谓语的对象，emit_quad 应该由上一层状态（如 PredicateObjectList）在获取到对象后执行
-      // 查看原代码：原代码在这里调用了 self.emit_quad(results)。
-      // 如果 cur_object 被 push 了 lwNIL，那么上层状态在结束时应能正确 emit。
-      // 然而，原代码在 CollectionElement 中直接 emit 可能有问题，因为此时 quad 还没完全组装好（subject/predicate 可能还在栈里或上下文中）。
-      // *修正*：通常集合解析是递归构建链表。空集合 () 就是 rdf:nil。
-      // 我们将 rdf:nil 放入 cur_object，然后弹出集合状态，返回给调用者（通常是 Object 状态的消费者）去 emit。
 
       let _ = self.stack.pop() // Pop CollectionElement
       let _ = self.stack.pop() // Pop InCollection
@@ -735,7 +718,6 @@ fn TriGRecognizer::handle_collection_element(
       // 回到上一个状态，通常是等待对象结束的状态
       self.stack.push(TriGState::PredicateObjectListEnd)
       // 或者更通用的：self.stack.push(TriGState::ObjectPostProcess) 如果有的话
-      // 根据原代码逻辑，它 push 了 PredicateObjectListEnd。
       return self
     }
 
@@ -849,22 +831,7 @@ fn TriGRecognizer::handle_collection_end(
       // 此时应该回到 InCollection 的上一个状态？
       // 原代码注释说 "保留 InCollection 和 CollectionElement"，但这不对，因为 CollectionElement 已经弹出了。
       // 栈结构应该是: [..., InCollection, CollectionElement] -> CollectionElement pops itself and InCollection?
-      // 不，CollectionElement 处理第一个元素。CollectionEnd 处理后续。
 
-      // 如果这是最后一个元素，弹出 CollectionEnd 后，栈顶应该是 InCollection?
-      // 然后 InCollection 会再次触发 CollectionElement? 不，InCollection 是空转。
-
-      // 正确的流：
-      // 1. Start: Push InCollection, Push CollectionElement.
-      // 2. CollectionElement sees Value. Pushes CollectionEnd, Object.
-      // 3. Object processes Value. Returns.
-      // 4. Next token processed by top of stack: CollectionEnd.
-      // 5. CollectionEnd sees ')'. Pops self. Stack top is now InCollection.
-      // 6. Next token processed by InCollection. It returns self.
-      // 7. Next token processed by... what is below InCollection?
-      //    应该是进入集合前的状态，比如 PredicateObjectList.
-
-      // 所以，在 CollectionEnd 遇到 ')' 时，除了弹出 self，还应该弹出 InCollection.
       let _ = self.stack.pop() // Pop InCollection
 
       // 现在栈顶是进入集合前的状态 (e.g., PredicateObjectListEnd or similar)
@@ -1366,9 +1333,6 @@ fn TriGRecognizer::handle_predicate_object_list_possible_continuation(
 fn TriGRecognizer::handle_wrapped_graph_possible_end(
   self : TriGRecognizer,
   token : LocatedTokenOrLineJump,
-  // context : TriGRecognizerContext,
-  // results : Array[RdfOut],
-
 ) -> TriGRecognizer {
   self.debug_logger.info(
     "Entering WrappedGraphPossibleEnd with token: \{token}",

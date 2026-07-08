@@ -7,14 +7,6 @@ fn TriGRecognizer::handle_triples_or_graph_m(
   event : Event,
   _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-  // let ctx = match context {
-  //   RdfContext::TriGRecognizerContext(c) => c
-  //   _ =>
-  //     return Err(
-  //       RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
-  //     )
-  // }
-
   self.debug_logger.info("TriplesOrGraph: handling event: \{event}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
@@ -140,17 +132,9 @@ fn TriGRecognizer::handle_objects_list_m(
   _event : Event,
   _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-  // let ctx = match context {
-  //   RdfContext::TriGRecognizerContext(c) => c
-  //   _ =>
-  //     return Err(
-  //       RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
-  //     )
-  // }
 
   // ObjectsList 只是路由到 Object
   // 原代码: push Object, then recognize_next (which processes same token)
-  // 新架构: 直接转移到 Object 状态，引擎会用同一个 event 调用 handle_object_m
   self.debug_logger.info("ObjectsList: routing to Object state")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
@@ -160,7 +144,7 @@ fn TriGRecognizer::handle_objects_list_m(
   // 注意：原代码中 ObjectsList 是一个"瞬态"状态，它立即把控制权交给 Object。
   // 如果我们的状态机引擎在一次 transition 中只走一步，那么返回 Object 状态是正确的。
 
-  let new_self = { ..self, stack: new_stack } // 如果 stack 需要更新
+  let new_self = { ..self, stack: new_stack }
   Ok((new_self, TriGState::Object, None))
 }
 
@@ -173,13 +157,6 @@ fn TriGRecognizer::handle_object_m(
   event : Event,
   __context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-  // let ctx = match context {
-  //   RdfContext::TriGRecognizerContext(c) => c
-  //   _ =>
-  //     return Err(
-  //       RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
-  //     )
-  // }
   self.debug_logger.info("Object: handling event: \{event}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
@@ -297,14 +274,6 @@ fn TriGRecognizer::handle_object_collection_possible_end_m(
   event : Event,
   _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-  // let ctx = match context {
-  //   RdfContext::TriGRecognizerContext(c) => c
-  //   _ =>
-  //     return Err(
-  //       RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
-  //     )
-  // }
-
   self.debug_logger.info(
     "ObjectCollectionPossibleEnd: handling event: \{event}",
   )
@@ -822,81 +791,6 @@ fn TriGRecognizer::handle_verb_m(
       )
   }
 }
-
-// fn TriGRecognizer::handle_literal_possible_suffix_m(
-//   self : TriGRecognizer,
-//   value : String,
-//   emit : Bool,
-//   event : Event,
-//   _context : RdfContext,
-// ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-
-//   self.debug_logger.info(
-//     "Entering LiteralPossibleSuffix(\{value}, emit=\{emit}) with event: \{event}",
-//   )
-//   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
-
-//   match event {
-//     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::LangTag(language~, direction~), _)) => {
-//       let literal = match direction {
-//         Some(dir) => {
-//           match LanguageTag::from_str(language.to_lower()) {
-//             Ok(tag) => {
-//               TermRef::LiteralRef(
-//                 LiteralRef::new_directional_language_tagged_literal_unchecked(
-//                   value, tag, dir,
-//                 ),
-//               )
-//             }
-//             Err(e) => return Err(RuleRecognizerError::SyntaxError(e.to_string(), self.last_range))
-//           }
-//         }
-//         None => {
-//           TermRef::LiteralRef(
-//             Literal::new_language_tagged_literal_unchecked(
-//               value,
-//               language.to_lower(),
-//             ).as_ref(),
-//           )
-//         }
-//       }
-
-//       let new_cur_object = self.cur_object.push(literal)
-//       let new_self = { ..self, cur_object: new_cur_object }
-
-//       if emit {
-//         let quad = new_self.emit_quad()
-//         let mut new_stack = new_self.stack.clone()
-//         new_stack.push(TriGState::PredicateObjectListEnd)
-//         let final_self = { ..new_self, stack: new_stack }
-//         Ok((final_self, TriGState::PredicateObjectListEnd, Some(quad)))
-//       } else {
-//         Ok((new_self, TriGState::LiteralPossibleSuffix(value, emit), None))
-//       }
-//     }
-
-//     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation("^^"), _)) => {
-//       let mut new_stack = self.stack.clone()
-//       new_stack.push(TriGState::LiteralExpectDatatype(value=value, emit=emit))
-//       let new_self = { ..self, stack: new_stack }
-//       Ok((new_self, TriGState::LiteralExpectDatatype(value, emit), None))
-//     }
-
-//     _ => {
-//       let new_cur_object = self.cur_object.push(LiteralRef::new_simple_literal(value).as_term())
-//       let new_self = { ..self, cur_object: new_cur_object }
-//       if emit {
-//         let quad = new_self.emit_quad()
-//         let mut new_stack = new_self.stack.clone()
-//         new_stack.push(TriGState::PredicateObjectListEnd)
-//         let final_self = { ..new_self, stack: new_stack }
-//         Ok((final_self, TriGState::PredicateObjectListEnd, Some(quad)))
-//       } else {
-//         Ok((new_self, TriGState::LiteralPossibleSuffix(value, emit), None))
-//       }
-//     }
-//   }
-// }
 
 // ===== 状态: TriGState::ExpectDot =====
 // 功能: 期望遇到句号，用于指令结束
@@ -1743,28 +1637,7 @@ fn TriGRecognizer::handle_subject_reified_triple_end_m(
       )
   }
 }
-// fn TriGRecognizer::handle_subject_reified_triple_end_m(
-//   self : TriGRecognizer,
-//   event : Event,
-//   _context : RdfContext,
-// ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-//   let (reifier, new_cur_reifier) = match self.cur_reifier.unsnoc() {
-//     Some((init, last)) => (last, init)
-//     None => return Err(RuleRecognizerError::SyntaxError("Internal error: reifier stack empty", self.last_range))
-//   }
 
-//   let new_cur_subject = self.cur_subject +[reifier]
-//   let new_self = { ..self, cur_subject: new_cur_subject, cur_reifier: new_cur_reifier }
-
-//   match event {
-//     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(">>"), _)) => {
-//       Ok((new_self, TriGState::SubjectReifiedTripleEnd, None))
-//     }
-//     _ => {
-//       Err(RuleRecognizerError::SyntaxError("Expecting '>>' to close a reified triple", self.last_range))
-//     }
-//   }
-// }
 // ===== 状态: TriGState::TripleTermEnd =====
 // 功能: 三元组项结束，期望')>>'
 
@@ -1832,45 +1705,6 @@ fn TriGRecognizer::handle_triple_term_end_m(
       )
   }
 }
-// ===== TripleTermEnd 处理 =====
-// fn TriGRecognizer::handle_triple_term_end_m(
-//   self : TriGRecognizer,
-//   emit : Bool,
-//   event : Event,
-//   _context : RdfContext,
-// ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-//   let (subject, new_cur_subject) = match self.cur_subject.unsnoc() {
-//     Some((init, last)) => (last, init)
-//     None => return Err(RuleRecognizerError::SyntaxError("Internal error: subject stack empty in TripleTermEnd", self.last_range))
-//   }
-//   let (predicate, new_cur_predicate) = match self.cur_predicate.unsnoc() {
-//     Some((init, last)) => (last, init)
-//     None => return Err(RuleRecognizerError::SyntaxError("Internal error: predicate stack empty in TripleTermEnd", self.last_range))
-//   }
-//   let (object, new_cur_object) = match self.cur_object.unsnoc() {
-//     Some((init, last)) => (last, init)
-//     None => return Err(RuleRecognizerError::SyntaxError("Internal error: object stack empty in TripleTermEnd", self.last_range))
-//   }
-
-//   let triple = TripleRef::TripleRef(subject, predicate, object)
-//   let new_cur_object = new_cur_object.push(TermRef::TripleRef(triple))
-//   let intermediate_self = { ..self, cur_subject: new_cur_subject, cur_predicate: new_cur_predicate, cur_object: new_cur_object }
-
-//   let output = if emit {
-//     Some(intermediate_self.emit_quad_m())
-//   } else {
-//     None
-//   }
-
-//   match event {
-//     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Punctuation(")>>"), _)) => {
-//       Ok((intermediate_self, TriGState::TripleTermEnd(emit~), output))
-//     }
-//     _ => {
-//       Err(RuleRecognizerError::SyntaxError("Expecting ')>>' to close a triple term", self.last_range))
-//     }
-//   }
-// }
 
 // ===== 状态: TriGState::EndOfReifiedTripleBeforeReifier =====
 // 功能: 引用三元组结束后处理reifier
@@ -2427,11 +2261,6 @@ fn TriGRecognizer::handle_wrapped_graph_possible_end_m(
       self.debug_logger.info("WrappedGraphPossibleEnd: graph ended with '}'")
 
       // ✅ 弹出 WrappedGraphPossibleEnd
-      // 注意：这里可能还有 WrappedGraph 状态，但由上层管理
-      // 我们只需返回 WrappedGraph 状态，让上层决定下一步
-
-      // 清空当前图的数据（可选）
-      // 注意：cur_graph 已经设置，不需要重置
 
       // ✅ 返回 WrappedGraph，表示图已结束，可以回到上层
       Ok((self, TriGState::WrappedGraph, None))

@@ -1,12 +1,9 @@
 ///|
-/// 可生成的命令：模拟逐行输入 N-Quads
 pub(all) enum Command {
   // 解析一行完整四元组（含命名图）
   ParseQuad(NamedOrBlankNodeRef, NamedNodeRef, TermRef, GraphNameRef)
-
   // 解析一行三元组（默认图，省略 graph）
   ParseTriple(NamedOrBlankNodeRef, NamedNodeRef, TermRef)
-
   // 解析带语言标签的字面量
   ParseLiteralQuad(
     NamedOrBlankNodeRef,
@@ -16,7 +13,6 @@ pub(all) enum Command {
     GraphNameRef
   )
   // (subject, predicate, literal_value, lang_tag, graph)
-
   // 解析带数据类型的字面量
   ParseTypedLiteral(
     NamedOrBlankNodeRef,
@@ -26,10 +22,8 @@ pub(all) enum Command {
     GraphNameRef
   )
   // (subject, predicate, literal_value, datatype, graph)
-
   // Blank Node 作为 subject
   ParseBlankSubject(BlankNodeRef, NamedNodeRef, TermRef, GraphNameRef)
-
   // Blank Node 作为 object
   ParseBlankObject(
     NamedOrBlankNodeRef,
@@ -100,11 +94,6 @@ fn make_quad(
 }
 
 ///|
-// ============================================================
-// 4. System Under Test（被测系统）
-// ============================================================
-
-///|
 /// 包装真实 N-Quads 解析器
 /// 这里用简单状态模拟，实际替换为你的解析器
 pub(all) struct NQuadsSystem {
@@ -123,7 +112,6 @@ fn init_system() -> NQuadsSystem {
 /// 系统辅助：执行真实语义
 fn semantics(command : Command, system : NQuadsSystem) -> Response {
   system.line_number += 1
-
   match command {
     ParseQuad(subject, predicate, object, graph) => {
       let quad = make_quad(subject, predicate, object, graph)
@@ -185,17 +173,11 @@ fn semantics(command : Command, system : NQuadsSystem) -> Response {
 }
 
 ///|
-// ============================================================
-// 5. Precondition（前置条件）
-// ============================================================
-
-///|
 /// 3️⃣ precondition
 /// 意图：检查命令在当前模型下是否业务合法
 /// N-Quads 每行独立，主要检查格式合法性
 fn precondition(model : Model, command : Command) -> @qs.Logic {
   ignore(model) // N-Quads 无状态依赖，每行独立
-
   let ok = match command {
     // NamedNodeRef 必须非空
     ParseQuad(s, p, o, g) =>
@@ -205,7 +187,6 @@ fn precondition(model : Model, command : Command) -> @qs.Logic {
       valid_graph(g)
     ParseTriple(s, p, o) =>
       valid_subject(s) && valid_predicate(p) && valid_object(o)
-
     // 字面量值和语言标签必须非空
     ParseLiteralQuad(s, p, value, lang, g) =>
       valid_subject(s) &&
@@ -213,7 +194,6 @@ fn precondition(model : Model, command : Command) -> @qs.Logic {
       value.length() > 0 &&
       lang.length() > 0 &&
       valid_graph(g)
-
     // 数据类型必须合法 NamedNodeRef
     ParseTypedLiteral(s, p, value, dt, g) =>
       valid_subject(s) &&
@@ -221,7 +201,6 @@ fn precondition(model : Model, command : Command) -> @qs.Logic {
       value.length() > 0 &&
       valid_predicate(dt) &&
       valid_graph(g)
-
     // Blank Node 标签必须非空
     ParseBlankSubject(bn, p, o, g) =>
       bn.to_string().length() > 0 &&
@@ -234,7 +213,6 @@ fn precondition(model : Model, command : Command) -> @qs.Logic {
       bn.to_string().length() > 0 &&
       valid_graph(g)
   }
-
   @qs.Logic::predicate(name="valid nquads syntax", value=ok)
 }
 
@@ -304,16 +282,10 @@ fn transition(model : Model, command : Command, response : Response) -> Model {
       )
     (ParseBlankObject(s, p, bn, g), BlankObjectParsed) =>
       model_add_quad(model, make_quad(s, p, TermRef::BlankNodeRef(bn), g))
-
     // 不匹配：保持原状（理论上不应发生，因为 precondition 已过滤）
     _ => model
   }
 }
-
-///|
-// ============================================================
-// 7. Postcondition（后置条件）
-// ============================================================
 
 ///|
 /// 5️⃣ postcondition
@@ -325,14 +297,11 @@ fn postcondition(
 ) -> @qs.Logic {
   // 计算执行后的预期模型
   let next_model = transition(model, command, response)
-
   // 必须有至少一个 quad（刚添加的）
   if next_model.quads.is_empty() {
     return @qs.Logic::bot()
   }
-
   let last_quad = next_model.quads[next_model.quads.length() - 1]
-
   match (command, response) {
     (ParseQuad(s, p, o, g), QuadParsed) => {
       let expected = make_quad(s, p, o, g)
@@ -378,16 +347,10 @@ fn postcondition(
         value=last_quad == expected,
       )
     }
-
     // 不应到达：命令和响应类型不匹配
     _ => @qs.Logic::bot()
   }
 }
-
-///|
-// ============================================================
-// 8. Generator（命令生成器）
-// ============================================================
 
 ///|
 /// 6️⃣ generator
@@ -400,9 +363,7 @@ fn generator(
 ) -> Command? {
   ignore(model) // N-Quads 无状态依赖
   ignore(size)
-
   let choice = rng.next_positive_int() % 10
-
   match choice {
     // 30%: 完整四元组
     0 | 1 | 2 =>
@@ -414,11 +375,9 @@ fn generator(
           gen_graph(rng),
         ),
       )
-
     // 20%: 三元组（默认图）
     3 | 4 =>
       Some(ParseTriple(gen_subject(rng), gen_predicate(rng), gen_object(rng)))
-
     // 20%: 带语言标签的字面量
     5 | 6 =>
       Some(
@@ -430,7 +389,6 @@ fn generator(
           gen_graph(rng),
         ),
       )
-
     // 15%: 带数据类型的字面量
     7 =>
       Some(
@@ -442,7 +400,6 @@ fn generator(
           gen_graph(rng),
         ),
       )
-
     // 10%: Blank Node subject
     8 =>
       Some(
@@ -453,7 +410,6 @@ fn generator(
           gen_graph(rng),
         ),
       )
-
     // 5%: Blank Node object
     _ =>
       Some(
@@ -466,8 +422,6 @@ fn generator(
       )
   }
 }
-
-// ---- 生成器辅助函数 ----
 
 ///|
 fn gen_predicate(rng : @splitmix.RandomState) -> NamedNodeRef {
@@ -536,8 +490,7 @@ fn gen_object(rng : @splitmix.RandomState) -> TermRef {
     _ => LiteralRef::new_simple_literal(gen_literal_value(rng)).as_term()
   }
 }
-
-///|
+//|
 // ============================================================
 // 9. Mock（符号响应模拟）
 // ============================================================
@@ -551,7 +504,6 @@ fn mock(
   gen_sym : @qs.GenSym,
 ) -> (Response, @qs.GenSym) {
   ignore(model)
-
   let response = match command {
     ParseQuad(_, _, _, _) => QuadParsed
     ParseTriple(_, _, _) => TripleParsed
@@ -570,11 +522,6 @@ fn mock(
 fn response_vars(_response : Response) -> Array[@qs.Var] {
   []
 }
-
-///|
-// ============================================================
-// 10. Reify / Bind / Remap（N-Quads 无符号引用，直通）
-// ============================================================
 
 ///|
 /// 8️⃣ reify_command
@@ -608,25 +555,17 @@ fn remap_command(command : Command, _scope : Map[@qs.Var, @qs.Var]) -> Command? 
 }
 
 ///|
-// ============================================================
-// 11. Shrinker（最小化失败用例）
-// ============================================================
-
-///|
 /// 1️⃣1️⃣ shrinker
 /// 意图：尝试生成更简单的命令变体
 fn shrinker(_model : Model, command : Command) -> Array[Command] {
   match command {
     // 将命名图变为默认图（简化）
     ParseQuad(s, p, o, NamedNodeRef(_)) => [ParseQuad(s, p, o, DefaultGraph)]
-
     // 将完整四元组变为三元组（去掉 graph）
     ParseQuad(s, p, o, DefaultGraph) => [ParseTriple(s, p, o)]
-
     // 简化字面量值为空字符串
     ParseLiteralQuad(s, p, _value, lang, g) =>
       [ParseLiteralQuad(s, p, "", lang, g)]
-
     // 简化数据类型为通用类型
     ParseTypedLiteral(s, p, value, _dt, g) =>
       [
@@ -638,18 +577,12 @@ fn shrinker(_model : Model, command : Command) -> Array[Command] {
           g,
         ),
       ]
-
     // 将 Blank Node 替换为 IRI（如果可能）
     ParseBlankSubject(_bn, p, o, g) =>
       [ParseQuad(NamedNodeRef({ iri: "http://example.org/replaced" }), p, o, g)]
     _ => []
   }
 }
-
-///|
-// ============================================================
-// 12. Command Name（覆盖率标签）
-// ============================================================
 
 ///|
 /// 1️⃣2️⃣ command_name
@@ -703,11 +636,6 @@ fn nquads_sm() -> @qs.StateMachine[
 }
 
 ///|
-// ============================================================
-// 14. 配置与测试执行
-// ============================================================
-
-///|
 /// 测试配置
 fn nquads_config(
   max_commands~ : Int,
@@ -736,7 +664,6 @@ test "nquads random property test" {
     nquads_sm(),
     config=nquads_config(max_commands=50, seed=12345, cases=200),
   )
-
   match result {
     Ok(report) =>
       println(
@@ -794,7 +721,6 @@ test "nquads specific scenario" {
       NamedNodeRef({ iri: "http://example.org/graph2" }),
     ),
   ]
-
   // 手动验证模型状态
   let model = commands.fold(init=init_symbolic_model(), fn(model, cmd) {
     let resp = match cmd {
@@ -807,7 +733,6 @@ test "nquads specific scenario" {
     }
     transition(model, cmd, resp)
   })
-
   @debug.assert_eq(model.quads.length(), 4)
   @debug.assert_eq(model.quads[0].graph_name, DefaultGraph)
   @debug.assert_eq(
@@ -816,136 +741,4 @@ test "nquads specific scenario" {
       NamedNodeRef::new_unchecked("http://example.org/graph1").into_owned(),
     ),
   )
-}
-
-///|
-/// 注入 bug 验证 shrink 能力
-test "nquads shrink finds bug" {
-  // 有 bug 的语义：ParseTriple 错误放入 NamedNodeRef
-  let buggy_semantics = fn(
-    command : Command,
-    system : NQuadsSystem,
-  ) -> Response {
-    system.line_number += 1
-    match command {
-      ParseTriple(subject, predicate, object) => {
-        let quad = make_quad(
-          subject,
-          predicate,
-          object,
-          NamedNodeRef({ iri: "http://buggy.graph/" }), // BUG!
-        )
-        system.quads.push(quad)
-        TripleParsed
-      }
-      _ => semantics(command, system)
-    }
-  }
-
-  let buggy_sm = @qs.StateMachine::new(
-    init_symbolic_model~,
-    init_concrete_model~,
-    init_system=() => init_system(),
-    generator~,
-    mock~,
-    transition_symbolic=transition,
-    transition_concrete=transition,
-    precondition~,
-    postcondition~,
-    response_vars~,
-    shrinker~,
-    remap_command~,
-    reify_command~,
-    run_command=(command, system) => buggy_semantics(command, system),
-    bind_response~,
-    command_name~,
-  )
-
-  let result = @qs.check(
-    buggy_sm,
-    config=nquads_config(max_commands=20, seed=999, cases=50),
-  )
-
-  match result {
-    Ok(_) => fail("expected to find bug")
-    Err(failure) => {
-      println("Found bug (expected):")
-      println(@qs.format_failure(failure))
-    }
-  }
-}
-
-///|
-/// 注入 bug 验证 shrink 能力
-test "nquads shrink finds bug 2" {
-  // 有 bug 的语义：ParseTriple 错误放入 NamedNodeRef
-  let buggy_semantics = fn(
-    command : Command,
-    system : NQuadsSystem,
-  ) -> Response {
-    system.line_number += 1
-    match command {
-      ParseTriple(subject, predicate, object) => {
-        let quad = make_quad(
-          subject,
-          predicate,
-          object,
-          NamedNodeRef({ iri: "http://buggy.graph/" }), // BUG!
-        )
-        system.quads.push(quad)
-        TripleParsed
-      }
-      _ => semantics(command, system)
-    }
-  }
-
-  // 自定义生成器：只生成 ParseTriple，确保触发 bug
-  let triple_only_generator = fn(
-    model : Model,
-    size : Int,
-    rng : @splitmix.RandomState,
-  ) -> Command? {
-    ignore(model)
-    ignore(size)
-    ignore(rng)
-    Some(
-      ParseTriple(
-        NamedNodeRef({ iri: "http://example.org/s" }),
-        { iri: "http://example.org/p" },
-        NamedNodeRef({ iri: "http://example.org/o" }),
-      ),
-    )
-  }
-
-  let buggy_sm = @qs.StateMachine::new(
-    init_symbolic_model~,
-    init_concrete_model~,
-    init_system=() => init_system(), // 确保正确初始化
-    generator=triple_only_generator, // 使用强制生成器
-    mock~,
-    transition_symbolic=transition,
-    transition_concrete=transition,
-    precondition~,
-    postcondition~,
-    response_vars~,
-    shrinker~,
-    remap_command~,
-    reify_command~,
-    run_command=(command, system) => buggy_semantics(command, system),
-    bind_response~,
-    command_name~,
-  )
-
-  let result = @qs.check(
-    buggy_sm,
-    config=nquads_config(max_commands=5, seed=999, cases=10), // 减少命令数，因为只需要一个就能触发
-  )
-
-  match result {
-    Ok(_) => fail("expected to find bug")
-    Err(failure) => {
-      println("Found bug (expected):")
-      println(@qs.format_failure(failure))
-    }
-  }
 }

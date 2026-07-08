@@ -148,15 +148,8 @@ pub fn[RL] ReaderTurtleParser::prefixes(
   self : ReaderTurtleParser[RL],
 ) -> TurtlePrefixesIter {
   match self.inner.parser.context {
-    RdfContext::N3RecognizerContext(ctx) =>
-      // 假设 ctx 有一个 prefixes 字段，且是 Map[String, Iri]
-      // 如果 prefixes 是其他类型，请调整 .iter() 的调用
-      { inner: ctx.prefixes.iter() }
-    _ =>
-      // N-Quads 通常不支持前缀，返回空迭代器或抛出错误
-      // 这里假设返回一个空的 TriGPrefixesIter
-      { inner: [].iter() } // 注意：[].iter() 的类型需要匹配 Iter2[String, Iri]
-    // 如果无法构造空迭代器，可能需要 panic 或返回 Option
+    RdfContext::N3RecognizerContext(ctx) => { inner: ctx.prefixes.iter() }
+    _ => { inner: [].iter() }
   }
 }
 
@@ -170,8 +163,6 @@ pub fn[RL] ReaderTurtleParser::base_iri(
     _ => None
   }
 }
-
-// Iterator impl converted: use .iter() method or for-in loop
 
 ///|
 pub struct AsyncReaderTurtleParser[RL] {
@@ -211,10 +202,7 @@ pub fn[RL] AsyncReaderTurtleParser::prefixes(
     RdfContext::N3RecognizerContext(ctx) =>
       // 假设 ctx.prefixes 是 Map[String, IriRef] 或类似可迭代结构
       { inner: ctx.prefixes.iter() }
-    _ =>
-      // 返回空的迭代器，需确保类型与 TriGPrefixesIter 内部兼容
-      // 这里假设存在一个空的 Map 或数组可以生成匹配的 Iter2
-      { inner: [].iter() }
+    _ => { inner: [].iter() }
   }
 }
 
@@ -239,15 +227,8 @@ pub fn[RL] SliceTurtleParser::prefixes(
   self : SliceTurtleParser[RL],
 ) -> TurtlePrefixesIter {
   match self.inner.parser.context {
-    RdfContext::N3RecognizerContext(ctx) =>
-      // 假设 ctx 有一个 prefixes 字段，且是 Map[String, Iri]
-      // 如果 prefixes 是其他类型，请调整 .iter() 的调用
-      { inner: ctx.prefixes.iter() }
-    _ =>
-      // N-Quads 通常不支持前缀，返回空迭代器或抛出错误
-      // 这里假设返回一个空的 TriGPrefixesIter
-      { inner: [].iter() } // 注意：[].iter() 的类型需要匹配 Iter2[String, Iri]
-    // 如果无法构造空迭代器，可能需要 panic 或返回 Option
+    RdfContext::N3RecognizerContext(ctx) => { inner: ctx.prefixes.iter() }
+    _ => { inner: [].iter() }
   }
 }
 
@@ -300,9 +281,7 @@ pub fn[RL] LowLevelTurtleParser::prefixes(
 ) -> TurtlePrefixesIter {
   match self.parser.context {
     RdfContext::N3RecognizerContext(ctx) => { inner: ctx.prefixes.iter() }
-    _ =>
-      // 假设存在一个空的 Map 或数组可以生成匹配的 Iter2[String, IriRef]
-      { inner: {}.iter() }
+    _ => { inner: {}.iter() }
   }
 }
 
@@ -321,7 +300,6 @@ pub fn[RL] LowLevelTurtleParser::base_iri(
 pub struct TurtlePrefixesIter {
   inner : Iter2[String, Iri]
 }
-// Iterator impl converted: use .iter() method or for-in loop
 
 ///|
 pub struct TurtleSerializer {

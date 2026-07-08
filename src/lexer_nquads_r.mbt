@@ -1,5 +1,5 @@
 ///|
-impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
+pub impl RuleRecognizer for NQuadsRecognizer with fn recognize_next(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,

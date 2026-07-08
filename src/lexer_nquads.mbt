@@ -1,5 +1,5 @@
 ///|
-pub struct NQuadsRecognizer {
+pub(all) struct NQuadsRecognizer {
   stack : Array[NQuadsState]
   subjects : Array[NamedOrBlankNodeRef]
   predicates : Array[NamedNodeRef]
@@ -9,23 +9,15 @@ pub struct NQuadsRecognizer {
   mut last_range : Range
   errors : Array[RuleRecognizerError]
 }
-// impl RuleRecognizer for NQuadsRecognizer with fn stack_signature(self: NQuadsRecognizer) ->  Option[(Int, Option[String])] {
-//       match self.stack.last() {
-//       Some(state) => {
-//         Some((self.stack.length(), Some(state.to_string())))
-//         }
-//       None => None
-//     }
-// }
 
 ///|
-pub struct NQuadsRecognizerContext {
+pub(all) struct NQuadsRecognizerContext {
   with_graph_name : Bool
   lexer_options : LexerOptions
 }
 
 ///|
-enum NQuadsState {
+pub(all) enum NQuadsState {
   ExpectSubject
   ExpectPredicate
   ExpectedObject
@@ -63,7 +55,7 @@ impl Show for NQuadsState with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-impl RuleRecognizer for NQuadsRecognizer with fn error_recovery_state(
+pub impl RuleRecognizer for NQuadsRecognizer with fn error_recovery_state(
   self : NQuadsRecognizer,
 ) -> NQuadsRecognizer {
   self.stack.clear()
@@ -75,7 +67,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn error_recovery_state(
 }
 
 ///|
-impl RuleRecognizer for NQuadsRecognizer with fn[DL : DebugLogger] debug_logger(
+pub impl RuleRecognizer for NQuadsRecognizer with fn[DL : DebugLogger] debug_logger(
   self : NQuadsRecognizer,
   debug_logger : DL,
 ) {
@@ -83,7 +75,7 @@ impl RuleRecognizer for NQuadsRecognizer with fn[DL : DebugLogger] debug_logger(
 }
 
 ///|
-impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
+pub impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
   self : NQuadsRecognizer,
   _context : RdfContext,
   results : Array[RdfOut],
@@ -110,12 +102,12 @@ impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
 }
 
 ///|
-impl RuleRecognizer for NQuadsRecognizer with fn lexer_options(
+pub impl RuleRecognizer for NQuadsRecognizer with fn lexer_options(
   context : RdfContext,
 ) -> LexerOptions? {
   match context {
     RdfContext::NQuadsRecognizerContext(ctx) => Some(ctx.lexer_options)
-    _ => None // 或者 panic!("Unexpected context type")
+    _ => None
   }
 }
 
@@ -208,7 +200,6 @@ fn NQuadsRecognizer::emit_quad(
         ),
       )
     // 可以选择在此处调用 self.error_recovery_state()，但这会改变 self
-    // 通常 emit_quad 不应改变 self 的状态除了 pop，所以仅记录错误
   }
 }
 
@@ -221,39 +212,11 @@ fn NQuadsRecognizer::make_current_quad(
   let subject_opt = self.subjects.pop().unwrap()
   let predicate_opt = self.predicates.pop().unwrap()
   let object_opt = self.objects.pop().unwrap()
-  // match (subject_opt, predicate_opt, object_opt, graph_name) {
-  // (Some(subject), Some(predicate), Some(object),Some(graph_name)) =>
-  // results.push(
+
   RdfOut::Quad({
     subject: subject_opt.into_owned(),
     predicate: predicate_opt.into_owned(),
     object: object_opt.into_owned(),
     graph_name: graph_name.unwrap(),
   })
-
-  // }
-
-  // 2. 获取图名
-  // 假设 self.cur_graph 的类型是 Option<GraphName> 或类似结构
-  // 如果 cur_graph 是 None，通常表示默认图。
-  // 这里需要根据你项目中 Quad 的具体定义来构造。
-  // 假设 Quad::Quad 接收 (Subject, Predicate, Object, Graph)
-  // 且 Graph 可以是 Option 或者特定的 DefaultGraph 枚举值
-
-  // let graph = self.cur_graph // 假设 cur_graph 已经是正确的类型 (e.g., Option<NamedNodeRef> 或 GraphName)
-
-  // 3. 构造 Quad
-  // 注意：你需要根据实际的 RdfOut 和 Quad 定义调整构造函数
-  // 例如：RdfOut::Quad(Quad::new(subject, predicate, object, graph))
-  // 或者如果是三元组：RdfOut::Triple(Triple::new(subject, predicate, object))
-
-  // 假设使用 Quad 结构：
-  // RdfOut::Quad(
-  //   Quad::Quad(
-  //     subject.into_owned(), // 如果字段需要 Owned 类型
-  //     predicate.into_owned(),
-  //     object.into_owned(),
-  //     graph.into_owned(), // 如果 graph 是 Option，可能需要 unwrap_or(DefaultGraph)
-  //   ),
-  // )
 }

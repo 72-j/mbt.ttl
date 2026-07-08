@@ -1,5 +1,3 @@
-// type Read= &@io.Reader
-
 ///|
 type Decimal = StringView
 
@@ -32,24 +30,3 @@ type CharMatch = Array[Char]
 
 ///|
 type CharMatchRule = (Char, Char?)
-
-///|
-// type NamedOrBlankNodeRef = NamedOrBlankNode
-
-///|
-// type NamedNodeRef = NamedNode
-
-///|
-// type BlankNodeRef = BlankNode
-
-///|
-// type QuadRef = Quad
-
-///|
-// type GraphNameRef = GraphName
-
-///|
-// type TermRef = Term
-
-///|
-// type Triple

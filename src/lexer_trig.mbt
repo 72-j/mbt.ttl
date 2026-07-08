@@ -1,5 +1,5 @@
 ///|
-pub struct TriGRecognizer {
+pub(all) struct TriGRecognizer {
   mut stack : Array[TriGState]
   cur_subject : Array[NamedOrBlankNodeRef]
   cur_predicate : Array[NamedNodeRef]
@@ -13,17 +13,8 @@ pub struct TriGRecognizer {
   errors : Array[RuleRecognizerError] // ← 新增：错误存储
 }
 
-// impl RuleRecognizer for TriGRecognizer with fn stack_signature(self: TriGRecognizer) ->  Option[(Int, Option[String])] {
-//       match self.stack.last() {
-//       Some(state) => {
-//         Some((self.stack.length(), Some(state.to_string())))
-//         }
-//       None => None
-//     }
-// }
-
 ///|
-impl Show for TriGRecognizer with fn output(self, logger : &Logger) -> Unit {
+pub impl Show for TriGRecognizer with fn output(self, logger : &Logger) -> Unit {
   logger.write("TriGRecognizer:\n")
 
   // 1. 打印栈状态 (增加分隔符和更全的匹配)
@@ -100,7 +91,7 @@ impl Show for TriGRecognizer with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-pub struct TriGRecognizerContext {
+pub(all) struct TriGRecognizerContext {
   lexer_options : LexerOptions
   with_graph_name : Bool
   prefixes : Map[String, Iri]
@@ -123,7 +114,7 @@ pub fn TriGRecognizerContext::prefixes(
 }
 
 ///|
-impl RuleRecognizer for TriGRecognizer with fn error_recovery_state(
+pub impl RuleRecognizer for TriGRecognizer with fn error_recovery_state(
   self : TriGRecognizer,
 ) -> TriGRecognizer {
   self.stack.clear()
@@ -136,7 +127,7 @@ impl RuleRecognizer for TriGRecognizer with fn error_recovery_state(
 }
 
 ///|
-impl RuleRecognizer for TriGRecognizer with fn[DL : DebugLogger] debug_logger(
+pub impl RuleRecognizer for TriGRecognizer with fn[DL : DebugLogger] debug_logger(
   self : TriGRecognizer,
   debug_logger : DL,
 ) {
@@ -144,7 +135,7 @@ impl RuleRecognizer for TriGRecognizer with fn[DL : DebugLogger] debug_logger(
 }
 
 ///|
-impl RuleRecognizer for TriGRecognizer with fn recognize_end(
+pub impl RuleRecognizer for TriGRecognizer with fn recognize_end(
   self : TriGRecognizer,
   _context : RdfContext,
   results : Array[RdfOut],
@@ -176,7 +167,7 @@ impl RuleRecognizer for TriGRecognizer with fn recognize_end(
 }
 
 ///|
-impl RuleRecognizer for TriGRecognizer with fn lexer_options(
+pub impl RuleRecognizer for TriGRecognizer with fn lexer_options(
   context : RdfContext,
 ) -> LexerOptions? {
   let lexer_opts : LexerOptions? = match context {
@@ -292,7 +283,7 @@ fn TriGRecognizer::emit_quad(
 }
 
 ///|
-enum TriGState {
+pub(all) enum TriGState {
   ExpectAtKeyword
   TriGDoc
   ExpectDot
@@ -336,10 +327,9 @@ enum TriGState {
   ReifiedTripleSubject(is_reified~ : Bool)
   ReifiedTripleObject(is_reified~ : Bool)
   QuotedAnonEnd
-  InCollection // 标记正在集合中
-  CollectionElement // 处理集合元素
-  CollectionEnd // 处理集合结束
-  // NegativeNumberSign
+  InCollection
+  CollectionElement
+  CollectionEnd
 } derive(Debug, Eq, Hash)
 
 ///|
@@ -416,7 +406,6 @@ impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
     TriGState::CollectionElement => logger.write("CollectionElement")
     TriGState::CollectionEnd => logger.write("CollectionEnd")
     TriGState::InCollection => logger.write("InCollection")
-    // TriGState::NegativeNumberSign => logger.write("NegativeNumberSign")
   }
 }
 
@@ -452,11 +441,6 @@ fn TriGRecognizer::reset_to_tri_gdoc(self : TriGRecognizer) -> TriGRecognizer {
   self.cur_reifier.clear()
   self
 }
-// impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
-//   logger.write("TriGState: ")
-//   logger.write_object(self)
-
-// }
 
 ///|
 fn TriGRecognizer::make_current_quad(self : TriGRecognizer) -> RdfOut {
@@ -476,27 +460,14 @@ fn TriGRecognizer::make_current_quad(self : TriGRecognizer) -> RdfOut {
     None => abort("Object stack is empty when making quad")
   }
 
-  // 2. 获取图名
-  // 假设 self.cur_graph 的类型是 Option<GraphName> 或类似结构
-  // 如果 cur_graph 是 None，通常表示默认图。
-  // 这里需要根据你项目中 Quad 的具体定义来构造。
-  // 假设 Quad::Quad 接收 (Subject, Predicate, Object, Graph)
-  // 且 Graph 可以是 Option 或者特定的 DefaultGraph 枚举值
+  let graph = self.cur_graph
 
-  let graph = self.cur_graph // 假设 cur_graph 已经是正确的类型 (e.g., Option<NamedNodeRef> 或 GraphName)
-
-  // 3. 构造 Quad
-  // 注意：你需要根据实际的 RdfOut 和 Quad 定义调整构造函数
-  // 例如：RdfOut::Quad(Quad::new(subject, predicate, object, graph))
-  // 或者如果是三元组：RdfOut::Triple(Triple::new(subject, predicate, object))
-
-  // 假设使用 Quad 结构：
   RdfOut::Quad(
     Quad::Quad(
-      subject.into_owned(), // 如果字段需要 Owned 类型
+      subject.into_owned(),
       predicate.into_owned(),
       object.into_owned(),
-      graph.into_owned(), // 如果 graph 是 Option，可能需要 unwrap_or(DefaultGraph)
+      graph.into_owned(),
     ),
   )
 }

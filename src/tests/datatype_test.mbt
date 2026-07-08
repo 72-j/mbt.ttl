@@ -1,6 +1,6 @@
 ///|
 test "VarDataType: IntVar" {
-  let int_val = IntVar("42")
+  let int_val = @lib.IntVar("42")
   @debug.assert_eq(int_val, IntVar("42"))
 
   // 测试匹配
@@ -12,7 +12,7 @@ test "VarDataType: IntVar" {
 
 ///|
 test "VarDataType: IntegerVar (Int64)" {
-  let large_int = IntegerVar("9223372036854775807L")
+  let large_int = @lib.IntegerVar("9223372036854775807L")
   @debug.assert_eq(large_int, IntegerVar("9223372036854775807L"))
 
   match large_int {
@@ -23,9 +23,9 @@ test "VarDataType: IntegerVar (Int64)" {
 
 ///|
 test "VarDataType: DoubleVar" {
-  let double_val = DoubleVar("3.14159")
+  let double_val = @lib.DoubleVar("3.14159")
   @debug.assert_eq(double_val, DoubleVar("3.14159"))
-  assert_not_eq(double_val, DoubleVar("2.71828"))
+  @test.assert_not_eq(double_val, DoubleVar("2.71828"))
 
   match double_val {
     DoubleVar(v) => @debug.assert_eq(v, "3.14159")
@@ -35,7 +35,7 @@ test "VarDataType: DoubleVar" {
 
 ///|
 test "VarDataType: StringVar" {
-  let string_val = StringVar("Hello RDF")
+  let string_val = @lib.StringVar("Hello RDF")
   @debug.assert_eq(string_val, StringVar("Hello RDF"))
 
   match string_val {
@@ -46,12 +46,12 @@ test "VarDataType: StringVar" {
 
 ///|
 test "VarDataType: Boolean (TrueVar/FalseVar)" {
-  let true_val = TrueVar
-  let false_val = FalseVar
+  let true_val = @lib.TrueVar
+  let false_val = @lib.FalseVar
 
   @debug.assert_eq(true_val, TrueVar)
   @debug.assert_eq(false_val, FalseVar)
-  assert_not_eq(true_val, false_val)
+  @test.assert_not_eq(true_val, false_val)
 
   match true_val {
     TrueVar => ()
@@ -66,7 +66,7 @@ test "VarDataType: Boolean (TrueVar/FalseVar)" {
 
 ///|
 test "VarDataType: DecimalVar" {
-  let decimal_val = DecimalVar("123.456")
+  let decimal_val = @lib.DecimalVar("123.456")
   @debug.assert_eq(decimal_val, DecimalVar("123.456"))
 
   match decimal_val {
@@ -77,7 +77,7 @@ test "VarDataType: DecimalVar" {
 
 ///|
 test "VarDataType: DateVar" {
-  let date_val = DateVar("2024-03-15")
+  let date_val = @lib.DateVar("2024-03-15")
   @debug.assert_eq(date_val, DateVar("2024-03-15"))
 
   match date_val {
@@ -90,7 +90,7 @@ test "VarDataType: DateVar" {
 
 ///|
 test "VarDataType: TimeVar" {
-  let time_val = TimeVar("10:30:00")
+  let time_val = @lib.TimeVar("10:30:00")
   @debug.assert_eq(time_val, TimeVar("10:30:00"))
 
   match time_val {
@@ -110,7 +110,7 @@ test "VarDataType: TimeVar" {
 
 ///|
 test "VarDataType: DateTimeVar" {
-  let datetime_val = DateTimeVar("2024-03-15T10:30:00Z")
+  let datetime_val = @lib.DateTimeVar("2024-03-15T10:30:00Z")
   @debug.assert_eq(datetime_val, DateTimeVar("2024-03-15T10:30:00Z"))
 
   match datetime_val {
@@ -127,7 +127,7 @@ test "VarDataType: DateTimeVar" {
 
 ///|
 test "VarDataType: DurationVar" {
-  let duration_val = DurationVar("P1DT12H")
+  let duration_val = @lib.DurationVar("P1DT12H")
   @debug.assert_eq(duration_val, DurationVar("P1DT12H"))
 
   match duration_val {
@@ -142,21 +142,21 @@ test "VarDataType: DurationVar" {
 
 ///|
 test "VarDataType: equality and hash" {
-  let val1 = IntVar("42")
-  let val2 = IntVar("42")
-  let val3 = IntVar("100")
+  let val1 = @lib.IntVar("42")
+  let val2 = @lib.IntVar("42")
+  let val3 = @lib.IntVar("100")
 
   @debug.assert_eq(val1, val2)
-  assert_not_eq(val1, val3)
+  @test.assert_not_eq(val1, val3)
 
   // 不同类型不应相等
-  let string_val = StringVar("42")
-  assert_not_eq(val1, string_val)
+  let string_val = @lib.StringVar("42")
+  @test.assert_not_eq(val1, string_val)
 }
 
 ///|
 test "VarDataType: pattern matching with all types" {
-  let test_cases : Array[VarDataType] = [
+  let test_cases : Array[@lib.VarDataType] = [
     IntVar("42"),
     IntegerVar("100L"),
     DoubleVar("3.14"),
@@ -190,28 +190,28 @@ test "VarDataType: pattern matching with all types" {
 ///|
 test "VarDataType: from xsd conversion" {
   // 测试从 XSD 类型转换的端到端流程
-  let int_node = lwINT
+  let int_node = @lib.lwINT
   let result = int_node.into_datatype("123")
   match result {
     IntVar(v) => @debug.assert_eq(v, "123")
     _ => fail("Expected IntVar")
   }
 
-  let date_node = lwDATE
+  let date_node = @lib.lwDATE
   let result2 = date_node.into_datatype("2024-03-15")
   match result2 {
     DateVar(v) => @debug.assert_eq(v, "2024-03-15")
     _ => fail("Expected DateVar")
   }
 
-  let duration_node = lwDURATION
+  let duration_node = @lib.lwDURATION
   let result3 = duration_node.into_datatype("PT1H30M")
   match result3 {
     DurationVar(v) => @debug.assert_eq(v, "PT1H30M")
     _ => fail("Expected DurationVar")
   }
 
-  let invalid_node = lwINT
+  let invalid_node = @lib.lwINT
   let result4 = invalid_node.into_datatype("not a number")
   match result4 {
     StringVar(v) => @debug.assert_eq(v, "NAN")
@@ -220,14 +220,14 @@ test "VarDataType: from xsd conversion" {
 }
 
 ///|
-test "parse_duration simplified" {
+test " @lib.parse_duration simplified" {
   // 使用 match 进行简单验证
-  match parse_duration("PT30M") {
+  match @lib.parse_duration("PT30M") {
     Ok(v) => debug("Pass: \{v}")
     Err(e) => fail(e)
   }
 
-  match parse_duration("P1DT12H") {
+  match @lib.parse_duration("P1DT12H") {
     Ok(v) => debug("Pass: \{v}")
     Err(e) => fail(e)
   }
@@ -238,7 +238,7 @@ test "parse_duration simplified" {
 ///|
 test "into_datatype: duration types" {
   // 假设 lwDURATION 已定义
-  let duration_node = lwDURATION
+  let duration_node = @lib.lwDURATION
 
   let result1 = duration_node.into_datatype("PT1H30M")
   match result1 {
@@ -262,7 +262,7 @@ test "into_datatype: duration types" {
 
 ///|
 test "VarDataType: TimeVar validation" {
-  let time_val = TimeVar("10:30:00")
+  let time_val = @lib.TimeVar("10:30:00")
   match time_val {
     TimeVar(v) => {
       let regex = @string.Regex(
@@ -277,7 +277,7 @@ test "VarDataType: TimeVar validation" {
 
 ///|
 test "VarDataType: DateVar validation" {
-  let date_val = DateVar("2024-03-15")
+  let date_val = @lib.DateVar("2024-03-15")
   match date_val {
     DateVar(v) => {
       let regex = @string.Regex(
@@ -292,7 +292,7 @@ test "VarDataType: DateVar validation" {
 
 ///|
 test "VarDataType: DateTimeVar validation" {
-  let datetime_val = DateTimeVar("2024-03-15T10:30:00Z")
+  let datetime_val = @lib.DateTimeVar("2024-03-15T10:30:00Z")
   match datetime_val {
     DateTimeVar(v) => {
       let regex = @string.Regex(
@@ -307,7 +307,7 @@ test "VarDataType: DateTimeVar validation" {
 
 ///|
 test "VarDataType: DurationVar validation" {
-  let duration_val = DurationVar("P1DT12H")
+  let duration_val = @lib.DurationVar("P1DT12H")
   match duration_val {
     DurationVar(v) => {
       let regex = @string.Regex("^P.*$")
@@ -320,7 +320,7 @@ test "VarDataType: DurationVar validation" {
 
 ///|
 test "VarDataType: DecimalVar validation" {
-  let decimal_val = DecimalVar("123.456")
+  let decimal_val = @lib.DecimalVar("123.456")
   match decimal_val {
     DecimalVar(v) => {
       let s = v.to_owned()
@@ -334,7 +334,7 @@ test "VarDataType: DecimalVar validation" {
 
 ///|
 test "VarDataType: IntVar validation" {
-  let int_val = IntVar("42")
+  let int_val = @lib.IntVar("42")
   match int_val {
     IntVar(v) => inspect(v, content="42")
     _ => fail("Expected IntVar")
@@ -343,7 +343,7 @@ test "VarDataType: IntVar validation" {
 
 ///|
 test "VarDataType: IntegerVar (Int64) validation" {
-  let large_int = IntegerVar("9223372036854775807L")
+  let large_int = @lib.IntegerVar("9223372036854775807L")
   match large_int {
     IntegerVar(v) => inspect(v, content="9223372036854775807L")
     _ => fail("Expected IntegerVar")
@@ -352,7 +352,7 @@ test "VarDataType: IntegerVar (Int64) validation" {
 
 ///|
 test "VarDataType: DoubleVar validation" {
-  let double_val = DoubleVar("3.14159")
+  let double_val = @lib.DoubleVar("3.14159")
   match double_val {
     DoubleVar(v) => inspect(v, content="3.14159")
     _ => fail("Expected DoubleVar")
@@ -361,7 +361,7 @@ test "VarDataType: DoubleVar validation" {
 
 ///|
 test "VarDataType: StringVar validation" {
-  let string_val = StringVar("Hello RDF")
+  let string_val = @lib.StringVar("Hello RDF")
   match string_val {
     StringVar(v) => inspect(v, content="Hello RDF")
     _ => fail("Expected StringVar")
@@ -370,8 +370,8 @@ test "VarDataType: StringVar validation" {
 
 ///|
 test "VarDataType: Boolean validation" {
-  let true_val = TrueVar
-  let false_val = FalseVar
+  let true_val = @lib.TrueVar
+  let false_val = @lib.FalseVar
 
   match true_val {
     TrueVar => ()
@@ -383,70 +383,70 @@ test "VarDataType: Boolean validation" {
     _ => fail("Expected FalseVar")
   }
 
-  inspect(true_val, content=TrueVar.to_string())
-  inspect(false_val, content=FalseVar.to_string())
+  inspect(true_val, content=@lib.TrueVar.to_string())
+  inspect(false_val, content=@lib.FalseVar.to_string())
 }
 
 ///|
 test "VarDataType: equality" {
-  let val1 = IntVar("42")
-  let val2 = IntVar("42")
-  let val3 = IntVar("100")
+  let val1 = @lib.IntVar("42")
+  let val2 = @lib.IntVar("42")
+  let val3 = @lib.IntVar("100")
 
   @debug.assert_eq(val1, val2)
   assert_not_eq(val1, val3)
 
   // 不同类型不应相等
-  let string_val = StringVar("42")
+  let string_val = @lib.StringVar("42")
   assert_not_eq(val1, string_val)
 
-  let time_val = TimeVar("10:30:00")
-  let time_val2 = TimeVar("10:30:00")
+  let time_val = @lib.TimeVar("10:30:00")
+  let time_val2 = @lib.TimeVar("10:30:00")
   @debug.assert_eq(time_val, time_val2)
 
-  let date_val = DateVar("2024-03-15")
-  let date_val2 = DateVar("2024-03-15")
+  let date_val = @lib.DateVar("2024-03-15")
+  let date_val2 = @lib.DateVar("2024-03-15")
   @debug.assert_eq(date_val, date_val2)
 }
 
 ///|
 test "VarDataType: pattern matching" {
   let test_cases = [
-    IntVar("42"),
-    IntegerVar("100L"),
-    DoubleVar("3.14"),
-    StringVar("test"),
-    TrueVar,
-    FalseVar,
-    DecimalVar("10.99"),
-    DateVar("2024-03-15"),
-    TimeVar("10:30:00"),
-    DateTimeVar("2024-03-15T10:30:00Z"),
-    DurationVar("P1DT12H"),
+    @lib.IntVar("42"),
+    @lib.IntegerVar("100L"),
+    @lib.DoubleVar("3.14"),
+    @lib.StringVar("test"),
+    @lib.TrueVar,
+    @lib.FalseVar,
+    @lib.DecimalVar("10.99"),
+    @lib.DateVar("2024-03-15"),
+    @lib.TimeVar("10:30:00"),
+    @lib.DateTimeVar("2024-03-15T10:30:00Z"),
+    @lib.DurationVar("P1DT12H"),
   ]
 
   for case in test_cases {
     match case {
-      IntVar(v) => inspect(v.to_string(), content="42")
-      IntegerVar(v) => inspect(v.to_string(), content="100L")
-      DoubleVar(v) => inspect(v.to_string(), content="3.14")
-      StringVar(v) => inspect(v.to_string(), content="test")
-      TrueVar => debug("Boolean: true")
-      FalseVar => debug("Boolean: false")
-      DecimalVar(v) => debug("Decimal: \{v}")
-      DateVar(v) => {
+      @lib.IntVar(v) => inspect(v.to_string(), content="42")
+      @lib.IntegerVar(v) => inspect(v.to_string(), content="100L")
+      @lib.DoubleVar(v) => inspect(v.to_string(), content="3.14")
+      @lib.StringVar(v) => inspect(v.to_string(), content="test")
+      @lib.TrueVar => debug("Boolean: true")
+      @lib.FalseVar => debug("Boolean: false")
+      @lib.DecimalVar(v) => debug("Decimal: \{v}")
+      @lib.DateVar(v) => {
         let regex = @string.Regex(
           "^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$",
         )
         guard regex.execute(v) is Some(_) else { fail("Invalid date format") }
       }
-      TimeVar(v) => {
+      @lib.TimeVar(v) => {
         let regex = @string.Regex(
           "^[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}$",
         )
         guard regex.execute(v) is Some(_) else { fail("Invalid time format") }
       }
-      DateTimeVar(v) => {
+      @lib.DateTimeVar(v) => {
         let regex = @string.Regex(
           "^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z?$",
         )
@@ -454,7 +454,7 @@ test "VarDataType: pattern matching" {
           fail("Invalid datetime format")
         }
       }
-      DurationVar(v) => {
+      @lib.DurationVar(v) => {
         let regex = @string.Regex("^P.*$")
         guard regex.execute(v) is Some(_) else {
           fail("Invalid duration format")
@@ -467,17 +467,17 @@ test "VarDataType: pattern matching" {
 ///|
 test "VarDataType: from xsd conversion with validation" {
   // 测试从 XSD 类型转换的端到端流程
-  let int_node = lwINT
+  let int_node = @lib.lwINT
   let result = int_node.into_datatype("123")
   match result {
-    IntVar(v) => inspect(v, content="123")
+    @lib.IntVar(v) => inspect(v, content="123")
     _ => fail("Expected IntVar")
   }
 
-  let date_node = lwDATE
+  let date_node = @lib.lwDATE
   let result2 = date_node.into_datatype("2024-03-15")
   match result2 {
-    DateVar(v) => {
+    @lib.DateVar(v) => {
       let regex = @string.Regex(
         "^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$",
       )
@@ -487,10 +487,10 @@ test "VarDataType: from xsd conversion with validation" {
     _ => fail("Expected DateVar")
   }
 
-  let time_node = lwTIME
+  let time_node = @lib.lwTIME
   let result3 = time_node.into_datatype("10:30:00")
   match result3 {
-    TimeVar(v) => {
+    @lib.TimeVar(v) => {
       let regex = @string.Regex(
         "^[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}$",
       )
@@ -500,10 +500,10 @@ test "VarDataType: from xsd conversion with validation" {
     _ => fail("Expected TimeVar")
   }
 
-  let duration_node = lwDURATION
+  let duration_node = @lib.lwDURATION
   let result4 = duration_node.into_datatype("PT1H30M")
   match result4 {
-    DurationVar(v) => {
+    @lib.DurationVar(v) => {
       let regex = @string.Regex("^PT.*$")
       guard regex.execute(v) is Some(m) else { fail("Expected match") }
       inspect(m.content(), content="PT1H30M")
@@ -511,10 +511,10 @@ test "VarDataType: from xsd conversion with validation" {
     _ => fail("Expected DurationVar")
   }
 
-  let invalid_node = lwINT
+  let invalid_node = @lib.lwINT
   let result5 = invalid_node.into_datatype("not a number")
   match result5 {
-    StringVar(v) => inspect(v, content="NAN")
+    @lib.StringVar(v) => inspect(v, content="NAN")
     _ => fail("Expected StringVar for invalid input")
   }
 }

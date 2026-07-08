@@ -1,5 +1,3 @@
-// --- 以下为各个状态的具体实现示例 ---
-
 ///|
 fn N3Recognizer::handle_term_token(
   self : N3Recognizer,
@@ -89,8 +87,6 @@ fn N3Recognizer::handle_term_token(
   }
 }
 
-// 辅助函数：统一处理公式结束逻辑
-
 ///|
 fn N3Recognizer::finish_formula(self : N3Recognizer) -> N3Recognizer {
   let ctx = match self.contexts.pop() {
@@ -124,7 +120,6 @@ fn N3Recognizer::finish_formula(self : N3Recognizer) -> N3Recognizer {
   // 如果栈顶现在是 TriplesMiddle 或 ObjectsListEnd 等，它们应该能处理后续 token。
   // 但如果栈顶是 PathFollowUp 的上一层（例如 Path），我们需要确保不会再次进入 PathFollowUp 的错误逻辑。
 
-  // 调试建议：打印此时的栈状态
   // self.debug_logger.info("Stack after finish_formula: \{@debug.to_string(self.stack)}")
 
   self

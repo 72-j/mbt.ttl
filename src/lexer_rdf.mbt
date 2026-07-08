@@ -1,12 +1,12 @@
 ///|
-pub enum RdfLexerMode {
+pub(all) enum RdfLexerMode {
   NTriples
   // Turtle
   N3
 } derive(Eq)
 
 ///|
-pub struct RdfLexer {
+pub(all) struct RdfLexer {
   mode : RdfLexerMode
   lenient : Bool
 }

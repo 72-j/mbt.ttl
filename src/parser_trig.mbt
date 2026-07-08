@@ -111,15 +111,8 @@ pub fn[RL] ReaderTriGParser::prefixes(
   self : ReaderTriGParser[RL],
 ) -> TriGPrefixesIter {
   match self.inner.parser.context {
-    RdfContext::TriGRecognizerContext(ctx) =>
-      // 假设 ctx 有一个 prefixes 字段，且是 Map[String, Iri]
-      // 如果 prefixes 是其他类型，请调整 .iter() 的调用
-      { inner: ctx.prefixes.iter() }
-    _ =>
-      // N-Quads 通常不支持前缀，返回空迭代器或抛出错误
-      // 这里假设返回一个空的 TriGPrefixesIter
-      { inner: [].iter() } // 注意：[].iter() 的类型需要匹配 Iter2[String, Iri]
-    // 如果无法构造空迭代器，可能需要 panic 或返回 Option
+    RdfContext::TriGRecognizerContext(ctx) => { inner: ctx.prefixes.iter() }
+    _ => { inner: [].iter() }
   }
 }
 
@@ -131,8 +124,6 @@ pub fn[RL] ReaderTriGParser::base_iri(self : ReaderTriGParser[RL]) -> String? {
     _ => None
   }
 }
-
-// Iterator impl converted: use .iter() method or for-in loop
 
 ///|
 pub struct AsyncReaderTriGParser[RL] {
@@ -190,10 +181,7 @@ pub fn[RL] AsyncReaderTriGParser::prefixes(
     RdfContext::TriGRecognizerContext(ctx) =>
       // 假设 ctx.prefixes 是 Map[String, IriRef] 或类似可迭代结构
       { inner: ctx.prefixes.iter() }
-    _ =>
-      // 返回空的迭代器，需确保类型与 TriGPrefixesIter 内部兼容
-      // 这里假设存在一个空的 Map 或数组可以生成匹配的 Iter2
-      { inner: [].iter() }
+    _ => { inner: [].iter() }
   }
 }
 
@@ -236,8 +224,6 @@ pub fn SliceTriGParser::base_iri(self : SliceTriGParser[RdfLexer]) -> String? {
     _ => None
   }
 }
-
-// Iterator impl converted: use .iter() method or for-in loop
 
 ///|
 pub struct LowLevelTriGParser[RL] {
@@ -332,7 +318,6 @@ pub fn[RL] LowLevelTriGParser::base_iri(
 pub struct TriGPrefixesIter {
   inner : Iter2[String, Iri]
 }
-// Iterator impl converted: use .iter() method or for-in loop
 
 ///|
 pub struct TriGSerializer {
@@ -435,9 +420,6 @@ pub async fn[W : Writer] AsyncWriterTriGSerializer::serialize_quad(
   self : AsyncWriterTriGSerializer[W],
   q : Quad,
 ) -> Result[AsyncWriterTriGSerializer[W], SerializationError] {
-  // self.low_level_writer.serialize_quad(q, self.writer)
-  // self.writer.write(self.buffer)
-  // self.buffer.clear()
   let serialized_str = match self.low_level_writer.serialize_quad(q) {
     Ok(serialized_str) => serialized_str
     Err(_) =>
@@ -468,9 +450,6 @@ pub async fn[W : Writer] AsyncWriterTriGSerializer::serialize_quad(
 pub async fn[W : Writer] AsyncWriterTriGSerializer::finish(
   self : AsyncWriterTriGSerializer[W],
 ) -> Result[BufferedWriter[W], Unit] {
-  //  let _= self.low_level_writer.finish(self.buffer)
-  // self.writer.write(self.buffer)
-  // self.buffer.clear()
   let buffer_writer = self.buffer_writer
   buffer_writer.flush()
   Ok(buffer_writer)
@@ -753,7 +732,6 @@ impl Show for TurtleTerm with fn output(self : TurtleTerm, logger : &Logger) -> 
 
 ///|
 fn relative_iri(iri : String, base_iri : Iri) -> String {
-  // if base_iri is Some(base_iri_val) {
   // 尝试解析 base_iri，如果失败则直接使用原始 iri
   match IriRef::parse(base_iri.as_ref()) {
     Ok(parsed_base) =>
@@ -763,9 +741,6 @@ fn relative_iri(iri : String, base_iri : Iri) -> String {
       }
     Err(_) => iri // Base IRI 本身无效，返回原值
   }
-  // } else {
-  //   iri
-  // }
 }
 
 ///|

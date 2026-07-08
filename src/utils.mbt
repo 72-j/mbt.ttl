@@ -1,5 +1,3 @@
-// 检查是否为 pchar（path character）
-
 ///|
 pub fn is_pchar(c : Char) -> Bool {
   is_unreserved(c) ||
@@ -45,8 +43,7 @@ pub fn remove_dot_segments_from_array(
 
 ///|
 fn array_to_view(arr : ArrayView[Byte]) -> BytesView {
-  let bytes : Bytes = Bytes::from_array(arr) // 假设有此 API，或者 Bytes::of_array_view
-  // let view : BytesView = bytes.view() // 假设 Bytes 有 .view() 方法
+  let bytes : Bytes = Bytes::from_array(arr)
   return bytes
 }
 
@@ -76,9 +73,6 @@ fn eq_ignore_ascii_case(s1 : StringView, s2 : StringView) -> Bool {
     if u1 == u2 {
       continue
     }
-
-    // 手动实现 ASCII 忽略大小写比较
-    // 只有当字符是 'A'-'Z' 或 'a'-'z' 时才需要转换
 
     let is_alpha1 = (u1 >= 65 && u1 <= 90) || (u1 >= 97 && u1 <= 122)
     let is_alpha2 = (u2 >= 65 && u2 <= 90) || (u2 >= 97 && u2 <= 122)
@@ -112,18 +106,6 @@ fn is_ascii_alphanumeric(c : Char) -> Bool {
 }
 
 ///|
-// fn memchr2(c1 : Byte, c2 : Byte, data : BytesView) -> Int? {
-//   // 实现逻辑：遍历 data，返回第一个匹配 c1 或 c2 的索引
-//   for i in 0..<data.length() {
-//     let b = data.at(i)
-//     if b == c1 || b == c2 {
-//       return Some(i)
-//     }
-//   }
-//   None
-// }
-
-///|
 pub fn array_view_memchr(target : Byte, data : ArrayView[Byte]) -> Int? {
   for i in 0..<data.length() {
     if data[i] == target {
@@ -144,36 +126,6 @@ pub fn array_view_memchr2(c1 : Byte, c2 : Byte, data : ArrayView[Byte]) -> Int? 
   }
   None
 }
-
-///|
-// fn char_to_utf8_bytes(c : Char) -> ArrayView[Byte] {
-//   let codepoint = Char::to_int(c)
-//   if codepoint < 0x80 {
-//     // 1 byte: 0xxxxxxx
-//     [Int::to_byte(codepoint)]
-//   } else if codepoint < 0x800 {
-//     // 2 bytes: 110xxxxx 10xxxxxx
-//     [
-//       Int::to_byte(0xC0 | (codepoint >> 6)),
-//       Int::to_byte(0x80 | (codepoint & 0x3F)),
-//     ]
-//   } else if codepoint < 0x10000 {
-//     // 3 bytes: 1110xxxx 10xxxxxx 10xxxxxx
-//     [
-//       Int::to_byte(0xE0 | (codepoint >> 12)),
-//       Int::to_byte(0x80 | ((codepoint >> 6) & 0x3F)),
-//       Int::to_byte(0x80 | (codepoint & 0x3F)),
-//     ]
-//   } else {
-//     // 4 bytes: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-//     [
-//       Int::to_byte(0xF0 | (codepoint >> 18)),
-//       Int::to_byte(0x80 | ((codepoint >> 12) & 0x3F)),
-//       Int::to_byte(0x80 | ((codepoint >> 6) & 0x3F)),
-//       Int::to_byte(0x80 | (codepoint & 0x3F)),
-//     ]
-//   }
-// }
 
 ///|
 fn memchr(target : Byte, data : BytesView) -> Int? {
@@ -284,17 +236,6 @@ pub fn from_str_radix(s : String, radix : Int) -> Result[UInt, String] {
       return Err("Character '\{c}' is not valid for radix \{radix}")
     }
 
-    // 检查溢出: result * radix + digit
-    // 如果 result > (MAX_UINT - digit) / radix，则溢出
-    // 注意：MoonBit 的 UInt 具体最大值取决于平台或定义，这里假设标准溢出逻辑
-    // 由于 MoonBit 目前可能没有直接的 MAX_UINT 常量暴露或溢出检查运算符，
-    // 我们使用一种安全的累加方式或者依赖语言本身的溢出行为（如果允许）
-    // 在这里，为了稳健性，我们手动检查或使用 try_mul/add 如果存在
-
-    // 简化实现：假设 UInt 足够大或者使用内置转换如果存在
-    // 如果 MoonBit 标准库有 UInt::try_from_str_radix 或类似，应优先使用。
-    // 这里提供一个基础的手动实现逻辑：
-
     let next_result = result * Int::reinterpret_as_uint(radix) +
       Int::reinterpret_as_uint(digit)
 
@@ -309,10 +250,8 @@ pub fn from_str_radix(s : String, radix : Int) -> Result[UInt, String] {
   Ok(result)
 }
 
-// 直接提取各个分量并返回格式化的 Duration 字符串
-
 ///|
-fn parse_duration(s : String) -> Result[String, String] {
+pub fn parse_duration(s : String) -> Result[String, String] {
   if s.is_empty() {
     return Err("Empty duration string")
   }
@@ -404,8 +343,6 @@ fn parse_duration(s : String) -> Result[String, String] {
   }
 }
 
-// 辅助函数：从字符串中提取指定字母前的数字
-
 ///|
 fn extract_number(s : StringView, unit : String) -> Int64 {
   let idx = s.find(unit).unwrap_or(-1)
@@ -416,11 +353,6 @@ fn extract_number(s : StringView, unit : String) -> Int64 {
   // 向前查找数字
   let mut start = idx - 1
   while start >= 0 {
-    // let c = Int::to_char(s[start].to_int()) // 确保转换为 Char
-    // 注意：String 的索引访问可能直接返回 Char 或 UInt16，视具体 MoonBit 版本而定。
-    // 如果 s[start] 返回 Char，则直接用 c.is_digit() || c == '.'
-    // 如果 s[start] 返回 UInt16，则需转换。
-    // 假设 s[start] 返回 UInt16 (根据报错推断):
     let ch = UInt16::to_char(s[start]).unwrap()
     if !(ch.is_digit(10) || ch == '.') {
       break
@@ -438,45 +370,11 @@ fn extract_number(s : StringView, unit : String) -> Int64 {
   }
 }
 
-// 支持浮点数的提取
-
-///|
-// fn extract_float(s : String, unit : String) -> Double {
-//   let idx = s.find(unit).unwrap_or(-1)
-//   if idx == -1 {
-//     return 0.0
-//   }
-
-//   let mut start = idx - 1
-//   while start >= 0 {
-//     // let c = Int::to_char(s[start].to_int()) // 确保转换为 Char
-//     // 注意：String 的索引访问可能直接返回 Char 或 UInt16，视具体 MoonBit 版本而定。
-//     // 如果 s[start] 返回 Char，则直接用 c.is_digit() || c == '.'
-//     // 如果 s[start] 返回 UInt16，则需转换。
-//     // 假设 s[start] 返回 UInt16 (根据报错推断):
-//     let ch = UInt16::to_char(s[start]).unwrap()
-//     if !(ch.is_digit(10) || ch == '.') {
-//       break
-//     }
-//     start -= 1
-//   }
-//   let num_str = s[start + 1:idx]
-//   let num_64 = try @string.parse_double(num_str)|> Ok catch {e =>Err(e)}
-//   match num_64 {
-//     Ok(num) => num
-//     Err(_) => 0
-//   }
-// }
-
 ///|
 fn parse_xsd_date(s : String) -> Result[String, String] {
   // 支持格式：YYYY-MM-DDThh:mm:ss[Z|±hh:mm]
   let re = try
-    @string.Regex(
-      // "^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})T([[:digit:]]{2}):([[:digit:]]{2}):([[:digit:]]{2})(?:[.][[:digit:]]+)?(Z|[+\\-][[:digit:]]{2}:[[:digit:]]{2})?$",
-      "^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})$",
-    )
-    |> Ok
+    @string.Regex("^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})$") |> Ok
   catch {
     e => Err(e)
   }
@@ -489,15 +387,6 @@ fn parse_xsd_date(s : String) -> Result[String, String] {
       let year_str = caps.group(1).unwrap_or("0")
       let month_str = caps.group(2).unwrap_or("0")
       let day_str = caps.group(3).unwrap_or("0")
-      // let hour_str = caps.group(4).unwrap_or("0")
-      // let minute_str = caps.group(5).unwrap_or("0")
-      // let second_str = caps.group(6).unwrap_or("0")
-      // let tz = caps.group(7).unwrap_or("0")
-
-      // 将 BytesView 转换为 String (如果 group 返回的是 BytesView)
-      // 假设 group 返回的是 BytesView，需要转为 String 才能调用 to_int()
-      // 如果 group 返回的是 String?，则直接使用
-      // 根据 regex.mbt，group 返回 BytesView?。BytesView 通常有 to_string() 方法
 
       let year_val = try @string.parse_int(year_str.to_owned()) |> Ok catch {
         e => Err(e)
@@ -523,18 +412,7 @@ fn parse_xsd_date(s : String) -> Result[String, String] {
         Ok(val) => val
         Err(_) => return Err("Invalid day")
       }
-      // let hour_val = match hour_val {
-      //   Ok(val) => val
-      //   Err(_) => return Err("Invalid hour")
-      // }
-      // let minute_val = match minute_val {
-      //   Ok(val) => val
-      //   Err(_) => return Err("Invalid minute")
-      // }
-      // let second_val = match second_val {
-      //   Ok(val) => val
-      //   Err(_) => return Err("Invalid second")
-      // }
+
       if month_val < 1 || month_val > 12 {
         return Err("Invalid month")
       }
@@ -576,19 +454,8 @@ fn parse_xsd_date(s : String) -> Result[String, String] {
           //   return Err("Invalid time")
           // }
 
-          // 构建结果
           let date_str = d.to_string()
           return Ok(date_str)
-          // let hour_padded = pad(hour_val)
-          // let minute_padded = pad(minute_val)
-          // let second_padded = pad(second_val)
-
-          //  let result = "\{date_str}T\{hour_padded}:\{minute_padded}:\{second_padded}"
-
-          // match tz {
-          //   "" | "0" => Ok(result)
-          //   _ => Ok("\{result}\{tz}")
-          // }
         }
       }
     }
@@ -605,7 +472,6 @@ fn sort_prefixes(prefixes : Map[String, Iri]) -> Array[(String, String)] {
     let v = item.1
     prefix_array.push((k, v.to_string()))
   }
-  // 2. 使用 sort_unstable_by 进行降序排序
   // 比较逻辑：如果 a 的长度 > b 的长度，返回 -1 (排在前面)
   prefix_array.sort_by(fn(a, b) {
     let len_a = a.1.length()
@@ -621,34 +487,3 @@ fn sort_prefixes(prefixes : Map[String, Iri]) -> Array[(String, String)] {
 
   prefix_array
 }
-
-///|
-// fn pad(n : Int) -> String {
-//   debug(n)
-
-//   if n < 10 {
-//     let r = "0\{n}"
-//     debug(r)
-//     r
-//   } else {
-//     let r = n.to_string()
-//     debug(r)
-//     r
-//   }
-// }
-// fn make_ascii_lowercase(s : String) -> String {
-//   let mut result = s.clone()
-//   for i in 0; i < result.length(); i = i + 1 {
-//     let code = result[i].to_int()
-//     // 'A'(65) - 'Z'(90) 转为 'a'(97) - 'z'(122)
-//     if code >= 65 && code <= 90 {
-//       result[i] = Char::from_int(code + 32) // 转为小写
-//     }
-//   }
-//   result
-// }
-// fn type_of(v : Value) -> String {
-//   match v {
-
-//   }
-// }

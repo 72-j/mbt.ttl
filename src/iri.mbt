@@ -82,11 +82,10 @@ pub fn Iri::new(base_iri : String) -> IriRef {
 }
 
 ///|
-fn Iri::as_ref(iri : Self) -> IriRef {
+pub fn Iri::as_ref(iri : Self) -> IriRef {
   // IriRef(Ref::Ref(iri))
   IriRef::new_unchecked(iri)
 }
-// 修复 peek_match - 只查看不消耗
 
 ///|
 pub fn IriRef::peek_match(self : IriRef, pattern : CharMatch) -> Bool {
@@ -379,8 +378,6 @@ pub fn IriRef::parse_authority(self : IriRef) -> Result[Unit, IriError] {
   Ok(())
 }
 
-// 解析 host (支持 IPv4、IPv6、域名)
-
 ///|
 pub fn IriRef::parse_host(
   self : IriRef,
@@ -425,8 +422,6 @@ pub fn IriRef::parse_domain_host(self : IriRef) -> Result[Unit, IriError] {
   Ok(())
 }
 
-// 解析路径
-
 ///|
 pub fn IriRef::parse_path(self : IriRef) -> Result[Unit, IriError] {
   // self.val.state.positions.path_start = self.val.state.pos
@@ -441,10 +436,6 @@ pub fn IriRef::parse_path(self : IriRef) -> Result[Unit, IriError] {
   self.val.state.positions.path_end = self.val.state.pos
   Ok(())
 }
-
-// 解析 query
-// 解析 query
-// 解析 query
 
 ///|
 pub fn IriRef::parse_query(self : IriRef) -> Result[Unit, IriError] {
@@ -1204,8 +1195,6 @@ pub fn IriRef::relativize(
   // parse 空字符串应该返回一个有效的相对 IriRef。
   IriRef::parse(final_iri)
 }
-
-
 
 ///|
 pub impl IriComponents for Iri with fn query(self : Iri) -> String? {

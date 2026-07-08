@@ -8,14 +8,6 @@ struct N3Recognizer {
   mut last_range : Range
   errors : Array[RuleRecognizerError]
 }
-// impl RuleRecognizer for N3Recognizer with fn stack_signature(self: N3Recognizer) ->  Option[(Int, Option[String])] {
-//       match self.stack.last() {
-//       Some(state) => {
-//         Some((self.stack.length(), Some(state.to_string())))
-//         }
-//       None => None
-//     }
-// }
 
 ///|
 struct N3RecognizerContext {
@@ -29,7 +21,7 @@ pub fn N3RecognizerContext::as_ctx(self : N3RecognizerContext) -> RdfContext {
 }
 
 ///|
-impl RuleRecognizer for N3Recognizer with fn error_recovery_state(
+pub impl RuleRecognizer for N3Recognizer with fn error_recovery_state(
   self : N3Recognizer,
 ) -> N3Recognizer {
   self.stack.clear()
@@ -40,7 +32,7 @@ impl RuleRecognizer for N3Recognizer with fn error_recovery_state(
 }
 
 ///|
-impl RuleRecognizer for N3Recognizer with fn[DL : DebugLogger] debug_logger(
+pub impl RuleRecognizer for N3Recognizer with fn[DL : DebugLogger] debug_logger(
   self : N3Recognizer,
   logger : DL,
 ) {
@@ -48,9 +40,7 @@ impl RuleRecognizer for N3Recognizer with fn[DL : DebugLogger] debug_logger(
 }
 
 ///|
-
-///|
-impl RuleRecognizer for N3Recognizer with fn recognize_end(
+pub impl RuleRecognizer for N3Recognizer with fn recognize_end(
   self : N3Recognizer,
   _state : RdfContext,
   _results : Array[RdfOut],
@@ -65,8 +55,9 @@ impl RuleRecognizer for N3Recognizer with fn recognize_end(
 }
 
 ///|
-impl RuleRecognizer for N3Recognizer with fn lexer_options(context : RdfContext) -> LexerOptions? {
-  // context.lexer_options
+pub impl RuleRecognizer for N3Recognizer with fn lexer_options(
+  context : RdfContext,
+) -> LexerOptions? {
   match context {
     N3RecognizerContext(context) => Some(context.lexer_options)
     _ => None
@@ -82,7 +73,6 @@ pub fn N3Recognizer::new_parser(
   prefixes : Map[String, Iri],
   debug_logger? : &DebugLogger = make_mute_logger(),
 ) -> Parser[RdfLexer, N3Recognizer] {
-  // 注意：参数 prefixes 类型已修正为 Map[String, IriRef] 以匹配 RdfContext 定义
   Parser::Parser(
     Lexer::Lexer(
       RdfLexer::RdfLexer(RdfLexerMode::N3, unchecked),

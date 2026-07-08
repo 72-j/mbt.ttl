@@ -39,59 +39,6 @@ impl Show for N3Term with fn output(self : N3Term, f : &Logger) -> Unit {
     N3Term::Variable(term) => f.write_object(term)
   }
 }
-// pub fn N3Term::as_n3quad(self : N3Term) -> N3Quad {
-//   match self {
-//     N3Term::NamedNode(term) => N3Term::NamedNode(term)
-//     N3Term::BlankNode(term) => N3Term::BlankNode(term)
-//     N3Term::Literal(term) => N3Term::Literal(term)
-//     N3Term::Triple(term) => N3Term::Triple(term)
-//     N3Term::Variable(term) => N3Term::Variable(term)
-//   }
-// }
-
-// impl From for N3Term with from(self : N3Term, node : NamedNode) -> N3Term {
-//   N3Term::NamedNode(node)
-// }
-
-// impl From for N3Term with from(self : N3Term, node : NamedNodeRef) -> N3Term {
-//   N3Term::NamedNode(node.into_owned())
-// }
-
-// impl From for N3Term with from(self : N3Term, node : BlankNode) -> N3Term {
-//   N3Term::BlankNode(node)
-// }
-
-// impl From for N3Term with from(self : N3Term, literal : Literal) -> N3Term {
-//   N3Term::Literal(literal)
-// }
-
-// impl From for N3Term with from(self : N3Term, triple : Triple) -> N3Term {
-//   N3Term::Triple(triple)
-// }
-
-// impl From for N3Term with from(self : N3Term, node : Triple) -> N3Term {
-//   N3Term::Triple(node)
-// }
-
-// impl From for N3Term with from(self : N3Term, node : NamedOrBlankNode) -> N3Term {
-//   match node {
-//     NamedOrBlankNode::NamedNode(node) => node.into()
-//     NamedOrBlankNode::BlankNode(node) => node.into()
-//   }
-// }
-
-// impl From for N3Term with from(self : N3Term, node : Term) -> N3Term {
-//   match node {
-//     Term::NamedNode(node) => node.into()
-//     Term::BlankNode(node) => node.into()
-//     Term::Literal(node) => node.into()
-//     Term::Triple(triple) => N3Term::Triple(triple)
-//   }
-// }
-
-// impl From for N3Term with from(self : N3Term, variable : Variable) -> N3Term {
-//   N3Term::Variable(variable)
-// }
 
 ///|
 pub struct N3Quad {
@@ -110,18 +57,6 @@ fn N3Quad::N3Quad(
 ) -> N3Quad {
   { subject, predicate, object, graph_name }
 }
-
-// fn N3Quad::to_quad(
-//   subject : N3Term,
-//   predicate : N3Term,
-//   object : N3Term,
-//   graph_name : GraphName,
-// ) -> Quad {
-
-//   Quad::{ subject, predicate, object, graph_name }
-// }
-
-///|
 
 ///|
 impl Show for N3Quad with fn output(self : N3Quad, f : &Logger) -> Unit {
@@ -142,10 +77,6 @@ impl Show for N3Quad with fn output(self : N3Quad, f : &Logger) -> Unit {
     self.graph_name.output(f)
   }
 }
-
-// impl From for N3Quad with from(self : N3Quad, quad : Quad) -> N3Quad {
-//   { subject: quad.subject.into(), predicate: quad.predicate.into(), object: quad.object.into(), graph_name: quad.graph_name }
-// }
 
 ///|
 pub struct N3Parser {
@@ -279,8 +210,6 @@ pub fn[RL] ReaderN3Parser::base_iri(self : ReaderN3Parser[RL]) -> String? {
   }
 }
 
-// Iterator impl converted: use .iter() method or for-in loop
-
 ///|
 pub struct AsyncReaderN3Parser[RL] {
   inner : AsyncReaderIterator[RL, N3Recognizer]
@@ -319,10 +248,7 @@ pub fn[RL] AsyncReaderN3Parser::prefixes(
     RdfContext::N3RecognizerContext(ctx) =>
       // 假设 ctx.prefixes 是 Map[String, IriRef] 或类似可迭代结构
       { inner: ctx.prefixes.iter() }
-    _ =>
-      // 返回空的迭代器，需确保类型与 TriGPrefixesIter 内部兼容
-      // 这里假设存在一个空的 Map 或数组可以生成匹配的 Iter2
-      { inner: [].iter() }
+    _ => { inner: [].iter() }
   }
 }
 
@@ -351,11 +277,7 @@ pub fn SliceN3Parser::prefixes(
       // 假设 ctx 有一个 prefixes 字段，且是 Map[String, Iri]
       // 如果 prefixes 是其他类型，请调整 .iter() 的调用
       { inner: ctx.prefixes.iter() }
-    _ =>
-      // N-Quads 通常不支持前缀，返回空迭代器或抛出错误
-      // 这里假设返回一个空的 TriGPrefixesIter
-      { inner: [].iter() } // 注意：[].iter() 的类型需要匹配 Iter2[String, Iri]
-    // 如果无法构造空迭代器，可能需要 panic 或返回 Option
+    _ => { inner: [].iter() }
   }
 }
 
@@ -367,8 +289,6 @@ pub fn SliceN3Parser::base_iri(self : SliceN3Parser[RdfLexer]) -> String? {
     _ => None
   }
 }
-
-// Iterator impl converted: use .iter() method or for-in loop
 
 ///|
 pub struct LowLevelN3Parser[RL] {
@@ -431,4 +351,3 @@ pub enum Predicate {
 pub struct N3PrefixesIter {
   inner : Iter2[String, Iri]
 }
-// Iterator impl converted: use .iter() method or for-in loop
