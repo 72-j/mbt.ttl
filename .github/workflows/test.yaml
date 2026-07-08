@@ -39,9 +39,14 @@ jobs:
 
       - name: Setup Moon env (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          $moonPath = "$env:USERPROFILE\.moon\bin"
+          echo "$moonPath" | Out-File -FilePath $env:GITHUB_PATH -Append
+          # 立即验证是否生效
+          & "$moonPath\moon.exe" --version
 
       - name: Setup MSYS2 + MinGW + openssl (Windows)
         if: runner.os == 'Windows'
