@@ -32,17 +32,16 @@ jobs:
       - name: Setup Moon env (macOS)
         if: runner.os == 'macOS'
         run: |
+          export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
           brew install gcc openssl
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
       - name: Setup Moon env (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
         run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
-          echo "$HOME/.moon/bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
       - name: Setup MSYS2 + MinGW + openssl (Windows)
         if: runner.os == 'Windows'
@@ -53,6 +52,12 @@ jobs:
           install: >-
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-openssl
+
+      # 🔧 新增：验证 moon 是否可用
+      - name: Verify MoonBit installation
+        run: |
+          moon --version
+          moon version --all
 
       - name: Moon Check
         run: |
@@ -67,15 +72,12 @@ jobs:
 
       - name: Moon test
         run: |
-          echo moon test
+          echo "=== Wasm target ==="
           moon test --deny-warn --enable-coverage
           moon coverage report -f summary
+          moon coverage analyze > coverage-wasm.log
 
-          moon coverage analyze > coverage-native.log
-
-          # ffi test
-          echo moon test native
+          echo "=== Native target ==="
           moon test --deny-warn --target native --enable-coverage
           moon coverage report -f summary
-
-          moon coverage analyze
+          moon coverage analyze > coverage-native.log
