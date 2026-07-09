@@ -49,7 +49,7 @@ moon run src/cmd/main -- -v -f test.nq
 
 - `-f, --file <path>` - 指定输入文件路径
 - `-v, --verbose` - 启用详细输出模式
-- `<input>` - 直接输入 N-Quads 格式的字符串（注意末尾需要换行符）
+- `<input>` - 直接输入 N-Quads 格式的字符串
 
 ## N-Quads 格式说明
 

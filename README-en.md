@@ -49,7 +49,7 @@ moon run src/cmd/main -- -v -f test.nq
 
 - `-f, --file <path>` - Specify input file path
 - `-v, --verbose` - Enable verbose output mode
-- `<input>` - Direct N-Quads format string input (note: requires trailing newline)
+- `<input>` - Direct N-Quads format string input
 
 ## N-Quads Format
 
