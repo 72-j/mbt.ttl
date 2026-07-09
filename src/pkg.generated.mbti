@@ -193,6 +193,8 @@ pub fn make_mute_logger() -> MuteLogger
 
 pub fn next_terminating_char(TurtleParser, BytesView) -> Int?
 
+pub fn parse_duration(String) -> Result[String, String]
+
 pub fn print_quoted_str(StringBuilder, StringView) -> String
 
 pub fn remove_dot_segments_from_array(Array[String]) -> Array[String]
@@ -213,16 +215,20 @@ pub(all) suberror IriError {
   InvalidErrMessage(String)
 }
 pub fn IriError::position(Self) -> Int
+pub impl Show for IriError
+pub impl ErrOut for IriError
 
 pub(all) suberror LanguageTagParseError {
   TagParseErr(TagParseErr)
 }
+pub impl Show for LanguageTagParseError
 
 pub(all) suberror LexerError {
   OutOfMemory(String)
   IoReadError(String)
   SyntaxError(String)
 }
+pub impl Show for LexerError
 pub impl ErrOut for LexerError
 
 pub(all) suberror RuleRecognizerError {
@@ -249,6 +255,7 @@ pub(all) suberror TagParseErr {
   TooManyExtlangs
   InvalidLanguageLength
 }
+pub impl Show for TagParseErr
 
 pub(all) suberror TokenRecognizerError {
   Invalid
@@ -264,6 +271,8 @@ pub(all) suberror TokenRecognizerError {
   InvalidErrMessage(ArrayView[Byte], Range, String)
 }
 pub fn TokenRecognizerError::range(Self) -> Range
+pub impl Show for TokenRecognizerError
+pub impl ErrOut for TokenRecognizerError
 
 pub(all) suberror TurtleError {
   TurtleParseError(String, Range)
@@ -272,6 +281,7 @@ pub(all) suberror TurtleError {
   InvalidCharacter(String)
   InvalidToken(SourcePos, String)
 } derive(@debug.Debug)
+pub impl Show for TurtleError
 pub impl ErrOut for TurtleError
 
 // Types and methods
@@ -347,7 +357,7 @@ pub struct AsyncWriterTurtleSerializer[W] {
 pub async fn[W] AsyncWriterTurtleSerializer::finish(Self[W]) -> W
 pub fn[W] AsyncWriterTurtleSerializer::serialize_triple(Self[W], Triple) -> Result[String, Unit]
 
-pub enum BaseDirection {
+pub(all) enum BaseDirection {
   Ltr
   Rtl
 } derive(Eq, Hash, @debug.Debug)
@@ -385,16 +395,22 @@ pub(all) enum Command {
 type ConsoleLogger
 pub impl DebugLogger for ConsoleLogger
 
-type ExtensionsIterator
+pub(all) struct ExtensionsIterator {
+  input : String
+  subtags : Array[String]
+  index : Int
+}
 pub fn ExtensionsIterator::next(Self) -> (String?, Self)
 
-pub struct GenericStateMachine[M] {
+pub(all) struct GenericStateMachine[M] {
   machine : M
   context : RdfContext
   outputs : Array[RdfOut]
 }
+pub fn[M] GenericStateMachine::GenericStateMachine(M, RdfContext) -> Self[M]
 pub fn[M] GenericStateMachine::remove_first_output(Self[M]) -> Self[M]
 pub fn[M : StateMachine] GenericStateMachine::run(Self[M], Array[LocatedTokenOrLineJump]) -> Result[Array[RdfOut], RuleRecognizerError]?
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M]
 
 pub(all) enum GraphName {
   DefaultGraph
@@ -422,6 +438,7 @@ pub enum HandleResult {
 
 type Iri derive(@debug.Debug)
 pub fn Iri::Iri(String) -> Self
+pub fn Iri::as_ref(Self) -> IriRef
 pub fn Iri::new(String) -> IriRef
 pub fn Iri::remove_dot_segments(Self, StringView) -> String
 pub impl IriComponents for Iri
@@ -461,7 +478,7 @@ pub fn IriRef::validate(Self) -> Result[Unit, IriError]
 pub impl IriComponents for IriRef
 pub impl StringRepr for IriRef
 
-pub struct LanguageTag {
+pub(all) struct LanguageTag {
   tag : String
   positions : TagElementsPositions
 } derive(Default, Eq, Hash, @debug.Debug)
@@ -480,8 +497,9 @@ pub fn LanguageTag::region(Self) -> String?
 pub fn LanguageTag::script(Self) -> String?
 pub fn LanguageTag::variant(Self) -> String?
 pub fn LanguageTag::variant_subtags(Self) -> Array[String]
+pub impl Show for LanguageTag
 
-pub struct Lexer[RL] {
+pub(all) struct Lexer[RL] {
   parser : RL
   data : Array[Byte]
   position : Position
@@ -515,11 +533,11 @@ pub fn[T] Lexer::record_token_end(Self[T]) -> Unit
 pub fn[T] Lexer::record_token_start(Self[T]) -> Unit
 pub fn[RL] Lexer::shrink_data(Self[RL]) -> Unit
 
-pub struct LexerOptions {
+pub(all) struct LexerOptions {
   mut base_iri : Iri?
 } derive(@debug.Debug)
 
-pub struct Literal(LiteralContent) derive(Eq, Hash, @debug.Debug)
+pub(all) struct Literal(LiteralContent) derive(Eq, Hash, @debug.Debug)
 pub fn Literal::as_n3term(Self) -> N3Term
 pub fn Literal::as_ref(Self) -> LiteralRef
 pub fn Literal::datatype(Self) -> NamedNodeRef
@@ -532,25 +550,39 @@ pub fn Literal::new_language_tagged_literal(String, String) -> Result[Self, Lang
 pub fn Literal::new_language_tagged_literal_unchecked(String, String) -> Self
 pub fn Literal::new_simple_literal(String) -> Self
 pub fn Literal::value(Self) -> String
+pub impl Show for Literal
 
-type LiteralContent derive(Eq, Hash, @debug.Debug)
+pub(all) enum LiteralContent {
+  String(String)
+  LanguageTaggedString(value~ : String, language~ : String)
+  DirectionalLanguageTaggedString(value~ : StringView, language~ : String, direction~ : BaseDirection)
+  TypedLiteral(value~ : VarDataType, datatype~ : NamedNode)
+} derive(Eq, Hash, @debug.Debug)
 
-pub struct LiteralRef(LiteralRefContent) derive(Eq, Hash, @debug.Debug)
+pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Hash, @debug.Debug)
 pub fn LiteralRef::as_n3term(Self) -> N3Term
 pub fn LiteralRef::as_term(Self) -> TermRef
 pub fn LiteralRef::datatype(Self) -> NamedNodeRef
 pub fn LiteralRef::direction(Self) -> BaseDirection?
 pub fn LiteralRef::into_owned(Self) -> Literal
+pub fn LiteralRef::into_value(Self) -> StringView
 pub fn LiteralRef::language(Self) -> String?
 pub fn LiteralRef::new_directional_language_tagged_literal_unchecked(String, LanguageTag, BaseDirection) -> Self
 pub fn LiteralRef::new_language_tagged_literal_unchecked(String, StringView) -> Self
 pub fn LiteralRef::new_simple_literal(StringView) -> Self
 pub fn LiteralRef::new_typed_literal(VarDataType, NamedNodeRef) -> Self
+pub impl Show for LiteralRef
 
-type LiteralRefContent derive(Eq, Hash, @debug.Debug)
+pub(all) enum LiteralRefContent {
+  String(StringView)
+  LanguageTaggedString(value~ : String, language~ : StringView)
+  DirectionalLanguageTaggedString(value~ : StringView, language~ : StringView, direction~ : BaseDirection)
+  TypedLiteral(value~ : VarDataType, datatype~ : NamedNodeRef)
+} derive(Eq, Hash, @debug.Debug)
 
 pub struct LocatedN3Token(N3Token, Range) derive(@debug.Debug)
 pub fn LocatedN3Token::into_token(Self) -> N3Token
+pub impl Show for LocatedN3Token
 
 #alias(Event)
 pub enum LocatedTokenOrLineJump {
@@ -558,7 +590,9 @@ pub enum LocatedTokenOrLineJump {
   LineJump(Int)
   End
 } derive(@debug.Debug)
+pub fn LocatedTokenOrLineJump::into_token(Self) -> N3Token?
 pub fn LocatedTokenOrLineJump::range(Self) -> Range?
+pub impl Show for LocatedTokenOrLineJump
 
 pub struct LowLevelN3Parser[RL] {
   parser : Parser[RL, N3Recognizer]
@@ -665,6 +699,8 @@ pub struct N3Quad {
 type N3Recognizer
 pub fn N3Recognizer::add_error(Self, RuleRecognizerError) -> Self
 pub fn N3Recognizer::new_parser(Array[Byte], Bool, Bool, Iri?, Map[String, Iri], debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
+pub impl RuleRecognizer for N3Recognizer
+pub impl StateMachine for N3Recognizer
 
 type N3RecognizerContext
 pub fn N3RecognizerContext::as_ctx(Self) -> RdfContext
@@ -708,7 +744,7 @@ pub fn NQuadsParser::new() -> Self
 pub async fn NQuadsParser::split_file_for_parallel_parsing(Self, String, Int64) -> Result[Array[SliceNQuadsParser[NQuadsRecognizer]], String]
 pub fn NQuadsParser::split_slice_for_parallel_parsing(Self, BytesView, Int) -> Array[SliceNQuadsParser[NQuadsRecognizer]]
 
-pub struct NQuadsRecognizer {
+pub(all) struct NQuadsRecognizer {
   stack : Array[NQuadsState]
   subjects : Array[NamedOrBlankNodeRef]
   predicates : Array[NamedNodeRef]
@@ -725,9 +761,10 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
 pub fn NQuadsRecognizer::handle_recover_to_line_jump_m(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
 pub fn NQuadsRecognizer::new_parser(Array[Byte], Bool, Bool, debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
 pub fn NQuadsRecognizer::process_transition_result(Self, NQuadsState, Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]) -> (Self, RdfState, RdfOut?)
-pub fn NQuadsRecognizer::process_transition_result_to_tuple(Self, NQuadsState, Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]) -> (Self, RdfState, RdfOut?)
+pub impl RuleRecognizer for NQuadsRecognizer
+pub impl StateMachine for NQuadsRecognizer
 
-pub struct NQuadsRecognizerContext {
+pub(all) struct NQuadsRecognizerContext {
   with_graph_name : Bool
   lexer_options : LexerOptions
 }
@@ -740,7 +777,18 @@ pub fn NQuadsSerializer::low_level(Self) -> LowLevelNQuadsSerializer
 pub fn NQuadsSerializer::new() -> Self
 pub fn NQuadsSerializer::to_string(Self, Quad) -> String
 
-type NQuadsState derive(Eq, Hash, @debug.Debug)
+pub(all) enum NQuadsState {
+  ExpectSubject
+  ExpectPredicate
+  ExpectedObject
+  ExpectPossibleGraphOrEndOfQuotedTriple
+  ExpectDot
+  ExpectLiteralAnnotationOrGraphNameOrDot(value~ : String)
+  ExpectLiteralDatatype(value~ : String)
+  ExpectLineJump
+  RecoverToLineJump
+  AfterQuotedTriple
+} derive(Eq, Hash, @debug.Debug)
 pub fn NQuadsState::to_str(Self) -> String
 
 pub(all) struct NQuadsSystem {
@@ -779,12 +827,14 @@ pub fn NamedNode::as_term(Self) -> Term
 pub(all) struct NamedNodeRef {
   iri : StringView
 } derive(Eq, Hash, @debug.Debug)
+pub fn NamedNodeRef::NamedNodeRef(StringView) -> Self
 pub fn NamedNodeRef::as_enum(Self) -> NamedOrBlankNodeRef
 pub fn NamedNodeRef::as_n3term(Self) -> N3Term
 pub fn NamedNodeRef::as_term(Self) -> TermRef
 pub fn NamedNodeRef::into_datatype(Self, String) -> VarDataType
 pub fn NamedNodeRef::into_owned(Self) -> NamedNode
 pub fn NamedNodeRef::new_unchecked(StringView) -> Self
+pub impl Show for NamedNodeRef
 
 pub(all) enum NamedOrBlankNode {
   NamedNode(NamedNode)
@@ -806,7 +856,7 @@ pub fn NamedOrBlankNodeRef::into_owned(Self) -> NamedOrBlankNode
 pub fn NamedOrBlankNodeRef::is_blank_node(Self) -> Bool
 pub fn NamedOrBlankNodeRef::is_named_node(Self) -> Bool
 
-pub struct Parser[TR, RR] {
+pub(all) struct Parser[TR, RR] {
   lexer : Lexer[TR]
   mut state : RR?
   context : RdfContext
@@ -821,8 +871,8 @@ pub fn[TR, RR] Parser::for_reader(Self[TR, RR], &@io.Reader) -> ReaderIterator[T
 pub fn[TR, RR] Parser::is_end(Self[TR, RR]) -> Bool
 pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(Self[TR, RR]) -> Result[RdfOut, TurtleError]?
 
-pub struct ParserM[TR, M] {
-  lexer : Lexer[TR]
+pub(all) struct ParserM[TR, M] {
+  mut lexer : Lexer[TR]
   mut engine : GenericStateMachine[M]
   context : RdfContext
   errors : Array[RuleRecognizerError]
@@ -831,8 +881,15 @@ pub fn[TR, M] ParserM::ParserM(Lexer[TR], GenericStateMachine[M], RdfContext) ->
 pub fn[TR, M] ParserM::end(Self[TR, M]) -> Bool
 pub fn[TR, M : StateMachine] ParserM::is_end(Self[TR, M]) -> Bool
 pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] ParserM::parse_next(Self[TR, M]) -> Result[RdfOut, TurtleError]?
+pub fn[TR, M : StateMachine] ParserM::try_finish(Self[TR, M]) -> Result[RdfOut, TurtleError]?
+pub fn[TR, M] ParserM::try_output(Self[TR, M]) -> Result[RdfOut, TurtleError]?
 
-type Position derive(Default, @debug.Debug)
+pub(all) struct Position {
+  mut line_start_buffer_offset : Int
+  mut buffer_offset : Int
+  mut global_offset : Int
+  mut global_line : Int
+} derive(Default, @debug.Debug)
 
 pub enum Predicate {
   Regular(N3Term)
@@ -857,7 +914,10 @@ pub struct QuadRef {
 }
 pub fn QuadRef::into_owned(Self) -> Quad
 
-type Range derive(Default, Eq, @debug.Debug)
+pub(all) struct Range {
+  start : Int
+  end : Int
+} derive(Default, Eq, @debug.Debug)
 pub fn Range::Range(Int, Int) -> Self
 pub fn Range::contains(Self, Int) -> Bool
 pub fn Range::length(Self) -> Int
@@ -872,15 +932,16 @@ pub(all) enum RdfContext {
   N3RecognizerContext(N3RecognizerContext)
 }
 
-pub struct RdfLexer {
+pub(all) struct RdfLexer {
   mode : RdfLexerMode
   lenient : Bool
 }
 pub fn RdfLexer::RdfLexer(RdfLexerMode, Bool) -> Self
 pub fn RdfLexer::is_possible_pn_chars(Char) -> Bool
 pub fn RdfLexer::is_possible_pn_chars_u(Char) -> Bool
+pub impl TokenRecognizer for RdfLexer
 
-pub enum RdfLexerMode {
+pub(all) enum RdfLexerMode {
   NTriples
   N3
 } derive(Eq)
@@ -892,12 +953,15 @@ pub(all) enum RdfOut {
   N3Quad(N3Quad)
 } derive(@debug.Debug)
 pub fn RdfOut::new(Quad) -> Self
+pub impl Show for RdfOut
 
-pub enum RdfState {
+pub(all) enum RdfState {
   TriGState(TriGState)
   NQuadsState(NQuadsState)
   N3State(N3State)
 } derive(Eq, Hash)
+pub impl Show for RdfState
+pub impl StateWrapper for RdfState
 
 pub struct ReaderIterator[TR, RR] {
   reader : &@io.Reader
@@ -1071,7 +1135,7 @@ pub struct TriGPrefixesIter {
   inner : Iter2[String, Iri]
 }
 
-pub struct TriGRecognizer {
+pub(all) struct TriGRecognizer {
   mut stack : Array[TriGState]
   cur_subject : Array[NamedOrBlankNodeRef]
   cur_predicate : Array[NamedNodeRef]
@@ -1087,8 +1151,11 @@ pub fn TriGRecognizer::new_parser(Array[Byte], Bool, Bool, Bool, Iri?, Map[Strin
 pub fn TriGRecognizer::process_transition_result(Self, TriGState, Result[(Self, TriGState, RdfOut?), RuleRecognizerError]) -> (Self, RdfState, RdfOut?)
 pub fn TriGRecognizer::replace_top(Array[TriGState], TriGState) -> Array[TriGState]
 pub fn TriGRecognizer::set_state(Self, TriGState) -> Self
+pub impl Show for TriGRecognizer
+pub impl RuleRecognizer for TriGRecognizer
+pub impl StateMachine for TriGRecognizer
 
-pub struct TriGRecognizerContext {
+pub(all) struct TriGRecognizerContext {
   lexer_options : LexerOptions
   with_graph_name : Bool
   prefixes : Map[String, Iri]
@@ -1107,8 +1174,57 @@ pub fn TriGSerializer::new() -> Self
 pub fn TriGSerializer::with_base_iri(Self, IriRef) -> Result[Self, IriError]
 pub fn TriGSerializer::with_prefix(Self, String, IriRef) -> Result[Self, IriError]
 
-type TriGState derive(Eq, Hash, @debug.Debug)
+pub(all) enum TriGState {
+  ExpectAtKeyword
+  TriGDoc
+  ExpectDot
+  BaseExpectIri
+  PrefixExpectPrefix
+  PrefixExpectIri(name~ : String)
+  VersionExpectVersion
+  TriplesOrGraph
+  WrappedGraphBlankNodePropertyListCurrent
+  SubjectBlankNodePropertyListEnd
+  SubjectBlankNodePropertyListAfter
+  SubjectCollectionBeginning
+  SubjectCollectionPossibleEnd
+  WrappedGraphOrPredicateObjectList(term~ : NamedOrBlankNodeRef)
+  WrappedGraph
+  WrappedGraphPossibleEnd
+  GraphName
+  GraphNameAnonEnd
+  Triples
+  TriplesBlankNodePropertyListCurrent
+  MaybePredicateObjectList
+  PredicateObjectList
+  PredicateObjectListEnd
+  PredicateObjectListPossibleContinuation
+  ObjectsList
+  AnnotationBlock(with_reifier~ : Bool)
+  AnnotationEnd(with_reifier~ : Bool)
+  Verb
+  Object
+  ObjectBlankNodePropertyListCurrent
+  ObjectBlankNodePropertyListEnd
+  ObjectCollectionBeginning
+  ObjectCollectionPossibleEnd
+  LiteralPossibleSuffix(value~ : String, emit~ : Bool)
+  LiteralExpectDatatype(value~ : String, emit~ : Bool)
+  SubjectReifiedTripleEnd
+  ObjectReifiedTripleEnd(emit~ : Bool)
+  TripleTermEnd(emit~ : Bool)
+  EndOfReifiedTripleBeforeReifier
+  Reifier(triple~ : Triple)
+  ReifiedTripleSubject(is_reified~ : Bool)
+  ReifiedTripleObject(is_reified~ : Bool)
+  QuotedAnonEnd
+  InCollection
+  CollectionElement
+  CollectionEnd
+} derive(Eq, Hash, @debug.Debug)
 pub fn TriGState::to_str(Self) -> String
+pub impl Show for TriGState
+pub impl StateWrapper for TriGState
 
 pub struct Triple {
   subject : NamedOrBlankNode
@@ -1122,6 +1238,7 @@ pub fn Triple::as_ref(Self) -> TripleRef
 pub fn Triple::as_term(Self) -> Term
 pub fn Triple::from_terms(NamedOrBlankNode, NamedNode, Term) -> Result[Self, TryFromTermError]
 pub fn Triple::in_graph(Self, GraphNameRef) -> Quad
+pub impl Show for Triple
 
 pub struct TripleRef {
   subject : NamedOrBlankNodeRef
@@ -1168,7 +1285,20 @@ pub fn TurtleSerializer::new() -> Self
 pub fn TurtleSerializer::with_base_iri(Self, IriRef) -> Result[Self, IriError]
 pub fn TurtleSerializer::with_prefix(Self, String, IriRef) -> Result[Self, IriError]
 
-type VarDataType derive(Eq, Hash, @debug.Debug)
+pub(all) enum VarDataType {
+  IntVar(String)
+  IntegerVar(String)
+  DoubleVar(String)
+  StringVar(String)
+  FalseVar
+  TrueVar
+  DecimalVar(StringView)
+  DateVar(String)
+  TimeVar(String)
+  DateTimeVar(String)
+  DurationVar(String)
+} derive(Eq, Hash, @debug.Debug)
+pub impl Show for VarDataType
 
 pub struct WriterNQuadsSerializer[W] {
   writer : W
@@ -1248,7 +1378,10 @@ pub trait StateWrapper {
   fn as_state_enum(Self) -> RdfState
 }
 
-trait StringRepr
+pub trait StringRepr {
+  fn as_stringview(Self) -> StringView
+  fn into_string(Self) -> String
+}
 
 pub trait TokenRecognizer {
   fn recognize_next_token(Self, ArrayView[Byte], Bool, LexerOptions?, SourcePos) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])?

@@ -1,6 +1,11 @@
 import {
   "moonbitlang/core/argparse",
   "moonbitlang/core/debug",
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/encoding/utf8",
+  "thy7/moonttl" @lib,
 }
 
 options(

@@ -15,11 +15,11 @@ readme = "README.mbt.md"
 
 repository = "https://www.gitlink.org.cn/thy7/mbt.ttl"
 
-license = "Apache-2.0"
+license = "Apache-2.0 and MIT"
 
 keywords = [ "ttl", "rdf" ]
 
-description = ""
+description = "MoonTTL is a high-performance RDF parsing and serialization library for MoonBit, supporting Turtle, TriG, N-Triples, N-Quads and N3 formats."
 
 preferred_target = "native"
 // supported_targets = "+wasm+wasm-gc"

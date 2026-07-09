@@ -7,6 +7,7 @@ import {
   "moonbitlang/core/test",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
+  "moonbitlang/async/fs",
   "moonbitlang/core/quickcheck/splitmix",
   "thy7/moonttl" @lib,
 } for "test"
