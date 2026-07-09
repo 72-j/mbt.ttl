@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "thy7/moonttl"
+package "thy1016/moonttl"
 
 import {
   "moonbitlang/async/fs",

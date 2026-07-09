@@ -1,4 +1,4 @@
-name = "thy7/moonttl"
+name = "thy1016/moonttl"
 
 version = "0.1.0"
 
@@ -15,7 +15,7 @@ readme = "README.mbt.md"
 
 repository = "https://www.gitlink.org.cn/thy7/mbt.ttl"
 
-license = "Apache-2.0 and MIT"
+license = "MIT"
 
 keywords = [ "ttl", "rdf" ]
 

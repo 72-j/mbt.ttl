@@ -45,8 +45,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   self,
   event : Event,
 ) -> GenericStateMachine[M] {
-  let state_before = self.current_state()
-  // debug("step: state_before = [\{state_before}]")
+  // debug("step: state_before = [\{self.current_state()}]")
   // debug("step: event = \{event}")
 
   let current_state = self.machine.current_state() // ← 从 machine 获取
