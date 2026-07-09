@@ -150,7 +150,7 @@ pub impl StateMachine for N3Recognizer with fn[ST : StateWrapper] set_current_st
   let state = ST::as_state_enum(state)
   match state {
     RdfState::N3State(s) => {
-      debug("[Step 3] Set current state: \{s}")
+      // debug("[Step 3] Set current state: \{s}")
       let new_stack = self.stack
       if !new_stack.is_empty() {
         let _ = new_stack.pop() // 移除旧状态

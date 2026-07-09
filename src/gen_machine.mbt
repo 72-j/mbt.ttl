@@ -46,8 +46,8 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   event : Event,
 ) -> GenericStateMachine[M] {
   let state_before = self.current_state()
-  debug("step: state_before = [\{state_before}]")
-  debug("step: event = \{event}")
+  // debug("step: state_before = [\{state_before}]")
+  // debug("step: event = \{event}")
 
   let current_state = self.machine.current_state() // ← 从 machine 获取
 
@@ -55,20 +55,16 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
 
   match result {
     Ok((new_machine, new_state, output)) => {
-      debug("step: new_state = \{new_state.to_string()}")
-      debug("step: output received = \{@debug.to_string(output)}")
+      // debug(
+      //   "step: new_state = \{new_state.to_string()} output received = \{@debug.to_string(output)}",
+      // )
 
       let outputs = self.outputs
       if output is Some(o) {
-        debug("step: pushing output to engine: \{o}") // ✅ 确认是否执行了 push
+        // debug("step: pushing output to engine: \{o}") // ✅ 确认是否执行了 push
         outputs.push(o)
-      } else {
-        debug("step: no output generated in this step")
       }
 
-      // ✅ 新增调试：打印新引擎的状态
-      debug("step: new_engine outputs length = \{outputs.length()}")
-      debug("step: new_machine is_accepting = \{new_machine.is_accepting()}")
       let updated_machine = new_machine.set_current_state(new_state)
       let new_engine = GenericStateMachine::{
         machine: updated_machine,
@@ -136,7 +132,11 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
   M,
 ] {
   let new_machine = self.machine.set_current_state(state)
-  { machine: new_machine, context: self.context, outputs: self.outputs }
+  {
+    machine: new_machine,
+    context: self.context,
+    outputs: self.outputs,
+  }
 }
 
 ///|
@@ -185,7 +185,11 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn set_c
   self : GenericStateMachine[M],
   new_context : Ctx,
 ) -> GenericStateMachine[M] {
-  { machine: self.machine, context: new_context, outputs: self.outputs }
+  {
+    machine: self.machine,
+    context: new_context,
+    outputs: self.outputs,
+  }
 }
 
 ///|

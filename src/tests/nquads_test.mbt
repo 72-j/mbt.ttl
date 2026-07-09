@@ -90,9 +90,9 @@ async test "ParserM_basic_single_line for NQuads" {
 
 async test "ParserM_multi_line for NQuads" {
     let input =
-    #| "<http://example.org/s1> <http://example.org/p1> <http://example.org/o1> .\n"
-    #| "<http://example.org/s2> <http://example.org/p2> <http://example.org/o2> .\n"
-    #| "<http://example.org/s3> <http://example.org/p3> <http://example.org/o3> .\n"
+    #| <http://example.org/s1> <http://example.org/p1> <http://example.org/o1> .
+    #| <http://example.org/s2> <http://example.org/p2> <http://example.org/o2> .
+    #| <http://example.org/s3> <http://example.org/p3> <http://example.org/o3> .
     let data = @utf8.encode(input).to_array()
 
     let logger = @lib.make_console_logger()
