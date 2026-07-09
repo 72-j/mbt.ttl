@@ -1,5 +1,5 @@
 ///|
-pub struct Parser[TR, RR] {
+pub(all) struct Parser[TR, RR] {
   lexer : Lexer[TR]
   mut state : RR?
   context : RdfContext

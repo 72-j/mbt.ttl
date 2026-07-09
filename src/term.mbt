@@ -466,21 +466,15 @@ pub struct Quad {
 } derive(Debug, Hash, Eq)
 
 ///|
-impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
-  // 输出 N-Quads 风格: subject predicate object graphName .
-  self.subject.output(logger)
-  logger.write(" ")
-  self.predicate.output(logger)
-  logger.write(" ")
-  self.object.output(logger)
-
-  // 如果是默认图，某些规范可能省略，但为了调试清晰，这里保留输出
-  if !self.graph_name.is_default_graph() {
-    logger.write(" ")
-    self.graph_name.output(logger)
+  impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
+    logger.write("Quad<")
+    self.subject.output(logger)
+    logger.write(", ")
+    self.predicate.output(logger)
+    logger.write(", ")
+    self.object.output(logger)
+    logger.write(">")
   }
-}
-
 ///|
 pub fn Quad::Quad(
   subject : NamedOrBlankNode,

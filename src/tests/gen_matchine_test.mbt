@@ -1,7 +1,5 @@
 ///|
-
-///|
-async test "ParserM_basic_with_lexer_working for NQuads" {
+async test "ParserM_basic_single_line for NQuads" {
   let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .\n"
   let data = @utf8.encode(input).to_array()
 
@@ -18,14 +16,13 @@ async test "ParserM_basic_with_lexer_working for NQuads" {
 
   let logger = @lib.make_console_logger()
 
-  // 创建 TriGRecognizer
   let machine = @lib.NQuadsRecognizer::{
     stack: [@lib.NQuadsState::ExpectSubject],
     subjects: [],
     predicates: [],
     objects: [],
     lenient: false,
-    debug_logger: logger, // 修复：包装为 Option 类型
+    debug_logger: logger,
     last_range: @lib.Range::default(),
     errors: [],
   }
@@ -35,13 +32,11 @@ async test "ParserM_basic_with_lexer_working for NQuads" {
     lexer_options: { base_iri: None },
   })
 
-  // 创建 GenericStateMachine
   let generic_machine = @lib.GenericStateMachine::{
     machine,
     context,
     outputs: [],
   }
-
   let parser = @lib.ParserM::{
     lexer,
     engine: generic_machine,
@@ -49,53 +44,44 @@ async test "ParserM_basic_with_lexer_working for NQuads" {
     errors: [],
   }
 
-  debug("=== ParserM Test ===")
+  debug("=== Single Line Test ===")
   let quads = []
   let mut count = 0
-  let max_iterations = 20
 
   for ;; {
-    if count >= max_iterations {
-      debug("WARNING: Max iterations reached")
+    if count >= 20 {
       break
     }
-
     match parser.parse_next() {
       Some(Ok(quad)) => {
         count += 1
-        debug("[\{count}] ✓ Quad: \{quad}")
+        debug("[\{count}] ✓ \{quad}")
         quads.push(quad)
       }
       Some(Err(e)) => {
         count += 1
-        debug("[\{count}] ✗ Error: \{e}")
+        debug("[\{count}] ✗ \{e}")
         break
       }
       None => {
-        debug("[\{count}] Finished")
+        debug("End")
         break
       }
     }
   }
 
-  debug("Total quads: \{quads.length()}")
-
-  if quads.is_empty() {
-    debug("=== Debug Info ===")
-    debug("Engine is_accepting: \{parser.engine.is_accepting()}")
-    debug("Engine outputs length: \{parser.engine.outputs.length()}")
-    debug("Errors length: \{parser.errors.length()}")
-
-    // 检查引擎状态
-    debug("Engine current state: \{parser.engine.current_state()}")
-  }
-
-  @debug.assert_eq(quads.length(), 0)
+  debug("Total: \{quads.length()}")
+  @debug.assert_eq(quads.length(), 1)
 }
 
 ///|
-async test "debug_lexer_only" {
-  let input = "<http://a/b> <http://a/c> <http://a/d> ."
+async test "multi-line  for NQuads" {
+  let input =
+    #| <http://example.org/s> <http://example.org/p> <http://example.org/o> .
+    #| <http://example.org/s> <http://example.org/p> <http://example.org/o> .
+    #| <http://example.org/s> <http://example.org/p> <http://example.org/o> .
+    #| 
+
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
@@ -109,38 +95,62 @@ async test "debug_lexer_only" {
     0,
   )
 
-  debug("=== Lexer Output ===")
-  let mut count = 0
-  for ;; {
-    match lexer.parse_next(None) {
-      Some(Ok(token)) => {
-        count += 1
-        debug("[\{count}] {token}")
+  let logger = @lib.make_console_logger()
 
-        // 检查具体的 token 内容
-        match token {
-          @lib.LocatedTokenOrLineJump::LocatedN3Token(located) => {
-            debug("    -> type: \{located.to_string()}")
-            debug("    -> range: \{located.1.start}-\{located.1.end}")
-          }
-          @lib.LocatedTokenOrLineJump::LineJump(pos) =>
-            debug("    -> LineJump at \{pos}")
-          @lib.LocatedTokenOrLineJump::End => {
-            debug("    -> End")
-            break
-          }
-        }
+  let machine = @lib.NQuadsRecognizer::{
+    stack: [@lib.NQuadsState::ExpectSubject],
+    subjects: [],
+    predicates: [],
+    objects: [],
+    lenient: false,
+    debug_logger: logger,
+    last_range: @lib.Range::default(),
+    errors: [],
+  }
+
+  let context = @lib.RdfContext::NQuadsRecognizerContext(@lib.NQuadsRecognizerContext::{
+    with_graph_name: false,
+    lexer_options: { base_iri: None },
+  })
+
+  let generic_machine = @lib.GenericStateMachine::{
+    machine,
+    context,
+    outputs: [],
+  }
+  let parser = @lib.ParserM::{
+    lexer,
+    engine: generic_machine,
+    context,
+    errors: [],
+  }
+
+  debug("=== Single Line Test ===")
+  let quads = []
+  let mut count = 0
+
+  for ;; {
+    if count >= 20 {
+      break
+    }
+    match parser.parse_next() {
+      Some(Ok(quad)) => {
+        count += 1
+        debug("[\{count}] ✓ \{quad}")
+        quads.push(quad)
       }
       Some(Err(e)) => {
-        debug("Lexer Error: \{e}")
+        count += 1
+        debug("[\{count}] ✗ \{e}")
         break
       }
       None => {
-        debug("No more tokens")
+        debug("End")
         break
       }
     }
   }
 
-  debug("Total tokens: \{count}")
+  debug("Total: \{quads.length()}")
+  @debug.assert_eq(quads.length(), 3)
 }

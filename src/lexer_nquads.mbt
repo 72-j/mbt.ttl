@@ -38,19 +38,19 @@ impl StateWrapper for NQuadsState with fn as_state_enum(self : NQuadsState) -> R
 ///|
 impl Show for NQuadsState with fn output(self, logger : &Logger) -> Unit {
   match self {
-    NQuadsState::ExpectSubject => logger.write("Expecting subject")
-    NQuadsState::ExpectPredicate => logger.write("Expecting predicate")
-    NQuadsState::ExpectedObject => logger.write("Expecting object")
-    NQuadsState::ExpectDot => logger.write("Expecting dot")
+    NQuadsState::ExpectSubject => logger.write("ExpectSubject")
+    NQuadsState::ExpectPredicate => logger.write("ExpectPredicate")
+    NQuadsState::ExpectedObject => logger.write("ExpectedObject")
+    NQuadsState::ExpectDot => logger.write("ExpectDot")
     NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~) =>
-      logger.write("Expecting literal annotation \{value} ")
+      logger.write("ExpectLiteralAnnotationOrGraphNameOrDot(\{value})")
     NQuadsState::ExpectLiteralDatatype(value~) =>
-      logger.write("Expecting literal datatype \{value}")
-    NQuadsState::ExpectLineJump => logger.write("Expecting line jump")
-    NQuadsState::RecoverToLineJump => logger.write("Recovering to line jump")
-    NQuadsState::AfterQuotedTriple => logger.write("After quoted triple")
+      logger.write("ExpectLiteralDatatype(\{value})")
+    NQuadsState::ExpectLineJump => logger.write("ExpectLineJump")
+    NQuadsState::RecoverToLineJump => logger.write("RecoverToLineJump")
+    NQuadsState::AfterQuotedTriple => logger.write("AfterQuotedTriple")
     NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple =>
-      logger.write("Expecting possible graph or end of quoted triple")
+      logger.write("ExpectPossibleGraphOrEndOfQuotedTriple")
   }
 }
 
@@ -207,16 +207,28 @@ fn NQuadsRecognizer::emit_quad(
 fn NQuadsRecognizer::make_current_quad(
   self : NQuadsRecognizer,
   graph_name? : GraphName,
-) -> RdfOut {
-  // 1. 获取主语、谓词、对象
-  let subject_opt = self.subjects.pop().unwrap()
-  let predicate_opt = self.predicates.pop().unwrap()
-  let object_opt = self.objects.pop().unwrap()
+) -> RdfOut? {
+  self.debug_logger.info("make_current_quad called")
+  self.debug_logger.info("  subjects length: \{self.subjects.length()}")
+  self.debug_logger.info("  predicates length: \{self.predicates.length()}")
+  self.debug_logger.info("  objects length: \{self.objects.length()}")
 
-  RdfOut::Quad({
-    subject: subject_opt.into_owned(),
-    predicate: predicate_opt.into_owned(),
-    object: object_opt.into_owned(),
-    graph_name: graph_name.unwrap(),
-  })
+  let subject = self.subjects.pop()
+  let predicate = self.predicates.pop()
+  let object = self.objects.pop()
+
+  match (subject, predicate, object) {
+    (Some(s), Some(p), Some(o)) => {
+      let graph_name = graph_name.unwrap_or(GraphName::DefaultGraph)
+      Some(
+        RdfOut::Quad(
+          Quad::Quad(s.into_owned(), p.into_owned(), o.into_owned(), graph_name),
+        ),
+      )
+    }
+    _ => {
+      self.debug_logger.info("ERROR: missing data!")
+      None
+    }
+  }
 }

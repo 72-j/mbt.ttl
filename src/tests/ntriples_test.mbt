@@ -42,12 +42,7 @@ async test "verify_with_ntriples" {
 test "parse basic ntriples" {
   let parser = @lib.NTriplesParser::new()
   let low_level = parser.low_level()
-  // let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .\n"
-  // #| <http://example/s> <http://example/p> <http://example/o> . # comment
-  // #| <http://example/s> <http://example/p> _:o . # comment
-  // #| <http://example/s> <http://example/p> "o" . # comment
-  // #| <http://example/s> <http://example/p> "o"^^<http://example/dt> . # comment
-  // #|<http://example/s> <http://example/p> "o"@en .
+
   let input =
     #|<http://a.example/s> <http://a.example/p> "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\t\u000B\u000C\u000E\u000F\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001A\u001B\u001C\u001D\u001E\u001F" .
 
@@ -66,6 +61,66 @@ test "parse basic ntriples" {
     }
     Err(e) => debug(e.to_string())
   }
+}
+
+///|
+test "parse multi-line ntriples test" {
+  let parser = @lib.NTriplesParser::new()
+  let low_level = parser.low_level()
+  let input =
+    #| <http://example/s> <http://example/p> <http://example/o> . # comment
+    #| <http://example/s> <http://example/p> _:o . # comment
+    #| <http://example/s> <http://example/p> "o" . # comment
+    #| <http://example/s> <http://example/p> "o"^^<http://example/dt> . # comment
+    #| <http://example/s> <http://example/p> "o"@en .
+    #|
+  low_level.extend_from_slice(@utf8.encode(input))
+  low_level.end()
+
+  let quads = []
+  let mut count = 0
+  for ;; {
+    if count >= 20 {
+      break
+    }
+    match low_level.parse_next() {
+      Some(Ok(quad)) => {
+        count += 1
+        debug("[\{count}] \{quad}")
+        quads.push(quad)
+      }
+      Some(Err(e)) => {
+        debug("Error: \{e}")
+        break
+      }
+      None => {
+        debug("End")
+        break
+      }
+    }
+  }
+
+  debug("Total quads: \{quads.length()}")
+  assert_eq(quads.length(), 5)
+
+  // 验证各个 quad 的内容
+  // match quads[0] {
+  // @lib.TripleRef::TripleRef(subject, predicate, object ) => {
+  assert_true(quads[0].subject is NamedNode(_))
+  assert_true(quads[0].predicate.iri == "http://example/p")
+  assert_true(quads[0].object is NamedNode(_))
+
+  assert_true(quads[1].subject is NamedNode(_))
+  assert_true(quads[1].predicate.iri == "http://example/p")
+  assert_true(quads[1].object is NamedNode(_))
+
+  assert_true(quads[2].subject is NamedNode(_))
+  assert_true(quads[2].predicate.iri == "http://example/p")
+  assert_false(quads[2].object is NamedNode(_))
+
+  // }
+  // }
+
 }
 
 ///|

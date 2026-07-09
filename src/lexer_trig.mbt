@@ -333,12 +333,12 @@ pub(all) enum TriGState {
 } derive(Debug, Eq, Hash)
 
 ///|
-impl StateWrapper for TriGState with fn as_state_enum(self : TriGState) -> RdfState {
+pub impl StateWrapper for TriGState with fn as_state_enum(self : TriGState) -> RdfState {
   RdfState::TriGState(self)
 }
 
 ///|
-impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
+pub impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
   match self {
     TriGState::TripleTermEnd(emit~) => logger.write("TripleTermEnd(\{emit})")
     TriGState::LiteralExpectDatatype(value~, emit~) =>

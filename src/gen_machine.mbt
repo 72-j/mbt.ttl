@@ -55,9 +55,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
 
   match result {
     Ok((new_machine, new_state, output)) => {
-      // ✅ 新增调试：打印转换结果
-      debug("step: transition successful")
-      debug("step: new_state = \{new_state}")
+      debug("step: new_state = \{new_state.to_string()}")
       debug("step: output received = \{@debug.to_string(output)}")
 
       let outputs = self.outputs

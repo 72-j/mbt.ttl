@@ -42,3 +42,88 @@ test "low level parser initialization" {
 
   low_level.end()
 }
+
+///|
+async test "ParserM_basic_single_line for NQuads" {
+  let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .\n"
+  let data = @utf8.encode(input).to_array()
+
+  let logger = @lib.make_console_logger()
+
+  let parser = @lib.NQuadsRecognizer::new_parser(
+    data,
+    false,
+    false,
+    debug_logger=logger,
+  )
+
+  debug("=== Single Line Test ===")
+  let quads = []
+  let mut count = 0
+
+  for ;; {
+    if count >= 20 {
+      break
+    }
+    match parser.parse_next() {
+      Some(Ok(quad)) => {
+        count += 1
+        debug("[\{count}] ✓ \{quad}")
+        quads.push(quad)
+      }
+      Some(Err(e)) => {
+        count += 1
+        debug("[\{count}] ✗ \{e}")
+        break
+      }
+      None => {
+        debug("End")
+        break
+      }
+    }
+  }
+
+  debug("Total: \{quads.length()}")
+  @debug.assert_eq(quads.length(), 1)
+}
+
+
+async test "ParserM_multi_line for NQuads" {
+    let input =
+    #| "<http://example.org/s1> <http://example.org/p1> <http://example.org/o1> .\n"
+    #| "<http://example.org/s2> <http://example.org/p2> <http://example.org/o2> .\n"
+    #| "<http://example.org/s3> <http://example.org/p3> <http://example.org/o3> .\n"
+    let data = @utf8.encode(input).to_array()
+
+    let logger = @lib.make_console_logger()
+    let parser = @lib.NQuadsRecognizer::new_parser(
+      data,
+      false,
+      false,
+      debug_logger=logger,
+    )
+
+    debug("=== Multi Line Test ===")
+    let quads = []
+    let mut count = 0
+
+    for ;; {
+      if count >= 20 { break }
+      match parser.parse_next() {
+        Some(Ok(quad)) => {
+          count += 1
+          debug("[\{count}] ✓ \{quad}")
+          quads.push(quad)
+        }
+        Some(Err(e)) => {
+          count += 1
+          debug("[\{count}] ✗ \{e}")
+          break
+        }
+        None => { debug("End"); break }
+      }
+    }
+
+    debug("Total: \{quads.length()}")
+    @debug.assert_eq(quads.length(), 3)
+  }

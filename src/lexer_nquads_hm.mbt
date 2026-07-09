@@ -6,10 +6,12 @@ fn NQuadsRecognizer::handle_expect_subject_m(
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  self.debug_logger.info("Entering ExpectSubject with token: \{token}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "ExpectSubject with token: \{token} Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   match token {
+    LocatedTokenOrLineJump::End => Ok((self, NQuadsState::ExpectSubject, None))
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(s), _)) => {
       let new_self = self
       new_self.subjects.push(NamedNodeRef::new_unchecked(s).as_enum())
@@ -54,10 +56,11 @@ fn NQuadsRecognizer::handle_expect_predicate_m(
 fn NQuadsRecognizer::handle_expected_object_m(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
-  _ctx : NQuadsRecognizerContext,
+  ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  self.debug_logger.info("Entering ExpectedObject with token: \{token}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    " ExpectedObject: \{token} Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(o), _)) => {
@@ -65,7 +68,14 @@ fn NQuadsRecognizer::handle_expected_object_m(
       new_self.objects.push(
         TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(o)),
       )
-      Ok((new_self, NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple, None))
+      if ctx.with_graph_name {
+        Ok(
+          (new_self, NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple, None),
+        )
+      } else {
+        // N-Triples 直接进入 ExpectDot
+        Ok((new_self, NQuadsState::ExpectDot, None))
+      }
     }
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::BlankNodeLabel(o), _)
@@ -245,8 +255,9 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
   token : LocatedTokenOrLineJump,
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  self.debug_logger.info("Entering ExpectPossibleGraphOrEndOfQuotedTriple")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "ExpectPossibleGraphOrEndOfQuotedTriple Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   // 检查是否是引用的三元组结束
   if !self.stack.is_empty() {
@@ -276,7 +287,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
       )
       let new_self = self
       let _ = new_self.error_recovery_state()
-      Ok((new_self, NQuadsState::ExpectDot, Some(stmt)))
+      Ok((new_self, NQuadsState::ExpectDot, stmt))
     }
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::BlankNodeLabel(_g), _)
@@ -284,7 +295,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
       let stmt = self.make_current_quad()
       let new_self = self
       let _ = new_self.error_recovery_state()
-      Ok((new_self, NQuadsState::ExpectDot, Some(stmt)))
+      Ok((new_self, NQuadsState::ExpectDot, stmt))
     }
     _ => {
       // 默认图
@@ -300,7 +311,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
       // 妥协方案：返回语句，状态设为 ExpectSubject，并标记需要重新消费 token（如果框架支持）
       // 如果不支持，可能需要将 token 压回输入流。
 
-      Ok((new_self, NQuadsState::ExpectSubject, Some(stmt)))
+      Ok((new_self, NQuadsState::ExpectSubject, stmt))
     }
   }
 }
@@ -313,13 +324,17 @@ fn NQuadsRecognizer::handle_expect_dot_m(
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  self.debug_logger.info("Entering ExpectDot with token: \{token}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "ExpectDot with token: \{token} Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("."), _)
-    ) => Ok((self, NQuadsState::ExpectLineJump, None))
+    ) => {
+      let stmt = self.make_current_quad()
+      Ok((self, NQuadsState::ExpectLineJump, stmt))
+    }
     _ =>
       Err(
         RuleRecognizerError::SyntaxError(
@@ -339,16 +354,34 @@ pub fn NQuadsRecognizer::handle_expect_line_jump_m(
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectLineJump with token: \{token}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  let tok = match token {
+    LocatedTokenOrLineJump::LineJump(n) => "LineJump(\{n})"
+    LocatedTokenOrLineJump::End => "End"
+    LocatedTokenOrLineJump::LocatedN3Token(t) => "N3Token: \{t.0}"
+  }
+  self.debug_logger.info("Token type: \{tok}")
 
-  // 原文直接 push error 并返回 self。在新架构中，这应该是一个错误，或者如果允许宽松模式，则警告。
-  // 假设这是严格错误
-  Err(
-    RuleRecognizerError::SyntaxError(
-      "Only a single triple or quad can be written in a line, found \{token.to_string()}",
-      Range::default(),
-    ),
-  )
+  match token {
+    LocatedTokenOrLineJump::LineJump(_) =>
+      // 成功：换行后回到 ExpectSubject 开始下一个语句
+      Ok((self, NQuadsState::ExpectSubject, None))
+    LocatedTokenOrLineJump::End =>
+      // 文件结束，安静地接受
+      Ok((self, NQuadsState::ExpectSubject, None))
+    _ =>
+      // 换行符之后不应该有其他内容
+      // 跳过并继续等待换行（lenient 模式）
+      if self.lenient {
+        Ok((self, NQuadsState::ExpectLineJump, None))
+      } else {
+        Err(
+          RuleRecognizerError::SyntaxError(
+            "Only a single triple or quad can be written in a line",
+            Range::default(),
+          ),
+        )
+      }
+  }
 }
 
 // ===== State: AfterQuotedTriple =====
