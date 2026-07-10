@@ -13,7 +13,7 @@ pub(all) enum VarDataType {
   TimeVar(String)
   DateTimeVar(String)
   DurationVar(String)
-} derive(Debug, Eq, Hash,ToJson)
+} derive(Debug, Eq, Hash, ToJson)
 
 ///|
 pub impl Show for VarDataType with fn output(

@@ -50,7 +50,6 @@ async test "debug_lexer_only" {
   debug("Total tokens: \{count}")
 }
 
-
 ///|
 async test "Lexer tokenization test" {
   let input =

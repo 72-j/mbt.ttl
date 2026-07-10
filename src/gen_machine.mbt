@@ -6,7 +6,6 @@ pub(all) struct GenericStateMachine[M] {
   context : Ctx
   outputs : Array[O]
   mut debug_logger : &DebugLogger
-
 }
 // fn[M: RuleRecognizer] GenericStateMachine::error_recovery_state(self: M) ->M  {
 //   M::error_recovery_state(self)
@@ -16,9 +15,9 @@ pub(all) struct GenericStateMachine[M] {
 pub fn[M] GenericStateMachine::GenericStateMachine(
   machine : M,
   context : Ctx,
-  debug_logger: &DebugLogger
+  debug_logger : &DebugLogger,
 ) -> GenericStateMachine[M] {
-  GenericStateMachine::{ machine, context, outputs: [],debug_logger }
+  GenericStateMachine::{ machine, context, outputs: [], debug_logger }
 }
 
 ///|
@@ -48,7 +47,9 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   self,
   event : Event,
 ) -> GenericStateMachine[M] {
-  self.debug_logger.info("event = \{event}, step: state_before = [\{self.current_state()}]")
+  self.debug_logger.info(
+    "event = \{event}, step: state_before = [\{self.current_state()}]",
+  )
 
   let current_state = self.machine.current_state() // ← 从 machine 获取
 
@@ -56,13 +57,13 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
 
   match result {
     Ok((new_machine, new_state, output)) => {
-       self.debug_logger.info(
+      self.debug_logger.info(
         "step: new_state = \{new_state.to_string()}, output received = \{@debug.to_string(output)}",
       )
 
       let outputs = self.outputs
       if output is Some(o) {
-         self.debug_logger.info("step: pushing output to engine: \{o}") 
+        self.debug_logger.info("step: pushing output to engine: \{o}")
         outputs.push(o)
       }
 
@@ -76,7 +77,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
       new_engine
     }
     Err(e) => {
-       self.debug_logger.warn("step: transition failed with error: \{e}") 
+      self.debug_logger.warn("step: transition failed with: \{e}")
       self.reset()
     }
   }

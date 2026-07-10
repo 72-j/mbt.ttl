@@ -70,7 +70,9 @@ fn NQuadsRecognizer::handle_expected_object(
   ctx : NQuadsRecognizerContext,
   results : Array[RdfOut],
 ) -> NQuadsRecognizer {
-  self.debug_logger.info("Entering ExpectedObject with token: \{token} Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "Entering ExpectedObject with token: \{token} Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(o), _)) => {
@@ -253,7 +255,9 @@ fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(
   ctx : NQuadsRecognizerContext,
   results : Array[RdfOut],
 ) -> NQuadsRecognizer {
-  self.debug_logger.info("Entering ExpectPossibleGraphOrEndOfQuotedTriple Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "Entering ExpectPossibleGraphOrEndOfQuotedTriple Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   match (self.stack.is_empty(), token) {
     (
@@ -393,7 +397,9 @@ fn NQuadsRecognizer::handle_recover_to_line_jump(
   _ctx : NQuadsRecognizerContext,
   _results : Array[RdfOut],
 ) -> NQuadsRecognizer {
-  self.debug_logger.info("RecoverToLineJump with token: \{token}Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "RecoverToLineJump with token: \{token}Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   match token {
     LocatedTokenOrLineJump::LineJump(_) =>

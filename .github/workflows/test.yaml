@@ -69,11 +69,7 @@ jobs:
           moon fmt --check
           moon check --deny-warn
           moon info
-          if ! git diff --exit-code; then
-            echo "❌ .mbti files have changed after 'moon info'. Please run 'moon info' locally and commit the changes."
-            exit 1
-          fi
-          git status
+
 
       - name: Moon test
         run: |

@@ -300,3 +300,86 @@ async test "debug_subj_only" {
     None => debug("⚠ None")
   }
 }
+
+///|
+async test "ParserM_basic_single_line for Turtle" {
+  let input =
+    #|<http://example/s> <http://example/p> <http://example/o> .
+
+  let data = @utf8.encode(input).to_array()
+
+  let lexer = @lib.Lexer::Lexer(
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    data,
+    true,
+    @lib.MIN_BUFFER_SIZE,
+    @lib.MAX_BUFFER_SIZE,
+    Some(b"#"),
+    0,
+    0,
+  )
+
+  let logger = @lib.make_console_logger()
+
+  let machine = @lib.TriGRecognizer::{
+    stack: [@lib.TriGState::TriGDoc],
+    cur_subject: [],
+    cur_predicate: [],
+    cur_object: [],
+    cur_graph: @lib.GraphName::DefaultGraph.as_ref(),
+    cur_reifier: [],
+    lenient: true,
+    debug_logger: logger, // <-- 添加这一行，具体值需根据 TriGRecognizer 定义调整，可能是 None 或 DebugLogger::default()
+    // in_collection: false,
+    last_range: @lib.Range::default(),
+    errors: [],
+  }
+
+  let context = @lib.RdfContext::TriGRecognizerContext(@lib.TriGRecognizerContext::{
+    with_graph_name: false,
+    lexer_options: { base_iri: None },
+    prefixes: Map([]),
+  })
+
+  let generic_machine = @lib.GenericStateMachine::{
+    machine,
+    context,
+    outputs: [],
+    debug_logger: logger,
+  }
+  let parser = @lib.ParserM::{
+    lexer,
+    engine: generic_machine,
+    context,
+    errors: [],
+  }
+
+  debug("=== Single Line Test ===")
+  let turtles = []
+  let mut count = 0
+
+  for ;; {
+    if count >= 20 {
+      break
+    }
+    match parser.parse_next() {
+      Some(Ok(turtle)) => {
+        count += 1
+        debug("[\{count}] \{turtle}")
+        turtles.push(turtle)
+      }
+      Some(Err(e)) => {
+        count += 1
+        debug("[\{count}] \{e}")
+        break
+      }
+      None => {
+        debug("End")
+        break
+      }
+    }
+  }
+
+  debug("Total: \{turtles.length()}")
+  @debug.assert_eq(turtles.length(), 1)
+}

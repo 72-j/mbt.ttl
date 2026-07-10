@@ -10,7 +10,7 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/core/quickcheck/splitmix",
   "thy1016/moonttl" @lib,
-} 
+}
 
 options(
   "is-main": true,

@@ -1,13 +1,13 @@
+///|
 /// Parse N-Quads file example
 /// 
 /// This example demonstrates how to parse N-Quads format RDF data from a file.
 /// N-Quads is a line-based format for RDF triples/quads.
-
- async fn main {
+async fn main {
   // Create a task group for cleanup
   @async.with_task_group() <| root => {
     let path = "./example.nq"
-    root.add_defer(() =>{ @fs.remove(path) })
+    root.add_defer(() => @fs.remove(path))
 
     // Sample N-Quads content
     let content =
@@ -49,12 +49,10 @@
     }
 
     // Context configuration
-    let context = @lib.RdfContext::NQuadsRecognizerContext(
-      @lib.NQuadsRecognizerContext::{
-        with_graph_name: false, // N-Quads without graph names
-        lexer_options: { base_iri: None },
-      },
-    )
+    let context = @lib.RdfContext::NQuadsRecognizerContext(@lib.NQuadsRecognizerContext::{
+      with_graph_name: false, // N-Quads without graph names
+      lexer_options: { base_iri: None },
+    })
 
     // Wrap in generic state machine
     let generic_machine = @lib.GenericStateMachine::{
@@ -78,7 +76,9 @@
     let mut count = 0
 
     for ;; {
-      if count >= 100 { break } // Safety limit
+      if count >= 100 {
+        break
+      } // Safety limit
       match parser.parse_next() {
         Some(Ok(quad)) => {
           count += 1

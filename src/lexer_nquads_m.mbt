@@ -96,10 +96,11 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
         event, context,
       )
     NQuadsState::ExpectDot => self.handle_expect_dot_m(event, context)
-        NQuadsState::ExpectLineJump => 
+    NQuadsState::ExpectLineJump =>
       self.handle_expect_line_jump_m(event, context)
     NQuadsState::RecoverToLineJump =>
       self.handle_recover_to_line_jump_m(event, context)
+
     _ => {
       self.debug_logger.info(
         ">>> FALLBACK to _ case: \{nquads_state.to_string()}",
@@ -159,13 +160,13 @@ pub impl StateMachine for NQuadsRecognizer with fn[ST : StateWrapper] set_curren
       // 假设有一个 with_stack 或类似的方法，或者直接构造新实例
       // 这里简化处理，实际需要根据 NQuadsRecognizer 的结构体定义来更新
       // debug("[Step 3] Set current state: \{s}")
-              let new_stack = self.stack
-        if new_stack.is_empty() {
-          new_stack.push(s)
-        } else {
-          let _ = new_stack.pop() // 移除旧状态
-          new_stack.push(s) // 添加新状态
-        }
+      let new_stack = self.stack
+      if new_stack.is_empty() {
+        new_stack.push(s)
+      } else {
+        let _ = new_stack.pop() // 移除旧状态
+        new_stack.push(s) // 添加新状态
+      }
       { ..self, stack: new_stack }
     }
     _ => self

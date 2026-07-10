@@ -63,15 +63,13 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
       )
   }
 
-  self.debug_logger.info("WrappedGraphOrPredicateObjectList: event=\{event}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
   self.debug_logger.info(
-    "Current subject: \{@debug.to_string(self.cur_subject)}",
+    "WrappedGraphOrPredicateObjectList: event=\{event} Token stack: \{@debug.to_string(self.stack)}",
   )
   self.debug_logger.info(
-    "Current predicate: \{@debug.to_string(self.cur_predicate)}",
+    "Current subject: \{@debug.to_string(self.cur_subject)},Current predicate: \{@debug.to_string(self.cur_predicate)},Current object: \{@debug.to_string(self.cur_object)}",
   )
-  self.debug_logger.info("Current object: \{@debug.to_string(self.cur_object)}")
+
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("{"), _)
@@ -112,7 +110,39 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
       let new_self_with_stack = { ..new_self, stack: new_stack }
       Ok((new_self_with_stack, TriGState::Object, None))
     }
-    // ... 处理 PrefixedName ...
+    // ✅ 处理 PrefixedName 作为 predicate
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(
+        N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+        _
+      )
+    ) =>
+      match
+        resolve_local_name(prefix, localx, might_be_invalid_iri, ctx.prefixes) {
+        Ok(t) => {
+          let new_self = self
+          new_self.cur_subject.push(term)
+          // match t {
+          // NamedOrBlankNodeRef::NamedNodeRef(n) => {
+          new_self.cur_predicate.push(t)
+          // }
+          // _ =>
+          //   return Err(
+          //     RuleRecognizerError::SyntaxError(
+          //       "PrefixedName in predicate position must resolve to IRI",
+          //       self.last_range,
+          //     ),
+          //   )
+          // }
+
+          let new_stack = new_self.stack
+          new_stack.push(TriGState::ExpectDot)
+
+          let new_self_with_stack = { ..new_self, stack: new_stack }
+          Ok((new_self_with_stack, TriGState::Object, None))
+        }
+        Err(e) => Err(RuleRecognizerError::SyntaxError(e, self.last_range))
+      }
     _ =>
       Err(
         RuleRecognizerError::SyntaxError(
@@ -157,8 +187,9 @@ fn TriGRecognizer::handle_object_m(
   event : Event,
   __context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-  self.debug_logger.info("Object: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "Object: handling event: \{event},Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
@@ -189,7 +220,54 @@ fn TriGRecognizer::handle_object_m(
       // 转移到 ObjectCollectionBeginning
       Ok((new_self, TriGState::ObjectCollectionBeginning, None))
     }
-    // ... 处理其他类型 ...
+    // ✅ 添加 String 处理
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::String(value), _)
+    ) => {
+      let new_self = self
+      new_self.cur_object.push(
+        TermRef::LiteralRef(LiteralRef::new_simple_literal(value)),
+      )
+
+      // 生成 quad
+      let quad = new_self.make_current_quad()
+
+      // 进入 PredicateObjectListEnd
+      new_self.stack.push(TriGState::PredicateObjectListEnd)
+      let final_self = { ..new_self, stack: new_self.stack }
+      Ok((final_self, TriGState::PredicateObjectListEnd, Some(quad)))
+    }
+
+
+
+    // ✅ 添加 LongString 处理
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::LongString(value), _)
+    ) => {
+      let new_self = self
+      new_self.cur_object.push(TermRef::LiteralRef(
+        LiteralRef::new_simple_literal(value),
+      ))
+
+      let quad = new_self.make_current_quad()
+      new_self.stack.push(TriGState::PredicateObjectListEnd)
+      let final_self = { ..new_self, stack: new_self.stack }
+      Ok((final_self, TriGState::PredicateObjectListEnd, Some(quad)))
+    }
+    // ✅ 添加带数据类型注解的 String
+    // LocatedTokenOrLineJump::LocatedN3Token(
+    //   LocatedN3Token(N3Token::StringWithDatatype(value, dt~), _)
+    // ) => {
+    //   let new_self = self
+    //   new_self.cur_object.push(
+    //     TermRef::LiteralRef(LiteralRef::new_typed_literal(value, dt).as_ref()),
+    //   )
+
+    //   let quad = new_self.make_current_quad()
+    //   new_self.stack.push(TriGState::PredicateObjectListEnd)
+    //   let final_self = { ..new_self, stack: new_self.stack }
+    //   Ok((final_self, TriGState::PredicateObjectListEnd, Some(quad)))
+    // }
     _ =>
       Err(
         RuleRecognizerError::SyntaxError(
@@ -2225,20 +2303,53 @@ fn TriGRecognizer::handle_wrapped_graph_m(
   event : Event,
   _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  // WrappedGraph 由 { 进入，现在进入图内容
+  // 期望收到三元组主语（IRI、blank node 等）或 {
   match event {
-    // ✅ 收到 '{'，开始图内容
+    // 收到 '{'，开始图内容
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("{"), _)
     ) => {
-      // 压入状态：图结束 + 三元组处理
       self.stack.push(TriGState::WrappedGraphPossibleEnd)
       self.stack.push(TriGState::Triples)
       Ok((self, TriGState::Triples, None))
     }
+    // 收到 IRI 作为图内容的主语
+    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
+      self.cur_subject.push(NamedNodeRef::new_unchecked(iri).as_enum())
+      self.stack.push(TriGState::WrappedGraphPossibleEnd)
+      self.stack.push(TriGState::PredicateObjectList)
+      Ok((self, TriGState::PredicateObjectList, None))
+    }
+    // 收到 BlankNode 作为图内容的主语
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::BlankNodeLabel(label), _)
+    ) => {
+      self.cur_subject.push(BlankNodeRef::new_unchecked(label).as_enum())
+      self.stack.push(TriGState::WrappedGraphPossibleEnd)
+      self.stack.push(TriGState::PredicateObjectList)
+      Ok((self, TriGState::PredicateObjectList, None))
+    }
+    // 收到匿名图 [
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::Punctuation("["), _)
+    ) => {
+      self.stack.push(TriGState::WrappedGraphPossibleEnd)
+      self.stack.push(TriGState::WrappedGraphBlankNodePropertyListCurrent)
+      Ok((self, TriGState::WrappedGraphBlankNodePropertyListCurrent, None))
+    }
+    // 收到集合开始 (
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::Punctuation("("), _)
+    ) => {
+      self.stack.push(TriGState::WrappedGraphPossibleEnd)
+      self.stack.push(TriGState::SubjectCollectionBeginning)
+      Ok((self, TriGState::SubjectCollectionBeginning, None))
+    }
     _ =>
       Err(
         RuleRecognizerError::SyntaxError(
-          "Expected '{' to start graph",
+          "Expected '{' or subject to start graph content",
           self.last_range,
         ),
       )
@@ -2624,6 +2735,157 @@ fn TriGRecognizer::handle_object_blank_node_property_list_end_m(
       Err(
         RuleRecognizerError::SyntaxError(
           "Expected ']' to close blank node property list",
+          self.last_range,
+        ),
+      )
+  }
+}
+
+///|
+/// 状态: PredicateObjectList - 处理谓词对象列表
+fn TriGRecognizer::handle_predicate_object_list_m(
+  self : TriGRecognizer,
+  event : Event,
+  context : RdfContext,
+) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  let ctx = match context {
+    RdfContext::TriGRecognizerContext(c) => c
+    _ =>
+      return Err(
+        RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
+      )
+  }
+
+  self.debug_logger.info("PredicateObjectList: handling event: \{event}")
+  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+
+  match event {
+    // ✅ 处理 'a' 作为 rdf:type
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::PlainKeyword("a"), _)
+    ) => {
+      let new_self = self
+      new_self.cur_predicate.push(lwTYPE)
+      // 保持在 PredicateObjectList，准备处理 Object
+      Ok((new_self, TriGState::Object, None))
+    }
+
+    // ✅ 处理 IRI 作为 predicate
+    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
+      let new_self = self
+      new_self.cur_predicate.push(NamedNodeRef::new_unchecked(iri))
+      Ok((new_self, TriGState::Object, None))
+    }
+
+    // ✅ 处理 PrefixedName 作为 predicate
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(
+        N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+        _
+      )
+    ) =>
+      match
+        resolve_local_name(prefix, localx, might_be_invalid_iri, ctx.prefixes) {
+        Ok(t) => {
+          let new_self = self
+          new_self.cur_predicate.push(t)
+          Ok((new_self, TriGState::Object, None))
+        }
+        Err(e) => Err(RuleRecognizerError::SyntaxError(e, self.last_range))
+      }
+
+    // ✅ 处理 '}' 图结束
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::Punctuation("}"), _)
+    ) => {
+      // 图结束，返回 TriGDoc
+      let new_self = { ..self, stack: [TriGState::TriGDoc] }
+      Ok((new_self, TriGState::TriGDoc, None))
+    }
+    _ =>
+      Err(
+        RuleRecognizerError::SyntaxError(
+          "Expected predicate or '}' in predicate-object list",
+          self.last_range,
+        ),
+      )
+  }
+}
+
+///|
+/// 状态: PredicateObjectListPossibleContinuation - 谓词列表分号后等待新谓词
+fn TriGRecognizer::handle_predicate_object_list_possible_continuation_m(
+  self : TriGRecognizer,
+  event : Event,
+  context : RdfContext,
+) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
+  let ctx = match context {
+    RdfContext::TriGRecognizerContext(c) => c
+    _ =>
+      return Err(
+        RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
+      )
+  }
+
+  match event {
+    // ✅ 处理 'a' 作为 rdf:type
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::PlainKeyword("a"), _)
+    ) => {
+      let new_self = self
+      new_self.cur_predicate.push(lwTYPE)
+      Ok((new_self, TriGState::Object, None))
+    }
+
+    // ✅ 处理 IRI 作为 predicate
+    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
+      let new_self = self
+      new_self.cur_predicate.push(NamedNodeRef::new_unchecked(iri))
+      Ok((new_self, TriGState::Object, None))
+    }
+
+    // ✅ 处理 PrefixedName 作为 predicate
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(
+        N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+        _
+      )
+    ) =>
+      match
+        resolve_local_name(prefix, localx, might_be_invalid_iri, ctx.prefixes) {
+        Ok(t) => {
+          let new_self = self
+          new_self.cur_predicate.push(t)
+          Ok((new_self, TriGState::Object, None))
+        }
+        Err(e) => Err(RuleRecognizerError::SyntaxError(e, self.last_range))
+      }
+
+    // ✅ 处理 } 图结束
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::Punctuation("}"), _)
+    ) => {
+      let new_self = { ..self, stack: [TriGState::TriGDoc] }
+      Ok((new_self, TriGState::TriGDoc, None))
+    }
+
+    // ✅ 处理 . 结束语句
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::Punctuation("."), _)
+    ) => {
+      let new_self = {
+        ..self,
+        stack: [TriGState::TriGDoc],
+        cur_subject: [],
+        cur_predicate: [],
+        cur_object: [],
+      }
+      Ok((new_self, TriGState::TriGDoc, None))
+    }
+    _ =>
+      Err(
+        RuleRecognizerError::SyntaxError(
+          "Expected predicate, '.', or '}' after ';'",
           self.last_range,
         ),
       )

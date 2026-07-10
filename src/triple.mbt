@@ -3,7 +3,7 @@ pub struct Triple {
   subject : NamedOrBlankNode
   predicate : NamedNode
   object : Term
-} derive(Eq, Debug, Hash,ToJson)
+} derive(Eq, Debug, Hash, ToJson)
 
 ///|
 pub impl Show for Triple with fn output(self : Triple, logger : &Logger) -> Unit {

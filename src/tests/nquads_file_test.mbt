@@ -37,12 +37,10 @@ async test "multi-line NQuads from file" {
       errors: [],
     }
 
-    let context = @lib.RdfContext::NQuadsRecognizerContext(
-      @lib.NQuadsRecognizerContext::{
-        with_graph_name: false,
-        lexer_options: { base_iri: None },
-      },
-    )
+    let context = @lib.RdfContext::NQuadsRecognizerContext(@lib.NQuadsRecognizerContext::{
+      with_graph_name: false,
+      lexer_options: { base_iri: None },
+    })
 
     let generic_machine = @lib.GenericStateMachine::{
       machine,
@@ -63,7 +61,9 @@ async test "multi-line NQuads from file" {
     let mut count = 0
 
     for ;; {
-      if count >= 20 { break }
+      if count >= 20 {
+        break
+      }
       match parser.parse_next() {
         Some(Ok(quad)) => {
           count += 1
@@ -123,12 +123,10 @@ async test "single quad from file" {
       errors: [],
     }
 
-    let context = @lib.RdfContext::NQuadsRecognizerContext(
-      @lib.NQuadsRecognizerContext::{
-        with_graph_name: false,
-        lexer_options: { base_iri: None },
-      },
-    )
+    let context = @lib.RdfContext::NQuadsRecognizerContext(@lib.NQuadsRecognizerContext::{
+      with_graph_name: false,
+      lexer_options: { base_iri: None },
+    })
 
     let generic_machine = @lib.GenericStateMachine::{
       machine,
@@ -148,7 +146,9 @@ async test "single quad from file" {
     let mut count = 0
 
     for ;; {
-      if count >= 20 { break }
+      if count >= 20 {
+        break
+      }
       match parser.parse_next() {
         Some(Ok(quad)) => {
           count += 1
@@ -158,7 +158,7 @@ async test "single quad from file" {
           debug("Error: \{e}")
           break
         }
-        None => { break }
+        None => break
       }
     }
 

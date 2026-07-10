@@ -10,7 +10,6 @@ import {
   "moonbitlang/core/quickcheck/splitmix",
   "moonbit-community/quickcheck_statemachine" @qs,
   "brickfrog/tempo",
-  "moonbit-community/prettyprinter",
 }
 
 import {

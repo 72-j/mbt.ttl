@@ -188,35 +188,44 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
       // new_self.temp_literal_value = Some(value) // 传递给 datatype 状态
       Ok((new_self, NQuadsState::ExpectLiteralDatatype(value~), None))
     }
-      _ => {
-    // 检查是否是句点
-    match token {
-      LocatedTokenOrLineJump::LocatedN3Token(
-        LocatedN3Token(N3Token::Punctuation("."), _)
-      ) => {
-        let new_self = self
-        let literal = TermRef::LiteralRef(LiteralRef::new_simple_literal(value))
-        new_self.objects.push(literal)
-        let stmt = new_self.make_current_quad()
-        let _ = new_self.error_recovery_state()
-        Ok((new_self, NQuadsState::ExpectLineJump, stmt))
+    _ =>
+      // 检查是否是句点
+      match token {
+        LocatedTokenOrLineJump::LocatedN3Token(
+          LocatedN3Token(N3Token::Punctuation("."), _)
+        ) => {
+          let new_self = self
+          let literal = TermRef::LiteralRef(
+            LiteralRef::new_simple_literal(value),
+          )
+          new_self.objects.push(literal)
+          let stmt = new_self.make_current_quad()
+          let _ = new_self.error_recovery_state()
+          Ok((new_self, NQuadsState::ExpectLineJump, stmt))
+        }
+        _ => {
+          let new_self = self
+          let literal = TermRef::LiteralRef(
+            LiteralRef::new_simple_literal(value),
+          )
+          new_self.objects.push(literal)
+          Ok(
+            (
+              new_self,
+              NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple,
+              None,
+            ),
+          )
+        }
       }
-      _ => {
-        let new_self = self
-        let literal = TermRef::LiteralRef(LiteralRef::new_simple_literal(value))
-        new_self.objects.push(literal)
-        Ok((new_self, NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple, None))
-      }
-    }
   }
-    // _ => {
-    //   let new_self = self
-    //   let literal = TermRef::LiteralRef(LiteralRef::new_simple_literal(value))
-    //   new_self.objects.push(literal)
-    //   // new_self.temp_literal_value = None
-    //   Ok((new_self, NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple, None))
-    // }
-  }
+  // _ => {
+  //   let new_self = self
+  //   let literal = TermRef::LiteralRef(LiteralRef::new_simple_literal(value))
+  //   new_self.objects.push(literal)
+  //   // new_self.temp_literal_value = None
+  //   Ok((new_self, NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple, None))
+  // }
 }
 
 // ===== State: ExpectLiteralDatatype =====
@@ -342,7 +351,6 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
   Ok((new_self, NQuadsState::ExpectSubject, stmt))
 }
 
-
 // ===== State: ExpectDot =====
 
 ///|
@@ -362,20 +370,12 @@ fn NQuadsRecognizer::handle_expect_dot_m(
       let stmt = self.make_current_quad()
       Ok((self, NQuadsState::ExpectLineJump, stmt))
     }
-     LocatedTokenOrLineJump::LocatedN3Token(t) =>
+    LocatedTokenOrLineJump::LocatedN3Token(t) =>
       Err(
-        RuleRecognizerError::SyntaxError(
-          "Quads must be followed by a dot",
-          t.1,
-        ),
+        RuleRecognizerError::SyntaxError("Quads must be followed by a dot", t.1),
       )
-      _ =>
-        Err(
-          RuleRecognizerError::SyntaxError(
-            "Expecting a dot",
-            Range::default(),
-          ),
-        )
+    _ =>
+      Err(RuleRecognizerError::SyntaxError("Expecting a dot", Range::default()))
   }
 }
 
@@ -486,3 +486,4 @@ pub fn NQuadsRecognizer::handle_recover_to_line_jump_m(
       Ok((self, NQuadsState::RecoverToLineJump, None))
   }
 }
+

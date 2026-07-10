@@ -37,6 +37,8 @@ pub fn is_pchar(Char) -> Bool
 
 pub fn is_unreserved(Char) -> Bool
 
+pub fn is_valid_hex_string(String) -> Bool
+
 pub let lwALT : NamedNodeRef
 
 pub let lwANY_URI : NamedNodeRef
@@ -280,6 +282,7 @@ pub(all) suberror TurtleError {
   InvalidEscapeSequence
   InvalidCharacter(String)
   InvalidToken(SourcePos, String)
+  UnexpectedEndOfInput(SourcePos, String)
 } derive(@debug.Debug)
 pub impl Show for TurtleError
 pub impl ErrOut for TurtleError
@@ -288,7 +291,7 @@ pub impl ErrOut for TurtleError
 pub(all) struct Anonymous {
   id : UInt64
   str : String
-} derive(Eq, Hash, @debug.Debug)
+} derive(Eq, Hash, ToJson, @debug.Debug)
 pub fn Anonymous::Anonymous(UInt64, String) -> Self
 pub fn Anonymous::default() -> Self
 
@@ -360,13 +363,13 @@ pub fn[W] AsyncWriterTurtleSerializer::serialize_triple(Self[W], Triple) -> Resu
 pub(all) enum BaseDirection {
   Ltr
   Rtl
-} derive(Eq, Hash, @debug.Debug)
+} derive(Eq, Hash, ToJson, @debug.Debug)
 pub impl Show for BaseDirection
 
 pub(all) enum BlankNode {
   Named(String)
   Anonymous(Anonymous)
-} derive(Eq, Hash, @debug.Debug)
+} derive(Eq, Hash, ToJson, @debug.Debug)
 pub fn BlankNode::as_enum(Self) -> NamedOrBlankNode
 pub fn BlankNode::as_n3term(Self) -> N3Term
 pub fn BlankNode::as_ref(Self) -> BlankNodeRef
@@ -406,8 +409,9 @@ pub(all) struct GenericStateMachine[M] {
   machine : M
   context : RdfContext
   outputs : Array[RdfOut]
+  mut debug_logger : &DebugLogger
 }
-pub fn[M] GenericStateMachine::GenericStateMachine(M, RdfContext) -> Self[M]
+pub fn[M] GenericStateMachine::GenericStateMachine(M, RdfContext, &DebugLogger) -> Self[M]
 pub fn[M] GenericStateMachine::remove_first_output(Self[M]) -> Self[M]
 pub fn[M : StateMachine] GenericStateMachine::run(Self[M], Array[LocatedTokenOrLineJump]) -> Result[Array[RdfOut], RuleRecognizerError]?
 pub impl[M : StateMachine] StateMachine for GenericStateMachine[M]
@@ -416,7 +420,7 @@ pub(all) enum GraphName {
   DefaultGraph
   NamedNode(NamedNode)
   BlankNode(BlankNode)
-} derive(Eq, Hash, @debug.Debug)
+} derive(Eq, Hash, ToJson, @debug.Debug)
 pub fn GraphName::as_n3term(Self) -> N3Term
 pub fn GraphName::as_ref(Self) -> GraphNameRef
 pub fn GraphName::default() -> Self
@@ -537,7 +541,7 @@ pub(all) struct LexerOptions {
   mut base_iri : Iri?
 } derive(@debug.Debug)
 
-pub(all) struct Literal(LiteralContent) derive(Eq, Hash, @debug.Debug)
+pub(all) struct Literal(LiteralContent) derive(Eq, Hash, ToJson, @debug.Debug)
 pub fn Literal::as_n3term(Self) -> N3Term
 pub fn Literal::as_ref(Self) -> LiteralRef
 pub fn Literal::datatype(Self) -> NamedNodeRef
@@ -557,7 +561,7 @@ pub(all) enum LiteralContent {
   LanguageTaggedString(value~ : String, language~ : String)
   DirectionalLanguageTaggedString(value~ : StringView, language~ : String, direction~ : BaseDirection)
   TypedLiteral(value~ : VarDataType, datatype~ : NamedNode)
-} derive(Eq, Hash, @debug.Debug)
+} derive(Eq, Hash, ToJson, @debug.Debug)
 
 pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Hash, @debug.Debug)
 pub fn LiteralRef::as_n3term(Self) -> N3Term
@@ -818,7 +822,7 @@ pub fn NTriplesSerializer::to_string(Self, Triple) -> String
 
 pub(all) struct NamedNode {
   iri : String
-} derive(Default, Eq, Hash, @debug.Debug)
+} derive(Default, Eq, Hash, ToJson, @debug.Debug)
 pub fn NamedNode::as_enum(Self) -> NamedOrBlankNode
 pub fn NamedNode::as_n3term(Self) -> N3Term
 pub fn NamedNode::as_ref(Self) -> NamedNodeRef
@@ -839,7 +843,7 @@ pub impl Show for NamedNodeRef
 pub(all) enum NamedOrBlankNode {
   NamedNode(NamedNode)
   BlankNode(BlankNode)
-} derive(Eq, Hash, @debug.Debug)
+} derive(Eq, Hash, ToJson, @debug.Debug)
 pub fn NamedOrBlankNode::as_n3term(Self) -> N3Term
 pub fn NamedOrBlankNode::as_ref(Self) -> NamedOrBlankNodeRef
 pub fn NamedOrBlankNode::is_blank_node(Self) -> Bool
@@ -901,7 +905,7 @@ pub struct Quad {
   predicate : NamedNode
   object : Term
   graph_name : GraphName
-} derive(Eq, Hash, @debug.Debug)
+} derive(Eq, Hash, ToJson, @debug.Debug)
 pub fn Quad::Quad(NamedOrBlankNode, NamedNode, Term, GraphName) -> Self
 pub fn Quad::as_n3quad(Self) -> N3Quad
 pub fn Quad::as_ref(Self) -> QuadRef
@@ -1074,7 +1078,7 @@ pub(all) enum Term {
   BlankNode(BlankNode)
   Literal(Literal)
   Triple(Triple)
-} derive(Eq, Hash, @debug.Debug)
+} derive(Eq, Hash, ToJson, @debug.Debug)
 pub fn Term::as_n3term(Self) -> N3Term
 pub fn Term::as_ref(Self) -> TermRef
 pub fn Term::is_blank_node(Self) -> Bool
@@ -1230,7 +1234,7 @@ pub struct Triple {
   subject : NamedOrBlankNode
   predicate : NamedNode
   object : Term
-} derive(Eq, Hash, @debug.Debug)
+} derive(Eq, Hash, ToJson, @debug.Debug)
 pub fn Triple::Triple(NamedOrBlankNode, NamedNode, Term) -> Self
 pub fn Triple::as_enum(Self) -> Term
 pub fn Triple::as_n3term(Self) -> N3Term
@@ -1297,7 +1301,7 @@ pub(all) enum VarDataType {
   TimeVar(String)
   DateTimeVar(String)
   DurationVar(String)
-} derive(Eq, Hash, @debug.Debug)
+} derive(Eq, Hash, ToJson, @debug.Debug)
 pub impl Show for VarDataType
 
 pub struct WriterNQuadsSerializer[W] {

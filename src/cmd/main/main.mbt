@@ -92,29 +92,28 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
   )
 
   let machine = if verbose {
-   @lib.NQuadsRecognizer::{
-    stack: [@lib.NQuadsState::ExpectSubject],
-    subjects: [],
-    predicates: [],
-    objects: [],
-    lenient: false,
-    debug_logger: @lib.make_console_logger(),
-    last_range: @lib.Range::default(),
-    errors: [],
-  } 
-   } else {
-   @lib.NQuadsRecognizer::{
-    stack: [@lib.NQuadsState::ExpectSubject],
-    subjects: [],
-    predicates: [],
-    objects: [],
-    lenient: false,
-    debug_logger: @lib.make_mute_logger(),
-    last_range: @lib.Range::default(),
-    errors: [],
-  }   }
-
-
+    @lib.NQuadsRecognizer::{
+      stack: [@lib.NQuadsState::ExpectSubject],
+      subjects: [],
+      predicates: [],
+      objects: [],
+      lenient: false,
+      debug_logger: @lib.make_console_logger(),
+      last_range: @lib.Range::default(),
+      errors: [],
+    }
+  } else {
+    @lib.NQuadsRecognizer::{
+      stack: [@lib.NQuadsState::ExpectSubject],
+      subjects: [],
+      predicates: [],
+      objects: [],
+      lenient: false,
+      debug_logger: @lib.make_mute_logger(),
+      last_range: @lib.Range::default(),
+      errors: [],
+    }
+  }
 
   let context = @lib.RdfContext::NQuadsRecognizerContext(@lib.NQuadsRecognizerContext::{
     with_graph_name: false,
