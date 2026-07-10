@@ -69,7 +69,7 @@ pub fn NamedOrBlankNodeRef::as_term(self : NamedOrBlankNodeRef) -> TermRef {
 pub(all) enum NamedOrBlankNode {
   NamedNode(NamedNode)
   BlankNode(BlankNode)
-} derive(Debug, Eq, Hash)
+} derive(Debug, Eq, Hash, ToJson)
 
 ///|
 fn NamedOrBlankNode::as_term(self : NamedOrBlankNode) -> Term {
@@ -125,7 +125,7 @@ pub impl Show for NamedOrBlankNode with fn output(
 ///|
 pub(all) struct NamedNode {
   iri : String
-} derive(Debug, Eq, Hash, Default)
+} derive(Debug, Eq, Hash, Default, ToJson)
 
 ///|
 impl Show for NamedNode with fn to_string(self : NamedNode) -> String {
@@ -314,7 +314,7 @@ pub fn BlankNodeRef::new_unchecked(iri : String) -> BlankNodeRef {
 pub(all) enum BlankNode {
   Named(String)
   Anonymous(Anonymous)
-} derive(Debug, Eq, Hash)
+} derive(Debug, Eq, Hash, ToJson)
 
 ///|
 impl Show for BlankNode with fn to_string(self : BlankNode) -> String {
@@ -364,7 +364,7 @@ pub fn BlankNode::new_from_unique_id(id : UInt64) -> BlankNode {
 pub(all) struct Anonymous {
   id : UInt64
   str : String
-} derive(Debug, Eq, Hash)
+} derive(Debug, Eq, Hash, ToJson)
 
 ///|
 pub fn Anonymous::default() -> Anonymous {
@@ -381,7 +381,7 @@ pub(all) enum GraphName {
   DefaultGraph
   NamedNode(NamedNode)
   BlankNode(BlankNode)
-} derive(Debug, Eq, Hash)
+} derive(Debug, Eq, Hash, ToJson)
 
 ///|
 impl Show for GraphName with fn to_string(self : GraphName) -> String {
@@ -414,7 +414,11 @@ pub fn GraphName::is_blank_node(self : GraphName) -> Bool {
 
 ///|
 pub fn GraphName::is_default_graph(self : GraphName) -> Bool {
-  self.is_default_graph()
+  match self {
+    GraphName::BlankNode(_) => true
+    GraphName::DefaultGraph => true
+    _ => false
+  }
 }
 
 ///|
@@ -463,18 +467,28 @@ pub struct Quad {
   predicate : NamedNode
   object : Term
   graph_name : GraphName
-} derive(Debug, Hash, Eq)
+} derive(Debug, Hash, Eq, ToJson)
 
 ///|
-  impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
-    logger.write("Quad<")
-    self.subject.output(logger)
-    logger.write(", ")
-    self.predicate.output(logger)
-    logger.write(", ")
-    self.object.output(logger)
-    logger.write(">")
+impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
+  // logger.write(@debug.to_string(self))
+  logger.write("Quad")
+  logger.write(" {")
+  logger.write(" subject: ")
+  self.subject.output(logger)
+  logger.write(", ")
+  logger.write(" predicate: ")
+  self.predicate.output(logger)
+  logger.write(", ")
+  logger.write(" object: ")
+  self.object.output(logger)
+  if !self.graph_name.is_default_graph() {
+    logger.write(" graph_name: ")
+    self.graph_name.output(logger)
   }
+  logger.write(" }")
+}
+
 ///|
 pub fn Quad::Quad(
   subject : NamedOrBlankNode,
@@ -529,7 +543,7 @@ pub(all) enum Term {
   BlankNode(BlankNode)
   Literal(Literal)
   Triple(Triple)
-} derive(Debug, Eq, Hash)
+} derive(Debug, Eq, Hash, ToJson)
 
 ///|
 impl Show for Term with fn to_string(self : Term) -> String {

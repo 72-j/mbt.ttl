@@ -5,6 +5,8 @@ pub(all) struct GenericStateMachine[M] {
   machine : M
   context : Ctx
   outputs : Array[O]
+  mut debug_logger : &DebugLogger
+
 }
 // fn[M: RuleRecognizer] GenericStateMachine::error_recovery_state(self: M) ->M  {
 //   M::error_recovery_state(self)
@@ -14,8 +16,9 @@ pub(all) struct GenericStateMachine[M] {
 pub fn[M] GenericStateMachine::GenericStateMachine(
   machine : M,
   context : Ctx,
+  debug_logger: &DebugLogger
 ) -> GenericStateMachine[M] {
-  GenericStateMachine::{ machine, context, outputs: [] }
+  GenericStateMachine::{ machine, context, outputs: [],debug_logger }
 }
 
 ///|
@@ -45,8 +48,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   self,
   event : Event,
 ) -> GenericStateMachine[M] {
-  // debug("step: state_before = [\{self.current_state()}]")
-  // debug("step: event = \{event}")
+  self.debug_logger.info("event = \{event}, step: state_before = [\{self.current_state()}]")
 
   let current_state = self.machine.current_state() // ← 从 machine 获取
 
@@ -54,13 +56,13 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
 
   match result {
     Ok((new_machine, new_state, output)) => {
-      // debug(
-      //   "step: new_state = \{new_state.to_string()} output received = \{@debug.to_string(output)}",
-      // )
+       self.debug_logger.info(
+        "step: new_state = \{new_state.to_string()}, output received = \{@debug.to_string(output)}",
+      )
 
       let outputs = self.outputs
       if output is Some(o) {
-        // debug("step: pushing output to engine: \{o}") // ✅ 确认是否执行了 push
+         self.debug_logger.info("step: pushing output to engine: \{o}") 
         outputs.push(o)
       }
 
@@ -69,11 +71,12 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
         machine: updated_machine,
         context: self.context,
         outputs,
+        debug_logger: self.debug_logger,
       }
       new_engine
     }
     Err(e) => {
-      debug("step: transition failed with error: \{e}") // ✅ 记录错误
+       self.debug_logger.warn("step: transition failed with error: \{e}") 
       self.reset()
     }
   }
@@ -89,6 +92,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn reset
     machine: new_machine,
     context: self.context,
     outputs: [],
+    debug_logger: self.debug_logger,
   }
 }
 
@@ -108,6 +112,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn trans
         machine: new_machine,
         context: self.context,
         outputs: self.outputs,
+        debug_logger: self.debug_logger,
       }
       // 4. 返回 Ok
       Ok((new_gsm, new_state, output))
@@ -135,6 +140,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
     machine: new_machine,
     context: self.context,
     outputs: self.outputs,
+    debug_logger: self.debug_logger,
   }
 }
 
@@ -188,6 +194,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn set_c
     machine: self.machine,
     context: new_context,
     outputs: self.outputs,
+    debug_logger: self.debug_logger,
   }
 }
 
@@ -206,5 +213,6 @@ pub fn[M] GenericStateMachine::remove_first_output(
     machine: self.machine,
     context: self.context,
     outputs: new_outputs,
+    debug_logger: self.debug_logger,
   }
 }

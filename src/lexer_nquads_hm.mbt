@@ -188,13 +188,34 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
       // new_self.temp_literal_value = Some(value) // 传递给 datatype 状态
       Ok((new_self, NQuadsState::ExpectLiteralDatatype(value~), None))
     }
-    _ => {
-      let new_self = self
-      let literal = TermRef::LiteralRef(LiteralRef::new_simple_literal(value))
-      new_self.objects.push(literal)
-      // new_self.temp_literal_value = None
-      Ok((new_self, NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple, None))
+      _ => {
+    // 检查是否是句点
+    match token {
+      LocatedTokenOrLineJump::LocatedN3Token(
+        LocatedN3Token(N3Token::Punctuation("."), _)
+      ) => {
+        let new_self = self
+        let literal = TermRef::LiteralRef(LiteralRef::new_simple_literal(value))
+        new_self.objects.push(literal)
+        let stmt = new_self.make_current_quad()
+        let _ = new_self.error_recovery_state()
+        Ok((new_self, NQuadsState::ExpectLineJump, stmt))
+      }
+      _ => {
+        let new_self = self
+        let literal = TermRef::LiteralRef(LiteralRef::new_simple_literal(value))
+        new_self.objects.push(literal)
+        Ok((new_self, NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple, None))
+      }
     }
+  }
+    // _ => {
+    //   let new_self = self
+    //   let literal = TermRef::LiteralRef(LiteralRef::new_simple_literal(value))
+    //   new_self.objects.push(literal)
+    //   // new_self.temp_literal_value = None
+    //   Ok((new_self, NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple, None))
+    // }
   }
 }
 
@@ -259,6 +280,42 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
     "ExpectPossibleGraphOrEndOfQuotedTriple Token stack: \{@debug.to_string(self.stack)}",
   )
 
+  // 首先检查是否是图名 IRI（无论是顶层还是嵌套在引用的三元组中）
+  if ctx.with_graph_name {
+    match token {
+      LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(g), _)) => {
+        let stmt = self.make_current_quad(
+          graph_name=GraphNameRef::new_unchecked(g).into_owned(),
+        )
+        let new_self = self
+        let _ = new_self.error_recovery_state()
+        return Ok((new_self, NQuadsState::ExpectDot, stmt))
+      }
+      LocatedTokenOrLineJump::LocatedN3Token(
+        LocatedN3Token(N3Token::BlankNodeLabel(_g), _)
+      ) => {
+        let stmt = self.make_current_quad()
+        let new_self = self
+        let _ = new_self.error_recovery_state()
+        return Ok((new_self, NQuadsState::ExpectDot, stmt))
+      }
+      _ => ()
+    }
+  }
+
+  // 检查是否是句点（默认图结束）
+  match token {
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::Punctuation("."), _)
+    ) => {
+      let stmt = self.make_current_quad()
+      let new_self = self
+      let _ = new_self.error_recovery_state()
+      return Ok((new_self, NQuadsState::ExpectLineJump, stmt))
+    }
+    _ => ()
+  }
+
   // 检查是否是引用的三元组结束
   if !self.stack.is_empty() {
     match token {
@@ -269,8 +326,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
         return Ok((self, NQuadsState::AfterQuotedTriple, None))
       _ => ()
     }
-    // 如果在栈中且不是结束符，可能是错误，或者原逻辑中的 error 调用
-    // 原逻辑: (false, _) => error(...)
+    // 如果在栈中且不是结束符，可能是错误
     return Err(
       RuleRecognizerError::SyntaxError(
         "Expecting the end of a quoted triple ')>>'",
@@ -279,42 +335,13 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
     )
   }
 
-  // 栈为空，处理顶层 Quad/Triple
-  match token {
-    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(g), _)) if ctx.with_graph_name => {
-      let stmt = self.make_current_quad(
-        graph_name=GraphNameRef::new_unchecked(g).into_owned(),
-      )
-      let new_self = self
-      let _ = new_self.error_recovery_state()
-      Ok((new_self, NQuadsState::ExpectDot, stmt))
-    }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::BlankNodeLabel(_g), _)
-    ) if ctx.with_graph_name => {
-      let stmt = self.make_current_quad()
-      let new_self = self
-      let _ = new_self.error_recovery_state()
-      Ok((new_self, NQuadsState::ExpectDot, stmt))
-    }
-    _ => {
-      // 默认图
-      let stmt = self.make_current_quad()
-      let new_self = self
-      let _ = new_self.error_recovery_state()
-
-      // 原文逻辑: 递归处理当前 token。在新架构中，我们返回当前状态，并由主循环决定如何处理剩余 token
-      // 或者返回一个特殊状态指示需要重新消费 token。
-      // 这里为了简化，我们返回 ExpectDot，但如果 token 不是 Dot，主循环会报错。
-      // 更好的方式是返回一个状态，告诉主循环“我完成了一个语句，请重新用这个 token 开始新的解析”
-
-      // 妥协方案：返回语句，状态设为 ExpectSubject，并标记需要重新消费 token（如果框架支持）
-      // 如果不支持，可能需要将 token 压回输入流。
-
-      Ok((new_self, NQuadsState::ExpectSubject, stmt))
-    }
-  }
+  // 栈为空且没有特殊 token，返回 ExpectSubject 并输出 quad
+  let stmt = self.make_current_quad()
+  let new_self = self
+  let _ = new_self.error_recovery_state()
+  Ok((new_self, NQuadsState::ExpectSubject, stmt))
 }
+
 
 // ===== State: ExpectDot =====
 
@@ -335,13 +362,20 @@ fn NQuadsRecognizer::handle_expect_dot_m(
       let stmt = self.make_current_quad()
       Ok((self, NQuadsState::ExpectLineJump, stmt))
     }
-    _ =>
+     LocatedTokenOrLineJump::LocatedN3Token(t) =>
       Err(
         RuleRecognizerError::SyntaxError(
           "Quads must be followed by a dot",
-          Range::default(),
+          t.1,
         ),
       )
+      _ =>
+        Err(
+          RuleRecognizerError::SyntaxError(
+            "Expecting a dot",
+            Range::default(),
+          ),
+        )
   }
 }
 

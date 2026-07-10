@@ -19,7 +19,7 @@ Add the dependency to your `moon.mod.json`:
 {
   "name": "your_username/your_project",
   "deps": [
-    "thy7/moonttl"
+    "thy1016/moonttl"
   ]
 }
 ```

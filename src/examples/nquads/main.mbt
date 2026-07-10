@@ -61,6 +61,7 @@
       machine,
       context,
       outputs: [],
+      debug_logger: logger,
     }
 
     // Create parser

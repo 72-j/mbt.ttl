@@ -17,61 +17,85 @@ pub fn RdfLexer::RdfLexer(mode : RdfLexerMode, lenient : Bool) -> RdfLexer {
 }
 
 ///|
-fn RdfLexer::recognize_iri(
-  self : RdfLexer,
-  data : ArrayView[Byte],
-  options : LexerOptions,
-  location_ctx : SourcePos,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
-  let string = []
-  let mut i = 1
+ fn RdfLexer::recognize_iri(
+    self : RdfLexer,
+    data : ArrayView[Byte],
+    options : LexerOptions,
+    location_ctx : SourcePos,
+  ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+    let string = []
+    let mut i = 1
 
-  // 循环直到找到 '>'
-  for ;; {
-    // 修复：只查找 '>'，不要查找 '\''。
-    // N-Triples/Turtle IRI 中不支持反斜杠转义，单引号是合法字符。
-    let end_opt = array_view_memchr(b'>', data[i:])
+    // 循环直到找到 '>'
+    for ;; {
+      let end_opt = array_view_memchr(b'>', data[i:])
 
-    let end = match end_opt {
-      Some(e) => e
-      None =>
-        // 未找到结束符，返回截断错误
-        return Some(
-          (
-            data.length(),
-            Err(
-              TokenRecognizerError::IriTruncated(
-                data[i:],
-                Range(
-                  location_ctx.offset + i,
-                  location_ctx.offset + i + data.length(),
+      let end = match end_opt {
+        Some(e) => e
+        None =>
+          return Some(
+            (
+              data.length(),
+              Err(
+                TokenRecognizerError::IriTruncated(
+                  data[i:],
+                  Range(
+                    location_ctx.offset + i,
+                    location_ctx.offset + i + data.length(),
+                  ),
                 ),
               ),
             ),
+          )
+      }
+
+      // 将内容追加到 string，同时处理 Unicode 转义
+      let mut j = i
+      while j < i + end {
+        let byte = data[j]
+        if byte == b'\\' && j + 1 < data.length() {
+          let next_byte = data[j + 1]
+          if next_byte == b'u' && j + 5 < i + end {
+            // \uXXXX - 4 位十六进制
+            let hex = str_from_utf8(data[j + 2:j + 6],Range::Range(j+2,j+6)).unwrap_or("0000")
+            let code = hex.to_upper()
+            let codepoint = hex_to_uint(code)
+            let ch = UInt::to_byte(codepoint)
+            string.append([ch])
+            j += 6
+          } else if next_byte == b'U' && j + 9 < i + end {
+            // \UXXXXXXXX - 8 位十六进制
+            let hex = str_from_utf8(data[j + 2:j + 10],Range::Range(j+2,j+6)).unwrap_or("00000000")
+            let code = hex.to_upper()
+            let codepoint =hex_to_uint(code)
+            let ch = UInt::to_byte(codepoint)
+            string.append([ch])
+            j += 10
+          } else {
+            // 其他转义，保持原样
+            string.push(byte)
+            j += 1
+          }
+        } else {
+          string.push(byte)
+          j += 1
+        }
+      }
+
+      i += end + 1
+
+      return Some(
+        (
+          i,
+          self.parse_iri(
+            string,
+            Range(location_ctx.offset, location_ctx.offset + i),
+            options,
           ),
-        )
-    }
-
-    // 将中间的所有字节（包括 %, ', (, ) 等）追加到 string
-    string.append(data[i:i + end])
-    i += end
-
-    // 此时 data[i] 必须是 '>'
-    // 直接返回解析结果，不再处理任何转义逻辑
-    // 总消耗长度为 i + 1
-    return Some(
-      (
-        i + 1,
-        self.parse_iri(
-          string,
-          Range(location_ctx.offset, location_ctx.offset + i + 1),
-          options,
         ),
-      ),
-    )
+      )
+    }
   }
-}
-
 ///|
 fn RdfLexer::parse_iri(
   self : RdfLexer,

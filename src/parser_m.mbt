@@ -138,9 +138,9 @@ pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] ParserM::parse_n
             )
             return Some(
               Err(
-                TurtleError::InvalidToken(
-                  self.lexer.last_token_start(),
-                  "Unexpected end of input turtle .",
+                TurtleError::UnexpectedEndOfInput(
+                  self.lexer.last_token_end(),
+                  "Unexpected end of input.",
                 ),
               ),
             )

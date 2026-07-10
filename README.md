@@ -19,7 +19,7 @@ MoonTTL 是一个使用 MoonBit 语言编写的高性能 RDF 解析与序列化�
 {
   "name": "your_username/your_project",
   "deps": [
-    "thy7/moonttl"
+    "thy1016/moonttl"
   ]
 }
 ```

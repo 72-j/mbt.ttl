@@ -119,7 +119,7 @@ pub impl Show for Token with fn output(self : Token, f : &Logger) -> Unit {
 pub(all) enum BaseDirection {
   Ltr
   Rtl
-} derive(Eq, Debug, Hash)
+} derive(Eq, Debug, Hash,ToJson)
 
 ///|
 pub impl Show for BaseDirection with fn to_string(self) {

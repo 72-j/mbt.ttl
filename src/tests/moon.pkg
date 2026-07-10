@@ -10,6 +10,7 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/core/quickcheck/splitmix",
   "thy1016/moonttl" @lib,
+  "moonbit-community/prettyprinter" @pretty,
 } for "test"
 
 options(

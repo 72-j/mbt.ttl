@@ -89,6 +89,8 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
       self.handle_expect_literal_annotation_or_graph_name_or_dot_m(
         event, context, value,
       )
+    NQuadsState::ExpectLiteralDatatype(value~) =>
+      self.handle_expect_literal_datatype_m(event, context, value)
     NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple =>
       self.handle_expect_possible_graph_or_end_of_quoted_triple_m(
         event, context,
@@ -157,11 +159,13 @@ pub impl StateMachine for NQuadsRecognizer with fn[ST : StateWrapper] set_curren
       // 假设有一个 with_stack 或类似的方法，或者直接构造新实例
       // 这里简化处理，实际需要根据 NQuadsRecognizer 的结构体定义来更新
       // debug("[Step 3] Set current state: \{s}")
-      let new_stack = self.stack
-      // if !new_stack.is_empty() {
-      //   let _ = new_stack.pop() // 移除旧状态
-      // }
-      new_stack.push(s)
+              let new_stack = self.stack
+        if new_stack.is_empty() {
+          new_stack.push(s)
+        } else {
+          let _ = new_stack.pop() // 移除旧状态
+          new_stack.push(s) // 添加新状态
+        }
       { ..self, stack: new_stack }
     }
     _ => self

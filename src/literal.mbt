@@ -1,5 +1,5 @@
 ///|
-pub(all) struct Literal(LiteralContent) derive(Eq, Debug, Hash)
+pub(all) struct Literal(LiteralContent) derive(Eq, Debug, Hash,ToJson)
 
 ///|
 pub fn Literal::as_n3term(self : Literal) -> N3Term {
@@ -49,7 +49,7 @@ pub(all) enum LiteralContent {
     direction~ : BaseDirection
   )
   TypedLiteral(value~ : VarDataType, datatype~ : NamedNode)
-} derive(Eq, Debug, Hash)
+} derive(Eq, Debug, Hash,ToJson)
 
 ///|
 pub fn Literal::new_simple_literal(value : String) -> Literal {

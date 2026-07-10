@@ -125,6 +125,7 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
     machine,
     context,
     outputs: [],
+    debug_logger: @lib.make_mute_logger(),
   }
 
   let parser = @lib.ParserM::{
