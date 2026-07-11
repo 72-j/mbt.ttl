@@ -58,11 +58,14 @@ jobs:
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-openssl
 
-      # 🔧 新增：验证 moon 是否可用
       - name: Verify MoonBit installation
         run: |
           moon --version
           moon version --all
+          
+      - name: Moon update
+        run: |
+          moon update
 
       - name: Moon Check
         run: |
