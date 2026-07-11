@@ -69,6 +69,7 @@ async fn main {
       errors: [],
     }
 
+    parser.end()
     // Parse all quads
     println("Parsing N-Quads file...")
     let quads = []
