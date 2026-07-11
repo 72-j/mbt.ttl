@@ -64,102 +64,100 @@ pub fn[TR, M] ParserM::ParserM(
 }
 
 ///|
+pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] ParserM::parse_next(
+  self : ParserM[TR, M],
+) -> Result[RdfOut, TurtleError]? {
+  for ;; {
+    // 1. 优先处理错误
+    if self.errors.pop() is Some(e) {
+      return Some(
+        Err(
+          TurtleError::InvalidToken(
+            self.lexer.last_token_start(),
+            "\{self.lexer.last_token_source()}\{e.to_string()} - TOKEN is not allowed here",
+          ),
+        ),
+      )
+    }
 
-  pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] ParserM::parse_next(
-    self : ParserM[TR, M],
-  ) -> Result[RdfOut, TurtleError]? {
-    for ;; {
-      // 1. 优先处理错误
-      if self.errors.pop() is Some(e) {
+    // 2. ✅ 从状态机获取输出
+    if self.try_output() is Some(result) {
+      return Some(result)
+    }
+
+    // 3. 尝试从 Lexer 获取下一个 Token
+    match self.lexer.parse_next(M::lexer_options(self.context)) {
+      Some(Ok(located_token)) => {
+        let previous_state = self.engine.current_state()
+        self.engine.debug_logger.info("ParserM: token = \{located_token}")
+
+        // ✅ 驱动状态机
+        self.engine = self.engine.step(located_token)
+
+        // ✅ 检查是否状态变化（token 没被消费）
+        if self.engine.current_state() == previous_state {
+          // 状态没变 = token 没被消费，重新用同一个 token 调用
+          // 防止无限循环：最多重试一次
+          self.engine = self.engine.step(located_token)
+        }
+
+        // ✅ 检查是否完成
+        if self.try_finish() is Some(result) {
+          return Some(result)
+        }
+
+        continue
+      }
+      Some(Err(e)) => {
+        // 词法错误
+        self.engine = self.engine.reset()
         return Some(
           Err(
             TurtleError::InvalidToken(
               self.lexer.last_token_start(),
-              "\{self.lexer.last_token_source()}\{e.to_string()} - TOKEN is not allowed here",
+              "- \{self.lexer.last_token_source()} \{e.to_string()} - TOKEN is not allowed here.",
             ),
           ),
         )
       }
+      None =>
+        if self.lexer.is_end() {
+          // ✅ 结束处理
 
-      // 2. ✅ 从状态机获取输出
-      if self.try_output() is Some(result) {
-        return Some(result)
-      }
-
-      // 3. 尝试从 Lexer 获取下一个 Token
-      match self.lexer.parse_next(M::lexer_options(self.context)) {
-        Some(Ok(located_token)) => {
-          let previous_state = self.engine.current_state()
-          self.engine.debug_logger.info("ParserM: token = \{located_token}")
-
-          // ✅ 驱动状态机
-          self.engine = self.engine.step(located_token)
-
-          // ✅ 检查是否状态变化（token 没被消费）
-          if self.engine.current_state() == previous_state {
-            // 状态没变 = token 没被消费，重新用同一个 token 调用
-            // 防止无限循环：最多重试一次
-            self.engine = self.engine.step(located_token)
-          }
-
-          // ✅ 检查是否完成
-          if self.try_finish() is Some(result) {
-            return Some(result)
-          }
-
-          continue
-        }
-        Some(Err(e)) => {
-          // 词法错误
-          self.engine = self.engine.reset()
-          return Some(
-            Err(
-              TurtleError::InvalidToken(
-                self.lexer.last_token_start(),
-                "- \{self.lexer.last_token_source()} \{e.to_string()} - TOKEN is not allowed here.",
-              ),
-            ),
-          )
-        }
-        None =>
-          if self.lexer.is_end() {
-            // ✅ 结束处理
-
-            if self.engine.is_accepting() {
-              // 返回剩余输出
-              if self.engine.outputs.length() > 0 {
-                let output = match self.engine.outputs.pop() {
-                  Some(o) => o
-                  None => return None
-                }
-                self.engine = self.engine.remove_first_output()
-                return Some(Ok(output))
+          if self.engine.is_accepting() {
+            // 返回剩余输出
+            if self.engine.outputs.length() > 0 {
+              let output = match self.engine.outputs.pop() {
+                Some(o) => o
+                None => return None
               }
-              return None
-            } else {
-              // 未完成
-              self.errors.push(
-                RuleRecognizerError::SyntaxError(
-                  "Unexpected end of input",
-                  self.lexer.last_token_range().to_range(),
-                ),
-              )
-              return Some(
-                Err(
-                  TurtleError::UnexpectedEndOfInput(
-                    self.lexer.last_token_end(),
-                    "Unexpected end of input.",
-                  ),
-                ),
-              )
+              self.engine = self.engine.remove_first_output()
+              return Some(Ok(output))
             }
-          } else {
             return None
+          } else {
+            // 未完成
+            self.errors.push(
+              RuleRecognizerError::SyntaxError(
+                "Unexpected end of input",
+                self.lexer.last_token_range().to_range(),
+              ),
+            )
+            return Some(
+              Err(
+                TurtleError::UnexpectedEndOfInput(
+                  self.lexer.last_token_end(),
+                  "Unexpected end of input.",
+                ),
+              ),
+            )
           }
-      }
+        } else {
+          return None
+        }
     }
   }
-
+}
 
 // ===== ParserM 辅助方法 =====
 
@@ -210,7 +208,9 @@ pub fn[TR, M : StateMachine] ParserM::try_finish(
     // 已接受但无输出，可能是一个空的成功状态，继续解析
     return None
   } else {
-     self.engine.debug_logger.warn("ParserM: Engine is accepting but no output generated yet.")
+    self.engine.debug_logger.warn(
+      "ParserM: Engine is accepting but no output generated yet.",
+    )
 
     // 尚未接受，属于中间状态，继续获取下一个 Token
     return None

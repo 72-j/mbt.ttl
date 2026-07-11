@@ -100,7 +100,8 @@ pub impl StateMachine for TriGRecognizer with fn transition(
     TriGState::TriplesOrGraph => self.handle_triples_or_graph_m(event, context)
     TriGState::WrappedGraphOrPredicateObjectList(term~) =>
       self.handle_wrapped_graph_or_predicate_object_list_m(term, event, context)
-      TriGState::PredicateObjectList =>self.handle_predicate_object_list_m(event, context)
+    TriGState::PredicateObjectList =>
+      self.handle_predicate_object_list_m(event, context)
     TriGState::ObjectsList => self.handle_objects_list_m(event, context)
     TriGState::Object => self.handle_object_m(event, context)
     TriGState::PredicateObjectListEnd =>
@@ -183,7 +184,8 @@ pub impl StateMachine for TriGRecognizer with fn transition(
     // ===== 其他可能的状态 =====
     TriGState::MaybePredicateObjectList =>
       self.handle_maybe_predicate_object_list_m(event, context)
-    TriGState::PredicateObjectListPossibleContinuation =>self.handle_predicate_object_list_possible_continuation_m(event, context)  
+    TriGState::PredicateObjectListPossibleContinuation =>
+      self.handle_predicate_object_list_possible_continuation_m(event, context)
     _ => {
       let err = RuleRecognizerError::SyntaxError(
         "Unhandled state: \{trig_state.to_string()}",

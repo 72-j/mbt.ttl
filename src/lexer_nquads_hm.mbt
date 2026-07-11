@@ -486,4 +486,3 @@ pub fn NQuadsRecognizer::handle_recover_to_line_jump_m(
       Ok((self, NQuadsState::RecoverToLineJump, None))
   }
 }
-

@@ -55,12 +55,11 @@ async fn main {
     })
 
     // Wrap in generic state machine
-    let generic_machine = @lib.GenericStateMachine::{
+    let generic_machine = @lib.GenericStateMachine::GenericStateMachine(
       machine,
       context,
-      outputs: [],
-      debug_logger: logger,
-    }
+      debug_logger=logger,
+    )
 
     // Create parser
     let parser = @lib.ParserM::{

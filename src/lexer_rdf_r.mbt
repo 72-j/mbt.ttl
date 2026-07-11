@@ -4,7 +4,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
   data : ArrayView[Byte],
   is_ending : Bool,
   options : LexerOptions?,
-  location_ctx : SourcePos,
+  location_pos : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
   let base_iri_opt = match options {
     Some(options) =>
@@ -31,7 +31,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
     return None
   }
 
-  // 辅助函数：构建基于 location_ctx 的 Range
+  // 辅助函数：构建基于 location_pos 的 Range
   let make_range = fn(start_offset : Int, length : Int) -> Range {
     Range(start_offset, start_offset + length)
   }
@@ -48,7 +48,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                   LocatedTokenOrLineJump::LocatedN3Token(
                     LocatedN3Token(
                       N3Token::Punctuation("<<("),
-                      make_range(location_ctx.offset, 3),
+                      make_range(location_pos.offset, 3),
                     ),
                   ),
                 ),
@@ -62,7 +62,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                   LocatedTokenOrLineJump::LocatedN3Token(
                     LocatedN3Token(
                       N3Token::Punctuation("<<"),
-                      make_range(location_ctx.offset, 2),
+                      make_range(location_pos.offset, 2),
                     ),
                   ),
                 ),
@@ -70,7 +70,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             )
           }
         Some(b'=') if self.mode == RdfLexerMode::N3 =>
-          if self.recognize_iri(data, options, location_ctx)
+          if self.recognize_iri(data, options, location_pos)
             is Some((consumed, result)) {
             Some(
               if result is Ok(result) {
@@ -82,7 +82,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                     LocatedTokenOrLineJump::LocatedN3Token(
                       LocatedN3Token(
                         N3Token::Punctuation("<="),
-                        make_range(location_ctx.offset, 2),
+                        make_range(location_pos.offset, 2),
                       ),
                     ),
                   ),
@@ -97,7 +97,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                   LocatedTokenOrLineJump::LocatedN3Token(
                     LocatedN3Token(
                       N3Token::Punctuation("<="),
-                      make_range(location_ctx.offset, 2),
+                      make_range(location_pos.offset, 2),
                     ),
                   ),
                 ),
@@ -107,7 +107,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             None
           }
         Some(b'-') if self.mode == RdfLexerMode::N3 =>
-          if self.recognize_iri(data, options, location_ctx)
+          if self.recognize_iri(data, options, location_pos)
             is Some((consumed, result)) {
             Some(
               if result is Ok(result) {
@@ -119,7 +119,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                     LocatedTokenOrLineJump::LocatedN3Token(
                       LocatedN3Token(
                         N3Token::Punctuation("<-"),
-                        make_range(location_ctx.offset, 2),
+                        make_range(location_pos.offset, 2),
                       ),
                     ),
                   ),
@@ -134,7 +134,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                   LocatedTokenOrLineJump::LocatedN3Token(
                     LocatedN3Token(
                       N3Token::Punctuation("<-"),
-                      make_range(location_ctx.offset, 2),
+                      make_range(location_pos.offset, 2),
                     ),
                   ),
                 ),
@@ -143,7 +143,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
           } else {
             None
           }
-        _ => self.recognize_iri(data, options, location_ctx)
+        _ => self.recognize_iri(data, options, location_pos)
       }
     b'>' =>
       if data.get(1) == Some(b'>') {
@@ -154,7 +154,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation(">>"),
-                  make_range(location_ctx.offset, 2),
+                  make_range(location_pos.offset, 2),
                 ),
               ),
             ),
@@ -168,7 +168,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation(">"),
-                  make_range(location_ctx.offset, 1),
+                  make_range(location_pos.offset, 1),
                 ),
               ),
             ),
@@ -178,7 +178,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
     b'_' =>
       match data.get(1) {
         Some(b':') =>
-          RdfLexer::recognize_blank_node_label(data, is_ending, location_ctx)
+          RdfLexer::recognize_blank_node_label(data, is_ending, location_pos)
         Some(c) =>
           Some(
             (
@@ -186,7 +186,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               Err(
                 TokenRecognizerError::InvalidToken(
                   [c],
-                  make_range(location_ctx.offset + 1, 1),
+                  make_range(location_pos.offset + 1, 1),
                 ),
               ),
             ),
@@ -198,7 +198,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               Err(
                 TokenRecognizerError::UnexpectedEndOfInput(
                   data[0:1],
-                  make_range(location_ctx.offset, 1),
+                  make_range(location_pos.offset, 1),
                 ),
               ),
             ),
@@ -208,21 +208,21 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
       if self.mode != RdfLexerMode::NTriples &&
         data.get(1) == Some(b'"') &&
         data.get(2) == Some(b'"') {
-        self.recognize_long_string(data, b'"', is_ending, location_ctx)
+        self.recognize_long_string(data, b'"', is_ending, location_pos)
       } else {
-        self.recognize_string(data, b'"', is_ending, location_ctx)
+        self.recognize_string(data, b'"', is_ending, location_pos)
       }
     b'\'' if self.mode != RdfLexerMode::NTriples =>
       if data.get(1) == Some(b'\'') && data.get(2) == Some(b'\'') {
-        self.recognize_long_string(data, b'\'', is_ending, location_ctx)
+        self.recognize_long_string(data, b'\'', is_ending, location_pos)
       } else {
-        self.recognize_string(data, b'\'', is_ending, location_ctx)
+        self.recognize_string(data, b'\'', is_ending, location_pos)
       }
-    b'@' => self.recognize_lang_tag(data, location_ctx)
+    b'@' => self.recognize_lang_tag(data, location_pos)
     b'.' =>
       match data.get(1) {
         Some(b'0'..=b'9') =>
-          RdfLexer::recognize_number(data, is_ending, location_ctx)
+          RdfLexer::recognize_number(data, is_ending, location_pos)
         Some(_) =>
           Some(
             (
@@ -231,7 +231,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                 LocatedTokenOrLineJump::LocatedN3Token(
                   LocatedN3Token(
                     N3Token::Punctuation("."),
-                    make_range(location_ctx.offset, 1),
+                    make_range(location_pos.offset, 1),
                   ),
                 ),
               ),
@@ -246,7 +246,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                   LocatedTokenOrLineJump::LocatedN3Token(
                     LocatedN3Token(
                       N3Token::Punctuation("."),
-                      make_range(location_ctx.offset, 1),
+                      make_range(location_pos.offset, 1),
                     ),
                   ),
                 ),
@@ -265,7 +265,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation("^^"),
-                  make_range(location_ctx.offset, 2),
+                  make_range(location_pos.offset, 2),
                 ),
               ),
             ),
@@ -279,7 +279,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation("^"),
-                  make_range(location_ctx.offset, 1),
+                  make_range(location_pos.offset, 1),
                 ),
               ),
             ),
@@ -294,7 +294,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             LocatedTokenOrLineJump::LocatedN3Token(
               LocatedN3Token(
                 N3Token::Punctuation("("),
-                make_range(location_ctx.offset, 1),
+                make_range(location_pos.offset, 1),
               ),
             ),
           ),
@@ -309,7 +309,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation(")>>"),
-                  make_range(location_ctx.offset, 3),
+                  make_range(location_pos.offset, 3),
                 ),
               ),
             ),
@@ -323,7 +323,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation(")"),
-                  make_range(location_ctx.offset, 1),
+                  make_range(location_pos.offset, 1),
                 ),
               ),
             ),
@@ -338,7 +338,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             LocatedTokenOrLineJump::LocatedN3Token(
               LocatedN3Token(
                 N3Token::Punctuation("["),
-                make_range(location_ctx.offset, 1),
+                make_range(location_pos.offset, 1),
               ),
             ),
           ),
@@ -352,7 +352,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             LocatedTokenOrLineJump::LocatedN3Token(
               LocatedN3Token(
                 N3Token::Punctuation("]"),
-                make_range(location_ctx.offset, 1),
+                make_range(location_pos.offset, 1),
               ),
             ),
           ),
@@ -367,7 +367,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation("{|"),
-                  make_range(location_ctx.offset, 2),
+                  make_range(location_pos.offset, 2),
                 ),
               ),
             ),
@@ -381,7 +381,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation("{"),
-                  make_range(location_ctx.offset, 1),
+                  make_range(location_pos.offset, 1),
                 ),
               ),
             ),
@@ -396,7 +396,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             LocatedTokenOrLineJump::LocatedN3Token(
               LocatedN3Token(
                 N3Token::Punctuation("}"),
-                make_range(location_ctx.offset, 1),
+                make_range(location_pos.offset, 1),
               ),
             ),
           ),
@@ -410,7 +410,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             LocatedTokenOrLineJump::LocatedN3Token(
               LocatedN3Token(
                 N3Token::Punctuation(","),
-                make_range(location_ctx.offset, 1),
+                make_range(location_pos.offset, 1),
               ),
             ),
           ),
@@ -424,7 +424,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             LocatedTokenOrLineJump::LocatedN3Token(
               LocatedN3Token(
                 N3Token::Punctuation(";"),
-                make_range(location_ctx.offset, 1),
+                make_range(location_pos.offset, 1),
               ),
             ),
           ),
@@ -438,7 +438,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             LocatedTokenOrLineJump::LocatedN3Token(
               LocatedN3Token(
                 N3Token::Punctuation("!"),
-                make_range(location_ctx.offset, 1),
+                make_range(location_pos.offset, 1),
               ),
             ),
           ),
@@ -453,7 +453,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation("|}"),
-                  make_range(location_ctx.offset, 2),
+                  make_range(location_pos.offset, 2),
                 ),
               ),
             ),
@@ -467,7 +467,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation("|"),
-                  make_range(location_ctx.offset, 1),
+                  make_range(location_pos.offset, 1),
                 ),
               ),
             ),
@@ -483,7 +483,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation("=>"),
-                  make_range(location_ctx.offset, 2),
+                  make_range(location_pos.offset, 2),
                 ),
               ),
             ),
@@ -497,7 +497,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token(
                   N3Token::Punctuation("="),
-                  make_range(location_ctx.offset, 1),
+                  make_range(location_pos.offset, 1),
                 ),
               ),
             ),
@@ -512,15 +512,15 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             LocatedTokenOrLineJump::LocatedN3Token(
               LocatedN3Token(
                 N3Token::Punctuation("~"),
-                make_range(location_ctx.offset, 1),
+                make_range(location_pos.offset, 1),
               ),
             ),
           ),
         ),
       )
     b'0'..=b'9' | b'+' | b'-' =>
-      RdfLexer::recognize_number(data, is_ending, location_ctx)
-    b'?' => self.recognize_variable(data, is_ending, location_ctx)
-    _ => self.recognize_pname_or_keyword(data, is_ending, location_ctx)
+      RdfLexer::recognize_number(data, is_ending, location_pos)
+    b'?' => self.recognize_variable(data, is_ending, location_pos)
+    _ => self.recognize_pname_or_keyword(data, is_ending, location_pos)
   }
 }

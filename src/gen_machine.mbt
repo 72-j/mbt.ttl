@@ -15,7 +15,7 @@ pub(all) struct GenericStateMachine[M] {
 pub fn[M] GenericStateMachine::GenericStateMachine(
   machine : M,
   context : Ctx,
-  debug_logger : &DebugLogger,
+  debug_logger? : &DebugLogger = make_mute_logger(),
 ) -> GenericStateMachine[M] {
   GenericStateMachine::{ machine, context, outputs: [], debug_logger }
 }

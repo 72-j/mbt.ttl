@@ -34,12 +34,11 @@ async test "ParserM_basic_single_line for NQuads" {
     lexer_options: { base_iri: None },
   })
 
-  let generic_machine = @lib.GenericStateMachine::{
+  let generic_machine = @lib.GenericStateMachine::GenericStateMachine(
     machine,
     context,
-    outputs: [],
-    debug_logger: logger,
-  }
+    debug_logger=logger,
+  )
   let parser = @lib.ParserM::{
     lexer,
     engine: generic_machine,
@@ -116,12 +115,11 @@ async test "multi-line  for NQuads" {
     lexer_options: { base_iri: None },
   })
 
-  let generic_machine = @lib.GenericStateMachine::{
+  let generic_machine = @lib.GenericStateMachine::GenericStateMachine(
     machine,
     context,
-    outputs: [],
-    debug_logger: logger,
-  }
+    debug_logger=logger,
+  )
   let parser = @lib.ParserM::{
     lexer,
     engine: generic_machine,
@@ -194,12 +192,11 @@ async test "ParserM_basic_single_line for NQuads GraphName" {
     lexer_options: { base_iri: None },
   })
 
-  let generic_machine = @lib.GenericStateMachine::{
+  let generic_machine = @lib.GenericStateMachine::GenericStateMachine(
     machine,
     context,
-    outputs: [],
-    debug_logger: logger,
-  }
+    debug_logger=logger,
+  )
   let parser = @lib.ParserM::{
     lexer,
     engine: generic_machine,
@@ -287,12 +284,11 @@ async test "ParserM_NQuads_complete_dataset" {
     lexer_options: { base_iri: None },
   })
 
-  let generic_machine = @lib.GenericStateMachine::{
+  let generic_machine = @lib.GenericStateMachine::GenericStateMachine(
     machine,
     context,
-    outputs: [],
-    debug_logger: logger,
-  }
+    debug_logger=logger,
+  )
   let parser = @lib.ParserM::{
     lexer,
     engine: generic_machine,
@@ -331,80 +327,79 @@ async test "ParserM_NQuads_complete_dataset" {
 }
 
 ///|
-// async test "run official n-triples test file" {
-//   let test_dir = "src/tests/src/rdf/rdf11/n-triples"
+async test "run official n-triples test file" {
+  let test_dir = "src/tests/src/rdf/rdf11/n-triples"
 
-//   let file = "nt-syntax-file-02"
+  let file = "nt-syntax-file-02"
 
-//   debug("--------------------------------------")
-//   debug("Testing: \{file}")
+  debug("--------------------------------------")
+  debug("Testing: \{file}")
 
-//   let path = "\{test_dir}/\{file}.nt"
-//   let is_bad_test = file.contains("bad") || file.contains("error")
+  let path = "\{test_dir}/\{file}.nt"
+  let is_bad_test = file.contains("bad") || file.contains("error")
 
-//   // 4. 安全读取文件内容
-//   // 关键修复：添加 await，因为 read_file 是 async 函数
-//   // 如果文件不存在或不可读，await read_file 会 panic。
-//   // 若需更健壮的处理，可先用 @fs.exists 检查，或在 try-catch 块中运行（如果支持）
-//   let data = @fs.read_file(path).binary().to_array()
+  // 4. 安全读取文件内容
+  // 关键修复：添加 await，因为 read_file 是 async 函数
+  // 如果文件不存在或不可读，await read_file 会 panic。
+  // 若需更健壮的处理，可先用 @fs.exists 检查，或在 try-catch 块中运行（如果支持）
+  let data = @fs.read_file(path).binary().to_array()
 
-//   let lexer = @lib.Lexer::Lexer(
-//     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
-//     data,
-//     true,
-//     @lib.MIN_BUFFER_SIZE,
-//     @lib.MAX_BUFFER_SIZE,
-//     Some(b"#"),
-//     0,
-//     0,
-//   )
+  let lexer = @lib.Lexer::Lexer(
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    data,
+    true,
+    @lib.MIN_BUFFER_SIZE,
+    @lib.MAX_BUFFER_SIZE,
+    Some(b"#"),
+    0,
+    0,
+  )
 
-//   let logger = @lib.make_console_logger()
+  let logger = @lib.make_console_logger()
 
-//   let machine = @lib.NQuadsRecognizer::{
-//     stack: [@lib.NQuadsState::ExpectSubject],
-//     subjects: [],
-//     predicates: [],
-//     objects: [],
-//     lenient: false,
-//     debug_logger: logger,
-//     last_range: @lib.Range::default(),
-//     errors: [],
-//   }
+  let machine = @lib.NQuadsRecognizer::{
+    stack: [@lib.NQuadsState::ExpectSubject],
+    subjects: [],
+    predicates: [],
+    objects: [],
+    lenient: false,
+    debug_logger: logger,
+    last_range: @lib.Range::default(),
+    errors: [],
+  }
 
-//   let context = @lib.RdfContext::NQuadsRecognizerContext(@lib.NQuadsRecognizerContext::{
-//     with_graph_name: true,
-//     lexer_options: { base_iri: None },
-//   })
+  let context = @lib.RdfContext::NQuadsRecognizerContext(@lib.NQuadsRecognizerContext::{
+    with_graph_name: true,
+    lexer_options: { base_iri: None },
+  })
 
-//   let generic_machine = @lib.GenericStateMachine::{
-//     machine,
-//     context,
-//     outputs: [],
-//     debug_logger: logger,
-//   }
-//   let parser = @lib.ParserM::{
-//     lexer,
-//     engine: generic_machine,
-//     context,
-//     errors: [],
-//   }
+  let generic_machine = @lib.GenericStateMachine::GenericStateMachine(
+    machine,
+    context,
+    debug_logger=logger,
+  )
+  let parser = @lib.ParserM::{
+    lexer,
+    engine: generic_machine,
+    context,
+    errors: [],
+  }
 
-//   let result = parser.parse_next()
-//   // @async.sleep(0)
-//   // 7. 判定成功与否
-//   let success = match result {
-//     Some(Ok(_)) => !is_bad_test
-//     Some(Err(e)) => {
-//       debug(e.to_string())
-//       is_bad_test
-//     }
-//     None => false
-//   }
+  let result = parser.parse_next()
+  // @async.sleep(0)
+  // 7. 判定成功与否
+  let success = match result {
+    Some(Ok(_)) => !is_bad_test
+    Some(Err(e)) => {
+      debug(e.to_string())
+      is_bad_test
+    }
+    None => false
+  }
 
-//   // 8. 输出结果
-//   debug("Test Suite Results: \{if success {"PASSED"} else {"FAILED"}}")
-// }
+  // 8. 输出结果
+  debug("Test Suite Results: \{if success {"PASSED"} else {"FAILED"}}")
+}
 
 ///|
 // async test "run official n-triples test suite" {

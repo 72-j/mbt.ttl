@@ -30,19 +30,19 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
   let view = self.data[self.position.buffer_offset:]
 
   // 使用命名参数确保 line, column, offset 对应正确
-  let location_ctx = SourcePos::SourcePos(
+  let location_pos = SourcePos::SourcePos(
     token_start_pos.line,
     token_start_pos.column,
     token_start_pos.offset,
   )
 
-  // 3. 调用识别器，传入真实的 location_ctx
+  // 3. 调用识别器，传入真实的 location_pos
   match
     self.parser.recognize_next_token(
       view,
       self.is_ending,
       options,
-      location_ctx,
+      location_pos,
     ) {
     Some((consumed, result)) => {
       // 【防御性检查】确保消耗了字符

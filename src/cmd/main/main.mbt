@@ -120,12 +120,9 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
     lexer_options: { base_iri: None },
   })
 
-  let generic_machine = @lib.GenericStateMachine::{
-    machine,
-    context,
-    outputs: [],
-    debug_logger: @lib.make_mute_logger(),
-  }
+  let generic_machine = @lib.GenericStateMachine::GenericStateMachine(
+    machine, context,
+  )
 
   let parser = @lib.ParserM::{
     lexer,

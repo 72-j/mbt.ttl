@@ -100,7 +100,6 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
       self.handle_expect_line_jump_m(event, context)
     NQuadsState::RecoverToLineJump =>
       self.handle_recover_to_line_jump_m(event, context)
-
     _ => {
       self.debug_logger.info(
         ">>> FALLBACK to _ case: \{nquads_state.to_string()}",

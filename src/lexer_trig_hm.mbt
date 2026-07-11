@@ -238,16 +238,14 @@ fn TriGRecognizer::handle_object_m(
       Ok((final_self, TriGState::PredicateObjectListEnd, Some(quad)))
     }
 
-
-
     // ✅ 添加 LongString 处理
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::LongString(value), _)
     ) => {
       let new_self = self
-      new_self.cur_object.push(TermRef::LiteralRef(
-        LiteralRef::new_simple_literal(value),
-      ))
+      new_self.cur_object.push(
+        TermRef::LiteralRef(LiteralRef::new_simple_literal(value)),
+      )
 
       let quad = new_self.make_current_quad()
       new_self.stack.push(TriGState::PredicateObjectListEnd)

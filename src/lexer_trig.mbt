@@ -189,7 +189,7 @@ pub fn TriGRecognizer::new_parser(
 ) -> Parser[RdfLexer, TriGRecognizer] {
   Parser::Parser(
     Lexer::Lexer(
-      RdfLexer::RdfLexer(RdfLexerMode::NTriples, lenient),
+      RdfLexer::RdfLexer(RdfLexerMode::N3, lenient),
       data,
       is_ending,
       MIN_BUFFER_SIZE,
