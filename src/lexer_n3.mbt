@@ -5,7 +5,7 @@ struct N3Recognizer {
   predicates : Array[Predicate]
   contexts : Array[BlankNode]
   mut debug_logger : &DebugLogger
-  mut last_range : Range
+  last_range : Range
   errors : Array[RuleRecognizerError]
 }
 
@@ -68,43 +68,54 @@ pub impl RuleRecognizer for N3Recognizer with fn lexer_options(
 pub fn N3Recognizer::new_parser(
   data : Array[Byte],
   is_ending : Bool,
-  unchecked : Bool,
   base_iri : Iri?,
   prefixes : Map[String, Iri],
   debug_logger? : &DebugLogger = make_mute_logger(),
 ) -> Parser[RdfLexer, N3Recognizer] {
-  Parser::Parser(
-    Lexer::Lexer(
-      RdfLexer::RdfLexer(RdfLexerMode::N3, unchecked),
-      data,
-      is_ending,
-      MIN_BUFFER_SIZE,
-      MAX_BUFFER_SIZE,
-      Some(b"#"),
-      0,
-      0,
-    ),
-    {
-      stack: [N3State::N3Doc],
-      terms: [],
-      predicates: [],
-      contexts: [],
-      debug_logger,
-      last_range: Range::default(),
-      errors: [],
-    },
-    // 修复点：使用 RdfContext ::N3RecognizerContext 包装记录
-    RdfContext::N3RecognizerContext({ lexer_options: { base_iri, }, prefixes }),
+  let lexer = Lexer::Lexer(
+    RdfLexer::RdfLexer(RdfLexerMode::Turtle, false),
+    data,
+    is_ending,
+    MIN_BUFFER_SIZE,
+    MAX_BUFFER_SIZE,
+    Some(b"#"),
+    0,
+    0,
   )
+  let machine = N3Recognizer::{
+    stack: [N3State::N3Doc],
+    terms: [],
+    predicates: [],
+    contexts: [],
+    debug_logger, // <-- 添加这一行，具体值需根据 TriGRecognizer 定义调整，可能是 None 或 DebugLogger::default()
+    // in_collection: false,
+    last_range: Range::default(),
+    errors: [],
+  }
+
+  let context = RdfContext::N3RecognizerContext(N3RecognizerContext::{
+    lexer_options: { base_iri, },
+    prefixes,
+  })
+
+  let machine = GenericStateMachine::{
+    machine,
+    context,
+    outputs: [],
+    debug_logger,
+  }
+
+  let parser = Parser::Parser(lexer, machine, context)
+  parser
 }
 
 ///|
-fn N3Recognizer::error(self : N3Recognizer, msg : String) -> N3Recognizer {
-  self.errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
-  self.stack.clear()
+// fn N3Recognizer::error(self : N3Recognizer, msg : String) -> N3Recognizer {
+//   self.errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
+//   self.stack.clear()
 
-  self
-}
+//   self
+// }
 
 ///|
 fn N3Recognizer::quad(

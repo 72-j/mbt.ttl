@@ -1,5 +1,5 @@
 ///|
-pub enum N3Term {
+pub(all) enum N3Term {
   NamedNode(NamedNode)
   BlankNode(BlankNode)
   Literal(Literal)
@@ -7,6 +7,15 @@ pub enum N3Term {
   Variable(String)
 } derive(Eq, Debug, Hash)
 
+impl Show for N3Term with fn output(self : N3Term, f : &Logger) -> Unit {
+  match self {
+    N3Term::NamedNode(term) => f.write_object(term)
+    N3Term::BlankNode(term) => f.write_object(term)
+    N3Term::Literal(term) => f.write_object(term)
+    N3Term::Triple(term) => f.write_object(term)
+    N3Term::Variable(term) => f.write_object(term)
+  }
+}
 ///|
 fn N3Term::to_term(self : N3Term) -> Term {
   match self {
@@ -26,17 +35,6 @@ fn N3Term::to_node(self : N3Term) -> NamedOrBlankNode {
     N3Term::Literal(_term) => NamedOrBlankNode::BlankNode(BlankNode::default())
     N3Term::Triple(_term) => NamedOrBlankNode::BlankNode(BlankNode::default())
     N3Term::Variable(_term) => NamedOrBlankNode::BlankNode(BlankNode::default())
-  }
-}
-
-///|
-impl Show for N3Term with fn output(self : N3Term, f : &Logger) -> Unit {
-  match self {
-    N3Term::NamedNode(term) => f.write_object(term)
-    N3Term::BlankNode(term) => f.write_object(term)
-    N3Term::Literal(term) => f.write_object(term)
-    N3Term::Triple(term) => f.write_object(term)
-    N3Term::Variable(term) => f.write_object(term)
   }
 }
 
@@ -159,7 +157,6 @@ pub fn N3Parser::for_slice(
   let parser = N3Recognizer::new_parser(
     slice.to_array(),
     false,
-    self.lenient,
     self.base_iri,
     self.prefixes,
   )
@@ -172,7 +169,6 @@ pub fn N3Parser::low_level(self : N3Parser) -> LowLevelN3Parser[RdfLexer] {
     parser: N3Recognizer::new_parser(
       [],
       false,
-      self.lenient,
       self.base_iri,
       self.prefixes,
     ),

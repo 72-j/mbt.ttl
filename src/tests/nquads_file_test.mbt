@@ -49,7 +49,7 @@ async test "multi-line NQuads from file" {
       debug_logger: logger,
     }
 
-    let parser = @lib.ParserM::{
+    let parser = @lib.Parser::{
       lexer,
       engine: generic_machine,
       context,
@@ -135,7 +135,7 @@ async test "single quad from file" {
       debug_logger: logger,
     }
 
-    let parser = @lib.ParserM::{
+    let parser = @lib.Parser::{
       lexer,
       engine: generic_machine,
       context,

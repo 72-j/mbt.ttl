@@ -213,6 +213,7 @@ pub(all) suberror RuleRecognizerError {
   TripleMissingDot
   InvalidLanguageTag
   BlankNodePropertyListMissingEndBracket
+  
 }
 
 ///|

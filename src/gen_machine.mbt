@@ -58,7 +58,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   match result {
     Ok((new_machine, new_state, output)) => {
       self.debug_logger.info(
-        "step: new_state = \{new_state.to_string()}, output received = \{@debug.to_string(output)}",
+        "[step] new_state = \{new_state.to_string()}, output received = \{@debug.to_string(output)}",
       )
 
       let outputs = self.outputs
@@ -77,8 +77,9 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
       new_engine
     }
     Err(e) => {
-      self.debug_logger.warn("step: transition failed with: \{e}")
-      self.reset()
+      self.debug_logger.warn("[step] transition failed with: \{e}")
+      // self.reset()
+      self
     }
   }
 }

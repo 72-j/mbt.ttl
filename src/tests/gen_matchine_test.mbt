@@ -1,5 +1,5 @@
 ///|
-async test "ParserM_basic_single_line for NQuads" {
+async test "Parser_basic_single_line for NQuads" {
   let input =
     #|<http://example/\U00000053> <http://example/p> <http://example/o> .
 
@@ -39,7 +39,7 @@ async test "ParserM_basic_single_line for NQuads" {
     context,
     debug_logger=logger,
   )
-  let parser = @lib.ParserM::{
+  let parser = @lib.Parser::{
     lexer,
     engine: generic_machine,
     context,
@@ -120,7 +120,7 @@ async test "multi-line  for NQuads" {
     context,
     debug_logger=logger,
   )
-  let parser = @lib.ParserM::{
+  let parser = @lib.Parser::{
     lexer,
     engine: generic_machine,
     context,
@@ -158,7 +158,7 @@ async test "multi-line  for NQuads" {
 }
 
 ///|
-async test "ParserM_basic_single_line for NQuads GraphName" {
+async test "Parser_basic_single_line for NQuads GraphName" {
   let input =
     #|<http://example.org/book1> <http://purl.org/dc/terms/title> "The Great Gatsby"@en <http://example.org/books> .
   let data = @utf8.encode(input).to_array()
@@ -197,7 +197,7 @@ async test "ParserM_basic_single_line for NQuads GraphName" {
     context,
     debug_logger=logger,
   )
-  let parser = @lib.ParserM::{
+  let parser = @lib.Parser::{
     lexer,
     engine: generic_machine,
     context,
@@ -235,7 +235,7 @@ async test "ParserM_basic_single_line for NQuads GraphName" {
 }
 
 ///|
-async test "ParserM_NQuads_complete_dataset" {
+async test "Parser_NQuads_complete_dataset" {
   let input =
     #|<http://example.org/dataset> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/sparql-service-description#Dataset> .
     #|<http://example.org/dataset> <http://purl.org/dc/terms/modified> "2024-06-01T12:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
@@ -289,7 +289,7 @@ async test "ParserM_NQuads_complete_dataset" {
     context,
     debug_logger=logger,
   )
-  let parser = @lib.ParserM::{
+  let parser = @lib.Parser::{
     lexer,
     engine: generic_machine,
     context,
@@ -378,7 +378,7 @@ async test "run official n-triples test file" {
     context,
     debug_logger=logger,
   )
-  let parser = @lib.ParserM::{
+  let parser = @lib.Parser::{
     lexer,
     engine: generic_machine,
     context,
@@ -474,7 +474,7 @@ async test "run official n-triples test file" {
 //       outputs: [],
 //       debug_logger: logger,
 //     }
-//     let parser = @lib.ParserM::{
+//     let parser = @lib.Parser::{
 //       lexer,
 //       engine: generic_machine,
 //       context,

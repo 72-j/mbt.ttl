@@ -9,7 +9,6 @@ async test "debug_n3_implies" {
   let parser = @lib.N3Recognizer::new_parser(
     data,
     true,
-    true,
     base_iri,
     prefixes,
     debug_logger=@lib.make_console_logger(),
@@ -33,7 +32,6 @@ async test "debug_n3_forall" {
   let parser = @lib.N3Recognizer::new_parser(
     data,
     true,
-    true,
     base_iri,
     prefixes,
     debug_logger=@lib.make_console_logger(),
@@ -56,7 +54,6 @@ async test "debug_n3_path_alternative" {
 
   let parser = @lib.N3Recognizer::new_parser(
     data,
-    true,
     true,
     base_iri,
     prefixes,
@@ -82,7 +79,6 @@ async test "debug_n3_literal_complex" {
   let parser = @lib.N3Recognizer::new_parser(
     data,
     true,
-    true,
     base_iri,
     prefixes,
     debug_logger=@lib.make_console_logger(),
@@ -106,7 +102,6 @@ async test "debug_n3_nested_formula" {
   let parser = @lib.N3Recognizer::new_parser(
     data,
     true,
-    true,
     base_iri,
     prefixes,
     debug_logger=@lib.make_console_logger(),
@@ -119,16 +114,13 @@ async test "debug_n3_nested_formula" {
   }
 }
 
-
-
 ///|
-async test "n3 test for ParserM" {
+async test "n3 test for Parser" {
   let input = "<http://example.org/s> <http://example.org/p> { <http://example.org/s2> <http://example.org/p2> <http://example.org/o2> } ."
   let data = @utf8.encode(input).to_array()
 
   // let prefixes = Map([])
   // let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
-
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::Turtle, false),
@@ -168,7 +160,7 @@ async test "n3 test for ParserM" {
     outputs: [],
     debug_logger: logger,
   }
-  let parser = @lib.ParserM::{
+  let parser = @lib.Parser::{
     lexer,
     engine: generic_machine,
     context,
@@ -181,4 +173,3 @@ async test "n3 test for ParserM" {
     None => debug("N3 Nested Formula None")
   }
 }
-

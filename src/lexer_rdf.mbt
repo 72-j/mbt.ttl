@@ -333,7 +333,6 @@ fn RdfLexer::recognize_pname_or_keyword(
         location_pos.offset,
         location_pos.offset + total_consumed,
       )
-
       Some(
         (
           total_consumed,
@@ -1689,7 +1688,7 @@ fn RdfLexer::recognize_triple_quote_content(
     if i >= len {
       return None // 未找到结束标记，且没有更多数据
     }
-  println("[DEBUG triple_quote] i=\{i}, len=\{len}")
+    println("[DEBUG triple_quote] i=\{i}, len=\{len}")
     // 查找下一个 delimiter 或反斜杠
     let search_result = array_view_memchr2(delimiter, b'\\', data[i:])
 
@@ -1792,7 +1791,7 @@ fn RdfLexer::recognize_triple_quote_content(
           // 将 delimiter 写入字符串（除了最后一个，因为可能还有更多）
           // 如果是连续 2 个 delimiter，写入 2 个
           // 如果是连续 3 个 delimiter（前面已经处理过三引号情况），写入 2 个
-          for q in 0..<quote_count {
+          for _q in 0..<quote_count {
             string.write_char(Byte::to_char(delimiter))
           }
 

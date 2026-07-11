@@ -187,54 +187,62 @@ pub fn TriGRecognizer::new_parser(
   prefixes : Map[String, Iri],
   debug_logger? : &DebugLogger = make_mute_logger(),
 ) -> Parser[RdfLexer, TriGRecognizer] {
-  Parser::Parser(
-    Lexer::Lexer(
-      RdfLexer::RdfLexer(RdfLexerMode::N3, lenient),
-      data,
-      is_ending,
-      MIN_BUFFER_SIZE,
-      MAX_BUFFER_SIZE,
-      Some(b"#"),
-      0,
-      0,
-    ),
-    {
-      stack: [TriGState::TriGDoc],
-      cur_subject: [],
-      cur_predicate: [],
-      cur_object: [],
-      cur_graph: GraphName::DefaultGraph.as_ref(),
-      cur_reifier: [],
-      lenient,
-      debug_logger, // <-- 添加这一行，具体值需根据 TriGRecognizer 定义调整，可能是 None 或 DebugLogger::default()
-      // in_collection: false,
-      last_range: Range::default(),
-      errors: [],
-    },
-    RdfContext::TriGRecognizerContext({
-      with_graph_name,
-      prefixes,
-      lexer_options: { base_iri, },
-    }),
+  let lexer = Lexer::Lexer(
+    RdfLexer::RdfLexer(RdfLexerMode::Turtle, lenient),
+    data,
+    is_ending,
+    MIN_BUFFER_SIZE,
+    MAX_BUFFER_SIZE,
+    Some(b"#"),
+    0,
+    0,
   )
+
+  let machine = TriGRecognizer::{
+    stack: [TriGState::TriGDoc],
+    cur_subject: [],
+    cur_predicate: [],
+    cur_object: [],
+    cur_graph: GraphName::DefaultGraph.as_ref(),
+    cur_reifier: [],
+    lenient: true,
+    debug_logger, // <-- 添加这一行，具体值需根据 TriGRecognizer 定义调整，可能是 None 或 DebugLogger::default()
+    // in_collection: false,
+    last_range: Range::default(),
+    errors: [],
+  }
+
+  let context = RdfContext::TriGRecognizerContext(TriGRecognizerContext::{
+    with_graph_name,
+    lexer_options: { base_iri, },
+    prefixes,
+  })
+
+  let generic_machine = GenericStateMachine::{
+    machine,
+    context,
+    outputs: [],
+    debug_logger,
+  }
+  Parser::{ lexer, engine: generic_machine, context, errors: [] }
 }
 
 ///|
-fn TriGRecognizer::error(
-  self : TriGRecognizer,
-  // errors : Array[RuleRecognizerError],
-  msg : String,
-) -> TriGRecognizer {
-  // guard self.last_range.start != self.last_range.end 
+// fn TriGRecognizer::error(
+//   self : TriGRecognizer,
+//   // errors : Array[RuleRecognizerError],
+//   msg : String,
+// ) -> TriGRecognizer {
+//   // guard self.last_range.start != self.last_range.end 
 
-  self.errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
-  self.stack.clear()
-  self.cur_subject.clear()
-  self.cur_predicate.clear()
-  self.cur_object.clear()
-  self.cur_graph = GraphName::DefaultGraph.as_ref()
-  self
-}
+//   self.errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
+//   self.stack.clear()
+//   self.cur_subject.clear()
+//   self.cur_predicate.clear()
+//   self.cur_object.clear()
+//   self.cur_graph = GraphName::DefaultGraph.as_ref()
+//   self
+// }
 
 ///|
 fn TriGRecognizer::emit_quad_m(self : TriGRecognizer) -> RdfOut {

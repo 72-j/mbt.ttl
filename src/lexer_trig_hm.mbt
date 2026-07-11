@@ -7,34 +7,88 @@ fn TriGRecognizer::handle_triples_or_graph_m(
   event : Event,
   _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
-  self.debug_logger.info("TriplesOrGraph: handling event: \{event}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
-
+  self.debug_logger.info(
+    "@@@ handling event: \{event} Token stack: \{@debug.to_string(self.stack)}",
+  )
+  
   match event {
+    // 1. 处理 IRI
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {
       let term = NamedNodeRef::new_unchecked(iri).as_enum()
-      // 转移到 WrappedGraphOrPredicateObjectList，并携带 term 信息
-      // 由于 TriGState::WrappedGraphOrPredicateObjectList 需要参数 term，我们需要一个带参数的状态构造
       Ok((self, TriGState::WrappedGraphOrPredicateObjectList(term~), None))
     }
-    // ... 处理 PrefixedName, BlankNodeLabel 等 ...
+
+    // 2. 处理前缀名称（如 :s, :p, :o）
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::PrefixedName(prefix~, localx~, ..), _)
+    ) => {
+      self.debug_logger.info(
+        "@@@ PrefixedName: prefix='\{prefix.to_string()}', local='\{localx.to_string()}'",
+      )
+      // 从 context 获取已注册的前缀
+      let ctx = match _context {
+        RdfContext::TriGRecognizerContext(c) => c
+        _ =>
+          return Err(
+            RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
+          )
+      }
+
+      // 查找前缀对应的 IRI base
+      let base_iri = match ctx.prefixes.get(prefix) {
+        Some(iri) => iri.to_string()
+        None => prefix.to_string() // 如果没找到，使用原始 prefix
+      }
+
+      let iri = "\{base_iri}\{localx}"
+      self.debug_logger.info(
+        "PrefixedName resolved: \{prefix}:\{localx} -> \{iri}",
+      )
+
+      let term = NamedNodeRef::new_unchecked(iri).as_enum()
+      Ok((self, TriGState::WrappedGraphOrPredicateObjectList(term~), None))
+    }
+    // 3. 处理 { 开始图块
+    LocatedTokenOrLineJump::LocatedN3Token(
+      LocatedN3Token(N3Token::Punctuation("{"), _)
+    ) =>
+      // let new_stack = self.stack
+      // new_stack.push(TriGState::WrappedGraphPossibleEnd) // 图块结束后等待 }
+      // new_stack.push(TriGState::TriplesOrGraph) // 图内三元组
+      // let new_self = { ..self, stack: new_stack }
+      Ok((self, TriGState::TriplesOrGraph, None))
+
+    // 4. 处理 ( 开始集合
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("("), _)
     ) => {
-      // 原代码: push ExpectDot, PredicateObjectList, SubjectCollectionBeginning
-      // 新架构: 我们需要模拟这个栈行为。
-      // 如果 TriGRecognizer 内部有 stack 字段用于解析器栈，我们更新它。
       let new_stack = self.stack
       new_stack.push(TriGState::ExpectDot)
       new_stack.push(TriGState::PredicateObjectList)
       new_stack.push(TriGState::SubjectCollectionBeginning)
-
-      let new_self = { ..self, stack: new_stack }
-      // 下一个活跃状态是 SubjectCollectionBeginning? 或者原代码逻辑是立即进入?
-      // 原代码最后返回 self，意味着下一次迭代处理同一个 token。
-      // 这里我们返回 SubjectCollectionBeginning 作为下一个状态。
-      Ok((new_self, TriGState::SubjectCollectionBeginning, None))
+      Ok(
+        (
+          { ..self, stack: new_stack },
+          TriGState::SubjectCollectionBeginning,
+          None,
+        ),
+      )
     }
+    // LocatedTokenOrLineJump::LocatedN3Token(tok) => {
+    //   self.debug_logger.info("Token type: \{tok.0}")
+    //   match tok.0 {
+    //     // ... 现有处理 ...
+    //     _ => {
+    //       self.debug_logger.info("@@@ Unhandled token: \{tok.0}")
+    //       Err(
+    //         RuleRecognizerError::SyntaxError(
+    //           "Unhandled token type",
+    //           self.last_range,
+    //         ),
+    //       )
+    //     }
+    //   }
+    // }
     _ =>
       Err(
         RuleRecognizerError::SyntaxError(

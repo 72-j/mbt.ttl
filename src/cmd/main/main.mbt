@@ -124,7 +124,7 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
     machine, context,
   )
 
-  let parser = @lib.ParserM::{
+  let parser = @lib.Parser::{
     lexer,
     engine: generic_machine,
     context,

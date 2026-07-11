@@ -163,13 +163,13 @@ async test "debug_simple_triple 2" {
     step += 1
     debug("\n=== Step \{step} ===")
 
-    match parser.state {
-      Some(state) => {
-        debug("State stack depth: \{state.stack.length()}")
-        debug("Current object: \{@debug.to_string(state.cur_object)}")
-      }
-      None => debug("No active state")
-    }
+    // match parser.state {
+    //   Some(state) => {
+    //     debug("State stack depth: \{state.stack.length()}")
+    //     debug("Current object: \{@debug.to_string(state.cur_object)}")
+    //   }
+    //   None => debug("No active state")
+    // }
 
     match parser.parse_next() {
       Some(Ok(t)) => debug("✓ Parsed quad: \{t.to_string()}")
@@ -302,7 +302,7 @@ async test "debug_subj_only" {
 }
 
 ///|
-async test "ParserM_basic_single_line for Turtle" {
+async test "Parser_basic_single_line for Turtle" {
   let input =
     #|<http://example/s> <http://example/p> <http://example/o> .
 
@@ -347,7 +347,7 @@ async test "ParserM_basic_single_line for Turtle" {
     outputs: [],
     debug_logger: logger,
   }
-  let parser = @lib.ParserM::{
+  let parser = @lib.Parser::{
     lexer,
     engine: generic_machine,
     context,

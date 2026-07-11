@@ -62,7 +62,7 @@ async fn main {
     )
 
     // Create parser
-    let parser = @lib.ParserM::{
+    let parser = @lib.Parser::{
       lexer,
       engine: generic_machine,
       context,
@@ -79,15 +79,15 @@ async fn main {
         break
       } // Safety limit
       match parser.parse_next() {
-        Some(Ok(quad)) => {
-          count += 1
-          println("[\{count}] \{quad}")
-          quads.push(quad)
-        }
         Some(Err(e)) => {
           count += 1
           println("[\{count}] Error: \{e}")
           break
+        }
+        Some(Ok(quad)) => {
+          count += 1
+          println("[\{count}] \{quad}")
+          quads.push(quad)
         }
         None => {
           println("End of file")

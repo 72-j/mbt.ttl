@@ -144,32 +144,38 @@ pub fn NQuadsRecognizer::new_parser(
     errors: [],
   }
   let context = RdfContext::NQuadsRecognizerContext(initial_context)
-  // let generic_machine = GenericStateMachine::{ machine, context, outputs: [] }
-  // ParserM::{ lexer, engine: generic_machine, context, errors: [] }
-  Parser::Parser(lexer, machine, context)
+  let generic_machine = GenericStateMachine::{
+    machine,
+    context,
+    outputs: [],
+    debug_logger,
+  }
+  Parser::{ lexer, engine: generic_machine, context, errors: [] }
+  // Parser::Parser(lexer, machine, context)
 }
 
 ///|
-fn NQuadsRecognizer::error(
-  self : NQuadsRecognizer,
-  context : NQuadsRecognizerContext,
-  results : Array[RdfOut],
-  token : LocatedTokenOrLineJump,
-  msg : String,
-) -> NQuadsRecognizer {
-  self.errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
-  let this = self.error_recovery_state()
-  match token {
-    LocatedTokenOrLineJump::LocatedN3Token(_) => this
-    LocatedTokenOrLineJump::LineJump(_) =>
-      this.recognize_next(
-        token,
-        RdfContext::NQuadsRecognizerContext(context),
-        results,
-      )
-    LocatedTokenOrLineJump::End => this
-  }
-}
+// fn NQuadsRecognizer::error(
+//   self : NQuadsRecognizer,
+//   _context : NQuadsRecognizerContext,
+//   _results : Array[RdfOut],
+//   _token : LocatedTokenOrLineJump,
+//   msg : String,
+// ) -> NQuadsRecognizer {
+//   self.errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
+//   self.error_recovery_state()
+
+//   // match token {
+//   //   LocatedTokenOrLineJump::LocatedN3Token(_) => this
+//   //   LocatedTokenOrLineJump::LineJump(_) =>
+//   //     this.recognize_next(
+//   //       token,
+//   //       RdfContext::NQuadsRecognizerContext(context),
+//   //       results,
+//   //     )
+//   //   LocatedTokenOrLineJump::End => this
+//   // }
+// }
 
 ///|
 fn NQuadsRecognizer::emit_quad(

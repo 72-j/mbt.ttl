@@ -74,14 +74,13 @@ pub trait TokenRecognizer {
 
 ///|
 pub trait RuleRecognizer {
-  // asContextEnum(Self) -> RdfContext 
   fn error_recovery_state(Self) -> Self
-  fn recognize_next(
-    Self,
-    token : LocatedTokenOrLineJump,
-    context : RdfContext,
-    results : Array[RdfOut],
-  ) -> Self
+  // fn recognize_next(
+  //   Self,
+  //   token : LocatedTokenOrLineJump,
+  //   context : RdfContext,
+  //   results : Array[RdfOut],
+  // ) -> Self
   fn recognize_end(Self, context : RdfContext, results : Array[RdfOut]) -> Unit
   fn lexer_options(context : RdfContext) -> LexerOptions?
   fn[DL : DebugLogger] debug_logger(Self, debug_logger : DL) -> Unit
