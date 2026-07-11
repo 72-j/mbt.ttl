@@ -10,7 +10,7 @@ fn TriGRecognizer::handle_triples_or_graph_m(
   self.debug_logger.info(
     "@@@ handling event: \{event} Token stack: \{@debug.to_string(self.stack)}",
   )
-  
+
   match event {
     // 1. 处理 IRI
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(iri), _)) => {

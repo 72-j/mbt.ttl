@@ -549,7 +549,6 @@ async test "ParserM_basic_single_line for TriG 3" {
 //     // #| {:s :p :%20 .}
 //     // #|{:s :p """abc""""@en .}
 
-
 //   let data = @utf8.encode(input).to_array()
 
 //   debug("Input: \{input}")

@@ -7,6 +7,7 @@ pub(all) enum N3Term {
   Variable(String)
 } derive(Eq, Debug, Hash)
 
+///|
 impl Show for N3Term with fn output(self : N3Term, f : &Logger) -> Unit {
   match self {
     N3Term::NamedNode(term) => f.write_object(term)
@@ -16,6 +17,7 @@ impl Show for N3Term with fn output(self : N3Term, f : &Logger) -> Unit {
     N3Term::Variable(term) => f.write_object(term)
   }
 }
+
 ///|
 fn N3Term::to_term(self : N3Term) -> Term {
   match self {
@@ -165,14 +167,7 @@ pub fn N3Parser::for_slice(
 
 ///|
 pub fn N3Parser::low_level(self : N3Parser) -> LowLevelN3Parser[RdfLexer] {
-  {
-    parser: N3Recognizer::new_parser(
-      [],
-      false,
-      self.base_iri,
-      self.prefixes,
-    ),
-  }
+  { parser: N3Recognizer::new_parser([], false, self.base_iri, self.prefixes) }
 }
 
 ///|
