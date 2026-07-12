@@ -37,12 +37,21 @@ jobs:
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
-      - name: install-windows
-        if: ${{ matrix.os == 'windows-latest' }}
+      - name: Setup MoonBit (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
-          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-
+          # 1. 绕过执行策略限制（更彻底）
+          powershell -ExecutionPolicy Bypass -Command "irm https://cli.moonbitlang.com/install/powershell.ps1 | iex"
+          
+          # 2. 将 moon 加入当前会话的 PATH
+          $moonPath = "$env:USERPROFILE\.moon\bin"
+          echo "$moonPath" | Out-File -FilePath $env:GITHUB_PATH -Append
+          $env:Path += ";$moonPath"
+          
+          # 3. 验证安装
+          moon --version
+          
       - name: Setup MSYS2 + MinGW + openssl (Windows)
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
