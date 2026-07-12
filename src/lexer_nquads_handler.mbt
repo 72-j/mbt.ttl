@@ -37,7 +37,9 @@ fn NQuadsRecognizer::handle_expect_predicate_m(
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  self.debug_logger.info("ExpectPredicate with token: \{token} Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "ExpectPredicate with token: \{token} Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(p), _)) => {
@@ -118,7 +120,6 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
   _ctx : NQuadsRecognizerContext,
   value : String,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
@@ -240,7 +241,9 @@ pub fn NQuadsRecognizer::handle_expect_literal_datatype_m(
   //   None => return Err(RuleRecognizerError::SyntaxError("Missing literal value for datatype", Range::default()))
   // }
 
-  self.debug_logger.info("ExpectLiteralDatatype with value: \{value} Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "ExpectLiteralDatatype with value: \{value} Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(d), _)) => {
@@ -423,7 +426,9 @@ pub fn NQuadsRecognizer::handle_after_quoted_triple_m(
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  self.debug_logger.info(" AfterQuotedTriple with token: \{token} Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    " AfterQuotedTriple with token: \{token} Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   let subject_opt = self.subjects.pop()
   let predicate_opt = self.predicates.pop()
@@ -469,7 +474,9 @@ pub fn NQuadsRecognizer::handle_recover_to_line_jump_m(
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  self.debug_logger.info("RecoverToLineJump with token: \{token} Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(
+    "RecoverToLineJump with token: \{token} Token stack: \{@debug.to_string(self.stack)}",
+  )
 
   match token {
     LocatedTokenOrLineJump::LineJump(_) =>

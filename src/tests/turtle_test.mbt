@@ -386,7 +386,6 @@ async test "Parser_basic_single_line for Turtle" {
   @debug.assert_eq(turtles.length(), 1)
 }
 
-
 // async test "Parser Turtle" {
 //   let input =
 // #|@prefix ex: <http://example.org/> .
@@ -479,34 +478,31 @@ async test "Parser_basic_single_line for Turtle" {
 //   @debug.assert_eq(turtles.length(), 1)
 // }
 
-
-
-
+///|
 async test "Parser Turtle" {
   let input =
-#|@prefix ex: <http://example.org/> .
-#|@prefix foaf: <http://xmlns.com/foaf/0.1/> .
-#|@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-#|
-#|ex:Alice
-#|    foaf:name "Alice" ;
-#|    foaf:mbox <mailto:alice@example.org> ;
-#|    foaf:age "30"^^xsd:integer ;
-#|    ex:department "Engineering" ;
-#|    ex:hireDate "2020-03-15"^^xsd:date .
-#|    
+    #|@prefix ex: <http://example.org/> .
+    #|@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    #|@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+    #|
+    #|ex:Alice
+    #|    foaf:name "Alice" ;
+    #|    foaf:mbox <mailto:alice@example.org> ;
+    #|    foaf:age "30"^^xsd:integer ;
+    #|    ex:department "Engineering" ;
+    #|    ex:hireDate "2020-03-15"^^xsd:date .
+    #|    
   let data = @utf8.encode(input)
 
-    let parser = @lib.TurtleParser::new()
+  let parser = @lib.TurtleParser::new()
   let low_level = parser.low_level(debug=true)
 
   low_level.extend_from_slice(data)
   low_level.end()
   debug("=== Single with Debug Parser Turtle Test ===")
-   match low_level.parse_next() {
+  match low_level.parse_next() {
     Some(Ok(t)) => debug("✓ Success (Unexpected): \{t.to_string()}")
     Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
     None => debug("⚠ None")
   }
 }
-

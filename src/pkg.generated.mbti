@@ -695,7 +695,15 @@ pub struct N3Quad {
   graph_name : GraphName
 } derive(Eq, Hash, @debug.Debug)
 
-type N3Recognizer
+pub(all) struct N3Recognizer {
+  stack : Array[N3State]
+  terms : Array[N3Term]
+  predicates : Array[Predicate]
+  contexts : Array[BlankNode]
+  mut debug_logger : &DebugLogger
+  last_range : Range
+  errors : Array[RuleRecognizerError]
+}
 pub fn N3Recognizer::add_error(Self, RuleRecognizerError) -> Self
 pub fn N3Recognizer::new_parser(Array[Byte], Bool, Iri?, Map[String, Iri], debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
 pub impl RuleRecognizer for N3Recognizer
@@ -704,7 +712,38 @@ pub impl StateMachine for N3Recognizer
 type N3RecognizerContext
 pub fn N3RecognizerContext::as_ctx(Self) -> RdfContext
 
-type N3State derive(Eq, Hash, @debug.Debug)
+pub(all) enum N3State {
+  N3Doc
+  N3DocExpectDot
+  BaseExpectIri
+  PrefixExpectPrefix
+  PrefixExpectIri(name~ : String)
+  Triples
+  TriplesMiddle
+  TriplesEnd
+  PredicateObjectList
+  PredicateObjectListEnd
+  PredicateObjectListPossibleContinuation
+  ObjectsList
+  ObjectsListEnd
+  Verb
+  AfterRegularVerb
+  AfterInvertedVerb
+  AfterVerbIs
+  Path
+  PathFollowUp
+  PathAfterIndicator(is_inverse~ : Bool)
+  PathItem
+  PropertyListMiddle
+  PropertyListEnd
+  IriPropertyList
+  CollectionBeginning
+  CollectionPossibleEnd
+  LiteralPossibleSuffix(value~ : String)
+  LiteralExpectDatatype(value~ : String)
+  FormulaContent
+  FormulaContentExpectDot
+} derive(Eq, Hash, @debug.Debug)
 pub fn N3State::to_str(Self) -> String
 
 pub(all) enum N3Term {
@@ -759,7 +798,6 @@ pub fn NQuadsRecognizer::handle_expect_literal_datatype_m(Self, LocatedTokenOrLi
 pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
 pub fn NQuadsRecognizer::handle_recover_to_line_jump_m(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
 pub fn NQuadsRecognizer::new_parser(Array[Byte], Bool, Bool, debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
-pub fn NQuadsRecognizer::process_transition_result(Self, NQuadsState, Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]) -> (Self, RdfState, RdfOut?)
 pub impl RuleRecognizer for NQuadsRecognizer
 pub impl StateMachine for NQuadsRecognizer
 
@@ -930,7 +968,6 @@ pub impl TokenRecognizer for RdfLexer
 
 pub(all) enum RdfLexerMode {
   NTriples
-  Turtle
   N3
 } derive(Eq)
 
@@ -1097,6 +1134,7 @@ pub struct TriGPrefixesIter {
 }
 
 pub(all) struct TriGRecognizer {
+  mut current_state : TriGState
   mut stack : Array[TriGState]
   cur_subject : Array[NamedOrBlankNodeRef]
   cur_predicate : Array[NamedNodeRef]
@@ -1109,7 +1147,6 @@ pub(all) struct TriGRecognizer {
   errors : Array[RuleRecognizerError]
 }
 pub fn TriGRecognizer::new_parser(Array[Byte], Bool, Bool, Bool, Iri?, Map[String, Iri], debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
-pub fn TriGRecognizer::process_transition_result(Self, TriGState, Result[(Self, TriGState, RdfOut?), RuleRecognizerError]) -> (Self, RdfState, RdfOut?)
 pub fn TriGRecognizer::replace_top(Array[TriGState], TriGState) -> Array[TriGState]
 pub fn TriGRecognizer::set_state(Self, TriGState) -> Self
 pub impl Show for TriGRecognizer
@@ -1226,7 +1263,7 @@ pub fn TurtleParser::for_async_reader(Self, &@io.Reader) -> AsyncReaderTurtlePar
 pub fn TurtleParser::for_reader(Self, &@io.Reader) -> ReaderTurtleParser[RdfLexer]
 pub fn TurtleParser::for_slice(Self, BytesView) -> SliceTurtleParser[TriGRecognizer]
 pub fn TurtleParser::lenient(Self) -> Self
-pub fn TurtleParser::low_level(Self) -> LowLevelTurtleParser[RdfLexer]
+pub fn TurtleParser::low_level(Self, debug? : Bool) -> LowLevelTurtleParser[RdfLexer]
 pub fn TurtleParser::new() -> Self
 pub fn TurtleParser::split_slice_for_parallel_parsing(Self, BytesView, Int) -> Array[SliceTurtleParser[TriGRecognizer]]
 pub fn TurtleParser::with_base_iri(Self, IriRef) -> Result[Self, IriError]

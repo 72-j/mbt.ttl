@@ -224,8 +224,7 @@ async test "ParserM_basic_single_line for TriG 2" {
   let logger = @lib.make_console_logger()
 
   let machine = @lib.TriGRecognizer::{
-        current_state: @lib.TriGState::TriGDoc,
-
+    current_state: @lib.TriGState::TriGDoc,
     stack: [@lib.TriGState::TriGDoc],
     cur_subject: [],
     cur_predicate: [],
@@ -309,8 +308,7 @@ async test "ParserM_basic_single_line for TriG 3" {
   let logger = @lib.make_console_logger()
 
   let machine = @lib.TriGRecognizer::{
-        current_state: @lib.TriGState::TriGDoc,
-
+    current_state: @lib.TriGState::TriGDoc,
     stack: [@lib.TriGState::TriGDoc],
     cur_subject: [],
     cur_predicate: [],

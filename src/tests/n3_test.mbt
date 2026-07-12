@@ -139,7 +139,7 @@ async test "n3 test for Parser" {
     terms: [],
     predicates: [],
     contexts: [],
-    debug_logger: logger, 
+    debug_logger: logger,
     last_range: @lib.Range::default(),
     errors: [],
   }

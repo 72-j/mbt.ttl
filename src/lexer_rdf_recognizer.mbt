@@ -521,7 +521,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
     b'0'..=b'9' | b'+' | b'-' =>
       RdfLexer::recognize_number(data, is_ending, location_pos)
     b'?' => self.recognize_variable(data, is_ending, location_pos)
-    
+
     // b':' if self.mode == RdfLexerMode::N3 =>
     // match self.recognize_optional_pn_local(data, is_ending, location_pos.offset + 1) {
     //   Some((consumed, Ok((localx, might_be_invalid_iri)))) => {

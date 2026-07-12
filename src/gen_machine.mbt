@@ -63,7 +63,9 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
 
       let outputs = self.outputs
       if output is Some(o) {
-        self.debug_logger.info("[Step 5] impl step: pushing output to engine: \{o}")
+        self.debug_logger.info(
+          "[Step 5] impl step: pushing output to engine: \{o}",
+        )
         outputs.push(o)
       }
 
