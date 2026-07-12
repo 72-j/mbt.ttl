@@ -1,7 +1,7 @@
 ///|
 pub(all) enum RdfLexerMode {
   NTriples
-  Turtle
+  // Turtle
   N3
 } derive(Eq)
 
@@ -208,6 +208,7 @@ fn RdfLexer::recognize_pname_or_keyword(
       Some(Ok((c, consumed))) =>
         if c == ':' {
           i += consumed
+          break;
         } else if i == 0 {
           // 第一个字符必须符合 base 规则
           if !RdfLexer::is_possible_pn_chars_base(c) {

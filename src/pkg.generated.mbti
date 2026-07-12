@@ -299,7 +299,7 @@ pub struct AsyncReaderIterator[TR, RR] {
   reader : &@io.Reader
   parser : Parser[TR, RR]
 }
-pub async fn[TR : TokenRecognizer, RR : RuleRecognizer] AsyncReaderIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
+pub async fn[TR : TokenRecognizer, RR : StateMachine + RuleRecognizer] AsyncReaderIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
 
 pub struct AsyncReaderN3Parser[RL] {
   inner : AsyncReaderIterator[RL, N3Recognizer]
@@ -411,7 +411,7 @@ pub(all) struct GenericStateMachine[M] {
   outputs : Array[RdfOut]
   mut debug_logger : &DebugLogger
 }
-pub fn[M] GenericStateMachine::GenericStateMachine(M, RdfContext, &DebugLogger) -> Self[M]
+pub fn[M] GenericStateMachine::GenericStateMachine(M, RdfContext, debug_logger? : &DebugLogger) -> Self[M]
 pub fn[M] GenericStateMachine::remove_first_output(Self[M]) -> Self[M]
 pub fn[M : StateMachine] GenericStateMachine::run(Self[M], Array[LocatedTokenOrLineJump]) -> Result[Array[RdfOut], RuleRecognizerError]?
 pub impl[M : StateMachine] StateMachine for GenericStateMachine[M]
@@ -434,11 +434,6 @@ pub(all) enum GraphNameRef {
   NamedNodeRef(NamedNodeRef)
   BlankNodeRef(BlankNodeRef)
 } derive(Eq, Hash, @debug.Debug)
-
-pub enum HandleResult {
-  Continue(N3Recognizer)
-  Stop(N3Recognizer)
-}
 
 type Iri derive(@debug.Debug)
 pub fn Iri::Iri(String) -> Self
@@ -702,7 +697,7 @@ pub struct N3Quad {
 
 type N3Recognizer
 pub fn N3Recognizer::add_error(Self, RuleRecognizerError) -> Self
-pub fn N3Recognizer::new_parser(Array[Byte], Bool, Bool, Iri?, Map[String, Iri], debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
+pub fn N3Recognizer::new_parser(Array[Byte], Bool, Iri?, Map[String, Iri], debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
 pub impl RuleRecognizer for N3Recognizer
 pub impl StateMachine for N3Recognizer
 
@@ -712,7 +707,7 @@ pub fn N3RecognizerContext::as_ctx(Self) -> RdfContext
 type N3State derive(Eq, Hash, @debug.Debug)
 pub fn N3State::to_str(Self) -> String
 
-pub enum N3Term {
+pub(all) enum N3Term {
   NamedNode(NamedNode)
   BlankNode(BlankNode)
   Literal(Literal)
@@ -860,33 +855,21 @@ pub fn NamedOrBlankNodeRef::into_owned(Self) -> NamedOrBlankNode
 pub fn NamedOrBlankNodeRef::is_blank_node(Self) -> Bool
 pub fn NamedOrBlankNodeRef::is_named_node(Self) -> Bool
 
-pub(all) struct Parser[TR, RR] {
-  lexer : Lexer[TR]
-  mut state : RR?
-  context : RdfContext
-  results : Array[RdfOut]
-  errors : Array[RuleRecognizerError]
-}
-pub fn[TR, RR] Parser::Parser(Lexer[TR], RR, RdfContext) -> Self[TR, RR]
-pub fn[TR, RR] Parser::end(Self[TR, RR]) -> Unit
-pub fn[TR, RR] Parser::extend_from_slice(Self[TR, RR], Bytes) -> Unit
-pub fn[TR, RR] Parser::for_async_reader(Self[TR, RR], &@io.Reader) -> AsyncReaderIterator[TR, RR]
-pub fn[TR, RR] Parser::for_reader(Self[TR, RR], &@io.Reader) -> ReaderIterator[TR, RR]
-pub fn[TR, RR] Parser::is_end(Self[TR, RR]) -> Bool
-pub fn[TR : TokenRecognizer, RR : RuleRecognizer] Parser::parse_next(Self[TR, RR]) -> Result[RdfOut, TurtleError]?
-
-pub(all) struct ParserM[TR, M] {
+pub(all) struct Parser[TR, M] {
   mut lexer : Lexer[TR]
   mut engine : GenericStateMachine[M]
   context : RdfContext
   errors : Array[RuleRecognizerError]
 }
-pub fn[TR, M] ParserM::ParserM(Lexer[TR], GenericStateMachine[M], RdfContext) -> Self[TR, M]
-pub fn[TR, M] ParserM::end(Self[TR, M]) -> Bool
-pub fn[TR, M : StateMachine] ParserM::is_end(Self[TR, M]) -> Bool
-pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] ParserM::parse_next(Self[TR, M]) -> Result[RdfOut, TurtleError]?
-pub fn[TR, M : StateMachine] ParserM::try_finish(Self[TR, M]) -> Result[RdfOut, TurtleError]?
-pub fn[TR, M] ParserM::try_output(Self[TR, M]) -> Result[RdfOut, TurtleError]?
+pub fn[TR, M] Parser::Parser(Lexer[TR], GenericStateMachine[M], RdfContext) -> Self[TR, M]
+pub fn[TR, M] Parser::end(Self[TR, M]) -> Unit
+pub fn[TR, RR] Parser::extend_from_slice(Self[TR, RR], Bytes) -> Unit
+pub fn[TR, RR] Parser::for_async_reader(Self[TR, RR], &@io.Reader) -> AsyncReaderIterator[TR, RR]
+pub fn[TR, RR] Parser::for_reader(Self[TR, RR], &@io.Reader) -> ReaderIterator[TR, RR]
+pub fn[TR, M : StateMachine] Parser::is_end(Self[TR, M]) -> Bool
+pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_next(Self[TR, M]) -> Result[RdfOut, TurtleError]?
+pub fn[TR, M : StateMachine] Parser::try_finish(Self[TR, M]) -> Result[RdfOut, TurtleError]?
+pub fn[TR, M] Parser::try_output(Self[TR, M]) -> Result[RdfOut, TurtleError]?
 
 pub(all) struct Position {
   mut line_start_buffer_offset : Int
@@ -947,6 +930,7 @@ pub impl TokenRecognizer for RdfLexer
 
 pub(all) enum RdfLexerMode {
   NTriples
+  Turtle
   N3
 } derive(Eq)
 
@@ -971,7 +955,7 @@ pub struct ReaderIterator[TR, RR] {
   reader : &@io.Reader
   parser : Parser[TR, RR]
 }
-pub async fn[RR : RuleRecognizer] ReaderIterator::next(Self[RdfLexer, RR]) -> Result[RdfOut, LexerError]?
+pub async fn[RR : RuleRecognizer + StateMachine] ReaderIterator::next(Self[RdfLexer, RR]) -> Result[RdfOut, LexerError]?
 
 pub struct ReaderN3Parser[RL] {
   inner : ReaderIterator[RL, N3Recognizer]
@@ -1017,7 +1001,7 @@ pub impl Show for SerializationError
 pub(all) struct SliceIterator[TR, RR] {
   parser : Parser[TR, RR]
 }
-pub fn[TR : TokenRecognizer, RR : RuleRecognizer] SliceIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
+pub fn[TR : TokenRecognizer, RR : RuleRecognizer + StateMachine] SliceIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
 
 pub struct SliceN3Parser[RL] {
   inner : SliceIterator[RdfLexer, RL]
@@ -1093,33 +1077,6 @@ pub(all) enum TermRef {
   TripleRef(TripleRef)
 } derive(Eq, Hash, @debug.Debug)
 pub fn TermRef::into_owned(Self) -> Term
-
-pub(all) enum Token {
-  Iri(String)
-  PnameLn(String)
-  PnameNs(String)
-  BlankNodeLabel(String)
-  StringLiteral1(String)
-  StringLiteral2(String)
-  StringLiteralLong1(String)
-  StringLiteralLong2(String)
-  LangDir(String)
-  Integer(String)
-  Decimal(String)
-  Double(String)
-  IntegerPositive(String)
-  DecimalPositive(String)
-  DoublePositive(String)
-  IntegerNegative(String)
-  DecimalNegative(String)
-  DoubleNegative(String)
-  Var1(String)
-  Var2(String)
-  Keyword(String)
-  Operator(String)
-  Error(String)
-} derive(Eq, @debug.Debug)
-pub impl Show for Token
 
 pub struct TriGParser {
   mut lenient : Bool
@@ -1359,7 +1316,6 @@ pub trait IriComponents {
 
 pub trait RuleRecognizer {
   fn error_recovery_state(Self) -> Self
-  fn recognize_next(Self, LocatedTokenOrLineJump, RdfContext, Array[RdfOut]) -> Self
   fn recognize_end(Self, RdfContext, Array[RdfOut]) -> Unit
   fn lexer_options(RdfContext) -> LexerOptions?
   fn[DL : DebugLogger] debug_logger(Self, DL) -> Unit

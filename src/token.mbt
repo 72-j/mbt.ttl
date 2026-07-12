@@ -54,7 +54,7 @@ pub impl Show for LocatedTokenOrLineJump with fn output(
 ) -> Unit {
   match self {
     LocatedTokenOrLineJump::LocatedN3Token(t) => t.output(f)
-    LocatedTokenOrLineJump::LineJump(pos) => pos.output(f)
+    LocatedTokenOrLineJump::LineJump(pos) => f.write_string("LineJump(\{pos})")
     LocatedTokenOrLineJump::End => f.write_string("EOF")
   }
 }

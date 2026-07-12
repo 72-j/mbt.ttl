@@ -1,5 +1,5 @@
 ///|
-struct N3Recognizer {
+pub(all) struct N3Recognizer {
   stack : Array[N3State]
   terms : Array[N3Term]
   predicates : Array[Predicate]
@@ -73,7 +73,7 @@ pub fn N3Recognizer::new_parser(
   debug_logger? : &DebugLogger = make_mute_logger(),
 ) -> Parser[RdfLexer, N3Recognizer] {
   let lexer = Lexer::Lexer(
-    RdfLexer::RdfLexer(RdfLexerMode::Turtle, false),
+    RdfLexer::RdfLexer(RdfLexerMode::N3, false),
     data,
     is_ending,
     MIN_BUFFER_SIZE,
@@ -135,7 +135,7 @@ fn N3Recognizer::quad(
 }
 
 ///|
-enum N3State {
+pub(all) enum N3State {
   N3Doc
   N3DocExpectDot
   BaseExpectIri
@@ -180,7 +180,7 @@ impl Show for N3State with fn output(self, logger : &Logger) -> Unit {
     N3State::N3DocExpectDot => logger.write("N3DocExpectDot")
     N3State::BaseExpectIri => logger.write("BaseExpectIri")
     N3State::PrefixExpectPrefix => logger.write("PrefixExpectPrefix")
-    N3State::PrefixExpectIri(name~) => logger.write("PrefixExpectIri(\{name})")
+    N3State::PrefixExpectIri(name~) => logger.write("PrefixExpectIri(:\{name})")
     N3State::Triples => logger.write("Triples")
     N3State::TriplesMiddle => logger.write("TriplesMiddle")
     N3State::TriplesEnd => logger.write("TriplesEnd")

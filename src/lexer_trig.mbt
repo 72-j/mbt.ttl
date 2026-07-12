@@ -1,5 +1,6 @@
 ///|
 pub(all) struct TriGRecognizer {
+  mut current_state : TriGState // ✅ 新增：显式当前状态
   mut stack : Array[TriGState]
   cur_subject : Array[NamedOrBlankNodeRef]
   cur_predicate : Array[NamedNodeRef]
@@ -16,7 +17,7 @@ pub(all) struct TriGRecognizer {
 ///|
 pub impl Show for TriGRecognizer with fn output(self, logger : &Logger) -> Unit {
   logger.write("TriGRecognizer:\n")
-
+  logger.write("  Current State: {self.current_state}\n")
   // 1. 打印栈状态 (增加分隔符和更全的匹配)
   logger.write("  Stack: [")
   for i = 0; i < self.stack.length(); i = i + 1 {
@@ -188,7 +189,7 @@ pub fn TriGRecognizer::new_parser(
   debug_logger? : &DebugLogger = make_mute_logger(),
 ) -> Parser[RdfLexer, TriGRecognizer] {
   let lexer = Lexer::Lexer(
-    RdfLexer::RdfLexer(RdfLexerMode::Turtle, lenient),
+    RdfLexer::RdfLexer(RdfLexerMode::N3, lenient),
     data,
     is_ending,
     MIN_BUFFER_SIZE,
@@ -199,6 +200,7 @@ pub fn TriGRecognizer::new_parser(
   )
 
   let machine = TriGRecognizer::{
+    current_state: TriGState::TriGDoc,
     stack: [TriGState::TriGDoc],
     cur_subject: [],
     cur_predicate: [],
@@ -366,7 +368,7 @@ pub impl Show for TriGState with fn output(self, logger : &Logger) -> Unit {
     TriGState::BaseExpectIri => logger.write("BaseExpectIri")
     TriGState::PrefixExpectPrefix => logger.write("PrefixExpectPrefix")
     TriGState::PrefixExpectIri(name~) =>
-      logger.write("PrefixExpectIri(\{name})")
+      logger.write("PrefixExpectIri(:\{name})")
     TriGState::VersionExpectVersion => logger.write("VersionExpectVersion")
     TriGState::WrappedGraph => logger.write("WrappedGraph")
     TriGState::GraphName => logger.write("GraphName")
@@ -440,9 +442,10 @@ pub fn TriGRecognizer::set_state(
 ///|
 /// 重置状态到 TriGDoc
 fn TriGRecognizer::reset_to_tri_gdoc(self : TriGRecognizer) -> TriGRecognizer {
-  let new_stack = []
-  new_stack.push(TriGState::TriGDoc)
-  self.stack = new_stack
+  // let new_stack = []
+  // new_stack.push(TriGState::TriGDoc)
+  // self.stack = new_stack
+  self.current_state = TriGState::TriGDoc
   self.cur_subject.clear()
   self.cur_predicate.clear()
   self.cur_object.clear()
@@ -451,7 +454,7 @@ fn TriGRecognizer::reset_to_tri_gdoc(self : TriGRecognizer) -> TriGRecognizer {
 }
 
 ///|
-fn TriGRecognizer::make_current_quad(self : TriGRecognizer) -> RdfOut {
+fn TriGRecognizer::emit_current_quad(self : TriGRecognizer) -> RdfOut {
   // 1. 获取主语、谓词、对象
   let subject = match self.cur_subject.pop() {
     Some(s) => s

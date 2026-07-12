@@ -125,16 +125,29 @@ pub fn TurtleParser::split_slice_for_parallel_parsing(
 ///|
 pub fn TurtleParser::low_level(
   self : TurtleParser,
+  debug? : Bool = false,
 ) -> LowLevelTurtleParser[RdfLexer] {
-  {
-    parser: TriGRecognizer::new_parser(
+  if debug {
+    let parser = TriGRecognizer::new_parser(
       [],
       false,
-      false,
+      false, // 补充缺失的第2个参数，假设默认为 false
       self.lenient,
       self.base_iri,
       self.prefixes,
-    ),
+      debug_logger=make_console_logger(),
+    )
+    { parser, }
+  } else {
+    let parser = TriGRecognizer::new_parser(
+      [],
+      false,
+      false, // 补充缺失的第2个参数，假设默认为 false
+      self.lenient,
+      self.base_iri,
+      self.prefixes,
+    )
+    { parser, }
   }
 }
 

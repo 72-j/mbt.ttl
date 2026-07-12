@@ -74,7 +74,7 @@ pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_ne
         Err(
           TurtleError::InvalidToken(
             self.lexer.last_token_start(),
-            "\{self.lexer.last_token_source()}\{e.to_string()} - TOKEN is not allowed here",
+            "\{self.lexer.last_token_source()}\{e.to_string()}",
           ),
         ),
       )
@@ -89,7 +89,7 @@ pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_ne
     match self.lexer.parse_next(M::lexer_options(self.context)) {
       Some(Ok(located_token)) => {
         let previous_state = self.engine.current_state()
-        self.engine.debug_logger.info("Parser: token = \{located_token}")
+        self.engine.debug_logger.info("Parser::parse_token = \{located_token}")
 
         // ✅ 驱动状态机
         self.engine = self.engine.step(located_token)

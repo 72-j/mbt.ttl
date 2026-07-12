@@ -48,7 +48,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   event : Event,
 ) -> GenericStateMachine[M] {
   self.debug_logger.info(
-    "event = \{event}, step: state_before = [\{self.current_state()}]",
+    "[impl step] event = \{event}, step: state_before = [\{self.current_state()}]",
   )
 
   let current_state = self.machine.current_state() // ← 从 machine 获取
@@ -58,12 +58,12 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   match result {
     Ok((new_machine, new_state, output)) => {
       self.debug_logger.info(
-        "[step] new_state = \{new_state.to_string()}, output received = \{@debug.to_string(output)}",
+        "[impl step] new_state = \{new_state.to_string()}, output received = \{@debug.to_string(output)}",
       )
 
       let outputs = self.outputs
       if output is Some(o) {
-        self.debug_logger.info("step: pushing output to engine: \{o}")
+        self.debug_logger.info("[Step 5] impl step: pushing output to engine: \{o}")
         outputs.push(o)
       }
 

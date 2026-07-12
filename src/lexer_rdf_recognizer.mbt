@@ -521,6 +521,31 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
     b'0'..=b'9' | b'+' | b'-' =>
       RdfLexer::recognize_number(data, is_ending, location_pos)
     b'?' => self.recognize_variable(data, is_ending, location_pos)
+    
+    // b':' if self.mode == RdfLexerMode::N3 =>
+    // match self.recognize_optional_pn_local(data, is_ending, location_pos.offset + 1) {
+    //   Some((consumed, Ok((localx, might_be_invalid_iri)))) => {
+    //     // 需要有 prefix...
+    //     // 如果 context 中保存了 pn_prefix，可以使用它
+    //     Some((
+    //       consumed + 1,
+    //       Ok(
+    //         LocatedTokenOrLineJump::LocatedN3Token(
+    //           LocatedN3Token(
+    //             // 需要知道 prefix...可能需要在函数中传递
+    //             N3Token::PrefixedName(
+    //               prefix="",
+    //               localx~,
+    //               might_be_invalid_iri~,
+    //             ),
+    //             make_range(location_pos.offset, consumed + 1),
+    //           ),
+    //         ),
+    //       ),
+    //     ))
+    //   }
+    //   _ => None
+    // }  
     _ => self.recognize_pname_or_keyword(data, is_ending, location_pos)
   }
 }

@@ -210,11 +210,11 @@ fn NQuadsRecognizer::emit_quad(
 }
 
 ///|
-fn NQuadsRecognizer::make_current_quad(
+fn NQuadsRecognizer::emit_current_quad(
   self : NQuadsRecognizer,
   graph_name? : GraphName,
 ) -> RdfOut? {
-  self.debug_logger.info("make_current_quad called")
+  self.debug_logger.info("emit_current_quad called")
   self.debug_logger.info("  subjects length: \{self.subjects.length()}")
   self.debug_logger.info("  predicates length: \{self.predicates.length()}")
   self.debug_logger.info("  objects length: \{self.objects.length()}")

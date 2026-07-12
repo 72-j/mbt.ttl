@@ -45,7 +45,8 @@ pub impl StateMachine for TriGRecognizer with fn error_recovery_statemachine(
 
 ///|
 pub impl StateMachine for TriGRecognizer with fn current_state(self) -> RdfState {
-  self.stack.last().unwrap_or(TriGState::TriGDoc).as_state_enum()
+  // self.stack.last().unwrap_or(TriGState::TriGDoc).as_state_enum()
+  self.current_state.as_state_enum()
 }
 
 ///|
@@ -57,13 +58,13 @@ pub impl StateMachine for TriGRecognizer with fn step(self, event : Event) -> Tr
     self.context(),
   )
   match result {
-    Ok((new_machine, new_state, _output)) => {
+    Ok((new_machine, _new_state, _output)) => {
       let new_context = new_machine.context()
       let new_machine = new_machine.set_context(new_context)
-      let new_machine = new_machine.set_current_state(new_state)
+      // let new_machine = new_machine.set_current_state(new_state)
       new_machine
     }
-    Err(_e) => abort("Error")
+    Err(_e) => abort("Setp Error")
   }
 }
 
@@ -80,7 +81,40 @@ pub impl StateMachine for TriGRecognizer with fn transition(
   state : RdfState,
   event : Event,
   context : RdfContext,
-) -> TransitionResult[TriGRecognizer, RdfState, RdfOut] { // 1. 修正返回类型为 Result
+) -> TransitionResult[TriGRecognizer, RdfState, RdfOut] {
+  match event {
+    LocatedTokenOrLineJump::LineJump(_) =>
+      // 换行符不影响状态转换，直接保持当前状态
+      return Ok((self, state, None))
+    LocatedTokenOrLineJump::End => {
+      // 文件结束时的处理
+      // 检查是否在可接受状态
+      match state {
+        RdfState::TriGState(_s) => ()
+        _ =>
+          return Err(
+            RuleRecognizerError::SyntaxError(
+              "Invalid state type for TriGRecognizer at end of input",
+              self.last_range,
+            ),
+          )
+      }
+
+      // 如果栈为空，说明已正常结束
+      if self.stack.length() == 0 {
+        return Ok((self, state, None))
+      }
+
+      // 否则检查是否还有未处理的结束标记（如缺失的 .）
+      return Err(
+        RuleRecognizerError::SyntaxError(
+          "Unexpected end of input (possibly missing '.')",
+          self.last_range,
+        ),
+      )
+    }
+    _ => () // 继续正常处理
+  }
   // 解包 RdfState
   let trig_state = match state {
     RdfState::TriGState(s) => s
@@ -93,7 +127,7 @@ pub impl StateMachine for TriGRecognizer with fn transition(
       ) // 2. 错误返回 Err
   }
 
-  self.debug_logger.info("TriG transition: \{trig_state}, Event: \{event}")
+  self.debug_logger.info("[impl transition] \{trig_state}, Token: \{event}")
 
   let result = match trig_state {
     TriGState::TriGDoc => self.handle_trig_doc_m(event, context)
@@ -196,11 +230,7 @@ pub impl StateMachine for TriGRecognizer with fn transition(
     }
   }
   // 将元组包装为 Ok
-  match result {
-    Ok((new_self, new_state, output)) =>
-      Ok((new_self, new_state.as_state_enum(), output))
-    Err(e) => Err(e)
-  }
+  TriGRecognizer::process_transition_result(result)
 }
 
 ///|
@@ -235,29 +265,24 @@ pub impl StateMachine for TriGRecognizer with fn[ST : StateWrapper] set_current_
 ) -> TriGRecognizer {
   let state = ST::as_state_enum(state)
   match state {
-    RdfState::TriGState(s) => {
+    RdfState::TriGState(s) =>
       // 返回一个新的 TriGRecognizer 实例，其中 stack 被更新
 
-      let new_stack = self.stack
-      new_stack.push(s)
-      { ..self, stack: new_stack }
-    }
+      // let new_stack = self.stack
+      // new_stack.push(s)
+      { ..self, current_state: s }
     _ => self
   }
 }
 
 ///|
-pub fn TriGRecognizer::process_transition_result(
-  self : TriGRecognizer,
-  current_state : TriGState,
+fn TriGRecognizer::process_transition_result(
   result : TransitionResult[TriGRecognizer, TriGState, RdfOut],
-) -> (TriGRecognizer, RdfState, RdfOut?) {
+) -> TransitionResult[TriGRecognizer, RdfState, RdfOut] {
   match result {
-    Ok((self, new_state, output)) => (self, new_state.as_state_enum(), output)
-    Err(e) => {
-      let new_self = self.add_error(e)
-      (new_self, current_state.as_state_enum(), None)
-    }
+    Ok((new_self, new_state, output)) =>
+      Ok((new_self, new_state.as_state_enum(), output))
+    Err(e) => Err(e)
   }
 }
 

@@ -37,8 +37,7 @@ fn NQuadsRecognizer::handle_expect_predicate_m(
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  self.debug_logger.info("Entering ExpectPredicate with token: \{token}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info("ExpectPredicate with token: \{token} Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(p), _)) => {
@@ -120,7 +119,6 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
   value : String,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
 
-  // self.debug_logger.info("Entering ExpectLiteralAnnotation... value: \{value}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
@@ -199,7 +197,7 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
             LiteralRef::new_simple_literal(value),
           )
           new_self.objects.push(literal)
-          let stmt = new_self.make_current_quad()
+          let stmt = new_self.emit_current_quad()
           let _ = new_self.error_recovery_state()
           Ok((new_self, NQuadsState::ExpectLineJump, stmt))
         }
@@ -242,8 +240,7 @@ pub fn NQuadsRecognizer::handle_expect_literal_datatype_m(
   //   None => return Err(RuleRecognizerError::SyntaxError("Missing literal value for datatype", Range::default()))
   // }
 
-  self.debug_logger.info("Entering ExpectLiteralDatatype with value: \{value}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info("ExpectLiteralDatatype with value: \{value} Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(d), _)) => {
@@ -293,7 +290,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
   if ctx.with_graph_name {
     match token {
       LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(g), _)) => {
-        let stmt = self.make_current_quad(
+        let stmt = self.emit_current_quad(
           graph_name=GraphNameRef::new_unchecked(g).into_owned(),
         )
         let new_self = self
@@ -303,7 +300,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
       LocatedTokenOrLineJump::LocatedN3Token(
         LocatedN3Token(N3Token::BlankNodeLabel(_g), _)
       ) => {
-        let stmt = self.make_current_quad()
+        let stmt = self.emit_current_quad()
         let new_self = self
         let _ = new_self.error_recovery_state()
         return Ok((new_self, NQuadsState::ExpectDot, stmt))
@@ -317,7 +314,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("."), _)
     ) => {
-      let stmt = self.make_current_quad()
+      let stmt = self.emit_current_quad()
       let new_self = self
       let _ = new_self.error_recovery_state()
       return Ok((new_self, NQuadsState::ExpectLineJump, stmt))
@@ -345,7 +342,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
   }
 
   // 栈为空且没有特殊 token，返回 ExpectSubject 并输出 quad
-  let stmt = self.make_current_quad()
+  let stmt = self.emit_current_quad()
   let new_self = self
   let _ = new_self.error_recovery_state()
   Ok((new_self, NQuadsState::ExpectSubject, stmt))
@@ -367,7 +364,7 @@ fn NQuadsRecognizer::handle_expect_dot_m(
     LocatedTokenOrLineJump::LocatedN3Token(
       LocatedN3Token(N3Token::Punctuation("."), _)
     ) => {
-      let stmt = self.make_current_quad()
+      let stmt = self.emit_current_quad()
       Ok((self, NQuadsState::ExpectLineJump, stmt))
     }
     LocatedTokenOrLineJump::LocatedN3Token(t) =>
@@ -426,8 +423,7 @@ pub fn NQuadsRecognizer::handle_after_quoted_triple_m(
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  self.debug_logger.info("Entering AfterQuotedTriple with token: \{token}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info(" AfterQuotedTriple with token: \{token} Token stack: \{@debug.to_string(self.stack)}")
 
   let subject_opt = self.subjects.pop()
   let predicate_opt = self.predicates.pop()
@@ -473,8 +469,7 @@ pub fn NQuadsRecognizer::handle_recover_to_line_jump_m(
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
-  self.debug_logger.info("Entering RecoverToLineJump with token: \{token}")
-  self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
+  self.debug_logger.info("RecoverToLineJump with token: \{token} Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
     LocatedTokenOrLineJump::LineJump(_) =>

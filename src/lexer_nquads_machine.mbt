@@ -112,11 +112,7 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
       Ok((new_self, nquads_state, None))
     }
   }
-  match result {
-    Ok((new_self, new_state, output)) =>
-      Ok((new_self, new_state.as_state_enum(), output))
-    Err(e) => Err(e)
-  }
+  NQuadsRecognizer::process_transition_result(result)
 }
 
 ///|
@@ -175,17 +171,13 @@ pub impl StateMachine for NQuadsRecognizer with fn[ST : StateWrapper] set_curren
 // 辅助方法：统一处理 TransitionResult 并返回更新后的 Self
 
 ///|
-pub fn NQuadsRecognizer::process_transition_result(
-  self : NQuadsRecognizer,
-  current_state : NQuadsState,
+fn NQuadsRecognizer::process_transition_result(
   result : TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut],
-) -> (NQuadsRecognizer, RdfState, RdfOut?) {
+) -> TransitionResult[NQuadsRecognizer, RdfState, RdfOut] {
   match result {
-    Ok((self, new_state, output)) => (self, new_state.as_state_enum(), output)
-    Err(e) => {
-      let new_self = self.add_error(e)
-      (new_self, current_state.as_state_enum(), None)
-    }
+    Ok((new_self, new_state, output)) =>
+      Ok((new_self, new_state.as_state_enum(), output))
+    Err(e) => Err(e)
   }
 }
 

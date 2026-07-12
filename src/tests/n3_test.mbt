@@ -116,14 +116,14 @@ async test "debug_n3_nested_formula" {
 
 ///|
 async test "n3 test for Parser" {
-  let input = "<http://example.org/s> <http://example.org/p> { <http://example.org/s2> <http://example.org/p2> <http://example.org/o2> } ."
+  let input = ":Alice :knows :Bob ."
   let data = @utf8.encode(input).to_array()
 
   // let prefixes = Map([])
   // let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::Turtle, false),
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::N3, false),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -134,16 +134,12 @@ async test "n3 test for Parser" {
   )
 
   let logger = @lib.make_console_logger()
-  let machine = @lib.TriGRecognizer::{
-    stack: [@lib.TriGState::TriGDoc],
-    cur_subject: [],
-    cur_predicate: [],
-    cur_object: [],
-    cur_graph: @lib.GraphName::DefaultGraph.as_ref(),
-    cur_reifier: [],
-    lenient: true,
-    debug_logger: logger, // <-- 添加这一行，具体值需根据 TriGRecognizer 定义调整，可能是 None 或 DebugLogger::default()
-    // in_collection: false,
+  let machine = @lib.N3Recognizer::{
+    stack: [@lib.N3State::N3Doc],
+    terms: [],
+    predicates: [],
+    contexts: [],
+    debug_logger: logger, 
     last_range: @lib.Range::default(),
     errors: [],
   }

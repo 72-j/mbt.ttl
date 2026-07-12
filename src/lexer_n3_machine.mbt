@@ -111,11 +111,7 @@ pub impl StateMachine for N3Recognizer with fn transition(
     N3State::FormulaContentExpectDot =>
       self.handle_formula_content_expect_dot_m(event, context)
   }
-  match result {
-    Ok((new_self, new_state, output)) =>
-      Ok((new_self, new_state.as_state_enum(), output))
-    Err(e) => Err(e)
-  }
+  N3Recognizer::process_transition_result(result)
 }
 
 ///|
@@ -170,4 +166,15 @@ pub fn N3Recognizer::add_error(
   let new_errors = self.errors
   new_errors.push(err)
   { ..self, errors: new_errors }
+}
+
+///|
+fn N3Recognizer::process_transition_result(
+  result : TransitionResult[N3Recognizer, N3State, RdfOut],
+) -> TransitionResult[N3Recognizer, RdfState, RdfOut] {
+  match result {
+    Ok((new_self, new_state, output)) =>
+      Ok((new_self, new_state.as_state_enum(), output))
+    Err(e) => Err(e)
+  }
 }
