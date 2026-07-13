@@ -386,100 +386,102 @@ async test "Parser_basic_single_line for Turtle" {
   @debug.assert_eq(turtles.length(), 1)
 }
 
-// async test "Parser Turtle" {
-//   let input =
-// #|@prefix ex: <http://example.org/> .
-// #|@prefix foaf: <http://xmlns.com/foaf/0.1/> .
-// #|@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-// #|
-// #|ex:Alice
-// #|    foaf:name "Alice" ;
-// #|    foaf:mbox <mailto:alice@example.org> ;
-// #|    foaf:age "30"^^xsd:integer ;
-// #|    ex:department "Engineering" ;
-// #|    ex:hireDate "2020-03-15"^^xsd:date .
-// #|    
-//   let data = @utf8.encode(input).to_array()
-
-//   let lexer = @lib.Lexer::Lexer(
-//     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
-//     data,
-//     true,
-//     @lib.MIN_BUFFER_SIZE,
-//     @lib.MAX_BUFFER_SIZE,
-//     Some(b"#"),
-//     0,
-//     0,
-//   )
-
-//   let logger = @lib.make_console_logger()
-
-//   let machine = @lib.TriGRecognizer::{
-//     stack: [@lib.TriGState::TriGDoc],
-//     cur_subject: [],
-//     cur_predicate: [],
-//     cur_object: [],
-//     cur_graph: @lib.GraphName::DefaultGraph.as_ref(),
-//     cur_reifier: [],
-//     lenient: true,
-//     debug_logger: logger, // <-- 添加这一行，具体值需根据 TriGRecognizer 定义调整，可能是 None 或 DebugLogger::default()
-//     // in_collection: false,
-//     last_range: @lib.Range::default(),
-//     errors: [],
-//   }
-
-//   let context = @lib.RdfContext::TriGRecognizerContext(@lib.TriGRecognizerContext::{
-//     with_graph_name: false,
-//     lexer_options: { base_iri: None },
-//     prefixes: Map([]),
-//   })
-
-//   let generic_machine = @lib.GenericStateMachine::{
-//     machine,
-//     context,
-//     outputs: [],
-//     debug_logger: logger,
-//   }
-//   let parser = @lib.Parser::{
-//     lexer,
-//     engine: generic_machine,
-//     context,
-//     errors: [],
-//   }
-//   parser.end()
-
-//   debug("=== Single Line Test ===")
-//   let turtles = []
-//   let mut count = 0
-
-//   for ;; {
-//     if count >= 20 {
-//       break
-//     }
-//     match parser.parse_next() {
-//       Some(Ok(turtle)) => {
-//         count += 1
-//         debug("[\{count}] \{turtle}")
-//         turtles.push(turtle)
-//       }
-//       Some(Err(e)) => {
-//         count += 1
-//         debug("[\{count}] \{e}")
-//         break
-//       }
-//       None => {
-//         debug("End")
-//         break
-//       }
-//     }
-//   }
-
-//   debug("Total: \{turtles.length()}")
-//   @debug.assert_eq(turtles.length(), 1)
-// }
-
 ///|
 async test "Parser Turtle" {
+  let input =
+    #|@prefix ex: <http://example.org/> .
+    #|@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    #|@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+    #|
+    #|ex:Alice
+    #|    foaf:name "Alice" ;
+    #|    foaf:mbox <mailto:alice@example.org> ;
+    #|    foaf:age "30"^^xsd:integer ;
+    #|    ex:department "Engineering" ;
+    #|    ex:hireDate "2020-03-15"^^xsd:date .
+    #|    
+  let data = @utf8.encode(input).to_array()
+
+  let lexer = @lib.Lexer::Lexer(
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    data,
+    true,
+    @lib.MIN_BUFFER_SIZE,
+    @lib.MAX_BUFFER_SIZE,
+    Some(b"#"),
+    0,
+    0,
+  )
+
+  let logger = @lib.make_console_logger()
+
+  let machine = @lib.TriGRecognizer::{
+    current_state: @lib.TriGState::TriGDoc,
+    stack: [@lib.TriGState::TriGDoc],
+    cur_subject: [],
+    cur_predicate: [],
+    cur_object: [],
+    cur_graph: @lib.GraphName::DefaultGraph.as_ref(),
+    cur_reifier: [],
+    lenient: true,
+    debug_logger: logger, // <-- 添加这一行，具体值需根据 TriGRecognizer 定义调整，可能是 None 或 DebugLogger::default()
+    // in_collection: false,
+    last_range: @lib.Range::default(),
+    errors: [],
+  }
+
+  let context = @lib.RdfContext::TriGRecognizerContext(@lib.TriGRecognizerContext::{
+    with_graph_name: false,
+    lexer_options: { base_iri: None },
+    prefixes: Map([]),
+  })
+
+  let generic_machine = @lib.GenericStateMachine::{
+    machine,
+    context,
+    outputs: [],
+    debug_logger: logger,
+  }
+  let parser = @lib.Parser::{
+    lexer,
+    engine: generic_machine,
+    context,
+    errors: [],
+  }
+  parser.end()
+
+  debug("=== Single Line Test ===")
+  let turtles = []
+  let mut count = 0
+
+  for ;; {
+    if count >= 20 {
+      break
+    }
+    match parser.parse_next() {
+      Some(Ok(turtle)) => {
+        count += 1
+        debug("[\{count}] \{turtle}")
+        turtles.push(turtle)
+      }
+      Some(Err(e)) => {
+        count += 1
+        debug("[\{count}] \{e}")
+        break
+      }
+      None => {
+        debug("End")
+        break
+      }
+    }
+  }
+
+  debug("Total: \{turtles.length()}")
+  @debug.assert_eq(turtles.length(), 5)
+}
+
+///|
+async test "Parser Turtle Test" {
   let input =
     #|@prefix ex: <http://example.org/> .
     #|@prefix foaf: <http://xmlns.com/foaf/0.1/> .
@@ -499,10 +501,22 @@ async test "Parser Turtle" {
 
   low_level.extend_from_slice(data)
   low_level.end()
-  debug("=== Single with Debug Parser Turtle Test ===")
-  match low_level.parse_next() {
-    Some(Ok(t)) => debug("✓ Success (Unexpected): \{t.to_string()}")
-    Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
-    None => debug("⚠ None")
+
+  let turtles = []
+  for ;; {
+    match low_level.parse_next() {
+      Some(Ok(t)) => turtles.push(t)
+      Some(Err(e)) => {
+        debug("✗ Error: \{e}")
+        break
+      }
+      None => break
+    }
+  }
+
+  debug("=== Parser Turtle Test ===")
+  debug("Parsed \{turtles.length()} triples:")
+  for i, t in turtles {
+    debug("  [\{i}] \{t}")
   }
 }

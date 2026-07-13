@@ -456,17 +456,18 @@ fn TriGRecognizer::reset_to_tri_gdoc(self : TriGRecognizer) -> TriGRecognizer {
 ///|
 fn TriGRecognizer::emit_current_quad(self : TriGRecognizer) -> RdfOut {
   // 1. 获取主语、谓词、对象
-  let subject = match self.cur_subject.pop() {
+  // 注意：subject 需要保留用于多个 predicate-object 对，所以用 last() 而不是 pop()
+  let subject = match self.cur_subject.last() {
     Some(s) => s
     None => abort("Subject stack is empty when making quad")
   }
 
-  let predicate = match self.cur_predicate.pop() {
+  let predicate = match self.cur_predicate.last() {
     Some(p) => p
     None => abort("Predicate stack is empty when making quad")
   }
 
-  let object = match self.cur_object.pop() {
+  let object = match self.cur_object.last() {
     Some(o) => o
     None => abort("Object stack is empty when making quad")
   }

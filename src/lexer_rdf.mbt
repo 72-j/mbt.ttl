@@ -1,4 +1,14 @@
 ///|
+priv enum PnameParseState {
+  /// 解析前缀的第一个字符（必须是 pn_chars_base）
+  FirstChar
+  /// 解析前缀的后续字符（可以是 pn_chars 或 '.'）
+  Rest
+  /// 找到冒号，解析完成，准备进入本地部分
+  Done
+}
+
+///|
 pub(all) enum RdfLexerMode {
   NTriples
   // Turtle
@@ -194,165 +204,236 @@ fn RdfLexer::parse_iri(
 }
 
 ///|
+fn parse_pname_prefix(
+  data : ArrayView[Byte],
+  start_offset : Int,
+) -> (Int, PnameParseState, TokenRecognizerError?) {
+  // 尝试跳过末尾的点（用于 PlainKeyword 回退）
+
+  let mut i = 0
+  let mut state = PnameParseState::FirstChar
+
+  for ;; {
+    match RdfLexer::recognize_unicode_char(data[i:], i) {
+      Some(Ok((c, consumed))) =>
+        match state {
+          PnameParseState::FirstChar =>
+            if c == ':' {
+              // 冒号立即出现：空前缀
+              return (consumed, PnameParseState::Done, None)
+            } else if !RdfLexer::is_possible_pn_chars_base(c) {
+              // 第一个字符无效
+              return (
+                consumed,
+                state,
+                Some(
+                  TokenRecognizerError::InvalidErrMessage(
+                    data[0:consumed],
+                    Range(start_offset, start_offset + consumed),
+                    "'\{c}' is not allowed at the beginning of a prefix name",
+                  ),
+                ),
+              )
+            } else {
+              i += consumed
+              state = PnameParseState::Rest
+            }
+          PnameParseState::Rest =>
+            if c == ':' {
+              // 找到冒号，前缀解析完成
+              i += consumed
+              return (i, PnameParseState::Done, None)
+            } else if RdfLexer::is_possible_pn_chars(c) || c == '.' {
+              // 继续解析前缀
+              i += consumed
+            } else {
+              // 遇到无效字符，需要回退末尾的点作为 PlainKeyword
+              i = strip_trailing_dots(data[:i], i)
+              return (i, state, None)
+            }
+          PnameParseState::Done =>
+            // 不应该到达这里
+            abort("Unexpected state: Done")
+        }
+      Some(Err(e)) => return (e.range().end - start_offset, state, Some(e))
+      None => return (i, state, None)
+    }
+  }
+}
+
+///|
+fn build_plain_keyword_result(
+  data : ArrayView[Byte],
+  consumed : Int,
+  start_offset : Int,
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError]) {
+  let range = Range(start_offset, start_offset + consumed)
+  (
+    consumed,
+    str_from_utf8(data[:consumed], range).map(fn(s) {
+      LocatedTokenOrLineJump::LocatedN3Token(
+        LocatedN3Token(N3Token::PlainKeyword(s), range),
+      )
+    }),
+  )
+}
+
+///|
+fn build_unexpected_end_result(
+  data : ArrayView[Byte],
+  start_offset : Int,
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError]) {
+  if data.length() == 0 {
+    (
+      1,
+      Err(
+        TokenRecognizerError::UnexpectedEndOfInput(
+          data[0:1],
+          Range(start_offset, start_offset + 1),
+        ),
+      ),
+    )
+  } else {
+    (
+      data.length(),
+      Err(
+        TokenRecognizerError::UnexpectedEndOfInput(
+          data,
+          Range(start_offset, start_offset + data.length()),
+        ),
+      ),
+    )
+  }
+}
+
+///|
+fn build_prefixed_name_result(
+  prefix : String,
+  consumed : Int,
+  start_offset : Int,
+  localx : String,
+  might_be_invalid_iri : Bool,
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError]) {
+  let range = Range(start_offset, start_offset + consumed)
+  (
+    consumed,
+    Ok(
+      LocatedTokenOrLineJump::LocatedN3Token(
+        LocatedN3Token::new(
+          N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+          range,
+        ),
+      ),
+    ),
+  )
+}
+
+///|
+fn build_prefix_error(
+  data : ArrayView[Byte],
+  consumed : Int,
+  start_offset : Int,
+  prefix : String,
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError]) {
+  (
+    consumed,
+    Err(
+      TokenRecognizerError::InvalidErrMessage(
+        data[0:consumed],
+        Range(start_offset, start_offset + consumed),
+        "'\{prefix}' is not a valid prefix: prefixes are not allowed to end with '.'",
+      ),
+    ),
+  )
+}
+
+///|
 fn RdfLexer::recognize_pname_or_keyword(
   self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
   location_pos : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
-  let mut i = 0
+  let start_offset = location_pos.offset
 
-  // 解析前缀部分，直到遇到 ':'
-  for ;; {
-    match RdfLexer::recognize_unicode_char(data[i:], i) {
-      Some(Ok((c, consumed))) =>
-        if c == ':' {
-          i += consumed
-          break
-        } else if i == 0 {
-          // 第一个字符必须符合 base 规则
-          if !RdfLexer::is_possible_pn_chars_base(c) {
-            return Some(
-              (
-                consumed,
-                Err(
-                  TokenRecognizerError::InvalidErrMessage(
-                    data[0:consumed],
-                    Range(location_pos.offset, location_pos.offset + consumed),
-                    "'\{c}' is not allowed at the beginning of a prefix name",
-                  ),
-                ),
-              ),
-            )
-          }
-          i += consumed
-          // 后续字符可以是 pn_chars 或 '.'
-        } else if RdfLexer::is_possible_pn_chars(c) || c == '.' {
-          i += consumed
-        } else {
-          // 遇到无效字符，作为 PlainKeyword 返回
-          while array_view_has_prefix(data[:i], b".") {
-            i -= 1
-          }
-          let range = Range(location_pos.offset, location_pos.offset + i)
+  // 第一阶段：解析前缀部分
+  let (prefix_consumed, state, prefix_error) = parse_pname_prefix(
+    data, start_offset,
+  )
 
-          return Some(
-            (
-              i,
-              str_from_utf8(
-                data[:i],
-                Range(location_pos.offset, location_pos.offset + i),
-              ).map(s => {
-                LocatedTokenOrLineJump::LocatedN3Token(
-                  LocatedN3Token(N3Token::PlainKeyword(s), range),
-                )
-              }),
-            ),
-          )
-        }
-      Some(Err(e)) => return Some((e.range().end - location_pos.offset, Err(e))) // 注意：子函数返回的 range 可能需要调整，这里假设 e.range 是局部的
-      None =>
-        // 没有更多字符可解析
-        if is_ending {
-          // 结束输入
-          while array_view_has_prefix(data[:i], b".") {
-            i -= 1
-          }
-          return Some(
-            if i == 0 {
-              (
-                1,
-                Err(
-                  TokenRecognizerError::UnexpectedEndOfInput(
-                    data[0:1],
-                    Range(location_pos.offset, location_pos.offset + 1),
-                  ),
-                ),
-              )
-            } else {
-              (
-                i,
-                str_from_utf8(
-                  data[:i],
-                  Range(location_pos.offset, location_pos.offset + i),
-                ).map(s => {
-                  LocatedTokenOrLineJump::LocatedN3Token(
-                    LocatedN3Token(
-                      N3Token::PlainKeyword(s),
-                      Range(location_pos.offset, location_pos.offset + i),
-                    ),
-                  )
-                }),
-              )
-            },
-          )
-        } else if i > 0 && data.length() > 0 {
-          // 继续等待更多输入，返回 None 让 lexer 获取更多数据
-          return None
-        } else {
-          return None
-        }
-    }
+  // 处理解析错误
+  if prefix_error is Some(err) {
+    return Some((prefix_consumed, Err(err)))
   }
 
-  // 提取前缀 (如果代码能到达这里，说明遇到了 ':')
-  let pn_prefix = match
-    str_from_utf8(
-      data[:i - 1],
-      Range(location_pos.offset, location_pos.offset + i - 1),
-    ) {
-    Ok(prefix) => prefix
-    Err(e) => return Some((i, Err(e)))
+  // 根据状态决定下一步
+  match state {
+    PnameParseState::FirstChar | PnameParseState::Rest =>
+      // 没有找到冒号，需要更多数据或作为 PlainKeyword 处理
+      if is_ending {
+        // 结束输入：回退末尾的点，构建 PlainKeyword
+        if prefix_consumed == 0 {
+          return Some(build_unexpected_end_result(data, start_offset))
+        }
+        return Some(
+          build_plain_keyword_result(data, prefix_consumed, start_offset),
+        )
+      } else if prefix_consumed > 0 && data.length() > 0 {
+        // 需要更多输入
+        return None
+      } else {
+        return None
+      }
+    PnameParseState::Done =>
+      // 找到冒号，继续解析本地部分
+      self.parse_prefixed_name_or_suffix(
+        data, prefix_consumed, start_offset, is_ending,
+      )
+  }
+}
+
+///|
+fn RdfLexer::parse_prefixed_name_or_suffix(
+  self : RdfLexer,
+  data : ArrayView[Byte],
+  prefix_consumed : Int, // 包括冒号的消耗量
+  start_offset : Int,
+  is_ending : Bool,
+) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+  // 提取前缀（不包括冒号）
+  let prefix_bytes = data[:prefix_consumed - 1] // 去掉最后的 ':'
+  let prefix_range = Range(start_offset, start_offset + prefix_consumed - 1)
+
+  let pn_prefix = match str_from_utf8(prefix_bytes, prefix_range) {
+    Ok(p) => p
+    Err(e) => return Some((prefix_consumed, Err(e)))
   }
 
-  // 前缀不能以 '.' 结尾
+  // 验证前缀不能以 '.' 结尾
   if pn_prefix.has_suffix(".") {
     return Some(
-      (
-        i,
-        Err(
-          TokenRecognizerError::InvalidErrMessage(
-            data[0:i],
-            Range(location_pos.offset, location_pos.offset + i),
-            "'\{pn_prefix}' is not a valid prefix: prefixes are not allowed to end with '.'",
-          ),
-        ),
-      ),
+      build_prefix_error(data, prefix_consumed, start_offset, pn_prefix),
     )
   }
 
   // 解析本地部分
+  let local_start = start_offset + prefix_consumed
   match
     self.recognize_optional_pn_local(
-      data[i:],
+      data[prefix_consumed:],
       is_ending,
-      location_pos.offset + i,
+      local_start,
     ) {
-    Some((consumed, Ok((localx, might_be_invalid_iri)))) => {
-      let total_consumed = consumed + i
-      let range = Range(
-        location_pos.offset,
-        location_pos.offset + total_consumed,
-      )
+    Some((local_consumed, Ok((localx, might_be_invalid_iri)))) => {
+      let total_consumed = prefix_consumed + local_consumed
       Some(
-        (
-          total_consumed,
-          Ok(
-            LocatedTokenOrLineJump::LocatedN3Token(
-              LocatedN3Token::new(
-                N3Token::PrefixedName(
-                  prefix=pn_prefix,
-                  localx~,
-                  might_be_invalid_iri~,
-                ),
-                range,
-              ),
-            ),
-          ),
+        build_prefixed_name_result(
+          pn_prefix, total_consumed, start_offset, localx, might_be_invalid_iri,
         ),
       )
     }
-    Some((consumed, Err(e))) => Some((consumed + i, Err(e)))
+    Some((local_consumed, Err(e))) =>
+      Some((prefix_consumed + local_consumed, Err(e)))
     None => None
   }
 }
@@ -1801,4 +1882,13 @@ fn RdfLexer::recognize_triple_quote_content(
       }
     }
   }
+}
+
+///|
+fn strip_trailing_dots(data : ArrayView[Byte], i : Int) -> Int {
+  let mut j = i
+  while j > 0 && data[j - 1] == b'.' {
+    j -= 1
+  }
+  j
 }
