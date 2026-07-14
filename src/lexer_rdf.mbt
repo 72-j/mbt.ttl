@@ -1132,10 +1132,7 @@ fn RdfLexer::recognize_long_string(
           Err(
             TokenRecognizerError::UnexpectedEndOfInput(
               data,
-              Range(
-                location_ctx.offset,
-                location_ctx.offset + data.length(),
-              ),
+              Range(location_ctx.offset, location_ctx.offset + data.length()),
             ),
           ),
         ),
@@ -1144,22 +1141,23 @@ fn RdfLexer::recognize_long_string(
       None
     }
   }
-  
+
   // 确认开头三个 delimiter
   if data[0] != delimiter || data[1] != delimiter || data[2] != delimiter {
     return None
   }
-  
+
   // 调用内容识别，跳过前三个 delimiter
-  match self.recognize_triple_quote_content(
-    data[3:],
-    delimiter,
-    location_ctx.offset + 3,
-  ) {
+  match
+    self.recognize_triple_quote_content(
+      data[3:],
+      delimiter,
+      location_ctx.offset + 3,
+    ) {
     Some((bytes_consumed, content, found_ending)) => {
       let total_bytes = bytes_consumed + 3
       let end_offset = location_ctx.offset + total_bytes
-      
+
       if found_ending {
         // 成功找到结束符 """ 或 '''
         Some(
@@ -1182,8 +1180,11 @@ fn RdfLexer::recognize_long_string(
             total_bytes,
             Err(
               TokenRecognizerError::UnexpectedEndOfInput(
-                data,  // 或 data[3:3+bytes_consumed]，已解析的部分
-                Range(location_ctx.offset + 3, location_ctx.offset + data.length()),
+                data, // 或 data[3:3+bytes_consumed]，已解析的部分
+                Range(
+                  location_ctx.offset + 3,
+                  location_ctx.offset + data.length(),
+                ),
               ),
             ),
           ),
@@ -1193,7 +1194,7 @@ fn RdfLexer::recognize_long_string(
         None
       }
     }
-    None => {
+    None =>
       // recognize_triple_quote_content 完全无法识别
       if is_ending {
         Some(
@@ -1210,9 +1211,9 @@ fn RdfLexer::recognize_long_string(
       } else {
         None
       }
-    }
   }
 }
+
 ///|
 fn RdfLexer::recognize_number(
   data : ArrayView[Byte],
@@ -1912,4 +1913,3 @@ fn strip_trailing_dots(data : ArrayView[Byte], i : Int) -> Int {
   }
   j
 }
-
