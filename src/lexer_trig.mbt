@@ -189,7 +189,7 @@ pub fn TriGRecognizer::new_parser(
   debug_logger? : &DebugLogger = make_mute_logger(),
 ) -> Parser[RdfLexer, TriGRecognizer] {
   let lexer = Lexer::Lexer(
-    RdfLexer::RdfLexer(RdfLexerMode::N3, lenient),
+    RdfLexer::RdfLexer(RdfLexerMode::NTriples, lenient),
     data,
     is_ending,
     MIN_BUFFER_SIZE,

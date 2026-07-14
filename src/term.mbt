@@ -281,6 +281,9 @@ impl Show for BlankNodeRef with fn to_string(self : BlankNodeRef) -> String {
     BlankNodeRef::Anonymous(v) => v.str
   }
 }
+pub fn BlankNodeRef::default() -> BlankNodeRef {
+  BlankNodeRef::Named("_:default")
+}
 
 ///|
 pub fn BlankNodeRef::as_enum(self : BlankNodeRef) -> NamedOrBlankNodeRef {

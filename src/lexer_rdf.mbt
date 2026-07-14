@@ -11,7 +11,6 @@ priv enum PnameParseState {
 ///|
 pub(all) enum RdfLexerMode {
   NTriples
-  // Turtle
   N3
 } derive(Eq)
 
@@ -1124,60 +1123,86 @@ fn RdfLexer::recognize_long_string(
   is_ending : Bool,
   location_ctx : SourcePos,
 ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
-  match
-    self.recognize_triple_quote_content(
-      data[3:],
-      delimiter,
-      location_ctx.offset + 3,
-    ) {
-    Some((bytes_consumed, content, found_ending)) =>
+  // 检查前三个字符是否匹配 delimiter（即 """ 或 '''）
+  if data.length() < 3 {
+    return if is_ending {
+      Some(
+        (
+          data.length(),
+          Err(
+            TokenRecognizerError::UnexpectedEndOfInput(
+              data,
+              Range(
+                location_ctx.offset,
+                location_ctx.offset + data.length(),
+              ),
+            ),
+          ),
+        ),
+      )
+    } else {
+      None
+    }
+  }
+  
+  // 确认开头三个 delimiter
+  if data[0] != delimiter || data[1] != delimiter || data[2] != delimiter {
+    return None
+  }
+  
+  // 调用内容识别，跳过前三个 delimiter
+  match self.recognize_triple_quote_content(
+    data[3:],
+    delimiter,
+    location_ctx.offset + 3,
+  ) {
+    Some((bytes_consumed, content, found_ending)) => {
+      let total_bytes = bytes_consumed + 3
+      let end_offset = location_ctx.offset + total_bytes
+      
       if found_ending {
+        // 成功找到结束符 """ 或 '''
         Some(
           (
-            bytes_consumed + 3,
+            total_bytes,
             Ok(
               LocatedTokenOrLineJump::LocatedN3Token(
                 LocatedN3Token::new(
                   N3Token::LongString(content),
-                  Range(
-                    location_ctx.offset,
-                    location_ctx.offset + bytes_consumed + 3,
-                  ),
+                  Range(location_ctx.offset, end_offset),
                 ),
               ),
             ),
           ),
         )
       } else if is_ending {
+        // 到文件末尾仍未找到结束符
         Some(
           (
-            bytes_consumed + 3,
+            total_bytes,
             Err(
               TokenRecognizerError::UnexpectedEndOfInput(
-                data[3:],
-                Range(
-                  location_ctx.offset + 3,
-                  location_ctx.offset + data.length(),
-                ),
+                data,  // 或 data[3:3+bytes_consumed]，已解析的部分
+                Range(location_ctx.offset + 3, location_ctx.offset + data.length()),
               ),
             ),
           ),
         )
       } else {
+        // 未结束但未到文件尾，可能是跨行长字符串，返回 None 让上层处理
         None
       }
-    None =>
+    }
+    None => {
+      // recognize_triple_quote_content 完全无法识别
       if is_ending {
         Some(
           (
             data.length(),
             Err(
               TokenRecognizerError::UnexpectedEndOfInput(
-                data[3:],
-                Range(
-                  location_ctx.offset + 3,
-                  location_ctx.offset + data.length(),
-                ),
+                data,
+                Range(location_ctx.offset, location_ctx.offset + data.length()),
               ),
             ),
           ),
@@ -1185,9 +1210,9 @@ fn RdfLexer::recognize_long_string(
       } else {
         None
       }
+    }
   }
 }
-
 ///|
 fn RdfLexer::recognize_number(
   data : ArrayView[Byte],
@@ -1750,11 +1775,6 @@ fn string_from_utf8(
 }
 
 ///|
-/// 辅助函数：处理三引号长字符串的内容
-/// 规则：
-/// - 单个 delimiter：作为内容中的 delimiter 字符
-/// - 两个连续 delimiter：作为内容中的两个 delimiter 字符
-/// - 三个连续 delimiter：表示字符串结束
 fn RdfLexer::recognize_triple_quote_content(
   self : RdfLexer,
   data : ArrayView[Byte],
@@ -1770,7 +1790,7 @@ fn RdfLexer::recognize_triple_quote_content(
     if i >= len {
       return None // 未找到结束标记，且没有更多数据
     }
-    println("[DEBUG triple_quote] i=\{i}, len=\{len}")
+    // println("[DEBUG triple_quote] i=\{i}, len=\{len}")
     // 查找下一个 delimiter 或反斜杠
     let search_result = array_view_memchr2(delimiter, b'\\', data[i:])
 
@@ -1809,7 +1829,7 @@ fn RdfLexer::recognize_triple_quote_content(
                     }
                   }
                   // 把 \ 当作普通字符
-                  string.write_char('\\')
+                  string.write_string("\\")
                   i = offset + 1
                 }
               }
@@ -1826,7 +1846,7 @@ fn RdfLexer::recognize_triple_quote_content(
                   Err(_) => return None
                 }
               }
-              string.write_char('\\')
+              string.write_string("\\")
               i = offset + 1
             }
           }
@@ -1892,3 +1912,4 @@ fn strip_trailing_dots(data : ArrayView[Byte], i : Int) -> Int {
   }
   j
 }
+

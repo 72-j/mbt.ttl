@@ -309,7 +309,7 @@ async test "Parser_basic_single_line for Turtle" {
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::N3, false),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -403,7 +403,7 @@ async test "Parser Turtle" {
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::N3, false),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,

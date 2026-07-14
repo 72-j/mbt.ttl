@@ -736,31 +736,29 @@ fn TriGRecognizer::handle_trig_doc_m(
 
     // 默认情况
     _ => {
-      self.debug_logger.info("@@@@ TriGDoc: unmatched token type: \{event}")
-      self.debug_logger.info(
-        "TriGDoc: unexpected token, pushing TriplesOrGraph",
-      )
+      // self.debug_logger.info("TriGDoc: unexpected token, pushing TriplesOrGraph, unmatched token type: \{event}")
+
       // 打印详细的 token 结构
-      match event {
-        LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(t, range)) =>
-          match t {
-            N3Token::Iri(s) => self.debug_logger.info("@@@ TYPE: Iri = \{s}")
-            N3Token::PrefixedName(..) =>
-              self.debug_logger.info("@@@ TYPE: PrefixedName")
-            N3Token::String(s) =>
-              self.debug_logger.info("@@@ TYPE: String = \{s}")
-            N3Token::PlainKeyword(k) =>
-              self.debug_logger.info("@@@ TYPE: PlainKeyword = \{k}")
-            N3Token::Punctuation(p) =>
-              self.debug_logger.info("@@@ TYPE: Punctuation = \{p}")
-            N3Token::Integer(i) =>
-              self.debug_logger.info("@@@ TYPE: Integer = \{i}")
-            _ => self.debug_logger.info("@@@ TYPE: Other, range=\{range}")
-          }
-        LocatedTokenOrLineJump::LineJump(n) =>
-          self.debug_logger.info("@@@ TYPE: LineJump(\{n})")
-        LocatedTokenOrLineJump::End => self.debug_logger.info("@@@ TYPE: End")
-      }
+      // match event {
+      //   LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(t, range)) =>
+      //     match t {
+      //       N3Token::Iri(s) => self.debug_logger.info("@@@ TYPE: Iri = \{s}")
+      //       N3Token::PrefixedName(..) =>
+      //         self.debug_logger.info("@@@ TYPE: PrefixedName")
+      //       N3Token::String(s) =>
+      //         self.debug_logger.info("@@@ TYPE: String = \{s}")
+      //       N3Token::PlainKeyword(k) =>
+      //         self.debug_logger.info("@@@ TYPE: PlainKeyword = \{k}")
+      //       N3Token::Punctuation(p) =>
+      //         self.debug_logger.info("@@@ TYPE: Punctuation = \{p}")
+      //       N3Token::Integer(i) =>
+      //         self.debug_logger.info("@@@ TYPE: Integer = \{i}")
+      //       _ => self.debug_logger.info("@@@ TYPE: Other, range=\{range}")
+      //     }
+      //   LocatedTokenOrLineJump::LineJump(n) =>
+      //     self.debug_logger.info("@@@ TYPE: LineJump(\{n})")
+      //   LocatedTokenOrLineJump::End => self.debug_logger.info("@@@ TYPE: End")
+      // }
       let new_stack = new_self.stack
 
       let final_self = { ..new_self, stack: new_stack }
