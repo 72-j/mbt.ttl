@@ -12,6 +12,4 @@ import {
   "thy1016/moonttl" @lib,
 }
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")

@@ -69,7 +69,7 @@ pub trait TokenRecognizer {
     is_ending : Bool,
     options : LexerOptions?,
     location_pos : SourcePos,
-  ) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])?
+  ) -> (Int, Result[LocatedToken, TokenRecognizerError])?
 }
 
 ///|

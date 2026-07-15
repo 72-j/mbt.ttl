@@ -155,29 +155,6 @@ pub fn NQuadsRecognizer::new_parser(
 }
 
 ///|
-// fn NQuadsRecognizer::error(
-//   self : NQuadsRecognizer,
-//   _context : NQuadsRecognizerContext,
-//   _results : Array[RdfOut],
-//   _token : LocatedTokenOrLineJump,
-//   msg : String,
-// ) -> NQuadsRecognizer {
-//   self.errors.push(RuleRecognizerError::SyntaxError(msg, self.last_range))
-//   self.error_recovery_state()
-
-//   // match token {
-//   //   LocatedTokenOrLineJump::LocatedN3Token(_) => this
-//   //   LocatedTokenOrLineJump::LineJump(_) =>
-//   //     this.recognize_next(
-//   //       token,
-//   //       RdfContext::NQuadsRecognizerContext(context),
-//   //       results,
-//   //     )
-//   //   LocatedTokenOrLineJump::End => this
-//   // }
-// }
-
-///|
 fn NQuadsRecognizer::emit_curr_quad(
   self : NQuadsRecognizer,
   results : Array[RdfOut],

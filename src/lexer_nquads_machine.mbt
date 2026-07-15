@@ -82,8 +82,7 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
 
   let result = match nquads_state {
     NQuadsState::ExpectSubject => self.handle_expect_subject(event, context)
-    NQuadsState::ExpectPredicate =>
-      self.handle_expect_predicate(event, context)
+    NQuadsState::ExpectPredicate => self.handle_expect_predicate(event, context)
     NQuadsState::ExpectedObject => self.handle_expected_object(event, context)
     NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~) =>
       self.handle_expect_literal_annotation_or_graph_name_or_dot(
@@ -92,12 +91,9 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
     NQuadsState::ExpectLiteralDatatype(value~) =>
       self.handle_expect_literal_datatype(event, context, value)
     NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple =>
-      self.handle_expect_possible_graph_or_end_of_quoted_triple(
-        event, context,
-      )
+      self.handle_expect_possible_graph_or_end_of_quoted_triple(event, context)
     NQuadsState::ExpectDot => self.handle_expect_dot(event, context)
-    NQuadsState::ExpectLineJump =>
-      self.handle_expect_line_jump(event, context)
+    NQuadsState::ExpectLineJump => self.handle_expect_line_jump(event, context)
     NQuadsState::RecoverToLineJump =>
       self.handle_recover_to_line_jump(event, context)
     _ => {

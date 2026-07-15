@@ -579,13 +579,13 @@ pub(all) enum LiteralRefContent {
   TypedLiteral(value~ : VarDataType, datatype~ : NamedNodeRef)
 } derive(Eq, Hash, @debug.Debug)
 
-pub struct LocatedN3Token(N3Token, Range) derive(@debug.Debug)
-pub fn LocatedN3Token::into_token(Self) -> N3Token
-pub impl Show for LocatedN3Token
+pub struct LocatedToken(N3Token, Range) derive(@debug.Debug)
+pub fn LocatedToken::into_token(Self) -> N3Token
+pub impl Show for LocatedToken
 
 #alias(Event)
 pub enum LocatedTokenOrLineJump {
-  LocatedN3Token(LocatedN3Token)
+  LocatedToken(LocatedToken)
   LineJump(Int)
   End
 } derive(@debug.Debug)

@@ -2,7 +2,7 @@
 type Decimal = StringView
 
 ///|
-pub type Event = LocatedTokenOrLineJump
+pub type Event = LocatedToken
 
 ///|
 pub type Ctx = RdfContext

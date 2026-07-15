@@ -23,18 +23,18 @@ async test "debug_lexer_only" {
         debug("[\{count}] {token}")
 
         // 检查具体的 token 内容
-        match token {
-          @lib.LocatedTokenOrLineJump::LocatedN3Token(located) => {
-            debug("    -> type: \{located.to_string()}")
-            debug("    -> range: \{located.1.start}-\{located.1.end}")
-          }
-          @lib.LocatedTokenOrLineJump::LineJump(pos) =>
-            debug("    -> LineJump at \{pos}")
-          @lib.LocatedTokenOrLineJump::End => {
-            debug("    -> End")
-            break
-          }
-        }
+        // match token {
+        // @lib.LocatedToken(token) => {
+        debug("    -> type: \{token.0.to_string()}")
+        debug("    -> range: \{token.1.start}-\{token.1.end}")
+        // }
+        // @lib.LocatedToken(@lib.N3Token::LineJump, pos) =>
+        //   debug("    -> LineJump at \{pos}")
+        // @lib.LocatedToken(@lib.N3Token::End, _) => {
+        //   debug("    -> End")
+        // break
+        // }
+        // }
       }
       Some(Err(e)) => {
         debug("Lexer Error: \{e}")

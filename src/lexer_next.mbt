@@ -2,7 +2,7 @@
 pub fn[RL : TokenRecognizer] Lexer::parse_next(
   self : Lexer[RL],
   options : LexerOptions?,
-) -> Result[LocatedTokenOrLineJump, TokenRecognizerError]? {
+) -> Result[LocatedToken, TokenRecognizerError]? {
   if self.is_ending && self.position.buffer_offset >= self.data.length() {
     return None
   }
@@ -12,7 +12,12 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
     Some(true) => {
       self.previous_position = self.position
       return Some(
-        Ok(LocatedTokenOrLineJump::LineJump(self.position.global_line)),
+        Ok(
+          LocatedToken(
+            N3Token::LineJump,
+            self.current_token_source_range().to_range(),
+          ),
+        ),
       )
     }
     Some(false) => ()
@@ -81,14 +86,13 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
         result
         .map(fn(t) {
           match t.into_token() {
-            Some(t) =>
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token(
-                  t,
-                  Range::Range(token_start_pos.offset, token_end_pos.offset),
-                ),
+            t =>
+              LocatedToken(
+                t,
+                Range::Range(token_start_pos.offset, token_end_pos.offset),
               )
-            None => LocatedTokenOrLineJump::LineJump(self.position.global_line)
+
+            // None => LocatedToken::LineJump(self.position.global_line)
           }
         })
         .map_err(fn(e) {

@@ -83,10 +83,10 @@ pub impl StateMachine for TriGRecognizer with fn transition(
   context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, RdfState, RdfOut] {
   match event {
-    LocatedTokenOrLineJump::LineJump(_) =>
+    LocatedToken(N3Token::LineJump, _) =>
       // 换行符不影响状态转换，直接保持当前状态
       return Ok((self, state, None))
-    LocatedTokenOrLineJump::End => {
+    LocatedToken(N3Token::End, _) => {
       // 文件结束时的处理
       // 检查是否在可接受状态
       match state {
@@ -151,8 +151,7 @@ pub impl StateMachine for TriGRecognizer with fn transition(
     TriGState::Triples => self.handle_triples(event, context)
 
     // ===== 指令与上下文处理 =====
-    TriGState::ExpectAtKeyword =>
-      self.handle_expect_at_keyword(event, context)
+    TriGState::ExpectAtKeyword => self.handle_expect_at_keyword(event, context)
     TriGState::BaseExpectIri => self.handle_base_expect_iri(event, context)
     TriGState::PrefixExpectPrefix =>
       self.handle_prefix_expect_prefix(event, context)
@@ -173,9 +172,7 @@ pub impl StateMachine for TriGRecognizer with fn transition(
     TriGState::SubjectBlankNodePropertyListAfter =>
       self.handle_subject_blank_node_property_list_after(event, context)
     TriGState::WrappedGraphBlankNodePropertyListCurrent =>
-      self.handle_wrapped_graph_blank_node_property_list_current(
-        event, context,
-      )
+      self.handle_wrapped_graph_blank_node_property_list_current(event, context)
     TriGState::TriplesBlankNodePropertyListCurrent =>
       self.handle_triples_blank_node_property_list_current(event, context)
     TriGState::ObjectBlankNodePropertyListCurrent =>

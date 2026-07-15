@@ -3,7 +3,7 @@
 ///|
 fn NQuadsRecognizer::handle_expect_subject(
   self : NQuadsRecognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info(
@@ -11,16 +11,15 @@ fn NQuadsRecognizer::handle_expect_subject(
   )
 
   match token {
-    LocatedTokenOrLineJump::End => Ok((self, NQuadsState::ExpectSubject, None))
-    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(s), _)) => {
+    LocatedToken(N3Token::End, _) =>
+      Ok((self, NQuadsState::ExpectSubject, None))
+    LocatedToken(N3Token::Iri(s), _) => {
       let new_self = self
       new_self.subjects.push(NamedNodeRef::new_unchecked(s).as_enum())
       // 状态转换为 ExpectPredicate，无语句产生
       Ok((new_self, NQuadsState::ExpectPredicate, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::BlankNodeLabel(s), _)
-    ) => {
+    LocatedToken(N3Token::BlankNodeLabel(s), _) => {
       let new_self = self
       new_self.subjects.push(BlankNodeRef::new_unchecked(s).as_enum())
       Ok((new_self, NQuadsState::ExpectPredicate, None))
@@ -34,7 +33,7 @@ fn NQuadsRecognizer::handle_expect_subject(
 ///|
 fn NQuadsRecognizer::handle_expect_predicate(
   self : NQuadsRecognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info(
@@ -42,7 +41,7 @@ fn NQuadsRecognizer::handle_expect_predicate(
   )
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(p), _)) => {
+    LocatedToken(N3Token::Iri(p), _) => {
       let new_self = self
       new_self.predicates.push(NamedNodeRef::new_unchecked(p))
       Ok((new_self, NQuadsState::ExpectedObject, None))
@@ -56,7 +55,7 @@ fn NQuadsRecognizer::handle_expect_predicate(
 ///|
 fn NQuadsRecognizer::handle_expected_object(
   self : NQuadsRecognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info(
@@ -64,7 +63,7 @@ fn NQuadsRecognizer::handle_expected_object(
   )
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(o), _)) => {
+    LocatedToken(N3Token::Iri(o), _) => {
       let new_self = self
       new_self.objects.push(
         TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(o)),
@@ -78,16 +77,12 @@ fn NQuadsRecognizer::handle_expected_object(
         Ok((new_self, NQuadsState::ExpectDot, None))
       }
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::BlankNodeLabel(o), _)
-    ) => {
+    LocatedToken(N3Token::BlankNodeLabel(o), _) => {
       let new_self = self
       new_self.objects.push(NamedNodeRef::new_unchecked(o).as_term())
       Ok((new_self, NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::String(value), _)
-    ) => {
+    LocatedToken(N3Token::String(value), _) => {
       let new_self = self
 
       // new_self.temp_literal_value = Some(value) 
@@ -99,9 +94,7 @@ fn NQuadsRecognizer::handle_expected_object(
         ),
       )
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("<<("), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("<<("), _) => {
       let new_self = self
       new_self.stack.push(NQuadsState::AfterQuotedTriple)
       new_self.stack.push(NQuadsState::ExpectSubject)
@@ -116,16 +109,15 @@ fn NQuadsRecognizer::handle_expected_object(
 ///|
 fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot(
   self : NQuadsRecognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _ctx : NQuadsRecognizerContext,
   value : String,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::LangTag(language~, direction~), _)
-    ) if direction is Some(_) => {
+    LocatedToken(N3Token::LangTag(language~, direction~), _) if direction
+      is Some(_) => {
       let dir = match direction {
         Some(d) => d
         None => BaseDirection::Ltr
@@ -152,9 +144,8 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot(
         }
       }
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::LangTag(language~, direction~), _)
-    ) if direction is None => {
+    LocatedToken(N3Token::LangTag(language~, direction~), _) if direction
+      is None => {
       let lang_tag = LanguageTag::from_str(language.to_lower()) catch {
         _e => return Err(RuleRecognizerError::InvalidLanguageTag)
       }
@@ -180,9 +171,7 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot(
         // Err(_e) => Err(RuleRecognizerError::InvalidLanguageTag)
       }
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("^^"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("^^"), _) => {
       let new_self = self
       // new_self.temp_literal_value = Some(value) // 传递给 datatype 状态
       Ok((new_self, NQuadsState::ExpectLiteralDatatype(value~), None))
@@ -190,9 +179,7 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot(
     _ =>
       // 检查是否是句点
       match token {
-        LocatedTokenOrLineJump::LocatedN3Token(
-          LocatedN3Token(N3Token::Punctuation("."), _)
-        ) => {
+        LocatedToken(N3Token::Punctuation("."), _) => {
           let new_self = self
           let literal = TermRef::LiteralRef(
             LiteralRef::new_simple_literal(value),
@@ -232,7 +219,7 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot(
 ///|
 pub fn NQuadsRecognizer::handle_expect_literal_datatype(
   self : NQuadsRecognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _ctx : NQuadsRecognizerContext,
   value : String,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
@@ -246,7 +233,7 @@ pub fn NQuadsRecognizer::handle_expect_literal_datatype(
   )
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(d), _)) => {
+    LocatedToken(N3Token::Iri(d), _) => {
       if !self.lenient && d == lwLANG_STRING.to_string() {
         return Err(
           RuleRecognizerError::SyntaxError(
@@ -282,7 +269,7 @@ pub fn NQuadsRecognizer::handle_expect_literal_datatype(
 ///|
 pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(
   self : NQuadsRecognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info(
@@ -292,7 +279,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(
   // 首先检查是否是图名 IRI（无论是顶层还是嵌套在引用的三元组中）
   if ctx.with_graph_name {
     match token {
-      LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(g), _)) => {
+      LocatedToken(N3Token::Iri(g), _) => {
         let stmt = self.emit_current_quad(
           graph_name=GraphNameRef::new_unchecked(g).into_owned(),
         )
@@ -300,9 +287,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(
         let _ = new_self.error_recovery_state()
         return Ok((new_self, NQuadsState::ExpectDot, stmt))
       }
-      LocatedTokenOrLineJump::LocatedN3Token(
-        LocatedN3Token(N3Token::BlankNodeLabel(_g), _)
-      ) => {
+      LocatedToken(N3Token::BlankNodeLabel(_g), _) => {
         let stmt = self.emit_current_quad()
         let new_self = self
         let _ = new_self.error_recovery_state()
@@ -314,9 +299,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(
 
   // 检查是否是句点（默认图结束）
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("."), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("."), _) => {
       let stmt = self.emit_current_quad()
       let new_self = self
       let _ = new_self.error_recovery_state()
@@ -328,9 +311,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(
   // 检查是否是引用的三元组结束
   if !self.stack.is_empty() {
     match token {
-      LocatedTokenOrLineJump::LocatedN3Token(
-        LocatedN3Token(N3Token::Punctuation(")>>"), _)
-      ) =>
+      LocatedToken(N3Token::Punctuation(")>>"), _) =>
         // 结束引用三元组，返回当前解析器状态，不产生顶层语句
         return Ok((self, NQuadsState::AfterQuotedTriple, None))
       _ => ()
@@ -356,7 +337,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(
 ///|
 fn NQuadsRecognizer::handle_expect_dot(
   self : NQuadsRecognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info(
@@ -364,13 +345,11 @@ fn NQuadsRecognizer::handle_expect_dot(
   )
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("."), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("."), _) => {
       let stmt = self.emit_current_quad()
       Ok((self, NQuadsState::ExpectLineJump, stmt))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(t) =>
+    t =>
       Err(
         RuleRecognizerError::SyntaxError("Quads must be followed by a dot", t.1),
       )
@@ -384,22 +363,22 @@ fn NQuadsRecognizer::handle_expect_dot(
 ///|
 pub fn NQuadsRecognizer::handle_expect_line_jump(
   self : NQuadsRecognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info("Entering ExpectLineJump with token: \{token}")
   let tok = match token {
-    LocatedTokenOrLineJump::LineJump(n) => "LineJump(\{n})"
-    LocatedTokenOrLineJump::End => "End"
-    LocatedTokenOrLineJump::LocatedN3Token(t) => "N3Token: \{t.0}"
+    LocatedToken(N3Token::LineJump, range) => "LineJump(\{range})"
+    LocatedToken(N3Token::End, _) => "End"
+    t => "N3Token: \{t.0}"
   }
   self.debug_logger.info("Token type: \{tok}")
 
   match token {
-    LocatedTokenOrLineJump::LineJump(_) =>
+    LocatedToken(N3Token::LineJump, _) =>
       // 成功：换行后回到 ExpectSubject 开始下一个语句
       Ok((self, NQuadsState::ExpectSubject, None))
-    LocatedTokenOrLineJump::End =>
+    LocatedToken(N3Token::End, _) =>
       // 文件结束，安静地接受
       Ok((self, NQuadsState::ExpectSubject, None))
     _ =>
@@ -423,7 +402,7 @@ pub fn NQuadsRecognizer::handle_expect_line_jump(
 ///|
 pub fn NQuadsRecognizer::handle_after_quoted_triple(
   self : NQuadsRecognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info(
@@ -471,7 +450,7 @@ pub fn NQuadsRecognizer::handle_after_quoted_triple(
 ///|
 pub fn NQuadsRecognizer::handle_recover_to_line_jump(
   self : NQuadsRecognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _ctx : NQuadsRecognizerContext,
 ) -> TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut] {
   self.debug_logger.info(
@@ -479,7 +458,7 @@ pub fn NQuadsRecognizer::handle_recover_to_line_jump(
   )
 
   match token {
-    LocatedTokenOrLineJump::LineJump(_) =>
+    LocatedToken(N3Token::LineJump, _) =>
       // 恢复完成，通常意味着要重新开始或结束
       // 返回一个初始状态
       Ok((self, NQuadsState::ExpectSubject, None))

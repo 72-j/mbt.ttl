@@ -27,7 +27,7 @@ async fn cmd_parser() -> Unit {
   let args = @env.args()
   let argv = if args.length() > 1 { args[1:] } else { [] }
 
-  let result = (cmd.parse(argv~, env={}) |> Ok) catch { e => Err(e) }
+  let result = (cmd.parse(argv~, env=Map([])) |> Ok) catch { e => Err(e) }
 
   match result {
     Ok(matches) => {

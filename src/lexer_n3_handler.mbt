@@ -3,30 +3,24 @@
 ///|
 fn N3Recognizer::handle_n3_doc(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering N3Doc with token: \{token}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::PlainKeyword(k), _)
-    ) if eq_ignore_ascii_case(k, "base") =>
+    LocatedToken(N3Token::PlainKeyword(k), _) if eq_ignore_ascii_case(k, "base") =>
       Ok((self, N3State::BaseExpectIri, None))
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::PlainKeyword(k), _)
-    ) if eq_ignore_ascii_case(k, "prefix") =>
-      Ok((self, N3State::PrefixExpectPrefix, None))
+    LocatedToken(N3Token::PlainKeyword(k), _) if eq_ignore_ascii_case(
+        k, "prefix",
+      ) => Ok((self, N3State::PrefixExpectPrefix, None))
     // 处理特殊的 LangTag 作为关键字的情况 (如果 lexer 这样输出)
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::LangTag(language="prefix", direction=None), _)
-    ) =>
+    LocatedToken(N3Token::LangTag(language="prefix", direction=None), _) =>
       // 这里可能需要一个中间状态来处理 prefix 后的 IRI，然后再处理 Dot
       // 简化处理：直接进入 PrefixExpectPrefix，假设后续逻辑能处理 Dot 或依靠栈
       Ok((self, N3State::PrefixExpectPrefix, None))
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::LangTag(language="base", direction=None), _)
-    ) => Ok((self, N3State::BaseExpectIri, None))
+    LocatedToken(N3Token::LangTag(language="base", direction=None), _) =>
+      Ok((self, N3State::BaseExpectIri, None))
     _ => {
       // 默认进入 Triples 解析，解析完后期望 Dot
       // 我们将 N3DocExpectDot 压入栈，以便 Triples 结束后返回这里
@@ -43,15 +37,13 @@ fn N3Recognizer::handle_n3_doc(
 ///|
 fn N3Recognizer::handle_n3_doc_expect_dot(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering N3DocExpectDot with token: \{token}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("."), _)
-    ) =>
+    LocatedToken(N3Token::Punctuation("."), _) =>
       // 语句结束，回到 N3Doc 继续解析下一条
       Ok((self, N3State::N3Doc, None))
     _ => {
@@ -69,15 +61,12 @@ fn N3Recognizer::handle_n3_doc_expect_dot(
 ///|
 fn N3Recognizer::handle_base_expect_iri(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering BaseExpectIri with token: \{token}")
 
-  if token
-    is LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Iri(iri), _)
-    ) {
+  if token is LocatedToken(N3Token::Iri(iri), _) {
     match context {
       RdfContext::N3RecognizerContext(ctx) => {
         let new_options = { base_iri: Some(Iri::Iri(iri)) }
@@ -110,15 +99,13 @@ fn N3Recognizer::handle_base_expect_iri(
 ///|
 fn N3Recognizer::handle_prefix_expect_prefix(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PrefixExpectPrefix with token: \{token}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::PrefixedName(prefix~, localx~, ..), _)
-    ) if localx.is_empty() =>
+    LocatedToken(N3Token::PrefixedName(prefix~, localx~, ..), _) if localx.is_empty() =>
       // 转移到期待 IRI 的状态，并携带 prefix 名称
       // 假设 N3State::PrefixExpectIri 可以携带参数，或者我们需要将 prefix 暂存到 self 中
       // 这里假设 N3State 枚举定义为 PrefixExpectIri(String)
@@ -139,17 +126,14 @@ fn N3Recognizer::handle_prefix_expect_prefix(
 fn N3Recognizer::handle_prefix_expect_iri(
   self : N3Recognizer,
   name : String, // 从状态中提取的参数
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info(
     "Entering PrefixExpectIri(\{name}) with token: \{token}",
   )
 
-  if token
-    is LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Iri(iri), _)
-    ) {
+  if token is LocatedToken(N3Token::Iri(iri), _) {
     match context {
       RdfContext::N3RecognizerContext(ctx) => {
         ctx.prefixes.set(name, Iri::Iri(iri))
@@ -178,7 +162,7 @@ fn N3Recognizer::handle_prefix_expect_iri(
 ///|
 fn N3Recognizer::handle_triples(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering Triples with token: \{token}")
@@ -198,16 +182,13 @@ fn N3Recognizer::handle_triples(
 ///|
 fn N3Recognizer::handle_triples_middle(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering TriplesMiddle with token: \{token}")
 
   // 如果遇到结束符，说明没有 PredicateObjectList，直接结束当前 Triples
-  if token
-    is LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("." | "]" | "}" | ")"), _)
-    ) {
+  if token is LocatedToken(N3Token::Punctuation("." | "]" | "}" | ")"), _) {
     // 弹出 TriplesMiddle，回到上一层 (例如 N3DocExpectDot)
     // 这里需要手动管理栈弹出，或者依靠上层状态处理
     // 简单起见，如果栈顶是 TriplesMiddle，我们弹出它，并返回栈顶下一个状态
@@ -235,7 +216,7 @@ fn N3Recognizer::handle_triples_middle(
 ///|
 fn N3Recognizer::handle_triples_end(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering TriplesEnd with token: \{token}")
@@ -261,7 +242,7 @@ fn N3Recognizer::handle_triples_end(
 ///|
 fn N3Recognizer::handle_predicate_object_list(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PredicateObjectList with token: \{token}")
@@ -281,7 +262,7 @@ fn N3Recognizer::handle_predicate_object_list(
 ///|
 fn N3Recognizer::handle_predicate_object_list_end(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PredicateObjectListEnd with token: \{token}")
@@ -292,9 +273,7 @@ fn N3Recognizer::handle_predicate_object_list_end(
   let new_self = { ..self, predicates: new_predicates }
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation(";"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation(";"), _) => {
       // 分号表示同一个主语的新谓词对象对
       // 原逻辑: push PredicateObjectListPossibleContinuation
       let new_stack = new_self.stack
@@ -322,7 +301,7 @@ fn N3Recognizer::handle_predicate_object_list_end(
 ///|
 fn N3Recognizer::handle_predicate_object_list_possible_continuation(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info(
@@ -330,14 +309,10 @@ fn N3Recognizer::handle_predicate_object_list_possible_continuation(
   )
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation(";"), _)
-    ) =>
+    LocatedToken(N3Token::Punctuation(";"), _) =>
       // 多个分号，忽略，保持当前状态
       Ok((self, N3State::PredicateObjectListPossibleContinuation, None))
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("." | "}" | "]" | ")"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("." | "}" | "]" | ")"), _) => {
       // 遇到结束符，弹出当前状态，回到上一层
       let new_stack = self.stack
       if !new_stack.is_empty() &&
@@ -368,7 +343,7 @@ fn N3Recognizer::handle_predicate_object_list_possible_continuation(
 ///|
 fn N3Recognizer::handle_objects_list(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering ObjectsList with token: \{token}")
@@ -387,7 +362,7 @@ fn N3Recognizer::handle_objects_list(
 ///|
 fn N3Recognizer::handle_objects_list_end(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering ObjectsListEnd with token: \{token}")
@@ -433,9 +408,7 @@ fn N3Recognizer::handle_objects_list_end(
   // 在实际 StateMachine 中，output 会被外层收集
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation(","), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation(","), _) => {
       // 逗号表示同一个谓语的下一个对象
       // 原逻辑: push ObjectsListEnd, push Path
       let new_stack = self.stack
@@ -466,15 +439,13 @@ fn N3Recognizer::handle_objects_list_end(
 ///|
 fn N3Recognizer::handle_verb(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering Verb with token: \{token}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::PlainKeyword("a"), _)
-    ) => {
+    LocatedToken(N3Token::PlainKeyword("a"), _) => {
       let new_predicates = self.predicates
       new_predicates.push(Predicate::Regular(lwTYPE.as_n3term()))
       let new_self = { ..self, predicates: new_predicates }
@@ -489,9 +460,7 @@ fn N3Recognizer::handle_verb(
 
       Ok((final_self, next_state, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::PlainKeyword("has"), _)
-    ) => {
+    LocatedToken(N3Token::PlainKeyword("has"), _) => {
       // has <path>
       // 原逻辑: push AfterRegularVerb, push Path
       let new_stack = self.stack
@@ -501,9 +470,7 @@ fn N3Recognizer::handle_verb(
 
       Ok((new_self, N3State::Path, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::PlainKeyword("is"), _)
-    ) => {
+    LocatedToken(N3Token::PlainKeyword("is"), _) => {
       // is <path> of
       // 原逻辑: push AfterVerbIs, push Path
       let new_stack = self.stack
@@ -513,9 +480,7 @@ fn N3Recognizer::handle_verb(
 
       Ok((new_self, N3State::Path, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("="), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("="), _) => {
       let new_predicates = self.predicates
       new_predicates.push(
         Predicate::Regular(
@@ -533,9 +498,7 @@ fn N3Recognizer::handle_verb(
 
       Ok((final_self, next_state, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("=>"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("=>"), _) => {
       let new_predicates = self.predicates
       new_predicates.push(
         Predicate::Regular(
@@ -555,9 +518,7 @@ fn N3Recognizer::handle_verb(
 
       Ok((final_self, next_state, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("<="), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("<="), _) => {
       let new_predicates = self.predicates
       new_predicates.push(
         Predicate::Inverted(
@@ -577,9 +538,7 @@ fn N3Recognizer::handle_verb(
 
       Ok((final_self, next_state, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("<-"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("<-"), _) => {
       // <- <path>
       // 原逻辑: push AfterInvertedVerb, push Path
       let new_stack = self.stack
@@ -607,7 +566,7 @@ fn N3Recognizer::handle_verb(
 ///|
 fn N3Recognizer::handle_after_regular_verb(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering AfterRegularVerb with token: \{token}")
@@ -644,7 +603,7 @@ fn N3Recognizer::handle_after_regular_verb(
 ///|
 fn N3Recognizer::handle_after_inverted_verb(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering AfterInvertedVerb with token: \{token}")
@@ -680,15 +639,13 @@ fn N3Recognizer::handle_after_inverted_verb(
 ///|
 fn N3Recognizer::handle_after_verb_is(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering AfterVerbIs with token: \{token}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::PlainKeyword("of"), _)
-    ) => {
+    LocatedToken(N3Token::PlainKeyword("of"), _) => {
       let term = match self.terms.pop() {
         Some(t) => t
         None =>
@@ -728,7 +685,7 @@ fn N3Recognizer::handle_after_verb_is(
 ///|
 fn N3Recognizer::handle_path(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering Path with token: \{token}")
@@ -747,15 +704,13 @@ fn N3Recognizer::handle_path(
 ///|
 fn N3Recognizer::handle_path_follow_up(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PathFollowUp with token: \{token}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("!"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("!"), _) => {
       // ! indicates inverse path in some contexts, or property path
       // 原逻辑: push PathAfterIndicator(is_inverse=false), push PathItem
       // 注意：N3 中 ! 通常用于 Negation 或 Property Path，这里假设是 Path Indicator
@@ -766,9 +721,7 @@ fn N3Recognizer::handle_path_follow_up(
 
       Ok((new_self, N3State::PathItem, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("^"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("^"), _) => {
       // ^ indicates inverse path
       let new_stack = self.stack
       new_stack.push(N3State::PathAfterIndicator(is_inverse=false)) // 假设 ^ 也是某种 indicator
@@ -799,7 +752,7 @@ fn N3Recognizer::handle_path_follow_up(
 fn N3Recognizer::handle_path_after_indicator(
   self : N3Recognizer,
   is_inverse : Bool,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PathAfterIndicator with token: \{token}")
@@ -851,21 +804,17 @@ fn N3Recognizer::handle_path_after_indicator(
 ///|
 fn N3Recognizer::handle_path_item(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PathItem with token: \{token}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("["), _)
-    ) => Ok((self, N3State::PropertyListMiddle, None))
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("("), _)
-    ) => Ok((self, N3State::CollectionBeginning, None))
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("{"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("["), _) =>
+      Ok((self, N3State::PropertyListMiddle, None))
+    LocatedToken(N3Token::Punctuation("("), _) =>
+      Ok((self, N3State::CollectionBeginning, None))
+    LocatedToken(N3Token::Punctuation("{"), _) => {
       // Formula
       let new_contexts = self.contexts
       new_contexts.push(BlankNode::default())
@@ -873,9 +822,7 @@ fn N3Recognizer::handle_path_item(
 
       Ok((new_self, N3State::FormulaContent, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("}"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("}"), _) => {
       if self.contexts.is_empty() {
         return Err(
           RuleRecognizerError::SyntaxError(
@@ -938,13 +885,13 @@ fn N3Recognizer::handle_path_item(
 ///|
 fn N3Recognizer::handle_term_token_internal(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> Result[N3Recognizer, RuleRecognizerError] {
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(located) =>
+    LocatedToken::LocatedToken(located, _) =>
       match located {
-        LocatedN3Token(N3Token::Iri(iri), _) => {
+        N3Token::Iri(iri) => {
           let new_terms = self.terms
           new_terms.push(NamedNodeRef::new_unchecked(iri).as_n3term())
           Ok({ ..self, terms: new_terms })
@@ -973,16 +920,14 @@ fn N3Recognizer::handle_term_token_internal(
 ///|
 fn N3Recognizer::handle_property_list_middle(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PropertyListMiddle with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("]"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("]"), _) => {
       let new_terms = self.terms
       new_terms.push(BlankNode::default().as_n3term())
       let new_self = { ..self, terms: new_terms }
@@ -998,9 +943,7 @@ fn N3Recognizer::handle_property_list_middle(
 
       Ok((final_self, next_state, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::PlainKeyword("id"), _)
-    ) =>
+    LocatedToken(N3Token::PlainKeyword("id"), _) =>
       // 进入 [ id <IRI> ... ] 模式
       Ok((self, N3State::IriPropertyList, None))
     _ => {
@@ -1024,16 +967,14 @@ fn N3Recognizer::handle_property_list_middle(
 ///|
 fn N3Recognizer::handle_property_list_end(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering PropertyListEnd with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("]"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("]"), _) => {
       // 正常结束，弹出 PropertyListEnd
       let new_stack = self.stack
       if !new_stack.is_empty() &&
@@ -1060,14 +1001,14 @@ fn N3Recognizer::handle_property_list_end(
 ///|
 fn N3Recognizer::handle_iri_property_list(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering IriPropertyList with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(LocatedN3Token(N3Token::Iri(id), _)) => {
+    LocatedToken::LocatedToken(N3Token::Iri(id), _) => {
       let new_terms = self.terms
       new_terms.push(NamedNodeRef::new_unchecked(id).as_n3term())
       let new_self = { ..self, terms: new_terms }
@@ -1079,11 +1020,9 @@ fn N3Recognizer::handle_iri_property_list(
 
       Ok((final_self, N3State::PredicateObjectList, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(
-        N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-        _
-      )
+    LocatedToken(
+      N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+      _
     ) =>
       match context {
         RdfContext::N3RecognizerContext(ctx) =>
@@ -1131,16 +1070,13 @@ fn N3Recognizer::handle_iri_property_list(
 ///|
 fn N3Recognizer::handle_collection_beginning(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering CollectionBeginning with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
-  if token
-    is LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation(")"), _)
-    ) {
+  if token is LocatedToken(N3Token::Punctuation(")"), _) {
     // 空列表 ()
     let new_terms = self.terms
     new_terms.push(lwNIL.as_n3term())
@@ -1178,7 +1114,7 @@ fn N3Recognizer::handle_collection_beginning(
 ///|
 fn N3Recognizer::handle_collection_possible_end(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering CollectionPossibleEnd with token: \{token}")
@@ -1208,10 +1144,7 @@ fn N3Recognizer::handle_collection_possible_end(
   let quad1 = self.quad(old, lwFIRST.as_n3term(), value)
   let _output1 = Some(RdfOut::N3Quad(quad1))
 
-  if token
-    is LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation(")"), _)
-    ) {
+  if token is LocatedToken(N3Token::Punctuation(")"), _) {
     // 列表结束
     let quad2 = self.quad(old, lwREST.as_n3term(), lwNIL.as_n3term())
     let output2 = Some(RdfOut::N3Quad(quad2))
@@ -1257,7 +1190,7 @@ fn N3Recognizer::handle_collection_possible_end(
 fn N3Recognizer::handle_literal_possible_suffix(
   self : N3Recognizer,
   value : String,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info(
@@ -1266,9 +1199,7 @@ fn N3Recognizer::handle_literal_possible_suffix(
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::LangTag(language~, direction~), _)
-    ) => {
+    LocatedToken(N3Token::LangTag(language~, direction~), _) => {
       if direction is Some(_) {
         return Err(
           RuleRecognizerError::SyntaxError(
@@ -1296,9 +1227,7 @@ fn N3Recognizer::handle_literal_possible_suffix(
 
       Ok((final_self, next_state, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("^^"), _)
-    ) =>
+    LocatedToken(N3Token::Punctuation("^^"), _) =>
       // 期待数据类型 IRI
       Ok((self, N3State::LiteralExpectDatatype(value~), None))
     _ => {
@@ -1327,7 +1256,7 @@ fn N3Recognizer::handle_literal_possible_suffix(
 fn N3Recognizer::handle_literal_expect_datatype(
   self : N3Recognizer,
   value : String,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info(
@@ -1336,9 +1265,7 @@ fn N3Recognizer::handle_literal_expect_datatype(
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Iri(datatype), _)
-    ) => {
+    LocatedToken(N3Token::Iri(datatype), _) => {
       let datatype_node = NamedNodeRef::new_unchecked(datatype)
       let literal = LiteralRef::new_typed_literal(
         datatype_node.into_datatype(value),
@@ -1359,11 +1286,9 @@ fn N3Recognizer::handle_literal_expect_datatype(
 
       Ok((final_self, next_state, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(
-        N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-        _
-      )
+    LocatedToken(
+      N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+      _
     ) =>
       match context {
         RdfContext::N3RecognizerContext(ctx) =>
@@ -1419,16 +1344,14 @@ fn N3Recognizer::handle_literal_expect_datatype(
 ///|
 fn N3Recognizer::handle_formula_content(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info("Entering FormulaContent with token: \{token}")
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("}"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("}"), _) => {
       // 公式结束
       let ctx = match self.contexts.pop() {
         Some(c) => c
@@ -1467,9 +1390,7 @@ fn N3Recognizer::handle_formula_content(
 
       Ok((final_self, next_state, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::PlainKeyword(k), _)
-    ) if eq_ignore_ascii_case(k, "base") => {
+    LocatedToken(N3Token::PlainKeyword(k), _) if eq_ignore_ascii_case(k, "base") => {
       let new_stack = self.stack
       new_stack.push(N3State::FormulaContent)
       new_stack.push(N3State::BaseExpectIri)
@@ -1494,7 +1415,7 @@ fn N3Recognizer::handle_formula_content(
 ///|
 fn N3Recognizer::handle_formula_content_expect_dot(
   self : N3Recognizer,
-  token : LocatedTokenOrLineJump,
+  token : LocatedToken,
   _context : RdfContext,
 ) -> TransitionResult[N3Recognizer, N3State, RdfOut] {
   self.debug_logger.info(
@@ -1503,9 +1424,7 @@ fn N3Recognizer::handle_formula_content_expect_dot(
   self.debug_logger.info("Token stack: \{@debug.to_string(self.stack)}")
 
   match token {
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("}"), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("}"), _) => {
       // 公式直接结束，没有点
       let ctx = match self.contexts.pop() {
         Some(c) => c
@@ -1541,9 +1460,7 @@ fn N3Recognizer::handle_formula_content_expect_dot(
 
       Ok((final_self, next_state, None))
     }
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Punctuation("."), _)
-    ) => {
+    LocatedToken(N3Token::Punctuation("."), _) => {
       // 语句结束，回到 FormulaContent
       let new_stack = self.stack
       if !new_stack.is_empty() &&

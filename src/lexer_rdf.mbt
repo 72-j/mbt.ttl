@@ -31,7 +31,7 @@ fn RdfLexer::recognize_iri(
   data : ArrayView[Byte],
   options : LexerOptions,
   location_pos : SourcePos,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
   let string = []
   let mut i = 1
 
@@ -147,7 +147,7 @@ fn RdfLexer::parse_iri(
   iri_bytes : Array[Byte],
   position : Range,
   options : LexerOptions,
-) -> Result[LocatedTokenOrLineJump, TokenRecognizerError] {
+) -> Result[LocatedToken, TokenRecognizerError] {
   // 1. 将字节数组转换为字符串，处理可能的 UTF-8 错误
   let iri_str = match string_from_utf8(iri_bytes, position) {
     Ok(s) => s
@@ -195,11 +195,7 @@ fn RdfLexer::parse_iri(
     Err(e) => return Err(e)
   }
   // 使用传入的 position (已经是全局 Range)
-  Ok(
-    LocatedTokenOrLineJump::LocatedN3Token(
-      LocatedN3Token(N3Token::Iri(final_iri.base_iri), position),
-    ),
-  )
+  Ok(LocatedToken(N3Token::Iri(final_iri.base_iri), position))
 }
 
 ///|
@@ -265,14 +261,12 @@ fn build_plain_keyword_result(
   data : ArrayView[Byte],
   consumed : Int,
   start_offset : Int,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError]) {
+) -> (Int, Result[LocatedToken, TokenRecognizerError]) {
   let range = Range(start_offset, start_offset + consumed)
   (
     consumed,
     str_from_utf8(data[:consumed], range).map(fn(s) {
-      LocatedTokenOrLineJump::LocatedN3Token(
-        LocatedN3Token(N3Token::PlainKeyword(s), range),
-      )
+      LocatedToken(N3Token::PlainKeyword(s), range)
     }),
   )
 }
@@ -281,7 +275,7 @@ fn build_plain_keyword_result(
 fn build_unexpected_end_result(
   data : ArrayView[Byte],
   start_offset : Int,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError]) {
+) -> (Int, Result[LocatedToken, TokenRecognizerError]) {
   if data.length() == 0 {
     (
       1,
@@ -312,16 +306,14 @@ fn build_prefixed_name_result(
   start_offset : Int,
   localx : String,
   might_be_invalid_iri : Bool,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError]) {
+) -> (Int, Result[LocatedToken, TokenRecognizerError]) {
   let range = Range(start_offset, start_offset + consumed)
   (
     consumed,
     Ok(
-      LocatedTokenOrLineJump::LocatedN3Token(
-        LocatedN3Token::new(
-          N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-          range,
-        ),
+      LocatedToken::new(
+        N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
+        range,
       ),
     ),
   )
@@ -333,7 +325,7 @@ fn build_prefix_error(
   consumed : Int,
   start_offset : Int,
   prefix : String,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError]) {
+) -> (Int, Result[LocatedToken, TokenRecognizerError]) {
   (
     consumed,
     Err(
@@ -352,7 +344,7 @@ fn RdfLexer::recognize_pname_or_keyword(
   data : ArrayView[Byte],
   is_ending : Bool,
   location_pos : SourcePos,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
   let start_offset = location_pos.offset
 
   // 第一阶段：解析前缀部分
@@ -398,7 +390,7 @@ fn RdfLexer::parse_prefixed_name_or_suffix(
   prefix_consumed : Int, // 包括冒号的消耗量
   start_offset : Int,
   is_ending : Bool,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
   // 提取前缀（不包括冒号）
   let prefix_bytes = data[:prefix_consumed - 1] // 去掉最后的 ':'
   let prefix_range = Range(start_offset, start_offset + prefix_consumed - 1)
@@ -443,7 +435,7 @@ fn RdfLexer::recognize_variable(
   data : ArrayView[Byte],
   is_ending : Bool,
   location_pos : SourcePos,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
   if data.is_empty() || data[0] != b'?' {
     return None
   }
@@ -462,11 +454,9 @@ fn RdfLexer::recognize_variable(
       let token_result = match name_result {
         Ok((name, _)) if !name.is_empty() =>
           Ok(
-            LocatedTokenOrLineJump::LocatedN3Token(
-              LocatedN3Token::new(
-                N3Token::Variable(name),
-                Range(location_pos.offset, location_pos.offset + total_consumed),
-              ),
+            LocatedToken::new(
+              N3Token::Variable(name),
+              Range(location_pos.offset, location_pos.offset + total_consumed),
             ),
           )
         Ok((_name, _)) =>
@@ -713,7 +703,7 @@ fn RdfLexer::recognize_blank_node_label(
   data : ArrayView[Byte],
   is_ending : Bool,
   location_pos : SourcePos,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
   let mut i = 2
   while true {
     match RdfLexer::recognize_unicode_char(data[i:], i) {
@@ -749,14 +739,9 @@ fn RdfLexer::recognize_blank_node_label(
                       data[2:i],
                       Range(location_pos.offset + 2, location_pos.offset + i),
                     ).map(s => {
-                      LocatedTokenOrLineJump::LocatedN3Token(
-                        LocatedN3Token::new(
-                          N3Token::BlankNodeLabel(s),
-                          Range(
-                            location_pos.offset + 2,
-                            location_pos.offset + i,
-                          ),
-                        ),
+                      LocatedToken::new(
+                        N3Token::BlankNodeLabel(s),
+                        Range(location_pos.offset + 2, location_pos.offset + i),
                       )
                     }),
                   ),
@@ -771,11 +756,9 @@ fn RdfLexer::recognize_blank_node_label(
                     data[2:i],
                     Range(location_pos.offset + 2, location_pos.offset + i),
                   ).map(s => {
-                    LocatedTokenOrLineJump::LocatedN3Token(
-                      LocatedN3Token::new(
-                        N3Token::BlankNodeLabel(s),
-                        Range(location_pos.offset + 2, location_pos.offset + i),
-                      ),
+                    LocatedToken::new(
+                      N3Token::BlankNodeLabel(s),
+                      Range(location_pos.offset + 2, location_pos.offset + i),
                     )
                   }),
                 ),
@@ -788,11 +771,9 @@ fn RdfLexer::recognize_blank_node_label(
                     data[2:i],
                     Range(location_pos.offset + 2, location_pos.offset + i),
                   ).map(s => {
-                    LocatedTokenOrLineJump::LocatedN3Token(
-                      LocatedN3Token::new(
-                        N3Token::BlankNodeLabel(s),
-                        Range(location_pos.offset + 2, location_pos.offset + i),
-                      ),
+                    LocatedToken::new(
+                      N3Token::BlankNodeLabel(s),
+                      Range(location_pos.offset + 2, location_pos.offset + i),
                     )
                   }),
                 ),
@@ -817,11 +798,9 @@ fn RdfLexer::recognize_blank_node_label(
             data[2:i],
             Range(location_pos.offset + 2, location_pos.offset + i),
           ).map(s => {
-            LocatedTokenOrLineJump::LocatedN3Token(
-              LocatedN3Token::new(
-                N3Token::BlankNodeLabel(s),
-                Range(location_pos.offset + 2, location_pos.offset + i),
-              ),
+            LocatedToken::new(
+              N3Token::BlankNodeLabel(s),
+              Range(location_pos.offset + 2, location_pos.offset + i),
             )
           }),
         ),
@@ -850,7 +829,7 @@ fn RdfLexer::recognize_lang_tag(
   self : RdfLexer,
   data : ArrayView[Byte],
   location_pos : SourcePos,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
   let mut is_last_block_empty = true
   let mut are_digits_allowed = false
   let mut last_valid_index = 1
@@ -907,7 +886,7 @@ fn RdfLexer::parse_lang_tag(
   lang_tag : ArrayView[Byte],
   direction : Bytes?,
   position : Range,
-) -> Result[LocatedTokenOrLineJump, TokenRecognizerError] {
+) -> Result[LocatedToken, TokenRecognizerError] {
   let lang_str_result = str_from_utf8(lang_tag, position)
 
   let parsed_lang = match lang_str_result {
@@ -961,11 +940,9 @@ fn RdfLexer::parse_lang_tag(
         Err(e) => Err(e)
         Ok(dir_opt) =>
           Ok(
-            LocatedTokenOrLineJump::LocatedN3Token(
-              LocatedN3Token::new(
-                N3Token::LangTag(language=lang_str, direction=dir_opt),
-                Range(position.start, position.end),
-              ),
+            LocatedToken::new(
+              N3Token::LangTag(language=lang_str, direction=dir_opt),
+              Range(position.start, position.end),
             ),
           )
       }
@@ -980,7 +957,7 @@ fn RdfLexer::recognize_string(
   delimiter : Byte,
   is_ending : Bool,
   location_pos : SourcePos,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
   let string = StringBuilder::new()
   let mut i = 1
 
@@ -1041,11 +1018,9 @@ fn RdfLexer::recognize_string(
           (
             i + 1,
             Ok(
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token::new(
-                  N3Token::String(string.to_string()),
-                  Range(location_pos.offset, location_pos.offset + i + 1),
-                ),
+              LocatedToken::new(
+                N3Token::String(string.to_string()),
+                Range(location_pos.offset, location_pos.offset + i + 1),
               ),
             ),
           ),
@@ -1122,7 +1097,7 @@ fn RdfLexer::recognize_long_string(
   delimiter : Byte,
   is_ending : Bool,
   location_ctx : SourcePos,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
   // 检查前三个字符是否匹配 delimiter（即 """ 或 '''）
   if data.length() < 3 {
     return if is_ending {
@@ -1164,11 +1139,9 @@ fn RdfLexer::recognize_long_string(
           (
             total_bytes,
             Ok(
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token::new(
-                  N3Token::LongString(content),
-                  Range(location_ctx.offset, end_offset),
-                ),
+              LocatedToken::new(
+                N3Token::LongString(content),
+                Range(location_ctx.offset, end_offset),
               ),
             ),
           ),
@@ -1219,7 +1192,7 @@ fn RdfLexer::recognize_number(
   data : ArrayView[Byte],
   is_ending : Bool,
   location_pos : SourcePos,
-) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])? {
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
   let mut i = 0
   match data.get(0) {
     Some(c) => if c == b'+' || c == b'-' { i += 1 }
@@ -1296,11 +1269,9 @@ fn RdfLexer::recognize_number(
             data[:i],
             Range(location_pos.offset, location_pos.offset + i),
           ).map(s => {
-            LocatedTokenOrLineJump::LocatedN3Token(
-              LocatedN3Token::new(
-                N3Token::Double(s),
-                Range(location_pos.offset, location_pos.offset + i),
-              ),
+            LocatedToken::new(
+              N3Token::Double(s),
+              Range(location_pos.offset, location_pos.offset + i),
             )
           })
         },
@@ -1325,11 +1296,9 @@ fn RdfLexer::recognize_number(
               data[:i],
               Range(location_pos.offset, location_pos.offset + i),
             ).map(s => {
-              LocatedTokenOrLineJump::LocatedN3Token(
-                LocatedN3Token::new(
-                  N3Token::Integer(s),
-                  Range(location_pos.offset, location_pos.offset + i),
-                ),
+              LocatedToken::new(
+                N3Token::Integer(s),
+                Range(location_pos.offset, location_pos.offset + i),
               )
             })
           },
@@ -1343,11 +1312,9 @@ fn RdfLexer::recognize_number(
             data[:i],
             Range(location_pos.offset, location_pos.offset + i),
           ).map(s => {
-            LocatedTokenOrLineJump::LocatedN3Token(
-              LocatedN3Token::new(
-                N3Token::Decimal(s),
-                Range(location_pos.offset, location_pos.offset + i),
-              ),
+            LocatedToken::new(
+              N3Token::Decimal(s),
+              Range(location_pos.offset, location_pos.offset + i),
             )
           }),
         ),
@@ -1370,11 +1337,9 @@ fn RdfLexer::recognize_number(
             data[:i],
             Range(location_pos.offset, location_pos.offset + i),
           ).map(s => {
-            LocatedTokenOrLineJump::LocatedN3Token(
-              LocatedN3Token::new(
-                N3Token::Integer(s),
-                Range(location_pos.offset, location_pos.offset + i),
-              ),
+            LocatedToken::new(
+              N3Token::Integer(s),
+              Range(location_pos.offset, location_pos.offset + i),
             )
           })
         },

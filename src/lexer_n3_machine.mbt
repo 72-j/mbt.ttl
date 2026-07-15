@@ -85,8 +85,7 @@ pub impl StateMachine for N3Recognizer with fn transition(
     N3State::ObjectsList => self.handle_objects_list(event, context)
     N3State::ObjectsListEnd => self.handle_objects_list_end(event, context)
     N3State::Verb => self.handle_verb(event, context)
-    N3State::AfterRegularVerb =>
-      self.handle_after_regular_verb(event, context)
+    N3State::AfterRegularVerb => self.handle_after_regular_verb(event, context)
     N3State::AfterInvertedVerb =>
       self.handle_after_inverted_verb(event, context)
     N3State::AfterVerbIs => self.handle_after_verb_is(event, context)
