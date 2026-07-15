@@ -127,7 +127,6 @@ pub impl StateMachine for N3Recognizer with fn context(_self : N3Recognizer) -> 
   })
 }
 
-
 ///|
 pub impl StateMachine for N3Recognizer with fn[ST : StateWrapper] set_current_state(
   self : N3Recognizer,

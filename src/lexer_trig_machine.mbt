@@ -247,8 +247,6 @@ pub impl StateMachine for TriGRecognizer with fn context(_self : TriGRecognizer)
   })
 }
 
-
-
 ///|
 pub impl StateMachine for TriGRecognizer with fn[ST : StateWrapper] set_current_state(
   self : TriGRecognizer,
