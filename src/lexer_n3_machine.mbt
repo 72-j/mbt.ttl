@@ -30,8 +30,8 @@ pub impl StateMachine for N3Recognizer with fn step(self, event : Event) -> N3Re
   )
   match result {
     Ok((new_machine, new_state, _output)) => {
-      let new_context = new_machine.context()
-      let new_machine = new_machine.set_context(new_context)
+      // let new_context = new_machine.context()
+      // let new_machine = new_machine.set_context(new_context)
       let new_machine = new_machine.set_current_state(new_state)
       new_machine
     }
@@ -127,15 +127,6 @@ pub impl StateMachine for N3Recognizer with fn context(_self : N3Recognizer) -> 
   })
 }
 
-///|
-pub impl StateMachine for N3Recognizer with fn set_context(
-  self : N3Recognizer,
-  _context : RdfContext,
-) -> N3Recognizer {
-  // 假设 N3Recognizer 有一个 context 字段或者通过其他方式管理
-  // 这里简单返回 self，实际可能需要更新内部状态
-  self
-}
 
 ///|
 pub impl StateMachine for N3Recognizer with fn[ST : StateWrapper] set_current_state(

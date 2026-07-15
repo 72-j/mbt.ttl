@@ -190,7 +190,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn conte
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn set_context(
+pub fn[M] GenericStateMachine::set_context(
   self : GenericStateMachine[M],
   new_context : Ctx,
 ) -> GenericStateMachine[M] {

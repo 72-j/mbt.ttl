@@ -34,8 +34,8 @@ pub impl StateMachine for NQuadsRecognizer with fn step(self, event : Event) -> 
   )
   match result {
     Ok((new_machine, new_state, _output)) => {
-      let new_context = new_machine.context()
-      let new_machine = new_machine.set_context(new_context)
+      // let new_context = new_machine.context()
+      // let new_machine = new_machine.set_context(new_context)
       let new_machine = new_machine.set_current_state(new_state)
       new_machine
     }
@@ -127,16 +127,6 @@ pub impl StateMachine for NQuadsRecognizer with fn context(
     lexer_options: LexerOptions::{ base_iri: None },
     with_graph_name: false,
   })
-}
-
-///|
-pub impl StateMachine for NQuadsRecognizer with fn set_context(
-  self : NQuadsRecognizer,
-  _context : RdfContext,
-) -> NQuadsRecognizer {
-  // 假设 NQuadsRecognizer 有一个 context 字段或者通过其他方式管理
-  // 这里简单返回 self，实际可能需要更新内部状态
-  self
 }
 
 ///|

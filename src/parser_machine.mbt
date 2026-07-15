@@ -64,7 +64,7 @@ pub fn[TR, M] Parser::Parser(
 }
 
 ///|
-pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_next(
+pub fn[TR : TokenRecognizer, M : StateMachine+ RuleRecognizer] Parser::parse_next(
   self : Parser[TR, M],
 ) -> Result[RdfOut, TurtleError]? {
   for ;; {

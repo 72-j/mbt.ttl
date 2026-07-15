@@ -945,10 +945,10 @@ fn TriGRecognizer::handle_base_expect_iri(
       }
 
       let new_ctx = { ..ctx, lexer_options: new_ctx_options }
-      let new_context = RdfContext::TriGRecognizerContext(new_ctx)
-      let new_self = self.set_context(new_context)
+      let _new_context = RdfContext::TriGRecognizerContext(new_ctx)
+      // let new_self = self.set_context(new_context)
 
-      Ok((new_self, TriGState::ExpectDot, None))
+      Ok((self, TriGState::ExpectDot, None))
     }
     _ =>
       Err(
@@ -1024,11 +1024,11 @@ fn TriGRecognizer::handle_prefix_expect_iri(
       let iri = Iri::Iri(iri_str)
       let new_prefixes = ctx.prefixes
       new_prefixes.set(name, iri)
-      let new_ctx = { ..ctx, prefixes: new_prefixes }
-      let new_context = RdfContext::TriGRecognizerContext(new_ctx)
-      let new_self = self.set_context(new_context)
+      // let new_ctx = { ..ctx, prefixes: new_prefixes }
+      // let new_context = RdfContext::TriGRecognizerContext(new_ctx)
+      // let new_self = self.set_context(new_context)
 
-      Ok((new_self, TriGState::ExpectDot, None))
+      Ok((self, TriGState::ExpectDot, None))
     }
     _ =>
       Err(

@@ -905,13 +905,13 @@ fn N3Recognizer::handle_term_token_internal(
             ),
           )
       }
-    _ =>
-      Err(
-        RuleRecognizerError::SyntaxError(
-          "TOKEN is not a valid RDF value",
-          self.last_range,
-        ),
-      )
+    // _ =>
+    //   Err(
+    //     RuleRecognizerError::SyntaxError(
+    //       "TOKEN is not a valid RDF value",
+    //       self.last_range,
+    //     ),
+    //   )
   }
 }
 

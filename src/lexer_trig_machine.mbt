@@ -59,8 +59,8 @@ pub impl StateMachine for TriGRecognizer with fn step(self, event : Event) -> Tr
   )
   match result {
     Ok((new_machine, _new_state, _output)) => {
-      let new_context = new_machine.context()
-      let new_machine = new_machine.set_context(new_context)
+      let _new_context = new_machine.context()
+      // let new_machine = new_machine.set_context(new_context)
       // let new_machine = new_machine.set_current_state(new_state)
       new_machine
     }
@@ -247,13 +247,7 @@ pub impl StateMachine for TriGRecognizer with fn context(_self : TriGRecognizer)
   })
 }
 
-///|
-pub impl StateMachine for TriGRecognizer with fn set_context(
-  self : TriGRecognizer,
-  _context : RdfContext,
-) -> TriGRecognizer {
-  self
-}
+
 
 ///|
 pub impl StateMachine for TriGRecognizer with fn[ST : StateWrapper] set_current_state(

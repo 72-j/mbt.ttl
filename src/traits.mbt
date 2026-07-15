@@ -11,7 +11,7 @@ pub trait StateMachine {
   fn reset(Self) -> Self
   fn is_accepting(Self) -> Bool
   fn context(Self) -> RdfContext
-  fn set_context(Self, RdfContext) -> Self
+  // fn set_context(Self, RdfContext) -> Self
   fn[ST : StateWrapper] set_current_state(Self, state : ST) -> Self
   fn error_recovery_statemachine(Self) -> Self
 }

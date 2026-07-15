@@ -353,8 +353,8 @@ fn NQuadsRecognizer::handle_expect_dot(
       Err(
         RuleRecognizerError::SyntaxError("Quads must be followed by a dot", t.1),
       )
-    _ =>
-      Err(RuleRecognizerError::SyntaxError("Expecting a dot", Range::default()))
+    // _ =>
+    //   Err(RuleRecognizerError::SyntaxError("Expecting a dot", Range::default()))
   }
 }
 
