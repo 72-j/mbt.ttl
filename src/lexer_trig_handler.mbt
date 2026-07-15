@@ -2,7 +2,7 @@
 // 功能: 处理三元组或图的起始，识别主语或图名
 
 ///|
-fn TriGRecognizer::handle_triples_or_graph_m(
+fn TriGRecognizer::handle_triples_or_graph(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -103,7 +103,7 @@ fn TriGRecognizer::handle_triples_or_graph_m(
 // 功能: 根据term判断是进入图块还是谓词对象列表
 
 ///|
-fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
+fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list(
   self : TriGRecognizer,
   term : NamedOrBlankNodeRef, // 从状态中提取
   event : Event,
@@ -209,7 +209,7 @@ fn TriGRecognizer::handle_wrapped_graph_or_predicate_object_list_m(
 // 功能: 路由到Object状态处理对象列表
 
 ///|
-fn TriGRecognizer::handle_objects_list_m(
+fn TriGRecognizer::handle_objects_list(
   self : TriGRecognizer,
   _event : Event,
   _context : RdfContext,
@@ -233,7 +233,7 @@ fn TriGRecognizer::handle_objects_list_m(
 // 功能: 处理RDF对象（IRI、字面量、集合等）
 
 ///|
-fn TriGRecognizer::handle_object_m(
+fn TriGRecognizer::handle_object(
   self : TriGRecognizer,
   event : Event,
   __context : RdfContext,
@@ -247,7 +247,7 @@ fn TriGRecognizer::handle_object_m(
       let obj_term = TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(iri))
       // let new_self = self
       self.cur_object.push(obj_term)
-      // emit_quad 逻辑：生成一个 RdfOut
+      // emit_curr_quad 逻辑：生成一个 RdfOut
       // 假设 emit_current_quad 或类似方法可用
       let quad = self.emit_current_quad() // 假设此方法存在并正确构建 Quad
       self.debug_logger.info("[Step 4] Object: emitted quad: \{quad}")
@@ -329,7 +329,7 @@ fn TriGRecognizer::handle_object_m(
 // 功能: 处理 '(' 后的第一个元素或空集合情况
 
 ///|
-fn TriGRecognizer::handle_object_collection_beginning_m(
+fn TriGRecognizer::handle_object_collection_beginning(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -353,7 +353,7 @@ fn TriGRecognizer::handle_object_collection_beginning_m(
       let new_self = self
       new_self.cur_object.push(TermRef::NamedNodeRef(lwNIL))
 
-      // emit_quad for nil? 原代码调用了 emit_quad(results)
+      // emit_curr_quad for nil? 原代码调用了 emit_curr_quad(results)
       let quad = new_self.emit_current_quad()
 
       let new_stack = new_self.stack
@@ -391,7 +391,7 @@ fn TriGRecognizer::handle_object_collection_beginning_m(
 // 功能: 检查集合是否结束或继续处理下一个元素
 
 ///|
-fn TriGRecognizer::handle_object_collection_possible_end_m(
+fn TriGRecognizer::handle_object_collection_possible_end(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -477,7 +477,7 @@ fn TriGRecognizer::handle_object_collection_possible_end_m(
 // 功能: 处理谓词对象列表结束符（逗号、分号、句号）
 
 ///|
-fn TriGRecognizer::handle_predicate_object_list_end_m(
+fn TriGRecognizer::handle_predicate_object_list_end(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -526,7 +526,7 @@ fn TriGRecognizer::handle_predicate_object_list_end_m(
 // 功能: TriG文档的顶层状态，处理指令和三文组
 
 ///|
-fn TriGRecognizer::handle_trig_doc_m(
+fn TriGRecognizer::handle_trig_doc(
   self : TriGRecognizer,
   event : Event,
   context : RdfContext,
@@ -771,7 +771,7 @@ fn TriGRecognizer::handle_trig_doc_m(
 // 功能: 处理图内的三元组，识别主语
 
 ///|
-fn TriGRecognizer::handle_triples_m(
+fn TriGRecognizer::handle_triples(
   self : TriGRecognizer,
   event : Event,
   context : RdfContext,
@@ -859,7 +859,7 @@ fn TriGRecognizer::handle_triples_m(
 // 功能: 处理谓词（包括 'a' 关键字和IRI）
 
 ///|
-fn TriGRecognizer::handle_verb_m(
+fn TriGRecognizer::handle_verb(
   self : TriGRecognizer,
   event : Event,
   context : RdfContext,
@@ -946,7 +946,7 @@ fn TriGRecognizer::handle_verb_m(
 // 功能: 期望遇到句号，用于指令结束
 
 ///|
-fn TriGRecognizer::handle_expect_dot_m(
+fn TriGRecognizer::handle_expect_dot(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -976,7 +976,7 @@ fn TriGRecognizer::handle_expect_dot_m(
 // 功能: BASE指令后期望IRI
 
 ///|
-fn TriGRecognizer::handle_base_expect_iri_m(
+fn TriGRecognizer::handle_base_expect_iri(
   self : TriGRecognizer,
   event : Event,
   context : RdfContext,
@@ -1034,13 +1034,13 @@ fn TriGRecognizer::handle_base_expect_iri_m(
 // 功能: PREFIX指令后期望前缀名
 
 ///|
-fn TriGRecognizer::handle_prefix_expect_prefix_m(
+fn TriGRecognizer::handle_prefix_expect_prefix(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
 ) -> TransitionResult[TriGRecognizer, TriGState, RdfOut] {
   self.debug_logger.info(
-    "PrefixExpectPrefix: handling event: \{event} Token stack: \{@debug.to_string(self.stack)}",
+    "PrefixExpectPrefix: handling event: \{event} Token stack: \{@debug.to_string(self.stack.length())}",
   )
 
   match event {
@@ -1080,7 +1080,7 @@ fn TriGRecognizer::handle_prefix_expect_prefix_m(
 // 功能: 前缀名后期望IRI值
 
 ///|
-fn TriGRecognizer::handle_prefix_expect_iri_m(
+fn TriGRecognizer::handle_prefix_expect_iri(
   self : TriGRecognizer,
   name : String,
   event : Event,
@@ -1124,7 +1124,7 @@ fn TriGRecognizer::handle_prefix_expect_iri_m(
 // 功能: VERSION指令后期望版本号字符串
 
 ///|
-fn TriGRecognizer::handle_version_expect_version_m(
+fn TriGRecognizer::handle_version_expect_version(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1150,7 +1150,7 @@ fn TriGRecognizer::handle_version_expect_version_m(
 // 功能: 处理图中空白节点属性列表的当前状态
 
 ///|
-fn TriGRecognizer::handle_wrapped_graph_blank_node_property_list_current_m(
+fn TriGRecognizer::handle_wrapped_graph_blank_node_property_list_current(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1182,7 +1182,7 @@ fn TriGRecognizer::handle_wrapped_graph_blank_node_property_list_current_m(
 // 功能: 主语空白节点属性列表结束，期望']'
 
 ///|
-fn TriGRecognizer::handle_subject_blank_node_property_list_end_m(
+fn TriGRecognizer::handle_subject_blank_node_property_list_end(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1208,7 +1208,7 @@ fn TriGRecognizer::handle_subject_blank_node_property_list_end_m(
 // 功能: 主语空白节点属性列表结束后处理
 
 ///|
-fn TriGRecognizer::handle_subject_blank_node_property_list_after_m(
+fn TriGRecognizer::handle_subject_blank_node_property_list_after(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1233,10 +1233,10 @@ fn TriGRecognizer::handle_subject_blank_node_property_list_after_m(
     }
   }
 }
-// ===== 修正后的 handle_subject_collection_beginning_m =====
+// ===== 修正后的 handle_subject_collection_beginning =====
 
 ///|
-fn TriGRecognizer::handle_subject_collection_beginning_m(
+fn TriGRecognizer::handle_subject_collection_beginning(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1286,7 +1286,7 @@ fn TriGRecognizer::handle_subject_collection_beginning_m(
 // 功能: 检查主语集合是否结束或继续处理下一个元素
 
 ///|
-fn TriGRecognizer::handle_subject_collection_possible_end_m(
+fn TriGRecognizer::handle_subject_collection_possible_end(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1371,7 +1371,7 @@ fn TriGRecognizer::handle_subject_collection_possible_end_m(
 // 功能: 处理三元组中空白节点属性列表的当前状态
 
 ///|
-fn TriGRecognizer::handle_triples_blank_node_property_list_current_m(
+fn TriGRecognizer::handle_triples_blank_node_property_list_current(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1398,7 +1398,7 @@ fn TriGRecognizer::handle_triples_blank_node_property_list_current_m(
 // 功能: 处理图名的解析（IRI、前缀名、空白节点等）
 
 ///|
-fn TriGRecognizer::handle_graph_name_m(
+fn TriGRecognizer::handle_graph_name(
   self : TriGRecognizer,
   event : Event,
   context : RdfContext,
@@ -1487,7 +1487,7 @@ fn TriGRecognizer::handle_graph_name_m(
 // 功能: 匿名图名结束，期望']'
 
 ///|
-fn TriGRecognizer::handle_graph_name_anon_end_m(
+fn TriGRecognizer::handle_graph_name_anon_end(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1525,7 +1525,7 @@ fn TriGRecognizer::handle_graph_name_anon_end_m(
 // 功能: 可选的谓词对象列表，处理特殊情况
 
 ///|
-fn TriGRecognizer::handle_maybe_predicate_object_list_m(
+fn TriGRecognizer::handle_maybe_predicate_object_list(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1550,7 +1550,7 @@ fn TriGRecognizer::handle_maybe_predicate_object_list_m(
 // 功能: 注释结束，期望'|}'
 
 ///|
-fn TriGRecognizer::handle_annotation_end_m(
+fn TriGRecognizer::handle_annotation_end(
   self : TriGRecognizer,
   with_reifier : Bool,
   event : Event,
@@ -1582,7 +1582,7 @@ fn TriGRecognizer::handle_annotation_end_m(
 // 功能: 对象空白节点属性列表的当前状态
 
 ///|
-fn TriGRecognizer::handle_object_blank_node_property_list_current_m(
+fn TriGRecognizer::handle_object_blank_node_property_list_current(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1599,7 +1599,7 @@ fn TriGRecognizer::handle_object_blank_node_property_list_current_m(
       let bnode = BlankNode::default().as_ref()
       let new_cur_object = self.cur_object + [TermRef::BlankNodeRef(bnode)]
       let new_self = { ..self, cur_object: new_cur_object }
-      let quad = new_self.emit_quad_m()
+      let quad = new_self.emit_curr_quad()
       Ok((new_self, TriGState::ObjectBlankNodePropertyListCurrent, Some(quad)))
     }
     _ => {
@@ -1618,7 +1618,7 @@ fn TriGRecognizer::handle_object_blank_node_property_list_current_m(
 // 功能: 字面量后期望数据类型IRI
 
 ///|
-fn TriGRecognizer::handle_literal_expect_datatype_m(
+fn TriGRecognizer::handle_literal_expect_datatype(
   self : TriGRecognizer,
   value : String,
   emit : Bool,
@@ -1666,7 +1666,7 @@ fn TriGRecognizer::handle_literal_expect_datatype_m(
       let new_self = { ..self, cur_object: new_cur_object }
 
       if emit {
-        let quad = new_self.emit_quad_m()
+        let quad = new_self.emit_curr_quad()
         Ok(
           (
             new_self,
@@ -1710,7 +1710,7 @@ fn TriGRecognizer::handle_literal_expect_datatype_m(
           let new_self = { ..self, cur_object: new_cur_object }
 
           if emit {
-            let quad = new_self.emit_quad_m()
+            let quad = new_self.emit_curr_quad()
             Ok(
               (
                 new_self,
@@ -1740,7 +1740,7 @@ fn TriGRecognizer::handle_literal_expect_datatype_m(
 // 功能: 引用三元组主语结束，期望'>>'
 
 ///|
-fn TriGRecognizer::handle_subject_reified_triple_end_m(
+fn TriGRecognizer::handle_subject_reified_triple_end(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1784,7 +1784,7 @@ fn TriGRecognizer::handle_subject_reified_triple_end_m(
 // 功能: 三元组项结束，期望')>>'
 
 ///|
-fn TriGRecognizer::handle_triple_term_end_m(
+fn TriGRecognizer::handle_triple_term_end(
   self : TriGRecognizer,
   emit : Bool,
   event : Event,
@@ -1830,7 +1830,7 @@ fn TriGRecognizer::handle_triple_term_end_m(
   // 将 triple 作为对象推入 cur_object
   self.cur_object.push(TermRef::TripleRef(triple))
 
-  let output = if emit { Some(self.emit_quad_m()) } else { None }
+  let output = if emit { Some(self.emit_curr_quad()) } else { None }
 
   match event {
     LocatedTokenOrLineJump::LocatedN3Token(
@@ -1852,7 +1852,7 @@ fn TriGRecognizer::handle_triple_term_end_m(
 // 功能: 引用三元组结束后处理reifier
 
 ///|
-fn TriGRecognizer::handle_end_of_reified_triple_before_reifier_m(
+fn TriGRecognizer::handle_end_of_reified_triple_before_reifier(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -1935,7 +1935,7 @@ fn TriGRecognizer::handle_end_of_reified_triple_before_reifier_m(
 // 功能: 处理reifier（引用节点）
 
 ///|
-fn TriGRecognizer::handle_reifier_m(
+fn TriGRecognizer::handle_reifier(
   self : TriGRecognizer,
   triple : Triple,
   event : Event,
@@ -2045,7 +2045,7 @@ fn TriGRecognizer::handle_reifier_m(
 // ===== ReifiedTripleSubject 处理 =====
 
 ///|
-fn TriGRecognizer::handle_reified_triple_subject_m(
+fn TriGRecognizer::handle_reified_triple_subject(
   self : TriGRecognizer,
   is_reified : Bool,
   event : Event,
@@ -2119,7 +2119,7 @@ fn TriGRecognizer::handle_reified_triple_subject_m(
 // ===== ReifiedTripleObject 处理 =====
 
 ///|
-fn TriGRecognizer::handle_reified_triple_object_m(
+fn TriGRecognizer::handle_reified_triple_object(
   self : TriGRecognizer,
   is_reified : Bool,
   event : Event,
@@ -2287,7 +2287,7 @@ fn TriGRecognizer::handle_reified_triple_object_m(
 // ===== QuotedAnonEnd 处理 =====
 
 ///|
-fn TriGRecognizer::handle_quoted_anon_end_m(
+fn TriGRecognizer::handle_quoted_anon_end(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -2309,7 +2309,7 @@ fn TriGRecognizer::handle_quoted_anon_end_m(
 // ===== ExpectAtKeyword 处理 =====
 
 ///|
-fn TriGRecognizer::handle_expect_at_keyword_m(
+fn TriGRecognizer::handle_expect_at_keyword(
   self : TriGRecognizer,
   event : Event,
   context : RdfContext,
@@ -2351,7 +2351,7 @@ fn TriGRecognizer::handle_expect_at_keyword_m(
 // ===== WrappedGraph 状态处理 '{' =====
 
 ///|
-fn TriGRecognizer::handle_wrapped_graph_m(
+fn TriGRecognizer::handle_wrapped_graph(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -2409,10 +2409,10 @@ fn TriGRecognizer::handle_wrapped_graph_m(
   }
 }
 
-// ===== handle_wrapped_graph_possible_end_m =====
+// ===== handle_wrapped_graph_possible_end =====
 
 ///|
-fn TriGRecognizer::handle_wrapped_graph_possible_end_m(
+fn TriGRecognizer::handle_wrapped_graph_possible_end(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -2506,10 +2506,10 @@ fn TriGRecognizer::handle_wrapped_graph_possible_end_m(
   }
 }
 
-// ===== handle_object_reified_triple_end_m =====
+// ===== handle_object_reified_triple_end =====
 
 ///|
-fn TriGRecognizer::handle_object_reified_triple_end_m(
+fn TriGRecognizer::handle_object_reified_triple_end(
   self : TriGRecognizer,
   emit : Bool,
   event : Event,
@@ -2575,7 +2575,7 @@ fn TriGRecognizer::handle_object_reified_triple_end_m(
         // subject = cur_subject 栈顶（外层 subject）
         // predicate = cur_predicate 栈顶（外层 predicate）
         // object = triple (刚构造的引用三元组)
-        let quad = new_self.emit_quad_m()
+        let quad = new_self.emit_curr_quad()
 
         // 5. 弹出 ObjectReifiedTripleEnd，进入 PredicateObjectListEnd
         // 注意：需要弹出当前状态
@@ -2608,10 +2608,10 @@ fn TriGRecognizer::handle_object_reified_triple_end_m(
   }
 }
 
-// ===== handle_literal_possible_suffix_m =====
+// ===== handle_literal_possible_suffix =====
 
 ///|
-fn TriGRecognizer::handle_literal_possible_suffix_m(
+fn TriGRecognizer::handle_literal_possible_suffix(
   self : TriGRecognizer,
   value : String,
   emit : Bool,
@@ -2672,7 +2672,7 @@ fn TriGRecognizer::handle_literal_possible_suffix_m(
         self.debug_logger.info(
           "LiteralPossibleSuffix: emitting quad with language tag",
         )
-        let quad = new_self.emit_quad_m()
+        let quad = new_self.emit_curr_quad()
 
         // 弹出 LiteralPossibleSuffix 状态
         let new_stack = new_self.stack
@@ -2715,7 +2715,7 @@ fn TriGRecognizer::handle_literal_possible_suffix_m(
         self.debug_logger.info(
           "LiteralPossibleSuffix: emitting quad (simple literal)",
         )
-        let quad = new_self.emit_quad_m()
+        let quad = new_self.emit_curr_quad()
 
         // 弹出 LiteralPossibleSuffix 状态
         let new_stack = new_self.stack
@@ -2741,7 +2741,7 @@ fn TriGRecognizer::handle_literal_possible_suffix_m(
 // ===== 简化版 =====
 
 ///|
-fn TriGRecognizer::handle_object_blank_node_property_list_end_m(
+fn TriGRecognizer::handle_object_blank_node_property_list_end(
   self : TriGRecognizer,
   event : Event,
   _context : RdfContext,
@@ -2773,7 +2773,7 @@ fn TriGRecognizer::handle_object_blank_node_property_list_end_m(
       let new_self = { ..self, cur_object: new_cur_object }
 
       // 输出
-      let quad = new_self.emit_quad_m()
+      let quad = new_self.emit_curr_quad()
 
       // 弹出当前状态
       let new_stack = new_self.stack
@@ -2794,7 +2794,7 @@ fn TriGRecognizer::handle_object_blank_node_property_list_end_m(
 
 ///|
 /// 状态: PredicateObjectList - 处理谓词对象列表
-fn TriGRecognizer::handle_predicate_object_list_m(
+fn TriGRecognizer::handle_predicate_object_list(
   self : TriGRecognizer,
   event : Event,
   context : RdfContext,
@@ -2865,7 +2865,7 @@ fn TriGRecognizer::handle_predicate_object_list_m(
 
 ///|
 /// 状态: PredicateObjectListPossibleContinuation - 谓词列表分号后等待新谓词
-fn TriGRecognizer::handle_predicate_object_list_possible_continuation_m(
+fn TriGRecognizer::handle_predicate_object_list_possible_continuation(
   self : TriGRecognizer,
   event : Event,
   context : RdfContext,

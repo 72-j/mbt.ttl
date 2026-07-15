@@ -299,7 +299,7 @@ pub fn[RL] LowLevelTriGParser::prefixes(
     RdfContext::TriGRecognizerContext(ctx) => { inner: ctx.prefixes.iter() }
     _ =>
       // 假设存在一个空的 Map 或数组可以生成匹配的 Iter2[String, IriRef]
-      { inner: {}.iter() }
+      { inner: Map([]).iter() }
   }
 }
 
@@ -327,7 +327,7 @@ pub struct TriGSerializer {
 
 ///|
 pub fn TriGSerializer::new() -> TriGSerializer {
-  { base_iri: None, prefixes: {} }
+  { base_iri: None, prefixes: Map([]) }
 }
 
 ///|

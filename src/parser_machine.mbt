@@ -4,7 +4,6 @@ pub(all) enum RdfContext {
   NQuadsRecognizerContext(NQuadsRecognizerContext)
   N3RecognizerContext(N3RecognizerContext)
 }
-
 ///|
 pub(all) enum RdfOut {
   Quad(Quad)

@@ -792,11 +792,11 @@ pub(all) struct NQuadsRecognizer {
   mut last_range : Range
   errors : Array[RuleRecognizerError]
 }
-pub fn NQuadsRecognizer::handle_after_quoted_triple_m(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
-pub fn NQuadsRecognizer::handle_expect_line_jump_m(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
-pub fn NQuadsRecognizer::handle_expect_literal_datatype_m(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext, String) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
-pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
-pub fn NQuadsRecognizer::handle_recover_to_line_jump_m(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
+pub fn NQuadsRecognizer::handle_after_quoted_triple(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
+pub fn NQuadsRecognizer::handle_expect_line_jump(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
+pub fn NQuadsRecognizer::handle_expect_literal_datatype(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext, String) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
+pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
+pub fn NQuadsRecognizer::handle_recover_to_line_jump(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
 pub fn NQuadsRecognizer::new_parser(Array[Byte], Bool, Bool, debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
 pub impl RuleRecognizer for NQuadsRecognizer
 pub impl StateMachine for NQuadsRecognizer

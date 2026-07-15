@@ -478,6 +478,9 @@ async test "Parser Turtle" {
 
   debug("Total: \{turtles.length()}")
   @debug.assert_eq(turtles.length(), 5)
+    for i, t in turtles {
+    debug("  [\{i}] \{t}")
+  }
 }
 
 ///|

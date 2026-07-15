@@ -1,7 +1,7 @@
 // ===== State: ExpectSubject =====
 
 ///|
-fn NQuadsRecognizer::handle_expect_subject_m(
+fn NQuadsRecognizer::handle_expect_subject(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
@@ -32,7 +32,7 @@ fn NQuadsRecognizer::handle_expect_subject_m(
 // ===== State: ExpectPredicate =====
 
 ///|
-fn NQuadsRecognizer::handle_expect_predicate_m(
+fn NQuadsRecognizer::handle_expect_predicate(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
@@ -54,7 +54,7 @@ fn NQuadsRecognizer::handle_expect_predicate_m(
 // ===== State: ExpectedObject =====
 
 ///|
-fn NQuadsRecognizer::handle_expected_object_m(
+fn NQuadsRecognizer::handle_expected_object(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   ctx : NQuadsRecognizerContext,
@@ -114,7 +114,7 @@ fn NQuadsRecognizer::handle_expected_object_m(
 // ===== State: ExpectLiteralAnnotationOrGraphNameOrDot =====
 
 ///|
-fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
+fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
@@ -230,7 +230,7 @@ fn NQuadsRecognizer::handle_expect_literal_annotation_or_graph_name_or_dot_m(
 // ===== State: ExpectLiteralDatatype =====
 
 ///|
-pub fn NQuadsRecognizer::handle_expect_literal_datatype_m(
+pub fn NQuadsRecognizer::handle_expect_literal_datatype(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
@@ -280,7 +280,7 @@ pub fn NQuadsRecognizer::handle_expect_literal_datatype_m(
 // ===== State: ExpectPossibleGraphOrEndOfQuotedTriple =====
 
 ///|
-pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
+pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   ctx : NQuadsRecognizerContext,
@@ -354,7 +354,7 @@ pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple_m(
 // ===== State: ExpectDot =====
 
 ///|
-fn NQuadsRecognizer::handle_expect_dot_m(
+fn NQuadsRecognizer::handle_expect_dot(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
@@ -382,7 +382,7 @@ fn NQuadsRecognizer::handle_expect_dot_m(
 // ===== State: ExpectLineJump =====
 
 ///|
-pub fn NQuadsRecognizer::handle_expect_line_jump_m(
+pub fn NQuadsRecognizer::handle_expect_line_jump(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
@@ -421,7 +421,7 @@ pub fn NQuadsRecognizer::handle_expect_line_jump_m(
 // ===== State: AfterQuotedTriple =====
 
 ///|
-pub fn NQuadsRecognizer::handle_after_quoted_triple_m(
+pub fn NQuadsRecognizer::handle_after_quoted_triple(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,
@@ -469,7 +469,7 @@ pub fn NQuadsRecognizer::handle_after_quoted_triple_m(
 // ===== State: RecoverToLineJump =====
 
 ///|
-pub fn NQuadsRecognizer::handle_recover_to_line_jump_m(
+pub fn NQuadsRecognizer::handle_recover_to_line_jump(
   self : NQuadsRecognizer,
   token : LocatedTokenOrLineJump,
   _ctx : NQuadsRecognizerContext,

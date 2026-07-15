@@ -130,96 +130,96 @@ pub impl StateMachine for TriGRecognizer with fn transition(
   self.debug_logger.info("[impl transition] \{trig_state}, Token: \{event}")
 
   let result = match trig_state {
-    TriGState::TriGDoc => self.handle_trig_doc_m(event, context)
-    TriGState::TriplesOrGraph => self.handle_triples_or_graph_m(event, context)
+    TriGState::TriGDoc => self.handle_trig_doc(event, context)
+    TriGState::TriplesOrGraph => self.handle_triples_or_graph(event, context)
     TriGState::WrappedGraphOrPredicateObjectList(term~) =>
-      self.handle_wrapped_graph_or_predicate_object_list_m(term, event, context)
+      self.handle_wrapped_graph_or_predicate_object_list(term, event, context)
     TriGState::PredicateObjectList =>
-      self.handle_predicate_object_list_m(event, context)
-    TriGState::ObjectsList => self.handle_objects_list_m(event, context)
-    TriGState::Object => self.handle_object_m(event, context)
+      self.handle_predicate_object_list(event, context)
+    TriGState::ObjectsList => self.handle_objects_list(event, context)
+    TriGState::Object => self.handle_object(event, context)
     TriGState::PredicateObjectListEnd =>
-      self.handle_predicate_object_list_end_m(event, context)
-    TriGState::Verb => self.handle_verb_m(event, context)
+      self.handle_predicate_object_list_end(event, context)
+    TriGState::Verb => self.handle_verb(event, context)
     TriGState::ObjectCollectionBeginning =>
-      self.handle_object_collection_beginning_m(event, context)
+      self.handle_object_collection_beginning(event, context)
     TriGState::ObjectCollectionPossibleEnd =>
-      self.handle_object_collection_possible_end_m(event, context)
-    TriGState::WrappedGraph => self.handle_wrapped_graph_m(event, context)
+      self.handle_object_collection_possible_end(event, context)
+    TriGState::WrappedGraph => self.handle_wrapped_graph(event, context)
     TriGState::WrappedGraphPossibleEnd =>
-      self.handle_wrapped_graph_possible_end_m(event, context)
-    TriGState::Triples => self.handle_triples_m(event, context)
+      self.handle_wrapped_graph_possible_end(event, context)
+    TriGState::Triples => self.handle_triples(event, context)
 
     // ===== 指令与上下文处理 =====
     TriGState::ExpectAtKeyword =>
-      self.handle_expect_at_keyword_m(event, context)
-    TriGState::BaseExpectIri => self.handle_base_expect_iri_m(event, context)
+      self.handle_expect_at_keyword(event, context)
+    TriGState::BaseExpectIri => self.handle_base_expect_iri(event, context)
     TriGState::PrefixExpectPrefix =>
-      self.handle_prefix_expect_prefix_m(event, context)
+      self.handle_prefix_expect_prefix(event, context)
     TriGState::PrefixExpectIri(name~) =>
-      self.handle_prefix_expect_iri_m(name, event, context)
+      self.handle_prefix_expect_iri(name, event, context)
     TriGState::VersionExpectVersion =>
-      self.handle_version_expect_version_m(event, context)
-    TriGState::ExpectDot => self.handle_expect_dot_m(event, context)
+      self.handle_version_expect_version(event, context)
+    TriGState::ExpectDot => self.handle_expect_dot(event, context)
 
     // ===== 图名称处理 =====
-    TriGState::GraphName => self.handle_graph_name_m(event, context)
+    TriGState::GraphName => self.handle_graph_name(event, context)
     TriGState::GraphNameAnonEnd =>
-      self.handle_graph_name_anon_end_m(event, context)
+      self.handle_graph_name_anon_end(event, context)
 
     // ===== 空白节点属性列表处理 =====
     TriGState::SubjectBlankNodePropertyListEnd =>
-      self.handle_subject_blank_node_property_list_end_m(event, context)
+      self.handle_subject_blank_node_property_list_end(event, context)
     TriGState::SubjectBlankNodePropertyListAfter =>
-      self.handle_subject_blank_node_property_list_after_m(event, context)
+      self.handle_subject_blank_node_property_list_after(event, context)
     TriGState::WrappedGraphBlankNodePropertyListCurrent =>
-      self.handle_wrapped_graph_blank_node_property_list_current_m(
+      self.handle_wrapped_graph_blank_node_property_list_current(
         event, context,
       )
     TriGState::TriplesBlankNodePropertyListCurrent =>
-      self.handle_triples_blank_node_property_list_current_m(event, context)
+      self.handle_triples_blank_node_property_list_current(event, context)
     TriGState::ObjectBlankNodePropertyListCurrent =>
-      self.handle_object_blank_node_property_list_current_m(event, context)
+      self.handle_object_blank_node_property_list_current(event, context)
     TriGState::ObjectBlankNodePropertyListEnd =>
-      self.handle_object_blank_node_property_list_end_m(event, context) // 假设存在
+      self.handle_object_blank_node_property_list_end(event, context) // 假设存在
 
     // ===== 集合处理 =====
     TriGState::SubjectCollectionBeginning =>
-      self.handle_subject_collection_beginning_m(event, context)
+      self.handle_subject_collection_beginning(event, context)
     TriGState::SubjectCollectionPossibleEnd =>
-      self.handle_subject_collection_possible_end_m(event, context)
+      self.handle_subject_collection_possible_end(event, context)
 
     // ===== 字面量处理 =====
     TriGState::LiteralPossibleSuffix(value~, emit~) =>
-      self.handle_literal_possible_suffix_m(value, emit, event, context) // 假设存在
+      self.handle_literal_possible_suffix(value, emit, event, context) // 假设存在
     TriGState::LiteralExpectDatatype(value~, emit~) =>
-      self.handle_literal_expect_datatype_m(value, emit, event, context)
+      self.handle_literal_expect_datatype(value, emit, event, context)
 
     // ===== 引号三元组与重化处理 =====
     TriGState::ReifiedTripleSubject(is_reified~) =>
-      self.handle_reified_triple_subject_m(is_reified, event, context)
+      self.handle_reified_triple_subject(is_reified, event, context)
     TriGState::ReifiedTripleObject(is_reified~) =>
-      self.handle_reified_triple_object_m(is_reified, event, context)
+      self.handle_reified_triple_object(is_reified, event, context)
     TriGState::SubjectReifiedTripleEnd =>
-      self.handle_subject_reified_triple_end_m(event, context)
+      self.handle_subject_reified_triple_end(event, context)
     TriGState::ObjectReifiedTripleEnd(emit~) =>
-      self.handle_object_reified_triple_end_m(emit, event, context) // 假设存在
+      self.handle_object_reified_triple_end(emit, event, context) // 假设存在
     TriGState::EndOfReifiedTripleBeforeReifier =>
-      self.handle_end_of_reified_triple_before_reifier_m(event, context)
-    TriGState::Reifier(triple~) => self.handle_reifier_m(triple, event, context)
+      self.handle_end_of_reified_triple_before_reifier(event, context)
+    TriGState::Reifier(triple~) => self.handle_reifier(triple, event, context)
     TriGState::TripleTermEnd(emit~) =>
-      self.handle_triple_term_end_m(emit, event, context)
-    TriGState::QuotedAnonEnd => self.handle_quoted_anon_end_m(event, context)
+      self.handle_triple_term_end(emit, event, context)
+    TriGState::QuotedAnonEnd => self.handle_quoted_anon_end(event, context)
 
     // ===== 注解处理 =====
     TriGState::AnnotationEnd(with_reifier~) =>
-      self.handle_annotation_end_m(with_reifier, event, context)
+      self.handle_annotation_end(with_reifier, event, context)
 
     // ===== 其他可能的状态 =====
     TriGState::MaybePredicateObjectList =>
-      self.handle_maybe_predicate_object_list_m(event, context)
+      self.handle_maybe_predicate_object_list(event, context)
     TriGState::PredicateObjectListPossibleContinuation =>
-      self.handle_predicate_object_list_possible_continuation_m(event, context)
+      self.handle_predicate_object_list_possible_continuation(event, context)
     _ => {
       let err = RuleRecognizerError::SyntaxError(
         "Unhandled state: \{trig_state.to_string()}",

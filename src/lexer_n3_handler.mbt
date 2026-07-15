@@ -1,7 +1,7 @@
 // ===== State: N3Doc =====
 
 ///|
-fn N3Recognizer::handle_n3_doc_m(
+fn N3Recognizer::handle_n3_doc(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -41,7 +41,7 @@ fn N3Recognizer::handle_n3_doc_m(
 // ===== State: N3DocExpectDot =====
 
 ///|
-fn N3Recognizer::handle_n3_doc_expect_dot_m(
+fn N3Recognizer::handle_n3_doc_expect_dot(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -67,7 +67,7 @@ fn N3Recognizer::handle_n3_doc_expect_dot_m(
 // ===== State: BaseExpectIri =====
 
 ///|
-fn N3Recognizer::handle_base_expect_iri_m(
+fn N3Recognizer::handle_base_expect_iri(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,
@@ -108,7 +108,7 @@ fn N3Recognizer::handle_base_expect_iri_m(
 // ===== State: PrefixExpectPrefix =====
 
 ///|
-fn N3Recognizer::handle_prefix_expect_prefix_m(
+fn N3Recognizer::handle_prefix_expect_prefix(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -136,7 +136,7 @@ fn N3Recognizer::handle_prefix_expect_prefix_m(
 // ===== State: PrefixExpectIri =====
 
 ///|
-fn N3Recognizer::handle_prefix_expect_iri_m(
+fn N3Recognizer::handle_prefix_expect_iri(
   self : N3Recognizer,
   name : String, // 从状态中提取的参数
   token : LocatedTokenOrLineJump,
@@ -176,7 +176,7 @@ fn N3Recognizer::handle_prefix_expect_iri_m(
 // ===== State: Triples =====
 
 ///|
-fn N3Recognizer::handle_triples_m(
+fn N3Recognizer::handle_triples(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -196,7 +196,7 @@ fn N3Recognizer::handle_triples_m(
 // ===== State: TriplesMiddle =====
 
 ///|
-fn N3Recognizer::handle_triples_middle_m(
+fn N3Recognizer::handle_triples_middle(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -233,7 +233,7 @@ fn N3Recognizer::handle_triples_middle_m(
 // ===== State: TriplesEnd =====
 
 ///|
-fn N3Recognizer::handle_triples_end_m(
+fn N3Recognizer::handle_triples_end(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -259,7 +259,7 @@ fn N3Recognizer::handle_triples_end_m(
 // ===== State: PredicateObjectList =====
 
 ///|
-fn N3Recognizer::handle_predicate_object_list_m(
+fn N3Recognizer::handle_predicate_object_list(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -279,7 +279,7 @@ fn N3Recognizer::handle_predicate_object_list_m(
 // ===== State: PredicateObjectListEnd =====
 
 ///|
-fn N3Recognizer::handle_predicate_object_list_end_m(
+fn N3Recognizer::handle_predicate_object_list_end(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -320,7 +320,7 @@ fn N3Recognizer::handle_predicate_object_list_end_m(
 // ===== State: PredicateObjectListPossibleContinuation =====
 
 ///|
-fn N3Recognizer::handle_predicate_object_list_possible_continuation_m(
+fn N3Recognizer::handle_predicate_object_list_possible_continuation(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -366,7 +366,7 @@ fn N3Recognizer::handle_predicate_object_list_possible_continuation_m(
 // ===== State: ObjectsList =====
 
 ///|
-fn N3Recognizer::handle_objects_list_m(
+fn N3Recognizer::handle_objects_list(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -385,7 +385,7 @@ fn N3Recognizer::handle_objects_list_m(
 // ===== State: ObjectsListEnd =====
 
 ///|
-fn N3Recognizer::handle_objects_list_end_m(
+fn N3Recognizer::handle_objects_list_end(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -464,7 +464,7 @@ fn N3Recognizer::handle_objects_list_end_m(
 // ===== State: Verb =====
 
 ///|
-fn N3Recognizer::handle_verb_m(
+fn N3Recognizer::handle_verb(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -605,7 +605,7 @@ fn N3Recognizer::handle_verb_m(
 // ===== State: AfterRegularVerb =====
 
 ///|
-fn N3Recognizer::handle_after_regular_verb_m(
+fn N3Recognizer::handle_after_regular_verb(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -642,7 +642,7 @@ fn N3Recognizer::handle_after_regular_verb_m(
 // ===== State: AfterInvertedVerb =====
 
 ///|
-fn N3Recognizer::handle_after_inverted_verb_m(
+fn N3Recognizer::handle_after_inverted_verb(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -678,7 +678,7 @@ fn N3Recognizer::handle_after_inverted_verb_m(
 // ===== State: AfterVerbIs =====
 
 ///|
-fn N3Recognizer::handle_after_verb_is_m(
+fn N3Recognizer::handle_after_verb_is(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -726,7 +726,7 @@ fn N3Recognizer::handle_after_verb_is_m(
 // ===== State: Path =====
 
 ///|
-fn N3Recognizer::handle_path_m(
+fn N3Recognizer::handle_path(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -745,7 +745,7 @@ fn N3Recognizer::handle_path_m(
 // ===== State: PathFollowUp =====
 
 ///|
-fn N3Recognizer::handle_path_follow_up_m(
+fn N3Recognizer::handle_path_follow_up(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -796,7 +796,7 @@ fn N3Recognizer::handle_path_follow_up_m(
 // ===== State: PathAfterIndicator =====
 
 ///|
-fn N3Recognizer::handle_path_after_indicator_m(
+fn N3Recognizer::handle_path_after_indicator(
   self : N3Recognizer,
   is_inverse : Bool,
   token : LocatedTokenOrLineJump,
@@ -849,7 +849,7 @@ fn N3Recognizer::handle_path_after_indicator_m(
 // ===== State: PathItem =====
 
 ///|
-fn N3Recognizer::handle_path_item_m(
+fn N3Recognizer::handle_path_item(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,
@@ -909,9 +909,9 @@ fn N3Recognizer::handle_path_item_m(
     }
     _ => {
       // 普通 Term
-      // 调用 handle_term_token_m 的逻辑，但这里直接内联或调用
-      // 为了简化，我们假设 handle_term_token_m 返回的是 TransitionResult
-      // 但由于 handle_term_token_m 也需要符合签名，我们这里直接处理
+      // 调用 handle_term_token 的逻辑，但这里直接内联或调用
+      // 为了简化，我们假设 handle_term_token 返回的是 TransitionResult
+      // 但由于 handle_term_token 也需要符合签名，我们这里直接处理
 
       let term_result = self.handle_term_token_internal(token, context)
       match term_result {
@@ -971,7 +971,7 @@ fn N3Recognizer::handle_term_token_internal(
 // ===== State: PropertyListMiddle =====
 
 ///|
-fn N3Recognizer::handle_property_list_middle_m(
+fn N3Recognizer::handle_property_list_middle(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -1022,7 +1022,7 @@ fn N3Recognizer::handle_property_list_middle_m(
 // ===== State: PropertyListEnd =====
 
 ///|
-fn N3Recognizer::handle_property_list_end_m(
+fn N3Recognizer::handle_property_list_end(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -1058,7 +1058,7 @@ fn N3Recognizer::handle_property_list_end_m(
 // ===== State: IriPropertyList =====
 
 ///|
-fn N3Recognizer::handle_iri_property_list_m(
+fn N3Recognizer::handle_iri_property_list(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   context : RdfContext,
@@ -1129,7 +1129,7 @@ fn N3Recognizer::handle_iri_property_list_m(
 // ===== State: CollectionBeginning =====
 
 ///|
-fn N3Recognizer::handle_collection_beginning_m(
+fn N3Recognizer::handle_collection_beginning(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -1176,7 +1176,7 @@ fn N3Recognizer::handle_collection_beginning_m(
 // ===== State: CollectionPossibleEnd =====
 
 ///|
-fn N3Recognizer::handle_collection_possible_end_m(
+fn N3Recognizer::handle_collection_possible_end(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -1254,7 +1254,7 @@ fn N3Recognizer::handle_collection_possible_end_m(
 // ===== State: LiteralPossibleSuffix =====
 
 ///|
-fn N3Recognizer::handle_literal_possible_suffix_m(
+fn N3Recognizer::handle_literal_possible_suffix(
   self : N3Recognizer,
   value : String,
   token : LocatedTokenOrLineJump,
@@ -1324,7 +1324,7 @@ fn N3Recognizer::handle_literal_possible_suffix_m(
 // ===== State: LiteralExpectDatatype =====
 
 ///|
-fn N3Recognizer::handle_literal_expect_datatype_m(
+fn N3Recognizer::handle_literal_expect_datatype(
   self : N3Recognizer,
   value : String,
   token : LocatedTokenOrLineJump,
@@ -1417,7 +1417,7 @@ fn N3Recognizer::handle_literal_expect_datatype_m(
 // ===== State: FormulaContent =====
 
 ///|
-fn N3Recognizer::handle_formula_content_m(
+fn N3Recognizer::handle_formula_content(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,
@@ -1492,7 +1492,7 @@ fn N3Recognizer::handle_formula_content_m(
 // ===== State: FormulaContentExpectDot =====
 
 ///|
-fn N3Recognizer::handle_formula_content_expect_dot_m(
+fn N3Recognizer::handle_formula_content_expect_dot(
   self : N3Recognizer,
   token : LocatedTokenOrLineJump,
   _context : RdfContext,

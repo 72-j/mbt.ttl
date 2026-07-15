@@ -294,7 +294,7 @@ pub fn[RL] LowLevelTurtleParser::prefixes(
 ) -> TurtlePrefixesIter {
   match self.parser.context {
     RdfContext::N3RecognizerContext(ctx) => { inner: ctx.prefixes.iter() }
-    _ => { inner: {}.iter() }
+    _ => { inner: Map([]).iter() }
   }
 }
 

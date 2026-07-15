@@ -81,25 +81,25 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
   self.debug_logger.info("NQuads State: \{nquads_state}, Event: \{event}")
 
   let result = match nquads_state {
-    NQuadsState::ExpectSubject => self.handle_expect_subject_m(event, context)
+    NQuadsState::ExpectSubject => self.handle_expect_subject(event, context)
     NQuadsState::ExpectPredicate =>
-      self.handle_expect_predicate_m(event, context)
-    NQuadsState::ExpectedObject => self.handle_expected_object_m(event, context)
+      self.handle_expect_predicate(event, context)
+    NQuadsState::ExpectedObject => self.handle_expected_object(event, context)
     NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~) =>
-      self.handle_expect_literal_annotation_or_graph_name_or_dot_m(
+      self.handle_expect_literal_annotation_or_graph_name_or_dot(
         event, context, value,
       )
     NQuadsState::ExpectLiteralDatatype(value~) =>
-      self.handle_expect_literal_datatype_m(event, context, value)
+      self.handle_expect_literal_datatype(event, context, value)
     NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple =>
-      self.handle_expect_possible_graph_or_end_of_quoted_triple_m(
+      self.handle_expect_possible_graph_or_end_of_quoted_triple(
         event, context,
       )
-    NQuadsState::ExpectDot => self.handle_expect_dot_m(event, context)
+    NQuadsState::ExpectDot => self.handle_expect_dot(event, context)
     NQuadsState::ExpectLineJump =>
-      self.handle_expect_line_jump_m(event, context)
+      self.handle_expect_line_jump(event, context)
     NQuadsState::RecoverToLineJump =>
-      self.handle_recover_to_line_jump_m(event, context)
+      self.handle_recover_to_line_jump(event, context)
     _ => {
       self.debug_logger.info(
         ">>> FALLBACK to _ case: \{nquads_state.to_string()}",

@@ -247,7 +247,7 @@ pub fn TriGRecognizer::new_parser(
 // }
 
 ///|
-fn TriGRecognizer::emit_quad_m(self : TriGRecognizer) -> RdfOut {
+fn TriGRecognizer::emit_curr_quad(self : TriGRecognizer) -> RdfOut {
   let subject = self.cur_subject.last().unwrap()
   let predicate = self.cur_predicate.last().unwrap()
   let object = self.cur_object.last().unwrap()
@@ -269,7 +269,7 @@ fn TriGRecognizer::emit_quad(
 ) -> Unit {
   let subject = match self.cur_subject.last() {
     Some(s) => s
-    None => return // 或者报错，例如: abort("Internal error: subject stack empty in emit_quad")
+    None => return // 或者报错，例如: abort("Internal error: subject stack empty in emit_curr_quad")
   }
   let predicate = match self.cur_predicate.last() {
     Some(p) => p

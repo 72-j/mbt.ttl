@@ -7,7 +7,7 @@ MoonTTL 是一个使用 MoonBit 语言编写的高性能 RDF 解析与序列化�
 - **多格式支持**：完整支持 Turtle, TriG, N-Triples, N-Quads 和 N3 格式的解析与序列化。
 - **RDF 1.2 兼容**：除 N3 外，全面支持最新的 RDF 1.2 国际标准规范。
 - **高性能**：基于 MoonBit 的高性能编译后端，提供低内存占用的流式解析能力。
-- **纯 MoonBit 实现**：利用 MoonBit 的原生类型系统和 GC 机制，提供简洁的 API 体验。
+- **纯 MoonBit 实现**：利用 MoonBit 的原生类型系统和Match，提供简洁的 API 体验。
 
 ## 安装
 

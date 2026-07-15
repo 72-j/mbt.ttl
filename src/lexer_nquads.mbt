@@ -85,13 +85,13 @@ pub impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
     [NQuadsState::ExpectDot] =>
       self.errors.push(RuleRecognizerError::TripleMissingDot)
     [NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple] => {
-      self.emit_quad(results, GraphName::DefaultGraph.as_ref())
+      self.emit_curr_quad(results, GraphName::DefaultGraph.as_ref())
       self.errors.push(RuleRecognizerError::TripleMissingDot)
     }
     [NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~)] => {
       let literal = LiteralRef::new_simple_literal(value)
       self.objects.push(TermRef::LiteralRef(literal))
-      self.emit_quad(results, GraphName::DefaultGraph.as_ref())
+      self.emit_curr_quad(results, GraphName::DefaultGraph.as_ref())
       self.errors.push(RuleRecognizerError::TripleMissingDot)
     }
     _ =>
@@ -178,7 +178,7 @@ pub fn NQuadsRecognizer::new_parser(
 // }
 
 ///|
-fn NQuadsRecognizer::emit_quad(
+fn NQuadsRecognizer::emit_curr_quad(
   self : NQuadsRecognizer,
   results : Array[RdfOut],
   graph_name : GraphNameRef,

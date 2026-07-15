@@ -66,50 +66,50 @@ pub impl StateMachine for N3Recognizer with fn transition(
   self.debug_logger.info("N3 State: \{n3_state}, Event: \{event}")
 
   let result = match n3_state {
-    N3State::N3Doc => self.handle_n3_doc_m(event, context)
-    N3State::N3DocExpectDot => self.handle_n3_doc_expect_dot_m(event, context)
-    N3State::BaseExpectIri => self.handle_base_expect_iri_m(event, context)
+    N3State::N3Doc => self.handle_n3_doc(event, context)
+    N3State::N3DocExpectDot => self.handle_n3_doc_expect_dot(event, context)
+    N3State::BaseExpectIri => self.handle_base_expect_iri(event, context)
     N3State::PrefixExpectPrefix =>
-      self.handle_prefix_expect_prefix_m(event, context)
+      self.handle_prefix_expect_prefix(event, context)
     N3State::PrefixExpectIri(name~) =>
-      self.handle_prefix_expect_iri_m(name, event, context)
-    N3State::Triples => self.handle_triples_m(event, context)
-    N3State::TriplesMiddle => self.handle_triples_middle_m(event, context)
-    N3State::TriplesEnd => self.handle_triples_end_m(event, context)
+      self.handle_prefix_expect_iri(name, event, context)
+    N3State::Triples => self.handle_triples(event, context)
+    N3State::TriplesMiddle => self.handle_triples_middle(event, context)
+    N3State::TriplesEnd => self.handle_triples_end(event, context)
     N3State::PredicateObjectList =>
-      self.handle_predicate_object_list_m(event, context)
+      self.handle_predicate_object_list(event, context)
     N3State::PredicateObjectListEnd =>
-      self.handle_predicate_object_list_end_m(event, context)
+      self.handle_predicate_object_list_end(event, context)
     N3State::PredicateObjectListPossibleContinuation =>
-      self.handle_predicate_object_list_possible_continuation_m(event, context)
-    N3State::ObjectsList => self.handle_objects_list_m(event, context)
-    N3State::ObjectsListEnd => self.handle_objects_list_end_m(event, context)
-    N3State::Verb => self.handle_verb_m(event, context)
+      self.handle_predicate_object_list_possible_continuation(event, context)
+    N3State::ObjectsList => self.handle_objects_list(event, context)
+    N3State::ObjectsListEnd => self.handle_objects_list_end(event, context)
+    N3State::Verb => self.handle_verb(event, context)
     N3State::AfterRegularVerb =>
-      self.handle_after_regular_verb_m(event, context)
+      self.handle_after_regular_verb(event, context)
     N3State::AfterInvertedVerb =>
-      self.handle_after_inverted_verb_m(event, context)
-    N3State::AfterVerbIs => self.handle_after_verb_is_m(event, context)
-    N3State::Path => self.handle_path_m(event, context)
-    N3State::PathFollowUp => self.handle_path_follow_up_m(event, context)
+      self.handle_after_inverted_verb(event, context)
+    N3State::AfterVerbIs => self.handle_after_verb_is(event, context)
+    N3State::Path => self.handle_path(event, context)
+    N3State::PathFollowUp => self.handle_path_follow_up(event, context)
     N3State::PathAfterIndicator(is_inverse~) =>
-      self.handle_path_after_indicator_m(is_inverse, event, context)
-    N3State::PathItem => self.handle_path_item_m(event, context)
+      self.handle_path_after_indicator(is_inverse, event, context)
+    N3State::PathItem => self.handle_path_item(event, context)
     N3State::PropertyListMiddle =>
-      self.handle_property_list_middle_m(event, context)
-    N3State::PropertyListEnd => self.handle_property_list_end_m(event, context)
-    N3State::IriPropertyList => self.handle_iri_property_list_m(event, context)
+      self.handle_property_list_middle(event, context)
+    N3State::PropertyListEnd => self.handle_property_list_end(event, context)
+    N3State::IriPropertyList => self.handle_iri_property_list(event, context)
     N3State::CollectionBeginning =>
-      self.handle_collection_beginning_m(event, context)
+      self.handle_collection_beginning(event, context)
     N3State::CollectionPossibleEnd =>
-      self.handle_collection_possible_end_m(event, context)
+      self.handle_collection_possible_end(event, context)
     N3State::LiteralPossibleSuffix(value~) =>
-      self.handle_literal_possible_suffix_m(value, event, context)
+      self.handle_literal_possible_suffix(value, event, context)
     N3State::LiteralExpectDatatype(value~) =>
-      self.handle_literal_expect_datatype_m(value, event, context)
-    N3State::FormulaContent => self.handle_formula_content_m(event, context)
+      self.handle_literal_expect_datatype(value, event, context)
+    N3State::FormulaContent => self.handle_formula_content(event, context)
     N3State::FormulaContentExpectDot =>
-      self.handle_formula_content_expect_dot_m(event, context)
+      self.handle_formula_content_expect_dot(event, context)
   }
   N3Recognizer::process_transition_result(result)
 }
