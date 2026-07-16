@@ -38,6 +38,7 @@ async fn main {
     let logger = @lib.make_mute_logger()
 
     let machine = @lib.NQuadsRecognizer::{
+      current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
       subjects: [],
       predicates: [],

@@ -453,9 +453,9 @@ pub(all) enum GraphNameRef {
 } derive(Debug, Eq, Hash)
 
 ///|
-fn GraphNameRef::new_unchecked(iri : String) -> GraphNameRef {
-  GraphNameRef::NamedNodeRef(NamedNodeRef::new_unchecked(iri))
-}
+// fn GraphNameRef::new_unchecked(iri : String) -> GraphNameRef {
+//   GraphNameRef::NamedNodeRef(NamedNodeRef::new_unchecked(iri))
+// }
 
 ///|
 fn GraphNameRef::into_owned(graph_name : GraphNameRef) -> GraphName {

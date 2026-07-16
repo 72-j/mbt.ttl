@@ -58,7 +58,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   match result {
     Ok((new_machine, new_state, output)) => {
       self.debug_logger.info(
-        "[impl step] new_state = \{new_state.to_string()}, output received = \{@debug.to_string(output)}",
+        "[impl step] new_state = \{new_state.to_string()}, output received = [\{@debug.to_string(output)}]",
       )
 
       let outputs = self.outputs

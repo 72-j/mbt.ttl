@@ -111,7 +111,7 @@ async test "debug_lexer_tokens" {
 }
 
 ///|
-// async test "ParserM_basic_single_line for TriG 1" {
+// async test "Parser_basic_single_line for TriG 1" {
 //   let input =
 //     #|<http://example.org/books> {
 //     #|<http://example.org/book1> dc:title "The Great Gatsby"@en .
@@ -159,7 +159,7 @@ async test "debug_lexer_tokens" {
 //     outputs: [],
 //     debug_logger: logger,
 //   }
-//   let parser = @lib.ParserM::{
+//   let parser = @lib.Parser::{
 //     lexer,
 //     engine: generic_machine,
 //     context,
@@ -197,7 +197,7 @@ async test "debug_lexer_tokens" {
 // }
 
 ///|
-async test "ParserM_basic_single_line for TriG 2" {
+async test "Parser_basic_single_line for TriG 2" {
   // "<http://example/graph> {<http://a.example/s> a <http://a.example/o> .}"
   let input =
     #|@prefix dc: <http://purl.org/dc/terms/> .
@@ -291,7 +291,7 @@ async test "ParserM_basic_single_line for TriG 2" {
 }
 
 ///|
-async test "ParserM_basic_single_line for TriG 3" {
+async test "Parser_basic_single_line for TriG 3" {
   let input =
     #|{<http://example/s> <http://example/p> """abc""def''ghi""" .}  
 

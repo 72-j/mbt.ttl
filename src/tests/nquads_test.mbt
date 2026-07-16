@@ -44,8 +44,10 @@ test "low level parser initialization" {
 }
 
 ///|
-async test "ParserM_basic_single_line for NQuads" {
-  let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .\n"
+async test "Parser_basic_single_line for NQuads" {
+  let input =
+    #|<http://example.org/s> <http://example.org/p> <http://example.org/o> .
+
   let data = @utf8.encode(input).to_array()
 
   let logger = @lib.make_console_logger()
@@ -58,6 +60,7 @@ async test "ParserM_basic_single_line for NQuads" {
   )
 
   debug("=== Single Line Test ===")
+  debug("data: \{input}")
   let quads = []
   let mut count = 0
 
@@ -88,7 +91,7 @@ async test "ParserM_basic_single_line for NQuads" {
 }
 
 ///|
-async test "ParserM_multi_line for NQuads" {
+async test "Parser_multi_line for NQuads" {
   let input =
     #| <http://example.org/s1> <http://example.org/p1> <http://example.org/o1> .
     #| <http://example.org/s2> <http://example.org/p2> <http://example.org/o2> .

@@ -93,6 +93,7 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
 
   let machine = if verbose {
     @lib.NQuadsRecognizer::{
+      current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
       subjects: [],
       predicates: [],
@@ -104,6 +105,7 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
     }
   } else {
     @lib.NQuadsRecognizer::{
+      current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
       subjects: [],
       predicates: [],

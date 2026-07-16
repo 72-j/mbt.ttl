@@ -27,6 +27,7 @@ async test "multi-line NQuads from file" {
     let logger = @lib.make_console_logger()
 
     let machine = @lib.NQuadsRecognizer::{
+      current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
       subjects: [],
       predicates: [],
@@ -113,6 +114,7 @@ async test "single quad from file" {
     let logger = @lib.make_console_logger()
 
     let machine = @lib.NQuadsRecognizer::{
+      current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
       subjects: [],
       predicates: [],
@@ -289,7 +291,7 @@ async test "single quad from file" {
 //       outputs: [],
 //       debug_logger: logger,
 //     }
-//     let parser = @lib.ParserM::{
+//     let parser = @lib.Parser::{
 //       lexer,
 //       engine: generic_machine,
 //       context,

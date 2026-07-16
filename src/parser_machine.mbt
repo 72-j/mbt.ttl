@@ -86,7 +86,9 @@ pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_ne
     }
 
     // 3. 尝试从 Lexer 获取下一个 Token
-    match self.lexer.parse_next(M::lexer_options(self.context)) {
+    let ctx = M::lexer_options(self.context)
+    // let ctx = self.lexer_options()
+    match self.lexer.parse_next(ctx) {
       Some(Ok(located_token)) => {
         let previous_state = self.engine.current_state()
         self.engine.debug_logger.info("Parser::parse_token = \{located_token}")
@@ -259,6 +261,15 @@ pub fn[TR, RR] Parser::for_async_reader(
 ) -> AsyncReaderIterator[TR, RR] {
   { reader, parser: self }
 }
+// pub fn[TR, RR] Parser::lexer_options(
+//   self : Parser[TR, RR]
+// ) -> LexerOptions? {
+//   match self.context {
+//     NQuadsRecognizerContext(ctx) => Some(ctx.lexer_options)
+//     TriGRecognizerContext(_) => ...
+//     N3RecognizerContext(_) => ...
+//   }
+// }
 
 ///|
 pub struct ReaderIterator[TR, RR] {
