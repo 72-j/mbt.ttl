@@ -2,6 +2,7 @@
 async test "debug_simple_turtle_1" {
   let input = "<http://a.example/s>"
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let prefixes = Map([])
   let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
@@ -16,7 +17,7 @@ async test "debug_simple_turtle_1" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("Success: \{t.to_string()}")
     Some(Err(e)) => debug("Error: \{e.to_string()}")
     None => debug("None")
@@ -27,6 +28,7 @@ async test "debug_simple_turtle_1" {
 async test "debug_simple_turtle_2" {
   let input = "<http://a.example/s> <http://a.example/p> <p> ."
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let prefixes = Map([])
   let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
@@ -41,7 +43,7 @@ async test "debug_simple_turtle_2" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("Success: \{t.to_string()}")
     Some(Err(e)) => debug("Error: \{e.to_string()}")
     None => debug("None")
@@ -52,6 +54,7 @@ async test "debug_simple_turtle_2" {
 async test "debug_simple_turtle_workaround" {
   let input = "<http://a.example/s> <http://a.example/p> 1 ."
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let prefixes = Map([])
   let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
@@ -66,7 +69,7 @@ async test "debug_simple_turtle_workaround" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("Success: \{t.to_string()}")
     Some(Err(e)) => debug("Error: \{e.to_string()}")
     None => debug("None")
@@ -77,6 +80,7 @@ async test "debug_simple_turtle_workaround" {
 async test "debug_simple_turtle_fixed_input" {
   let input = "<http://a.example/s> <http://a.example/p> <http://a.example/o> ."
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let prefixes = Map([])
   let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
@@ -91,7 +95,7 @@ async test "debug_simple_turtle_fixed_input" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("Success: \{t.to_string()}")
     Some(Err(e)) => debug("Error: \{e.to_string()}")
     None => debug("None")
@@ -104,6 +108,7 @@ async test "debug_simple_turtle" {
     #| <http://a.example/s> <http://a.example/p> (1) .
 
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let prefixes = Map([])
   let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
@@ -118,7 +123,7 @@ async test "debug_simple_turtle" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("Success: \{t.to_string()}")
     Some(Err(e)) => debug("Error: \{e.to_string()}")
     None => debug("None")
@@ -129,6 +134,7 @@ async test "debug_simple_turtle" {
 async test "debug_simple_triple" {
   let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> ."
   let data = @utf8.encode(input)
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.TurtleParser::new().lenient()
 
@@ -137,7 +143,7 @@ async test "debug_simple_triple" {
   low_level.extend_from_slice(data)
   low_level.end()
 
-  let result = low_level.parse_next()
+  let result = low_level.parse_next(data_world)
 
   match result {
     Some(Ok(triple)) => debug("Success! Parsed Quad: \{triple.to_string()}")
@@ -150,6 +156,7 @@ async test "debug_simple_triple" {
 async test "debug_simple_triple 2" {
   let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> ."
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let prefixes = Map([])
   let base_iri = None
@@ -171,7 +178,7 @@ async test "debug_simple_triple 2" {
     //   None => debug("No active state")
     // }
 
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(t)) => debug("✓ Parsed quad: \{t.to_string()}")
       Some(Err(e)) => {
         debug("Error: \{e.to_string()}")
@@ -189,6 +196,7 @@ async test "debug_simple_triple 2" {
 async test "verify_with_turtle" {
   let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> ."
   let data = @utf8.encode(input)
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.TurtleParser::new().lenient()
   let low_level = parser.low_level()
@@ -196,7 +204,7 @@ async test "verify_with_turtle" {
   low_level.extend_from_slice(data)
   low_level.end()
 
-  match low_level.parse_next() {
+  match low_level.parse_next(data_world) {
     Some(Ok(t)) => debug("Turtle Success:\{t.to_string()} ")
     Some(Err(e)) => debug("Turtle Error: \{e.to_string()}")
     None => debug("Turtle None")
@@ -207,6 +215,7 @@ async test "verify_with_turtle" {
 async test "debug_minimal_turtle" {
   let input = "<http://a/b> <http://a/c> <http://a/d> ."
   let data = @utf8.encode(input)
+  let data_world = @lib.DataWorld::default()
 
   debug("Input bytes length: \{data.length()}")
   debug("Input string: \{input}")
@@ -218,7 +227,7 @@ async test "debug_minimal_turtle" {
 
   low_level.end()
 
-  match low_level.parse_next() {
+  match low_level.parse_next(data_world) {
     Some(Ok(t)) => debug("✓ Success: \{t.to_string()}")
     Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
     None => debug("⚠ None: Parser needs more input or finished silently")
@@ -229,6 +238,7 @@ async test "debug_minimal_turtle" {
 async test "debug_minimal_turtle_with_newline" {
   let input = "<http://a/b> <http://a/c> <http://a/d> .\n"
   let data = @utf8.encode(input)
+  let data_world = @lib.DataWorld::default()
 
   debug("Input bytes length: \{data.length()}")
   debug("Input string: \{input}")
@@ -240,7 +250,7 @@ async test "debug_minimal_turtle_with_newline" {
 
   low_level.end()
 
-  match low_level.parse_next() {
+  match low_level.parse_next(data_world) {
     Some(Ok(t)) => debug("✓ Success: \{t.to_string()}")
     Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
     None => debug("⚠ None: Parser needs more input or finished silently")
@@ -251,6 +261,7 @@ async test "debug_minimal_turtle_with_newline" {
 async test "debug_no_dot" {
   let input = "<http://a/b> <http://a/c> <http://a/d>"
   let data = @utf8.encode(input)
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.TurtleParser::new()
   let low_level = parser.low_level()
@@ -258,7 +269,7 @@ async test "debug_no_dot" {
   low_level.extend_from_slice(data)
   low_level.end()
 
-  match low_level.parse_next() {
+  match low_level.parse_next(data_world) {
     Some(Ok(t)) => debug("✓ Success (Unexpected): \{t.to_string()}")
     Some(Err(e)) => debug("✗ Error (Expected): \{e.to_string()}")
     None => debug("⚠ None")
@@ -269,6 +280,7 @@ async test "debug_no_dot" {
 async test "debug_subj_pred_only" {
   let input = "<http://a/b> <http://a/c>"
   let data = @utf8.encode(input)
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.TurtleParser::new()
   let low_level = parser.low_level()
@@ -276,7 +288,7 @@ async test "debug_subj_pred_only" {
   low_level.extend_from_slice(data)
   low_level.end()
 
-  match low_level.parse_next() {
+  match low_level.parse_next(data_world) {
     Some(Ok(t)) => debug("✓ Success (Unexpected): \{t.to_string()}")
     Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
     None => debug("⚠ None")
@@ -287,6 +299,7 @@ async test "debug_subj_pred_only" {
 async test "debug_subj_only" {
   let input = "<http://a/b>"
   let data = @utf8.encode(input)
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.TurtleParser::new()
   let low_level = parser.low_level()
@@ -294,7 +307,7 @@ async test "debug_subj_only" {
   low_level.extend_from_slice(data)
   low_level.end()
 
-  match low_level.parse_next() {
+  match low_level.parse_next(data_world) {
     Some(Ok(t)) => debug("✓ Success (Unexpected): \{t.to_string()}")
     Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
     None => debug("⚠ None")
@@ -307,6 +320,7 @@ async test "Parser_basic_single_line for Turtle" {
     #|<http://example/s> <http://example/p> <http://example/o> .
 
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::N3, false),
@@ -364,7 +378,7 @@ async test "Parser_basic_single_line for Turtle" {
     if count >= 20 {
       break
     }
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(turtle)) => {
         count += 1
         debug("[\{count}] \{turtle}")
@@ -401,6 +415,7 @@ async test "Parser Turtle" {
     #|    ex:hireDate "2020-03-15"^^xsd:date .
     #|    
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::N3, false),
@@ -458,7 +473,7 @@ async test "Parser Turtle" {
     if count >= 20 {
       break
     }
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(turtle)) => {
         count += 1
         debug("[\{count}] \{turtle}")
@@ -498,6 +513,7 @@ async test "Parser Turtle Test" {
     #|    ex:hireDate "2020-03-15"^^xsd:date .
     #|    
   let data = @utf8.encode(input)
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.TurtleParser::new()
   let low_level = parser.low_level(debug=true)
@@ -507,7 +523,7 @@ async test "Parser Turtle Test" {
 
   let turtles = []
   for ;; {
-    match low_level.parse_next() {
+    match low_level.parse_next(data_world) {
       Some(Ok(t)) => turtles.push(t)
       Some(Err(e)) => {
         debug("✗ Error: \{e}")

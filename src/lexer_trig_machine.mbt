@@ -50,12 +50,17 @@ pub impl StateMachine for TriGRecognizer with fn current_state(self) -> RdfState
 }
 
 ///|
-pub impl StateMachine for TriGRecognizer with fn step(self, event : Event) -> TriGRecognizer {
+pub impl StateMachine for TriGRecognizer with fn step(
+  self,
+  event : Event,
+  data_world : DataWorld,
+) -> TriGRecognizer {
   let current_state = self.current_state()
   let result = self.transition(
     current_state.as_state_enum(),
     event,
     self.context(),
+    data_world,
   )
   match result {
     Ok((new_machine, _new_state, _output)) => {
@@ -81,6 +86,7 @@ pub impl StateMachine for TriGRecognizer with fn transition(
   state : RdfState,
   event : Event,
   context : RdfContext,
+  _data_world : DataWorld,
 ) -> TransitionResult[TriGRecognizer, RdfState, RdfOut] {
   match event {
     LocatedToken(N3Token::LineJump, _) =>

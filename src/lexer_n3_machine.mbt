@@ -21,12 +21,17 @@ pub impl StateMachine for N3Recognizer with fn current_state(self) -> RdfState {
 }
 
 ///|
-pub impl StateMachine for N3Recognizer with fn step(self, event : Event) -> N3Recognizer {
+pub impl StateMachine for N3Recognizer with fn step(
+  self,
+  event : Event,
+  data_world : DataWorld,
+) -> N3Recognizer {
   let current_state = self.current_state()
   let result = self.transition(
     current_state.as_state_enum(),
     event,
     self.context(),
+    data_world,
   )
   match result {
     Ok((new_machine, new_state, _output)) => {
@@ -50,6 +55,7 @@ pub impl StateMachine for N3Recognizer with fn transition(
   state : RdfState,
   event : Event,
   context : RdfContext,
+  _data_world : DataWorld,
 ) -> TransitionResult[N3Recognizer, RdfState, RdfOut] { // 1. 修正返回类型为 Result
   // 解包 RdfState
   let n3_state = match state {

@@ -29,9 +29,10 @@ pub fn RdfOut::new(quad : Quad) -> RdfOut {
 ///|
 pub fn[TR : TokenRecognizer, RR : RuleRecognizer + StateMachine] SliceIterator::next(
   self : SliceIterator[TR, RR],
+  data_world : DataWorld,
 ) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
-    if self.parser.parse_next() is Some(result) {
+    if self.parser.parse_next(data_world) is Some(result) {
       // 修复：将 TurtleError 转换为 String
       return Some(
         result.map_err(e => {
@@ -66,6 +67,7 @@ pub fn[TR, M] Parser::Parser(
 ///|
 pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_next(
   self : Parser[TR, M],
+  data_world : DataWorld,
 ) -> Result[RdfOut, TurtleError]? {
   for ;; {
     // 1. 优先处理错误
@@ -94,13 +96,13 @@ pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_ne
         self.engine.debug_logger.info("Parser::parse_token = \{located_token}")
 
         // ✅ 驱动状态机
-        self.engine = self.engine.step(located_token)
+        self.engine = self.engine.step(located_token, data_world)
 
         // ✅ 检查是否状态变化（token 没被消费）
         if self.engine.current_state() == previous_state {
           // 状态没变 = token 没被消费，重新用同一个 token 调用
           // 防止无限循环：最多重试一次
-          self.engine = self.engine.step(located_token)
+          self.engine = self.engine.step(located_token, data_world)
         }
 
         // ✅ 检查是否完成
@@ -280,9 +282,10 @@ pub struct ReaderIterator[TR, RR] {
 ///|
 pub async fn[RR : RuleRecognizer + StateMachine] ReaderIterator::next(
   self : ReaderIterator[RdfLexer, RR],
+  data_world : DataWorld,
 ) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
-    if self.parser.parse_next() is Some(result) {
+    if self.parser.parse_next(data_world) is Some(result) {
       debug("Parser::parse_next: \{@debug.to_string(result)}")
       return Some(
         result.map_err(e => {
@@ -319,9 +322,10 @@ pub struct AsyncReaderIterator[TR, RR] {
 ///|
 pub async fn[TR : TokenRecognizer, RR : StateMachine + RuleRecognizer] AsyncReaderIterator::next(
   self : AsyncReaderIterator[TR, RR],
+  data_world : DataWorld,
 ) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
-    if self.parser.parse_next() is Some(result) {
+    if self.parser.parse_next(data_world) is Some(result) {
       // 修复：将 TurtleError 转换为 String
       return Some(
         result.map_err(e => {

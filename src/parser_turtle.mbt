@@ -92,6 +92,7 @@ pub fn TurtleParser::split_slice_for_parallel_parsing(
   self : TurtleParser,
   slice : BytesView,
   target_parallelism : Int,
+  data_world : DataWorld,
 ) -> Array[SliceTurtleParser[TriGRecognizer]] {
   let slice_size = slice.length()
   let chunk_size = MIN_PARALLEL_CHUNK_SIZE
@@ -103,7 +104,7 @@ pub fn TurtleParser::split_slice_for_parallel_parsing(
     let from_slice_parser = current_parser.for_slice(slice)
     // 注意：原代码中 next() 的返回值未处理，且 prefixes 迭代逻辑可能存在副作用问题
     // 这里保留原逻辑结构，仅修复语法错误
-    let _ = from_slice_parser.inner.next()
+    let _ = from_slice_parser.inner.next(data_world)
     for entry in from_slice_parser.prefixes().inner {
       let p = entry.0
       let iri = entry.1.as_ref()
@@ -185,9 +186,10 @@ pub struct AsyncReaderTurtleParser[RL] {
 ///|
 pub async fn[RL : TokenRecognizer] AsyncReaderTurtleParser::next(
   self : AsyncReaderTurtleParser[RL],
+  data_world : DataWorld,
 ) -> Result[N3Quad, TurtleError]? {
   self.inner
-  .next()
+  .next(data_world)
   .map(fn(res) {
     res
     .map(fn(lex_output) {
@@ -284,8 +286,9 @@ pub fn[RL] LowLevelTurtleParser::is_end(
 ///|
 pub fn[RL : TokenRecognizer] LowLevelTurtleParser::parse_next(
   self : LowLevelTurtleParser[RL],
+  data_world : DataWorld,
 ) -> Result[RdfOut, TurtleError]? {
-  self.parser.parse_next()
+  self.parser.parse_next(data_world)
 }
 
 ///|

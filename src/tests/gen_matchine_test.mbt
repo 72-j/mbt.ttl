@@ -4,6 +4,7 @@ async test "Parser_basic_single_line for NQuads" {
     #|<http://example/\U00000053> <http://example/p> <http://example/o> .
 
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
@@ -55,7 +56,7 @@ async test "Parser_basic_single_line for NQuads" {
     if count >= 20 {
       break
     }
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(quad)) => {
         count += 1
         debug("[\{count}] \{quad}")
@@ -86,6 +87,7 @@ async test "multi-line  for NQuads" {
     #| 
 
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
@@ -137,7 +139,7 @@ async test "multi-line  for NQuads" {
     if count >= 20 {
       break
     }
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(quad)) => {
         count += 1
         debug("[\{count}] \{quad}")
@@ -347,6 +349,7 @@ async test "run official n-triples test file" {
   // 如果文件不存在或不可读，await read_file 会 panic。
   // 若需更健壮的处理，可先用 @fs.exists 检查，或在 try-catch 块中运行（如果支持）
   let data = @fs.read_file(path).binary().to_array()
+  let data_world = @lib.DataWorld::default()
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
@@ -390,7 +393,7 @@ async test "run official n-triples test file" {
     errors: [],
   }
 
-  let result = parser.parse_next()
+  let result = parser.parse_next(data_world)
   // @async.sleep(0)
   // 7. 判定成功与否
   let success = match result {

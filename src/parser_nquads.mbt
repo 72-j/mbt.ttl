@@ -118,8 +118,9 @@ pub struct AsyncReaderNQuadsParser[RL] {
 ///|
 pub async fn[RL : TokenRecognizer] AsyncReaderNQuadsParser::next(
   self : AsyncReaderNQuadsParser[RL],
+  data_world : DataWorld,
 ) -> Result[RdfOut, LexerError]? {
-  self.inner.next()
+  self.inner.next(data_world)
 }
 
 ///|
@@ -155,9 +156,10 @@ pub fn[RL] LowLevelNQuadsParser::is_end(
 ///|
 pub fn[RL : TokenRecognizer] LowLevelNQuadsParser::parse_next(
   self : LowLevelNQuadsParser[RL],
+  data_world : DataWorld,
 ) -> Result[Quad, TurtleError]? {
   self.parser
-  .parse_next()
+  .parse_next(data_world)
   .map(fn(res) {
     res
     .map(fn(lex_output) {

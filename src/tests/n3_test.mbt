@@ -6,6 +6,7 @@ async test "debug_n3_implies" {
   let prefixes = Map([])
   let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
 
+  let data_world = @lib.DataWorld::default()
   let parser = @lib.N3Recognizer::new_parser(
     data,
     true,
@@ -14,7 +15,7 @@ async test "debug_n3_implies" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("N3 Implies Success: \{t.to_string()}")
     Some(Err(e)) => debug("N3 Implies Error: \{e.to_string()}")
     None => debug("N3 Implies None")
@@ -28,6 +29,7 @@ async test "debug_n3_forall" {
 
   let prefixes = Map([])
   let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.N3Recognizer::new_parser(
     data,
@@ -37,7 +39,7 @@ async test "debug_n3_forall" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("N3 ForAll Success: \{t.to_string()}")
     Some(Err(e)) => debug("N3 ForAll Error: \{e.to_string()}")
     None => debug("N3 ForAll None")
@@ -51,6 +53,7 @@ async test "debug_n3_path_alternative" {
 
   let prefixes = Map([])
   let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.N3Recognizer::new_parser(
     data,
@@ -60,7 +63,7 @@ async test "debug_n3_path_alternative" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("N3 Path Alt Success: \{t.to_string()}")
     Some(Err(e)) => debug("N3 Path Alt Error: \{e.to_string()}")
     None => debug("N3 Path Alt None")
@@ -75,6 +78,7 @@ async test "debug_n3_literal_complex" {
 
   let prefixes = Map([])
   let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.N3Recognizer::new_parser(
     data,
@@ -84,7 +88,7 @@ async test "debug_n3_literal_complex" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("N3 Literal Success: \{t.to_string()}")
     Some(Err(e)) => debug("N3 Literal Error: \{e.to_string()}")
     None => debug("N3 Literal None")
@@ -98,6 +102,7 @@ async test "debug_n3_nested_formula" {
 
   let prefixes = Map([])
   let base_iri = Some(@lib.Iri::Iri("http://example.org/"))
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.N3Recognizer::new_parser(
     data,
@@ -107,7 +112,7 @@ async test "debug_n3_nested_formula" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("N3 Nested Formula Success: \{t.to_string()}")
     Some(Err(e)) => debug("N3 Nested Formula Error: \{e.to_string()}")
     None => debug("N3 Nested Formula None")
@@ -162,8 +167,9 @@ async test "n3 test for Parser" {
     context,
     errors: [],
   }
+  let data_world = @lib.DataWorld::default()
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("N3 Nested Formula Success: \{t.to_string()}")
     Some(Err(e)) => debug("N3 Nested Formula Error: \{e.to_string()}")
     None => debug("N3 Nested Formula None")

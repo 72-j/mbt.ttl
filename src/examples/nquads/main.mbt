@@ -21,6 +21,7 @@ async fn main {
 
     // Read file content as binary
     let data = @fs.read_file(path).binary()
+    let data_world = @lib.DataWorld::default()
 
     // Create lexer for N-Triples mode
     let lexer = @lib.Lexer::Lexer(
@@ -80,7 +81,7 @@ async fn main {
       if count >= 100 {
         break
       } // Safety limit
-      match parser.parse_next() {
+      match parser.parse_next(data_world) {
         Some(Err(e)) => {
           count += 1
           println("[\{count}] Error: \{e}")

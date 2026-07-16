@@ -133,8 +133,9 @@ pub struct AsyncReaderNTriplesParser[RL] {
 ///|
 pub async fn[RL : TokenRecognizer] AsyncReaderNTriplesParser::next(
   self : AsyncReaderNTriplesParser[RL],
+  data_world : DataWorld,
 ) -> Result[RdfOut, LexerError]? {
-  self.inner.next()
+  self.inner.next(data_world)
 }
 
 ///|
@@ -172,9 +173,10 @@ pub fn LowLevelNTriplesParser::is_end(
 ///|
 pub fn[RL : TokenRecognizer] LowLevelNTriplesParser::parse_next(
   self : LowLevelNTriplesParser[RL],
+  data_world : DataWorld,
 ) -> Result[Triple, TurtleError]? {
   self.parser
-  .parse_next()
+  .parse_next(data_world)
   .map(fn(res) {
     res
     .map(fn(lex_output) {

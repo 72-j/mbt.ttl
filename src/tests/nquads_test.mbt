@@ -2,12 +2,13 @@
 test "parse basic quad" {
   let parser = @lib.NQuadsParser::new()
   let low_level = parser.low_level()
+  let data_world = @lib.DataWorld::default()
 
   let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .\n"
   low_level.extend_from_slice(@utf8.encode(input))
   low_level.end()
 
-  let result = low_level.parse_next()
+  let result = low_level.parse_next(data_world)
   assert_true(result is Some(_))
   match result.unwrap() {
     Ok(quad) => {
@@ -46,9 +47,10 @@ test "low level parser initialization" {
 ///|
 async test "Parser_basic_single_line for NQuads" {
   let input =
-    #|<http://example.org/s> <http://example.org/p> <http://example.org/o> .
+    #|<http://example.org/s> <http://example.org/p> "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\t\u000B\u000C\u000E\u000F\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001A\u001B\u001C\u001D\u001E\u001F"  .
 
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let logger = @lib.make_console_logger()
 
@@ -68,7 +70,7 @@ async test "Parser_basic_single_line for NQuads" {
     if count >= 20 {
       break
     }
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(quad)) => {
         count += 1
         debug("[\{count}] ✓ \{quad}")
@@ -97,6 +99,7 @@ async test "Parser_multi_line for NQuads" {
     #| <http://example.org/s2> <http://example.org/p2> <http://example.org/o2> .
     #| <http://example.org/s3> <http://example.org/p3> <http://example.org/o3> .
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let logger = @lib.make_console_logger()
   let parser = @lib.NQuadsRecognizer::new_parser(
@@ -114,7 +117,7 @@ async test "Parser_multi_line for NQuads" {
     if count >= 20 {
       break
     }
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(quad)) => {
         count += 1
         debug("[\{count}] ✓ \{quad}")

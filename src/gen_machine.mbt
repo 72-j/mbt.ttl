@@ -46,6 +46,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn curre
 pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   self,
   event : Event,
+  data_world : DataWorld,
 ) -> GenericStateMachine[M] {
   self.debug_logger.info(
     "[impl step] event = \{event}, step: state_before = [\{self.current_state()}]",
@@ -53,7 +54,12 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
 
   let current_state = self.machine.current_state() // ← 从 machine 获取
 
-  let result = self.machine.transition(current_state, event, self.context)
+  let result = self.machine.transition(
+    current_state,
+    event,
+    self.context,
+    data_world,
+  )
 
   match result {
     Ok((new_machine, new_state, output)) => {
@@ -106,9 +112,10 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn trans
   state : RdfState,
   event : Event,
   context : Ctx,
+  data_world : DataWorld,
 ) -> TransitionResult[GenericStateMachine[M], RdfState, O] {
   // ✅ 1. 调用 machine.transition，返回 Result
-  match self.machine.transition(state, event, context) {
+  match self.machine.transition(state, event, context, data_world) {
     // ✅ 2. 成功：解构元组
     Ok((new_machine, new_state, output)) => {
       // 3. 构造新的 GenericStateMachine
@@ -152,6 +159,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
 pub fn[M : StateMachine] GenericStateMachine::run(
   self : GenericStateMachine[M],
   events : Array[Event],
+  data_world : DataWorld,
 ) -> Result[Array[O], RuleRecognizerError]? {
   let mut current_machine = self.machine
   let mut current_state = current_machine.initial_state()
@@ -160,7 +168,10 @@ pub fn[M : StateMachine] GenericStateMachine::run(
 
   for event in events {
     // ✅ 1. 匹配 Result
-    match current_machine.transition(current_state, event, current_context) {
+    match
+      current_machine.transition(
+        current_state, event, current_context, data_world,
+      ) {
       // ✅ 2. 成功：解构元组
       Ok((next_machine, next_state, output)) => {
         current_machine = next_machine

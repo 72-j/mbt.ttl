@@ -1,13 +1,15 @@
 ///|
 pub trait StateMachine {
   fn initial_state(Self) -> RdfState
-  fn transition(Self, state : RdfState, event : Event, context : RdfContext) -> TransitionResult[
+  fn transition(
     Self,
-    RdfState,
-    RdfOut,
-  ]
+    state : RdfState,
+    event : Event,
+    context : RdfContext,
+    data_world : DataWorld,
+  ) -> TransitionResult[Self, RdfState, RdfOut]
   fn current_state(Self) -> RdfState
-  fn step(Self, event : Event) -> Self
+  fn step(Self, event : Event, data_world : DataWorld) -> Self
   fn reset(Self) -> Self
   fn is_accepting(Self) -> Bool
   fn context(Self) -> RdfContext

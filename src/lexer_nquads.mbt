@@ -23,7 +23,7 @@ pub(all) struct DataWorld {
   subjects : Array[NamedOrBlankNodeRef]
   predicates : Array[NamedNodeRef]
   objects : Array[TermRef]
-  temp_literal : String?
+  mut temp_literal : String?
   finalize_literal : LiteralKind?
   graph_name : NamedOrBlankNodeRef
   stack_push : Array[NQuadsState]
@@ -32,6 +32,23 @@ pub(all) struct DataWorld {
   finalize_quoted_triple : Bool
   clear_accumulator : Bool
 }
+
+// impl Show for DataWorld with fn output(self, logger : &Logger) -> Unit {
+//   logger.write("DataWorld(")
+//   logger.write("subjects=")
+//   logger.write(@debug.to_string(self.subjects))
+//   logger.write(", ")
+//   logger.write("predicates=")
+//   logger.write(@debug.to_string(self.predicates))
+//   logger.write(", ")
+//   logger.write("objects=")
+//   logger.write(@debug.to_string(self.objects))
+//   logger.write(", ")
+//   logger.write("temp_literal=")
+//   logger.write(@debug.to_string(self.temp_literal))
+//   logger.write(", ")
+//   logger.write("finalize_literal=")
+// }
 
 ///|
 pub fn DataWorld::DataWorld(
@@ -84,6 +101,27 @@ pub(all) enum LiteralKind {
   Simple
   Lang(LanguageTag, BaseDirection)
   Typed(VarDataType, NamedNodeRef)
+} derive(Debug, Eq, Hash)
+
+///|
+impl Show for LiteralKind with fn output(self, logger : &Logger) -> Unit {
+  match self {
+    LiteralKind::Simple => logger.write("Simple")
+    LiteralKind::Lang(lang, dir) => {
+      logger.write("Lang(")
+      lang.output(logger)
+      logger.write(", ")
+      dir.output(logger)
+      logger.write(")")
+    }
+    LiteralKind::Typed(data_type, iri) => {
+      logger.write("Typed(")
+      data_type.output(logger)
+      logger.write(", ")
+      iri.output(logger)
+      logger.write(")")
+    }
+  }
 }
 
 ///|
@@ -271,36 +309,36 @@ pub fn NQuadsRecognizer::new_parser(
 }
 
 ///|
-pub fn NQuadsRecognizer::emit_curr_quad(
-  self : NQuadsRecognizer,
-  results : Array[RdfOut],
-  graph_name : GraphNameRef,
-) -> Unit {
-  let subject_opt = self.subjects.pop()
-  let predicate_opt = self.predicates.pop()
-  let object_opt = self.objects.pop()
+// pub fn NQuadsRecognizer::emit_curr_quad(
+//   self : NQuadsRecognizer,
+//   results : Array[RdfOut],
+//   graph_name : GraphNameRef,
+// ) -> Unit {
+//   let subject_opt = self.subjects.pop()
+//   let predicate_opt = self.predicates.pop()
+//   let object_opt = self.objects.pop()
 
-  match (subject_opt, predicate_opt, object_opt) {
-    (Some(subject), Some(predicate), Some(object)) =>
-      results.push(
-        RdfOut::Quad({
-          subject: subject.into_owned(),
-          predicate: predicate.into_owned(),
-          object: object.into_owned(),
-          graph_name: graph_name.into_owned(),
-        }),
-      )
-    _ =>
-      // 栈中元素不足，记录内部错误
-      self.errors.push(
-        RuleRecognizerError::SyntaxError(
-          "Internal error: incomplete quad on stack during emission",
-          Range::default(),
-        ),
-      )
-    // 可以选择在此处调用 self.error_recovery_state()，但这会改变 self
-  }
-}
+//   match (subject_opt, predicate_opt, object_opt) {
+//     (Some(subject), Some(predicate), Some(object)) =>
+//       results.push(
+//         RdfOut::Quad({
+//           subject: subject.into_owned(),
+//           predicate: predicate.into_owned(),
+//           object: object.into_owned(),
+//           graph_name: graph_name.into_owned(),
+//         }),
+//       )
+//     _ =>
+//       // 栈中元素不足，记录内部错误
+//       self.errors.push(
+//         RuleRecognizerError::SyntaxError(
+//           "Internal error: incomplete quad on stack during emission",
+//           Range::default(),
+//         ),
+//       )
+//     // 可以选择在此处调用 self.error_recovery_state()，但这会改变 self
+//   }
+// }
 
 ///|
 pub fn NQuadsRecognizer::emit_current_quad(

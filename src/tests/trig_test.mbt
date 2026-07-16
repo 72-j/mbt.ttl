@@ -2,6 +2,7 @@
 async test "debug_trig_subj_only" {
   let input = "<http://a/b>"
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let prefixes = Map([])
   let base_iri = None
@@ -16,7 +17,7 @@ async test "debug_trig_subj_only" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("✓ Success: \{t.to_string()}")
     Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
     None => debug("⚠ None")
@@ -27,6 +28,7 @@ async test "debug_trig_subj_only" {
 async test "debug_trig_complete_triple" {
   let input = "<http://a/b> <http://a/c> <http://a/d> ."
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
   debug("Input length: \{input.length()}")
   let prefixes = Map([])
   let base_iri = None
@@ -41,7 +43,7 @@ async test "debug_trig_complete_triple" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("✓ Success: \{t.to_string()}")
     Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
     None => debug("⚠ None")
@@ -51,6 +53,7 @@ async test "debug_trig_complete_triple" {
 ///|
 async test "debug_trig_complete_triple_newline" {
   let input = "<http://a/b> <http://a/c> <http://a/d> .\n"
+  let data_world = @lib.DataWorld::default()
   let data = @utf8.encode(input).to_array()
 
   let prefixes = Map([])
@@ -66,7 +69,7 @@ async test "debug_trig_complete_triple_newline" {
     debug_logger=@lib.make_console_logger(),
   )
 
-  match parser.parse_next() {
+  match parser.parse_next(data_world) {
     Some(Ok(t)) => debug("✓ Success: \{t.to_string()}")
     Some(Err(e)) => debug("✗ Error: \{e.to_string()}")
     None => debug("⚠ None")
@@ -77,6 +80,7 @@ async test "debug_trig_complete_triple_newline" {
 async test "debug_lexer_tokens" {
   let input = "<http://a/b> <http://a/c> <http://a/d> ."
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   debug("Input: \{input}")
 
@@ -93,7 +97,7 @@ async test "debug_lexer_tokens" {
   )
 
   for ;; {
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(t)) => {
         debug("Parsed: \{t}")
         break
@@ -119,6 +123,7 @@ async test "debug_lexer_tokens" {
 //     #|}
 
 //   let data = @utf8.encode(input).to_array()
+// let data_world=@lib.DataWorld::default()
 
 //   let lexer = @lib.Lexer::Lexer(
 //     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::N3, false),
@@ -174,7 +179,7 @@ async test "debug_lexer_tokens" {
 //     if count >= 20 {
 //       break
 //     }
-//     match parser.parse_next() {
+//     match parser.parse_next(data_world) {
 //       Some(Ok(turtle)) => {
 //         count += 1
 //         debug("[\{count}] \{turtle}")
@@ -210,6 +215,7 @@ async test "Parser_basic_single_line for TriG 2" {
     #|}
 
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::N3, false),
@@ -266,7 +272,7 @@ async test "Parser_basic_single_line for TriG 2" {
     if count >= 20 {
       break
     }
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(turtle)) => {
         count += 1
         debug("[\{count}] \{turtle}")
@@ -296,6 +302,7 @@ async test "Parser_basic_single_line for TriG 3" {
     #|{<http://example/s> <http://example/p> """abc""def''ghi""" .}  
 
   let data = @utf8.encode(input).to_array()
+  let data_world = @lib.DataWorld::default()
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::N3, false),
@@ -352,7 +359,7 @@ async test "Parser_basic_single_line for TriG 3" {
     if count >= 20 {
       break
     }
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(turtle)) => {
         count += 1
         debug("[\{count}] \{turtle}")
@@ -388,6 +395,7 @@ async test "Parser_basic_single_line for TriG 3" {
 //   // #|{:s :p """abc""""@en .}
 
 //   let data = @utf8.encode(input).to_array()
+// let data_world=@lib.DataWorld::default()
 
 //   debug("Input: \{input}")
 
@@ -446,7 +454,7 @@ async test "Parser_basic_single_line for TriG 3" {
 //     if count >= 20 {
 //       break
 //     }
-//     match parser.parse_next() {
+//     match parser.parse_next(data_world) {
 //       Some(Ok(turtle)) => {
 //         count += 1
 //         debug("[\{count}] \{turtle}")

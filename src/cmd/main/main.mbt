@@ -79,6 +79,7 @@ async fn parse_file(path : String, verbose : Bool) -> Unit {
 ///|
 fn parse_content(content : String, verbose : Bool) -> Unit {
   let data = @utf8.encode(content)
+  let data_world = @lib.DataWorld::default()
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
@@ -140,7 +141,7 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
     if count >= 100 {
       break
     }
-    match parser.parse_next() {
+    match parser.parse_next(data_world) {
       Some(Ok(quad)) => {
         count += 1
         quads.push(quad)

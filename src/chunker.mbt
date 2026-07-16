@@ -207,7 +207,11 @@ pub fn get_turtle_slice_chunks(
 }
 
 ///|
-pub fn next_terminating_char(parser : TurtleParser, input : BytesView) -> Int? {
+pub fn next_terminating_char(
+  parser : TurtleParser,
+  input : BytesView,
+  data_world : DataWorld,
+) -> Int? {
   let mut input = input
   let mut total_pos = 0
 
@@ -221,7 +225,7 @@ pub fn next_terminating_char(parser : TurtleParser, input : BytesView) -> Int? {
         }
         let new_input = input[pos:]
         let p = parser
-        let accepted = accept(p, new_input)
+        let accepted = accept(p, new_input, data_world)
         if accepted {
           return Some(total_pos + pos)
         }
@@ -238,9 +242,13 @@ pub fn next_terminating_char(parser : TurtleParser, input : BytesView) -> Int? {
 }
 
 ///|
-fn accept(parser : TurtleParser, input : BytesView) -> Bool {
+fn accept(
+  parser : TurtleParser,
+  input : BytesView,
+  data_world : DataWorld,
+) -> Bool {
   let f = parser.for_slice(input)
-  let iter_opt = f.inner.next()
+  let iter_opt = f.inner.next(data_world)
   for _ in 0..<3 {
     if iter_opt is Some(_r) {
       // ... 只检查第一个结果

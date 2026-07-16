@@ -133,9 +133,10 @@ pub struct AsyncReaderTriGParser[RL] {
 ///|
 pub async fn[RL : TokenRecognizer] AsyncReaderTriGParser::next(
   self : AsyncReaderTriGParser[RL],
+  data_world : DataWorld,
 ) -> Result[Quad, TurtleError]? {
   self.inner
-  .next()
+  .next(data_world)
   .map(fn(res) {
     res
     .map(fn(lex_output) {
@@ -251,9 +252,10 @@ pub fn[RL] LowLevelTriGParser::is_end(self : LowLevelTriGParser[RL]) -> Bool {
 ///|
 pub fn[RL : TokenRecognizer] LowLevelTriGParser::parse_next(
   self : LowLevelTriGParser[RL],
+  data_world : DataWorld,
 ) -> Result[Quad, TurtleError]? {
   self.parser
-  .parse_next()
+  .parse_next(data_world)
   .map(fn(res) {
     res
     .map(fn(lex_output) {

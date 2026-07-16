@@ -24,6 +24,7 @@ async test "verify_with_ntriples" {
   // N-Triples 格式相同
   let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> ."
   let data = @utf8.encode(input)
+  let data_world = @lib.DataWorld::default()
 
   let parser = @lib.NTriplesParser::new().lenient()
   let low_level = parser.low_level()
@@ -31,7 +32,7 @@ async test "verify_with_ntriples" {
   low_level.extend_from_slice(data)
   low_level.end()
 
-  match low_level.parse_next() {
+  match low_level.parse_next(data_world) {
     Some(Ok(t)) => debug("NTriples Success:\{t.to_string()} ")
     Some(Err(e)) => debug("NTriples Error: \{e.to_string()}")
     None => debug("NTriples None")
@@ -39,29 +40,30 @@ async test "verify_with_ntriples" {
 }
 
 ///|
-// test "parse basic ntriples" {
-//   let parser = @lib.NTriplesParser::new()
-//   let low_level = parser.low_level()
+test "parse basic ntriples" {
+  let parser = @lib.NTriplesParser::new()
+  let low_level = parser.low_level()
+  let data_world = @lib.DataWorld::default()
 
-//   let input =
-//     #|<http://a.example/s> <http://a.example/p> "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\t\u000B\u000C\u000E\u000F\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001A\u001B\u001C\u001D\u001E\u001F" .
+  let input =
+    #|<http://a.example/s> <http://a.example/p> "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\t\u000B\u000C\u000E\u000F\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001A\u001B\u001C\u001D\u001E\u001F" .
 
-//   // let input = "<foo> <bar> \"baz\"@toolonglangtag ."
-//   low_level.extend_from_slice(@utf8.encode(input))
-//   low_level.end()
+  // let input = "<foo> <bar> \"baz\"@toolonglangtag ."
+  low_level.extend_from_slice(@utf8.encode(input))
+  low_level.end()
 
-//   let result = low_level.parse_next()
-//   // assert_true(result is Some(_))
-//   match result.unwrap() {
-//     Ok(quad) => {
-//       let s = quad.object
-//       debug(s)
-//       // 验证 q 的内容
-//       assert_true(true)
-//     }
-//     Err(e) => debug(e.to_string())
-//   }
-// }
+  let result = low_level.parse_next(data_world)
+  // assert_true(result is Some(_))
+  match result.unwrap() {
+    Ok(quad) => {
+      let s = quad.object
+      debug(s)
+      // 验证 q 的内容
+      assert_true(true)
+    }
+    Err(e) => debug(e.to_string())
+  }
+}
 
 ///|
 // test "parse multi-line ntriples test" {
@@ -124,7 +126,6 @@ async test "verify_with_ntriples" {
 
 // }
 
-///|
 // test "parse basic ntriples with error handling" {
 //   let parser = @lib.NTriplesParser::new()
 //   let low_level = parser.low_level()

@@ -209,9 +209,10 @@ pub struct AsyncReaderN3Parser[RL] {
 ///|
 pub async fn[RL : TokenRecognizer] AsyncReaderN3Parser::next(
   self : AsyncReaderN3Parser[RL],
+  data_world : DataWorld,
 ) -> Result[N3Quad, TurtleError]? {
   self.inner
-  .next()
+  .next(data_world)
   .map(fn(res) {
     res
     .map(fn(lex_output) {
@@ -307,8 +308,9 @@ pub fn[RL] LowLevelN3Parser::is_end(self : LowLevelN3Parser[RL]) -> Bool {
 ///|
 pub fn[RL : TokenRecognizer] LowLevelN3Parser::parse_next(
   self : LowLevelN3Parser[RL],
+  data_world : DataWorld,
 ) -> Result[RdfOut, TurtleError]? {
-  self.parser.parse_next()
+  self.parser.parse_next(data_world)
 }
 
 ///|
