@@ -1,15 +1,12 @@
 ///|
 pub(all) enum RdfContext {
-  TriGRecognizerContext(TriGRecognizerContext)
   NQuadsRecognizerContext(NQuadsRecognizerContext)
-  N3RecognizerContext(N3RecognizerContext)
 }
 
 ///|
 pub(all) enum RdfOut {
   Quad(Quad)
   Triple(Triple)
-  N3Quad(N3Quad)
 } derive(Debug)
 
 ///|
@@ -17,7 +14,6 @@ pub impl Show for RdfOut with fn output(self, logger : &Logger) -> Unit {
   match self {
     Quad(quad) => logger.write_object(quad)
     Triple(triple) => logger.write_object(triple)
-    N3Quad(n3_quad) => logger.write_object(n3_quad)
   }
 }
 
@@ -27,12 +23,11 @@ pub fn RdfOut::new(quad : Quad) -> RdfOut {
 }
 
 ///|
-pub fn[TR : TokenRecognizer, RR : RuleRecognizer + StateMachine] SliceIterator::next(
+pub fn[TR : TokenRecognizer, RR : StateMachine] SliceIterator::next(
   self : SliceIterator[TR, RR],
-  data_world : DataWorld,
 ) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
-    if self.parser.parse_next(data_world) is Some(result) {
+    if self.parser.parse_next() is Some(result) {
       // 修复：将 TurtleError 转换为 String
       return Some(
         result.map_err(e => {
@@ -65,9 +60,8 @@ pub fn[TR, M] Parser::Parser(
 }
 
 ///|
-pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_next(
+pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(
   self : Parser[TR, M],
-  data_world : DataWorld,
 ) -> Result[RdfOut, TurtleError]? {
   for ;; {
     // 1. 优先处理错误
@@ -88,7 +82,7 @@ pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_ne
     }
 
     // 3. 尝试从 Lexer 获取下一个 Token
-    let ctx = M::lexer_options(self.context)
+    let ctx = self.lexer_options()
     // let ctx = self.lexer_options()
     match self.lexer.parse_next(ctx) {
       Some(Ok(located_token)) => {
@@ -96,13 +90,13 @@ pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_ne
         self.engine.debug_logger.info("Parser::parse_token = \{located_token}")
 
         // ✅ 驱动状态机
-        self.engine = self.engine.step(located_token, data_world)
+        self.engine = self.engine.step(located_token)
 
         // ✅ 检查是否状态变化（token 没被消费）
         if self.engine.current_state() == previous_state {
           // 状态没变 = token 没被消费，重新用同一个 token 调用
           // 防止无限循环：最多重试一次
-          self.engine = self.engine.step(located_token, data_world)
+          self.engine = self.engine.step(located_token)
         }
 
         // ✅ 检查是否完成
@@ -243,7 +237,7 @@ pub fn[TR, M : StateMachine] Parser::try_finish(
 ///|
 pub fn[TR, RR] Parser::extend_from_slice(
   self : Parser[TR, RR],
-  other : Bytes,
+  other : Array[Byte],
 ) -> Unit {
   self.lexer.extend_from_slice(other)
 }
@@ -263,15 +257,13 @@ pub fn[TR, RR] Parser::for_async_reader(
 ) -> AsyncReaderIterator[TR, RR] {
   { reader, parser: self }
 }
-// pub fn[TR, RR] Parser::lexer_options(
-//   self : Parser[TR, RR]
-// ) -> LexerOptions? {
-//   match self.context {
-//     NQuadsRecognizerContext(ctx) => Some(ctx.lexer_options)
-//     TriGRecognizerContext(_) => ...
-//     N3RecognizerContext(_) => ...
-//   }
-// }
+
+///|
+pub fn[TR, RR] Parser::lexer_options(self : Parser[TR, RR]) -> LexerOptions? {
+  match self.context {
+    NQuadsRecognizerContext(ctx) => Some(ctx.lexer_options)
+  }
+}
 
 ///|
 pub struct ReaderIterator[TR, RR] {
@@ -280,12 +272,11 @@ pub struct ReaderIterator[TR, RR] {
 }
 
 ///|
-pub async fn[RR : RuleRecognizer + StateMachine] ReaderIterator::next(
+pub async fn[RR : StateMachine] ReaderIterator::next(
   self : ReaderIterator[RdfLexer, RR],
-  data_world : DataWorld,
 ) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
-    if self.parser.parse_next(data_world) is Some(result) {
+    if self.parser.parse_next() is Some(result) {
       debug("Parser::parse_next: \{@debug.to_string(result)}")
       return Some(
         result.map_err(e => {
@@ -320,12 +311,11 @@ pub struct AsyncReaderIterator[TR, RR] {
 }
 
 ///|
-pub async fn[TR : TokenRecognizer, RR : StateMachine + RuleRecognizer] AsyncReaderIterator::next(
+pub async fn[TR : TokenRecognizer, RR : StateMachine] AsyncReaderIterator::next(
   self : AsyncReaderIterator[TR, RR],
-  data_world : DataWorld,
 ) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
-    if self.parser.parse_next(data_world) is Some(result) {
+    if self.parser.parse_next() is Some(result) {
       // 修复：将 TurtleError 转换为 String
       return Some(
         result.map_err(e => {

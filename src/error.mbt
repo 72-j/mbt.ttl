@@ -2,6 +2,7 @@
 pub(all) suberror IriError {
   NoScheme
   Expected(Char, Int)
+  InvalidPath(Int)
   InvalidIriCodePoint(Char, Int)
   InvalidPercentEncoding(Int)
   InvalidHostCharacter(Char, Int)
@@ -24,6 +25,7 @@ pub fn IriError::position(self : IriError) -> Int {
   match self {
     IriError::NoScheme => 0
     IriError::Expected(_, pos) => pos
+    IriError::InvalidPath(pos) => pos
     IriError::RelativePathSegment(_, pos) => pos
     IriError::InvalidHostCharacter(_, pos) => pos
     IriError::InvalidHostIp(_, pos) => pos
@@ -41,6 +43,7 @@ pub impl ErrOut for IriError with fn message(self : IriError) -> String {
   match self {
     IriError::NoScheme(_) => "The IRI does not have a scheme"
     IriError::Expected(_, _) => "An expected character was not found"
+    IriError::InvalidPath(_) => "A path character was invalid"
     IriError::RelativePathSegment(_, _) => "A path segment is relative"
     IriError::InvalidHostCharacter(_, _) =>
       "The host contains a character not allowed"
@@ -62,6 +65,7 @@ pub impl ErrOut for IriError with fn err_kind(self : IriError) -> String {
   match self {
     IriError::NoScheme(_) => "NoScheme"
     IriError::Expected(_, _) => "Expected"
+    IriError::InvalidPath(_) => "InvalidPath"
     IriError::RelativePathSegment(_, _) => "RelativePathSegment"
     IriError::InvalidHostCharacter(_, _) => "InvalidHostCharacter"
     IriError::InvalidHostIp(_, _) => "InvalidHostIp"

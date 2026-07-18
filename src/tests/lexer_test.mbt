@@ -100,7 +100,6 @@ async test "Parser multi-line test" {
     #|  <http://example.org/s3> <http://example.org/p3> <http://example.org/o3> .
 
   let data = @utf8.encode(input).to_array()
-  let data_world = @lib.DataWorld::default()
 
   let logger = @lib.make_console_logger()
   let parser = @lib.NQuadsRecognizer::new_parser(
@@ -118,7 +117,7 @@ async test "Parser multi-line test" {
     if count >= 20 {
       break
     }
-    match parser.parse_next(data_world) {
+    match parser.parse_next() {
       Some(Ok(quad)) => {
         count += 1
         debug("[\{count}] ✓ \{quad}")

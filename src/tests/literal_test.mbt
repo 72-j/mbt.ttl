@@ -13,7 +13,7 @@ test "simple literal with empty string" {
 ///|
 test "typed literal with non-string datatype" {
   let lit = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::TrueVar,
+    "true",
     @lib.NamedNodeRef::NamedNodeRef(@lib.lwBOOLEAN.to_string()),
   )
   @debug.assert_eq(lit.into_owned().value(), "true")
@@ -23,7 +23,7 @@ test "typed literal with non-string datatype" {
 ///|
 test "typed literal with string datatype normalizes to simple" {
   let lit = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::StringVar("hello".to_string()),
+    "hello",
     @lib.NamedNodeRef::NamedNodeRef(@lib.lwSTRING.to_string()),
   )
   // Should be normalized to simple literal since xsd:string is the default
@@ -33,7 +33,7 @@ test "typed literal with string datatype normalizes to simple" {
 ///|
 test "typed literal with integer datatype" {
   let lit = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::IntVar("42"),
+    "42",
     @lib.NamedNodeRef::NamedNodeRef(@lib.lwINTEGER.to_string()),
   )
   @debug.assert_eq(lit.into_owned().value(), "42")
@@ -151,7 +151,7 @@ test "literal value extraction for simple literal" {
 ///|
 test "literal value extraction for typed literal" {
   let lit = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::IntVar("123"),
+    "123",
     @lib.NamedNodeRef::NamedNodeRef(@lib.lwINTEGER.to_string()),
   )
   @debug.assert_eq(lit.into_owned().value(), "123")
@@ -172,7 +172,7 @@ test "datatype for simple literal" {
 ///|
 test "datatype for typed literal" {
   let lit = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::TrueVar,
+    "true",
     @lib.NamedNodeRef::NamedNodeRef(@lib.lwBOOLEAN.to_string()),
   )
   @debug.assert_eq(lit.datatype(), @lib.lwBOOLEAN)
@@ -208,7 +208,7 @@ test "destruct simple literal" {
 ///|
 test "destruct typed literal" {
   let lit = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::IntVar("42"),
+    "42",
     @lib.NamedNodeRef::NamedNodeRef(@lib.lwINTEGER.to_string()),
   )
   let (value, datatype, language, direction) = lit.into_owned().destruct()
@@ -251,20 +251,14 @@ test "literalref simple literal creation" {
 
 ///|
 test "literalref typed literal" {
-  let literalref = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::TrueVar,
-    @lib.lwBOOLEAN,
-  )
+  let literalref = @lib.LiteralRef::new_typed_literal("true", @lib.lwBOOLEAN)
   @debug.assert_eq(literalref.into_value(), "true")
   @debug.assert_eq(literalref.datatype(), @lib.lwBOOLEAN)
 }
 
 ///|
 test "literalref typed literal with string normalizes to simple" {
-  let literalref = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::StringVar("hello".to_string()),
-    @lib.lwSTRING,
-  )
+  let literalref = @lib.LiteralRef::new_typed_literal("hello", @lib.lwSTRING)
   @debug.assert_eq(literalref.into_value(), "hello")
   @debug.assert_eq(literalref.datatype(), @lib.lwSTRING)
 }
@@ -317,7 +311,7 @@ test "literalref to_owned" {
 test "literal equality simple vs typed string" {
   let simple = @lib.Literal::new_simple_literal("foo")
   let typed = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::StringVar("foo"),
+    "foo",
     @lib.NamedNodeRef::NamedNodeRef(@lib.lwSTRING.to_string()),
   )
   @debug.assert_eq(simple, typed.into_owned())
@@ -326,17 +320,14 @@ test "literal equality simple vs typed string" {
 ///|
 test "literalref equality simple vs typed string" {
   let simple = @lib.LiteralRef::new_simple_literal("foo")
-  let typed = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::StringVar("foo"),
-    @lib.lwSTRING,
-  )
+  let typed = @lib.LiteralRef::new_typed_literal("foo", @lib.lwSTRING)
   @debug.assert_eq(simple, typed)
 }
 
 ///|
 test "literal as_ref equality with typed literal" {
   let literal = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::StringVar("foo"),
+    "foo",
     @lib.NamedNodeRef::NamedNodeRef(@lib.lwSTRING.to_string()),
   )
   let literalref = @lib.LiteralRef::new_simple_literal("foo")
@@ -376,7 +367,7 @@ test "literal show directional language-tagged" {
 ///|
 test "literal show typed literal" {
   let lit = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::IntVar("42"),
+    "42",
     @lib.NamedNodeRef::NamedNodeRef(@lib.lwINTEGER.to_string()),
   )
   @debug.assert_eq(
@@ -387,10 +378,7 @@ test "literal show typed literal" {
 
 ///|
 test "literalref to_string" {
-  let literalref = @lib.LiteralRef::new_typed_literal(
-    @lib.VarDataType::StringVar("hello"),
-    @lib.lwSTRING,
-  )
+  let literalref = @lib.LiteralRef::new_typed_literal("hello", @lib.lwSTRING)
   let s = literalref.to_string()
   // debug(s) // Should produce quoted string representation
   assert_true(s.has_prefix("\""))

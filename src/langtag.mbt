@@ -238,14 +238,6 @@ pub impl Show for LanguageTag with fn to_string(self : LanguageTag) -> String {
 }
 
 ///|
-impl FromStr for LanguageTag with fn from_str(tag : StringView) -> LanguageTag {
-  match LanguageTag::parse_and_normalize(tag.to_owned()) {
-    Err(_e) => LanguageTag::default()
-    Ok(lang_tag) => lang_tag
-  }
-}
-
-///|
 fn sub_string(s : String, start : Int, end : Int) -> String {
   if start >= s.length() {
     return ""

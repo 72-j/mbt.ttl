@@ -1,30 +1,3 @@
-///|
-pub(all) enum NQuadsAction {
-  // 主体积木操作
-  PushSubject(NamedOrBlankNodeRef)
-  PushPredicate(NamedNodeRef)
-  PushObject(TermRef)
-
-  // 字面量处理
-  SetTempLiteral(String)
-  FinalizeSimpleLiteral
-  FinalizeLangLiteral(String, BaseDirection)
-
-  // 图名处理
-  SetGraphName(NamedOrBlankNodeRef)
-  EmitQuad
-  EmitQuadWithGraphName
-
-  // 引号三元组 (<< >>)
-  PushStack(NQuadsState)
-  PopStack
-  FinalizeQuotedTriple
-
-  // 错误恢复
-  SetError(RuleRecognizerError)
-  ClearAccumulator
-}
-
 // // ===== State: ExpectSubject =====
 
 // ///|

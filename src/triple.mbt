@@ -12,13 +12,13 @@ pub impl Show for Triple with fn output(self : Triple, logger : &Logger) -> Unit
   logger.write("Triple")
   logger.write(" {")
   logger.write(" subject: ")
-  self.subject.output(logger)
+  logger.write(self.subject)
   logger.write(", ")
   logger.write(" predicate: ")
-  self.predicate.output(logger)
+  logger.write(self.predicate)
   logger.write(", ")
   logger.write(" object: ")
-  self.object.output(logger)
+  logger.write(self.object)
   logger.write(" }")
 }
 
@@ -65,11 +65,6 @@ pub fn Triple::as_ref(self : Triple) -> TripleRef {
 }
 
 ///|
-pub fn Triple::as_n3term(self : Triple) -> N3Term {
-  N3Term::Triple(self)
-}
-
-///|
 pub fn Triple::as_term(self : Triple) -> Term {
   Term::Triple(self)
 }
@@ -88,13 +83,13 @@ impl Show for TripleRef with fn output(self : TripleRef, logger : &Logger) -> Un
   logger.write("Triple")
   logger.write(" {")
   logger.write(" subject: ")
-  self.subject.output(logger)
+  logger.write(self.subject)
   logger.write(", ")
   logger.write(" predicate: ")
   self.predicate.output(logger)
   logger.write(", ")
   logger.write(" object: ")
-  self.object.output(logger)
+  logger.write(self.object)
   logger.write(" }")
 }
 

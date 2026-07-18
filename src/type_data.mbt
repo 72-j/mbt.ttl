@@ -34,20 +34,3 @@ pub impl Show for VarDataType with fn output(
     DurationVar(v) => logger.write(v)
   }
 }
-
-///|
-fn VarDataType::into_value(self : VarDataType) -> String {
-  match self {
-    IntVar(value) => value
-    IntegerVar(value) => value
-    DoubleVar(value) => value
-    DecimalVar(value) => value.to_owned()
-    StringVar(value) => value
-    TrueVar => "true"
-    FalseVar => "false"
-    DateVar(value) => value
-    TimeVar(value) => value
-    DateTimeVar(value) => value
-    DurationVar(value) => value
-  }
-}

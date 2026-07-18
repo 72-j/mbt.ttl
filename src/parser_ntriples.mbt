@@ -133,9 +133,8 @@ pub struct AsyncReaderNTriplesParser[RL] {
 ///|
 pub async fn[RL : TokenRecognizer] AsyncReaderNTriplesParser::next(
   self : AsyncReaderNTriplesParser[RL],
-  data_world : DataWorld,
 ) -> Result[RdfOut, LexerError]? {
-  self.inner.next(data_world)
+  self.inner.next()
 }
 
 ///|
@@ -151,7 +150,7 @@ pub struct LowLevelNTriplesParser[RL] {
 ///|
 pub fn LowLevelNTriplesParser::extend_from_slice(
   self : LowLevelNTriplesParser[RdfLexer],
-  other : Bytes,
+  other : Array[Byte],
 ) -> Unit {
   self.parser.extend_from_slice(other)
 }
@@ -173,31 +172,15 @@ pub fn LowLevelNTriplesParser::is_end(
 ///|
 pub fn[RL : TokenRecognizer] LowLevelNTriplesParser::parse_next(
   self : LowLevelNTriplesParser[RL],
-  data_world : DataWorld,
 ) -> Result[Triple, TurtleError]? {
   self.parser
-  .parse_next(data_world)
+  .parse_next()
   .map(fn(res) {
     res
     .map(fn(lex_output) {
       match lex_output {
         RdfOut::Triple(t) => t
         RdfOut::Quad(q) => Triple::Triple(q.subject, q.predicate, q.object)
-        RdfOut::N3Quad(n3quad) =>
-          match n3quad.predicate.to_node() {
-            NamedNode(node) =>
-              Triple::Triple(
-                n3quad.subject.to_node(),
-                node,
-                n3quad.object.to_term(),
-              )
-            _ =>
-              Triple::Triple(
-                n3quad.subject.to_node(),
-                NamedNode::default(),
-                n3quad.object.to_term(),
-              )
-          }
       }
     })
     .map_err(fn(e) {

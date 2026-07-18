@@ -118,9 +118,8 @@ pub struct AsyncReaderNQuadsParser[RL] {
 ///|
 pub async fn[RL : TokenRecognizer] AsyncReaderNQuadsParser::next(
   self : AsyncReaderNQuadsParser[RL],
-  data_world : DataWorld,
 ) -> Result[RdfOut, LexerError]? {
-  self.inner.next(data_world)
+  self.inner.next()
 }
 
 ///|
@@ -136,7 +135,7 @@ pub struct LowLevelNQuadsParser[RL] {
 ///|
 pub fn[RL] LowLevelNQuadsParser::extend_from_slice(
   self : LowLevelNQuadsParser[RL],
-  other : Bytes,
+  other : Array[Byte],
 ) -> Unit {
   self.parser.extend_from_slice(other)
 }
@@ -156,10 +155,9 @@ pub fn[RL] LowLevelNQuadsParser::is_end(
 ///|
 pub fn[RL : TokenRecognizer] LowLevelNQuadsParser::parse_next(
   self : LowLevelNQuadsParser[RL],
-  data_world : DataWorld,
 ) -> Result[Quad, TurtleError]? {
   self.parser
-  .parse_next(data_world)
+  .parse_next()
   .map(fn(res) {
     res
     .map(fn(lex_output) {
@@ -172,25 +170,6 @@ pub fn[RL : TokenRecognizer] LowLevelNQuadsParser::parse_next(
             GraphName::default(),
           )
         RdfOut::Quad(quad) => quad
-        RdfOut::N3Quad(n3quad) =>
-          match n3quad.predicate.to_node() {
-            // 修复：使用 NamedNode(_) 忽略内部字段，消除警告
-            NamedNode(node) =>
-              Quad::Quad(
-                n3quad.subject.to_node(),
-                node,
-                n3quad.object.to_term(),
-                n3quad.graph_name,
-              )
-            // 建议：添加默认分支以处理其他可能的节点类型，避免运行时 panic 或未定义行为
-            _ =>
-              Quad::Quad(
-                n3quad.subject.to_node(),
-                NamedNode::default(),
-                n3quad.object.to_term(),
-                n3quad.graph_name,
-              )
-          }
       }
     })
     .map_err(fn(e) { TurtleError::InvalidCharacter(e.to_string()) }) // 根据实际错误类型调整

@@ -1,30 +1,26 @@
 ///|
 pub trait StateMachine {
   fn initial_state(Self) -> RdfState
-  fn transition(
+  fn transition(Self, state : RdfState, event : Event, context : RdfContext) -> TransitionResult[
     Self,
-    state : RdfState,
-    event : Event,
-    context : RdfContext,
-    data_world : DataWorld,
-  ) -> TransitionResult[Self, RdfState, RdfOut]
+    RdfState,
+    DataAction,
+  ]
   fn current_state(Self) -> RdfState
-  fn step(Self, event : Event, data_world : DataWorld) -> Self
+  fn step(Self, event : Event) -> Self
   fn reset(Self) -> Self
   fn is_accepting(Self) -> Bool
   fn context(Self) -> RdfContext
   // fn set_context(Self, RdfContext) -> Self
   fn[ST : StateWrapper] set_current_state(Self, state : ST) -> Self
   fn error_recovery_statemachine(Self) -> Self
+  fn accumulate(Self, dw : DataWorld, action : DataAction) -> (Self, DataWorld)
+  fn get_and_clear_output(Self, dw : DataWorld) -> (Self, O?)
 }
 
 ///|
-/// 状态包装 Trait（用于类型擦除和统一处理）
 pub trait StateWrapper {
-  // fn to_str(Self) -> String
   fn as_state_enum(Self) -> RdfState
-  // fn eq(Self, other : Self) -> Bool
-  // fn clone(Self) -> Self
 }
 
 ///|
@@ -85,7 +81,7 @@ pub trait RuleRecognizer {
   // ) -> Self
   fn recognize_end(Self, context : RdfContext, results : Array[RdfOut]) -> Unit
   fn lexer_options(context : RdfContext) -> LexerOptions?
-  fn[DL : DebugLogger] debug_logger(Self, debug_logger : DL) -> Unit
+  // fn[DL : DebugLogger] debug_logger(Self, debug_logger : DL) -> Unit
   // fn stack_signature(Self) -> Option[(Int, Option[String])]
 
 }

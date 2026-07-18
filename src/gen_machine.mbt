@@ -5,11 +5,9 @@ pub(all) struct GenericStateMachine[M] {
   machine : M
   context : Ctx
   outputs : Array[O]
-  mut debug_logger : &DebugLogger
+  data_world : DataWorld
+  debug_logger : &DebugLogger
 }
-// fn[M: RuleRecognizer] GenericStateMachine::error_recovery_state(self: M) ->M  {
-//   M::error_recovery_state(self)
-// }
 
 ///|
 pub fn[M] GenericStateMachine::GenericStateMachine(
@@ -17,7 +15,13 @@ pub fn[M] GenericStateMachine::GenericStateMachine(
   context : Ctx,
   debug_logger? : &DebugLogger = make_mute_logger(),
 ) -> GenericStateMachine[M] {
-  GenericStateMachine::{ machine, context, outputs: [], debug_logger }
+  GenericStateMachine::{
+    machine,
+    context,
+    outputs: [],
+    data_world: DataWorld::default(),
+    debug_logger,
+  }
 }
 
 ///|
@@ -46,49 +50,48 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn curre
 pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   self,
   event : Event,
-  data_world : DataWorld,
 ) -> GenericStateMachine[M] {
-  self.debug_logger.info(
-    "[impl step] event = \{event}, step: state_before = [\{self.current_state()}]",
-  )
+  let state = self.machine.current_state()
 
-  let current_state = self.machine.current_state() // ← 从 machine 获取
-
-  let result = self.machine.transition(
-    current_state,
-    event,
-    self.context,
-    data_world,
-  )
-
-  match result {
-    Ok((new_machine, new_state, output)) => {
-      self.debug_logger.info(
-        "[impl step] new_state = \{new_state.to_string()}, output received = [\{@debug.to_string(output)}]",
-      )
-
-      let outputs = self.outputs
-      if output is Some(o) {
-        self.debug_logger.info(
-          "[Step 5] impl step: pushing output to engine: \{o}",
-        )
-        outputs.push(o)
-      }
-
-      let updated_machine = new_machine.set_current_state(new_state)
-      let new_engine = GenericStateMachine::{
-        machine: updated_machine,
-        context: self.context,
-        outputs,
-        debug_logger: self.debug_logger,
-      }
-      new_engine
-    }
+  // 1. 调用 transition
+  let (m1, next_state, action) = match
+    self.machine.transition(state, event, self.context) {
+    Ok(r) => r
     Err(e) => {
-      self.debug_logger.warn("[step] transition failed with: \{e}")
-      // self.reset()
-      self
+      self.debug_logger.warn("[GSM step] transition failed: \{e}")
+      return self
     }
+  }
+
+  self.debug_logger.info("[GSM step] action: \{action}")
+
+  // 2. 调用 accumulate
+  let (m2, dw2) = m1.accumulate(self.data_world, action)
+  self.debug_logger.info(
+    "[GSM step] after accumulate: subs=\{dw2.subjects.length()}, preds=\{dw2.predicates.length()},objs=\{dw2.objects.length()}",
+  )
+
+  // 3. 调用 get_and_clear_output
+  let (m3, output) = m2.get_and_clear_output(dw2)
+  self.debug_logger.info("[GSM step] output: \{@debug.to_string(output)}")
+
+  // 4. 收集 output
+  let outputs = self.outputs
+  if output is Some(o) {
+    self.debug_logger.info("[GSM step] pushing output")
+    outputs.push(o)
+  }
+
+  // 5. 更新 machine 状态
+  let m4 = m3.set_current_state(next_state)
+
+  // 6. 返回新的 GenericStateMachine
+  GenericStateMachine::{
+    machine: m4,
+    context: self.context,
+    outputs,
+    data_world: dw2,
+    debug_logger: self.debug_logger,
   }
 }
 
@@ -102,6 +105,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn reset
     machine: new_machine,
     context: self.context,
     outputs: [],
+    data_world: DataWorld::default(),
     debug_logger: self.debug_logger,
   }
 }
@@ -112,10 +116,9 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn trans
   state : RdfState,
   event : Event,
   context : Ctx,
-  data_world : DataWorld,
-) -> TransitionResult[GenericStateMachine[M], RdfState, O] {
+) -> TransitionResult[GenericStateMachine[M], RdfState, DataAction] {
   // ✅ 1. 调用 machine.transition，返回 Result
-  match self.machine.transition(state, event, context, data_world) {
+  match self.machine.transition(state, event, context) {
     // ✅ 2. 成功：解构元组
     Ok((new_machine, new_state, output)) => {
       // 3. 构造新的 GenericStateMachine
@@ -123,6 +126,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn trans
         machine: new_machine,
         context: self.context,
         outputs: self.outputs,
+        data_world: self.data_world,
         debug_logger: self.debug_logger,
       }
       // 4. 返回 Ok
@@ -151,6 +155,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
     machine: new_machine,
     context: self.context,
     outputs: self.outputs,
+    data_world: self.data_world,
     debug_logger: self.debug_logger,
   }
 }
@@ -159,27 +164,23 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
 pub fn[M : StateMachine] GenericStateMachine::run(
   self : GenericStateMachine[M],
   events : Array[Event],
-  data_world : DataWorld,
-) -> Result[Array[O], RuleRecognizerError]? {
+) -> Result[Array[DataAction], RuleRecognizerError]? {
   let mut current_machine = self.machine
   let mut current_state = current_machine.initial_state()
-  let outputs : Array[O] = []
+  let actions : Array[DataAction] = []
   let current_context = self.context
 
   for event in events {
     // ✅ 1. 匹配 Result
-    match
-      current_machine.transition(
-        current_state, event, current_context, data_world,
-      ) {
+    match current_machine.transition(current_state, event, current_context) {
       // ✅ 2. 成功：解构元组
-      Ok((next_machine, next_state, output)) => {
+      Ok((next_machine, next_state, action)) => {
         current_machine = next_machine
         current_state = next_state
 
-        if output is Some(o) {
-          outputs.push(o)
-        }
+        // if output is Some(o) {
+        actions.push(action)
+        // }
 
         if current_machine.is_accepting() {
           break
@@ -190,7 +191,7 @@ pub fn[M : StateMachine] GenericStateMachine::run(
     }
   }
 
-  Some(Ok(outputs))
+  Some(Ok(actions))
 }
 
 ///|
@@ -198,6 +199,25 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn conte
   self : GenericStateMachine[M],
 ) -> Ctx {
   self.context
+}
+
+///|
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn accumulate(
+  self : GenericStateMachine[M],
+  dw : DataWorld,
+  da : DataAction,
+) -> (GenericStateMachine[M], DataWorld) {
+  let (m, dw) = self.machine.accumulate(dw, da)
+  ({ ..self, machine: m }, dw)
+}
+
+///|
+pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn get_and_clear_output(
+  self : GenericStateMachine[M],
+  data_world : DataWorld,
+) -> (GenericStateMachine[M], RdfOut?) {
+  let (m, output) = self.machine.get_and_clear_output(data_world)
+  ({ ..self, machine: m }, output)
 }
 
 ///|
@@ -209,6 +229,7 @@ pub fn[M] GenericStateMachine::set_context(
     machine: self.machine,
     context: new_context,
     outputs: self.outputs,
+    data_world: self.data_world,
     debug_logger: self.debug_logger,
   }
 }
@@ -228,6 +249,19 @@ pub fn[M] GenericStateMachine::remove_first_output(
     machine: self.machine,
     context: self.context,
     outputs: new_outputs,
+    data_world: self.data_world,
     debug_logger: self.debug_logger,
   }
 }
+
+// pub fn[M] GenericStateMachine::accumulate(self: GenericStateMachine[M], data_world: DataWorld) -> GenericStateMachine[M] {
+// ...
+// }
+
+// pub fn[M] GenericStateMachine::get_output(self: GenericStateMachine[M]) -> O? {
+//   ...
+// }
+
+// pub fn[M] GenericStateMachine::clear_output(self: GenericStateMachine[M]) -> GenericStateMachine[M] {
+//   ...
+// }

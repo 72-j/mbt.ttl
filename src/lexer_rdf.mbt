@@ -1,4 +1,26 @@
 ///|
+pub(all) enum RdfState {
+  NQuadsState(NQuadsState)
+} derive(Eq, Hash)
+
+///|
+pub impl Show for RdfState with fn to_string(self) -> String {
+  match self {
+    RdfState::NQuadsState(s) => s.to_string()
+  }
+}
+
+// ===== 定义 Result 类型 =====
+
+///|
+pub type TransitionResult[TR, S, O] = Result[(TR, S, O), RuleRecognizerError]
+
+///|
+pub impl StateWrapper for RdfState with fn as_state_enum(self) -> RdfState {
+  self
+}
+
+///|
 priv enum PnameParseState {
   /// 解析前缀的第一个字符（必须是 pn_chars_base）
   FirstChar

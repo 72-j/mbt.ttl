@@ -3,8 +3,6 @@ pub fn NQuadsState::to_str(self : NQuadsState) -> String {
   Show::to_string(self)
 }
 
-// ===== NQuadsRecognizer 实现 =====
-
 ///|
 pub impl StateMachine for NQuadsRecognizer with fn initial_state(
   _self : NQuadsRecognizer,
@@ -21,33 +19,15 @@ pub impl StateMachine for NQuadsRecognizer with fn error_recovery_statemachine(
 
 ///|
 pub impl StateMachine for NQuadsRecognizer with fn current_state(self) -> RdfState {
-  // self.stack.last().unwrap_or(NQuadsState::ExpectSubject).as_state_enum()
-  self.current_state.as_state_enum()
+  StateWrapper::as_state_enum(self.current_state)
 }
 
 ///|
 pub impl StateMachine for NQuadsRecognizer with fn step(
-  self,
+  self : NQuadsRecognizer,
   event : Event,
-  data_world : DataWorld,
 ) -> NQuadsRecognizer {
-  let current_state = self.current_state()
-
-  let result = self.transition(
-    current_state.as_state_enum(),
-    event,
-    self.context(),
-    data_world,
-  )
-  match result {
-    Ok((new_machine, new_state, _output)) => {
-      // let new_context = new_machine.context()
-      // let new_machine = new_machine.set_context(new_context)
-      let new_machine = new_machine.set_current_state(new_state)
-      new_machine
-    }
-    Err(_e) => abort("Error")
-  }
+  StateMachine::step(self, event)
 }
 
 ///|
@@ -61,147 +41,77 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
   state : RdfState,
   event : Event,
   _context : Ctx,
-  data_world : DataWorld,
-) -> TransitionResult[NQuadsRecognizer, RdfState, RdfOut] {
-
-  // 1. 解包
+) -> TransitionResult[NQuadsRecognizer, RdfState, DataAction] {
   let nquads_state = match state {
     RdfState::NQuadsState(s) => s
-    _ =>
-      return Err(
-        RuleRecognizerError::SyntaxError("Invalid state", self.last_range),
-      )
   }
 
-  // let ctx = match context {
-  //   RdfContext::NQuadsRecognizerContext(c) => c
-  //   _ =>
-  //     return Err(
-  //       RuleRecognizerError::SyntaxError("Invalid context", self.last_range),
-  //     )
-  // }
-  // let data_world = data_world
   let token = event
   self.debug_logger.info("NQuads State: \{nquads_state}, Event: \{token}")
 
-  // let data_world = DataWorld::default()
-  let (next_state, data_world) = match (nquads_state, token) {
-
+  let (next_state, action) = match (nquads_state, token) {
     // ── Start / ExpectSubject ─────────────────────────────────
     (Start, LocatedToken(N3Token::Iri(iri), _)) => {
       self.debug_logger.info("[Start] IRI: \{iri}")
       let node = NamedNodeRef::new_unchecked(iri).as_enum()
-      (ExpectPredicate, DataWorld::{ ..data_world, subjects: [node] })
+      (ExpectPredicate, DataAction::AddSubject(node))
     }
     (Start, LocatedToken(N3Token::BlankNodeLabel(l), _)) => {
       self.debug_logger.info("[Start] Blank: _:\{l}")
       let node = BlankNodeRef::new_unchecked(l).as_enum()
-      (ExpectPredicate, DataWorld::{ ..data_world, subjects: [node] })
+      (ExpectPredicate, DataAction::AddSubject(node))
     }
     (Start, LocatedToken(N3Token::LineJump | N3Token::End, _)) => {
       self.debug_logger.info("[Start] LineJump/End")
-      (Start, data_world)
+      (Start, DataAction::NoOp)
     }
+
+    // ── ExpectSubject ─────────────────────────────────────────
     (ExpectSubject, LocatedToken(N3Token::Iri(iri), _)) => {
       self.debug_logger.info("[ExpectSubject] IRI: \{iri}")
       let node = NamedNodeRef::new_unchecked(iri).as_enum()
-      (ExpectPredicate, DataWorld::{ ..data_world, subjects: [node] })
+      (ExpectPredicate, DataAction::AddSubject(node))
     }
     (ExpectSubject, LocatedToken(N3Token::BlankNodeLabel(l), _)) => {
       self.debug_logger.info("[ExpectSubject] Blank: _:\{l}")
       let node = BlankNodeRef::new_unchecked(l).as_enum()
-      (ExpectPredicate, DataWorld::{ ..data_world, subjects: [node] })
+      (ExpectPredicate, DataAction::AddSubject(node))
     }
-    (ExpectSubject, LocatedToken(N3Token::LineJump | N3Token::End, _)) => {
-      self.debug_logger.info("[ExpectSubject] LineJump/End (skip)")
-      (ExpectSubject, data_world)
-    }
+    (ExpectSubject, LocatedToken(N3Token::LineJump | N3Token::End, _)) =>
+      (ExpectSubject, DataAction::NoOp)
 
     // ── ExpectPredicate ────────────────────────────────────────
     (ExpectPredicate, LocatedToken(N3Token::Iri(iri), _)) => {
       self.debug_logger.info("[ExpectPredicate] IRI: \{iri}")
       let pred = NamedNodeRef::new_unchecked(iri)
-      (ExpectObject, DataWorld::{ ..data_world, predicates: [pred] })
+      (ExpectObject, DataAction::AddPredicate(pred))
     }
 
     // ── ExpectObject ───────────────────────────────────────────
     (ExpectObject, LocatedToken(N3Token::Iri(iri), _)) => {
       self.debug_logger.info("[ExpectObject] IRI: \{iri}")
       let obj = TermRef::NamedNodeRef(NamedNodeRef::new_unchecked(iri))
-      (ExpectDotOrGraphName, DataWorld::{ ..data_world, objects: [obj] })
+      (ExpectDotOrGraphName, DataAction::AddObject(obj))
     }
     (ExpectObject, LocatedToken(N3Token::BlankNodeLabel(l), _)) => {
       self.debug_logger.info("[ExpectObject] Blank: _:\{l}")
       let obj = BlankNodeRef::new_unchecked(l).as_term()
-      (ExpectDotOrGraphName, DataWorld::{ ..data_world, objects: [obj] })
+      (ExpectDotOrGraphName, DataAction::AddObject(obj))
     }
     (ExpectObject, LocatedToken(N3Token::String(v), _)) => {
       self.debug_logger.info("[ExpectObject] STRING: '\{v}'")
-      (ExpectLiteralSuffix, DataWorld::{ ..data_world, temp_literal: Some(v) })
-    }
-    (ExpectObject, LocatedToken(N3Token::Punctuation("<<("), _)) => {
-      self.debug_logger.info("[ExpectObject] QuotedTriple")
-      (
-        ExpectSubject,
-        DataWorld::{
-          ..data_world,
-          stack_push: [NQuadsState::ExpectDotOrGraphName],
-        },
-      )
-    }
-
-    // ── ExpectDotOrGraphName ───────────────────────────────────
-    (ExpectDotOrGraphName, LocatedToken(N3Token::Punctuation("."), _)) => {
-      self.debug_logger.info(
-        "[ExpectDotOrGraphName] DOT, emit_quad=true data_world.temp_literal \{@debug.to_string(data_world.temp_literal)}",
-      )
-      (ExpectLineJump, DataWorld::{ ..data_world, emit_quad: true })
-    }
-    (ExpectDotOrGraphName, LocatedToken(N3Token::Iri(iri), _)) => {
-      self.debug_logger.info("[ExpectDotOrGraphName] GraphName IRI: \{iri}")
-      let gn = NamedNodeRef::new_unchecked(iri).as_enum()
-      (ExpectDot, DataWorld::{ ..data_world, graph_name: gn })
-    }
-    (ExpectDotOrGraphName, LocatedToken(N3Token::BlankNodeLabel(l), _)) => {
-      self.debug_logger.info("[ExpectDotOrGraphName] GraphName Blank: _:\{l}")
-      let gn = BlankNodeRef::new_unchecked(l).as_enum()
-      (ExpectDot, DataWorld::{ ..data_world, graph_name: gn })
-    }
-
-    // ── ExpectDot ──────────────────────────────────────────────
-    (ExpectDot, LocatedToken(N3Token::Punctuation("."), _)) => {
-      self.debug_logger.info(
-        "[ExpectDot] DOT, emit_quad_with_graph=true,temp_literal=\{@debug.to_string(data_world.temp_literal)},",
-      )
-      (ExpectLineJump, DataWorld::{ ..data_world, emit_quad_with_graph: true })
+      (ExpectLiteralSuffix, DataAction::SetTempLiteral(v))
     }
 
     // ── ExpectLiteralSuffix ────────────────────────────────────
     (ExpectLiteralSuffix, LocatedToken(N3Token::Punctuation("."), _)) => {
-      self.debug_logger.info(
-        "[ExpectLiteralSuffix] DOT, temp_literal=\{@debug.to_string(data_world.temp_literal)}, finalize=Simple",
-      )
-      (
-        ExpectLineJump,
-        DataWorld::{
-          ..data_world,
-          finalize_literal: Some(LiteralKind::Simple),
-          temp_literal: data_world.temp_literal,
-          emit_quad: true,
-        },
-      )
-    }
-    (ExpectLiteralSuffix, LocatedToken(N3Token::Punctuation("^^"), _)) => {
-      self.debug_logger.info(
-        "[ExpectLiteralSuffix] ^^, temp_literal=\{@debug.to_string(data_world.temp_literal)}",
-      )
-      (ExpectDatatype, data_world)
+      self.debug_logger.info("[ExpectLiteralSuffix] DOT, finalize=Simple")
+      (ExpectLineJump, DataAction::EmitQuadWithLiteral(LiteralKind::Simple))
     }
     (
       ExpectLiteralSuffix,
       LocatedToken(N3Token::LangTag(language~, direction~), _),
     ) => {
-      self.debug_logger.info("[ExpectLiteralSuffix] LangTag: @\{language}")
       let dir = direction.unwrap_or(BaseDirection::Ltr)
       let tag = match LanguageTag::parse(language) {
         Ok(tag) => tag
@@ -215,77 +125,76 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
       }
       (
         ExpectDotOrGraphName,
-        DataWorld::{
-          ..data_world,
-          finalize_literal: Some(LiteralKind::Lang(tag, dir)),
-        },
+        DataAction::EmitQuadWithLiteral(LiteralKind::Lang(tag, dir)),
       )
     }
-
-    // ── ExpectDatatype ─────────────────────────────────────────
+    (ExpectLiteralSuffix, LocatedToken(N3Token::Punctuation("^^"), _)) =>
+      (ExpectDatatype, DataAction::NoOp)
     (ExpectDatatype, LocatedToken(N3Token::Iri(iri), _)) => {
-      self.debug_logger.info(
-        "[ExpectDatatype] IRI: \{iri}, temp_literal=\{@debug.to_string(data_world.temp_literal)}",
-      )
+      self.debug_logger.info("[ExpectDatatype] IRI: \{iri}")
       let datatype_node = NamedNodeRef::new_unchecked(iri)
-      let datatype = match data_world.temp_literal {
-        Some(v) => datatype_node.into_datatype(v)
-        None =>
-          return Err(
-            RuleRecognizerError::SyntaxError("Invalid literal", self.last_range),
-          )
-      }
-      (
-        ExpectDotOrGraphName,
-        DataWorld::{
-          ..data_world,
-          finalize_literal: Some(LiteralKind::Typed(datatype, datatype_node)),
-          temp_literal: data_world.temp_literal,
-        },
-      )
+      (ExpectDotOrGraphName, DataAction::EmitQuadWithTempLiteral(datatype_node))
+    }
+
+    // ── ExpectDotOrGraphName ───────────────────────────────────
+    (ExpectDotOrGraphName, LocatedToken(N3Token::Punctuation("."), _)) => {
+      self.debug_logger.info("[ExpectDotOrGraphName] DOT")
+      (ExpectLineJump, DataAction::EmitQuad)
+    }
+    (ExpectDotOrGraphName, LocatedToken(N3Token::Iri(iri), _)) => {
+      self.debug_logger.info("[ExpectDotOrGraphName] GraphName IRI: \{iri}")
+      let gn = GraphNameRef::new_unchecked(iri)
+      (ExpectDot, DataAction::SetGraphName(gn))
+    }
+    (ExpectDotOrGraphName, LocatedToken(N3Token::BlankNodeLabel(l), _)) => {
+      self.debug_logger.info("[ExpectDotOrGraphName] GraphName Blank: _:\{l}")
+      let gn = GraphNameRef::new_unchecked(l)
+      (ExpectDot, DataAction::SetGraphName(gn))
+    }
+
+    // ── ExpectDot ──────────────────────────────────────────────
+    (ExpectDot, LocatedToken(N3Token::Punctuation("."), _)) => {
+      self.debug_logger.info("[ExpectDot] DOT")
+      (ExpectLineJump, DataAction::EmitQuad)
     }
 
     // ── ExpectLineJump ─────────────────────────────────────────
     (ExpectLineJump, LocatedToken(N3Token::LineJump, _)) => {
-      self.debug_logger.info("[ExpectLineJump] LineJump -> ExpectSubject")
-      (ExpectSubject, data_world)
+      self.debug_logger.info("[ExpectLineJump] LineJump")
+      (ExpectSubject, DataAction::ClearAccumulator)
     }
     (ExpectLineJump, LocatedToken(N3Token::End, _)) => {
-      self.debug_logger.info("[ExpectLineJump] End -> ExpectSubject")
-      (ExpectSubject, data_world)
+      self.debug_logger.info("[ExpectLineJump] End")
+      (ExpectSubject, DataAction::ClearAccumulator)
     }
 
-    // ── 错误兜底 ───────────────────────────────────────────────
+    // ── Error fallback ─────────────────────────────────────────
     _ => {
       let err = RuleRecognizerError::SyntaxError(
         "Unexpected token in state '\{nquads_state}': \{token.0}",
         token.1,
       )
       self.debug_logger.info("[ERROR] \{err}")
-      return Ok((self.add_error(err), nquads_state.as_state_enum(), None))
+      return Ok(
+        (
+          self.add_error(err),
+          StateWrapper::as_state_enum(nquads_state),
+          DataAction::NoOp,
+        ),
+      )
     }
   }
-  // self.debug_logger.info("[TRANSITION] \{nquads_state} + \{token.0} -> \{next_state}, data_world=\{@debug.to_string(data_world.temp_literal)}")
 
-  // self.debug_logger.info("[TRANSITION] \{nquads_state} + \{token.0} -> \{next_state}, data_world=\{data_world}")
-
-  // 3. 应用数据操作到 self
-  let new_self = self.apply_data_ops(data_world)
-
-  // 4. 处理 emit_quad 的输出
-  let output = match
-    (
-      data_world.emit_quad,
-      data_world.emit_quad_with_graph,
-      data_world.graph_name,
-    ) {
-    (true, false, _) => new_self.pop_quad()
-    (false, true, gn) => new_self.pop_quad(graph_name=gn.into_graph())
-    _ => None
-  }
+  self.debug_logger.info(
+    "[TRANSITION] \{nquads_state} + \{token.0} -> \{next_state}",
+  )
 
   Ok(
-    (new_self.set_current_state(next_state), next_state.as_state_enum(), output),
+    (
+      self.set_current_state(next_state),
+      StateWrapper::as_state_enum(next_state),
+      action,
+    ),
   )
 }
 
@@ -317,147 +226,129 @@ pub impl StateMachine for NQuadsRecognizer with fn[ST : StateWrapper] set_curren
 ) -> NQuadsRecognizer {
   let state = ST::as_state_enum(state)
   match state {
-    RdfState::NQuadsState(s) =>
-      // 返回一个新的 NQuadsRecognizer 实例，其中 stack 被更新
-      // 假设有一个 with_stack 或类似的方法，或者直接构造新实例
-      // 这里简化处理，实际需要根据 NQuadsRecognizer 的结构体定义来更新
-      // debug("[Step 3] Set current state: \{s}")
-      // let new_stack = self.stack
-      // if new_stack.is_empty() {
-      //   new_stack.push(s)
-      // } else {
-      //   let _ = new_stack.pop() // 移除旧状态
-      //   new_stack.push(s) // 添加新状态
-      // }
-      { ..self, current_state: s }
-    _ => self
-  }
-}
-
-// 辅助方法：统一处理 TransitionResult 并返回更新后的 Self
-
-///|
-pub fn NQuadsRecognizer::process_transition_result(
-  result : TransitionResult[NQuadsRecognizer, NQuadsState, RdfOut],
-) -> TransitionResult[NQuadsRecognizer, RdfState, RdfOut] {
-  match result {
-    Ok((new_self, new_state, output)) =>
-      Ok((new_self, new_state.as_state_enum(), output))
-    Err(e) => Err(e)
+    RdfState::NQuadsState(s) => { ..self, current_state: s }
   }
 }
 
 ///|
-fn NQuadsRecognizer::add_error(
+pub impl StateMachine for NQuadsRecognizer with fn accumulate(
   self : NQuadsRecognizer,
-  err : RuleRecognizerError,
-) -> NQuadsRecognizer {
-  let new_errors = self.errors
-  new_errors.push(err)
-  { ..self, errors: new_errors }
-}
+  data_world : DataWorld,
+  action : DataAction,
+) -> (NQuadsRecognizer, DataWorld) {
+  let dw = data_world
+  let m = self
 
-///|
-/// 应用数据操作到 self
-fn NQuadsRecognizer::apply_data_ops(
-  self : NQuadsRecognizer,
-  ops : DataWorld,
-) -> NQuadsRecognizer {
-  // let s = self
-
-  self.debug_logger.info("[apply_data_ops] ENTER")
-  self.debug_logger.info("  ops.subjects: \{ops.subjects.length()}")
-  self.debug_logger.info("  ops.predicates: \{ops.predicates.length()}")
-  self.debug_logger.info("  ops.objects: \{ops.objects.length()}")
-  self.debug_logger.info(
-    "  ops.temp_literal: \{@debug.to_string(ops.temp_literal)}",
-  )
-  self.debug_logger.info(
-    "  ops.finalize_literal: \{@debug.to_string(ops.finalize_literal)}",
-  )
-  self.debug_logger.info("  ops.emit_quad: \{ops.emit_quad}")
-
-  for subject in ops.subjects {
-    self.subjects.push(subject)
-  }
-  for pred in ops.predicates {
-    self.predicates.push(pred)
-  }
-  for obj in ops.objects {
-    self.objects.push(obj)
-  }
-
-  if ops.finalize_literal is Some(kind) {
-    self.debug_logger.info("[apply_data_ops] finalize_literal = Some(\{kind})")
-    let lit = match kind {
-      LiteralKind::Simple => {
-        let v = ops.temp_literal.unwrap_or("")
-        self.debug_logger.info("  LiteralKind::Simple, temp_literal='\{v}'")
-        LiteralRef::new_simple_literal(v)
+  match action {
+    DataAction::NoOp => return (m, dw)
+    DataAction::AddSubject(s) => dw.subjects.push(s)
+    DataAction::AddPredicate(p) => dw.predicates.push(p)
+    DataAction::AddObject(o) => dw.objects.push(o)
+    DataAction::SetTempLiteral(s) => dw.temp_literal = Some(s)
+    DataAction::SetGraphName(gn) => dw.graph_name = Some(gn)
+    DataAction::EmitQuad => m.emit_quad = true
+    DataAction::EmitQuadWithLiteral(kind) => {
+      let lit = match kind {
+        LiteralKind::Simple =>
+          LiteralRef::new_simple_literal(dw.temp_literal.unwrap_or(""))
+        LiteralKind::Lang(lang, dir) =>
+          LiteralRef::new_directional_language_tagged_literal_unchecked(
+            dw.temp_literal.unwrap_or(""),
+            lang,
+            dir,
+          )
+        LiteralKind::Typed(value, iri) =>
+          LiteralRef::new_typed_literal(value, iri)
       }
-      LiteralKind::Lang(lang, dir) => {
-        let v = ops.temp_literal.unwrap_or("")
-        self.debug_logger.info(
-          "  LiteralKind::Lang, temp_literal='\{v}', lang=\{lang}",
-        )
-        LiteralRef::new_directional_language_tagged_literal_unchecked(
-          v, lang, dir,
-        )
-      }
-      LiteralKind::Typed(value, iri) => {
-        self.debug_logger.info(
-          "  LiteralKind::Typed, value='\{value}', iri=\{iri}",
-        )
-        LiteralRef::new_typed_literal(value, iri)
-      }
+      dw.objects.push(lit.as_term())
+      m.emit_quad = true
     }
-    self.objects.push(lit.as_term())
-    //  ops.temp_literal = None
-  }
-
-  for state in ops.stack_push {
-    self.stack.push(state)
-  }
-
-  if ops.clear_accumulator {
-    self.subjects.clear()
-    self.predicates.clear()
-    self.objects.clear()
-  }
-
-  if ops.finalize_quoted_triple {
-    match (self.subjects.pop(), self.predicates.pop(), self.objects.pop()) {
-      (Some(su), Some(pr), Some(ob)) =>
-        self.objects.push(
-          TermRef::TripleRef(TripleRef::{
-            subject: su,
-            predicate: pr,
-            object: ob,
-          }),
-        )
-      _ => self.errors.push(RuleRecognizerError::TripleMissingDot)
+    // accumulate 中
+    DataAction::EmitQuadWithTempLiteral(datatype_node) => {
+      let temp = dw.temp_literal.unwrap_or("")
+      let lit = LiteralRef::new_typed_literal(temp, datatype_node)
+      dw.objects.push(lit.as_term())
+      m.emit_quad = true
     }
+    DataAction::PushStack(state) => m.stack.push(state)
+    DataAction::ClearAccumulator => {
+      dw.subjects.clear()
+      dw.predicates.clear()
+      dw.objects.clear()
+      dw.temp_literal = None
+      dw.graph_name = None
+    }
+    DataAction::FinalizeLiteral(kind) => {
+      let lit = match kind {
+        LiteralKind::Simple =>
+          LiteralRef::new_simple_literal(dw.temp_literal.unwrap_or(""))
+        LiteralKind::Lang(lang, dir) =>
+          LiteralRef::new_directional_language_tagged_literal_unchecked(
+            dw.temp_literal.unwrap_or(""),
+            lang,
+            dir,
+          )
+        LiteralKind::Typed(value, iri) =>
+          LiteralRef::new_typed_literal(value, iri)
+      }
+      dw.objects.push(lit.as_term())
+      // m.finalize_literal = Some(kind)
+    }
+    DataAction::FinalizeQuotedTriple =>
+      match (dw.subjects.pop(), dw.predicates.pop(), dw.objects.pop()) {
+        (Some(s), Some(p), Some(o)) =>
+          dw.objects.push(
+            TermRef::TripleRef(TripleRef::{
+              subject: s,
+              predicate: p,
+              object: o,
+            }),
+          )
+        _ => m.errors.push(RuleRecognizerError::TripleMissingDot)
+      }
   }
-
-  self.debug_logger.info(
-    "[apply_data_ops] EXIT, self.objects.length()=\{self.objects.length()},ops.temp_literal: \{@debug.to_string(ops.temp_literal)}",
-  )
-  self
+  (m, dw)
 }
 
 ///|
-/// 弹出并发射 Quad
-fn NQuadsRecognizer::pop_quad(
+pub impl StateMachine for NQuadsRecognizer with fn get_and_clear_output(
   self : NQuadsRecognizer,
-  graph_name? : GraphNameRef,
+  data_world : DataWorld,
+) -> (NQuadsRecognizer, RdfOut?) {
+  let m = self
+  let dw = data_world
+  let output = if m.emit_quad {
+    self.pop_quad_from_data_world(dw)
+  } else {
+    None
+  }
+
+  // emit_quad 成功后，从数组末尾删除
+  if output is Some(_) {
+    let _ = dw.subjects.pop()
+    let _ = dw.predicates.pop()
+    let _ = dw.objects.pop()
+  }
+
+  // 清除标志
+  m.emit_quad = false
+  // m.finalize_literal = None
+
+  (m, output)
+}
+
+///|
+fn NQuadsRecognizer::pop_quad_from_data_world(
+  _self : NQuadsRecognizer,
+  dw : DataWorld,
 ) -> RdfOut? {
-  let subject = self.subjects.pop()
-  let predicate = self.predicates.pop()
-  let object = self.objects.pop()
+  let subject = dw.subjects.pop()
+  let predicate = dw.predicates.pop()
+  let object = dw.objects.pop()
 
   match (subject, predicate, object) {
     (Some(s), Some(p), Some(o)) => {
-      let graph_name = graph_name.unwrap_or(GraphNameRef::DefaultGraph)
+      let graph_name = dw.graph_name.unwrap_or(GraphNameRef::DefaultGraph)
       Some(
         RdfOut::Quad(
           Quad::Quad(
@@ -469,9 +360,16 @@ fn NQuadsRecognizer::pop_quad(
         ),
       )
     }
-    _ => {
-      self.debug_logger.info("ERROR: missing data!")
-      None
-    }
+    _ => None
   }
+}
+
+///|
+fn NQuadsRecognizer::add_error(
+  self : NQuadsRecognizer,
+  err : RuleRecognizerError,
+) -> NQuadsRecognizer {
+  let new_errors = self.errors
+  new_errors.push(err)
+  { ..self, errors: new_errors }
 }

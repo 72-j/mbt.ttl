@@ -5,11 +5,6 @@ struct Iri {
 } derive(Debug)
 
 ///|
-impl Show for Iri with fn to_string(self) {
-  self.base_iri
-}
-
-///|
 struct IriRef(Ref[Iri]) derive(Debug)
 
 ///|
@@ -19,11 +14,6 @@ pub struct IriPositions {
   mut path_end : Int
   mut query_end : Int
 } derive(Default, Debug)
-
-///|
-// fn IriRef::of_ref(iri : Iri) -> IriRef {
-//   IriRef(Ref::Ref(iri))
-// }
 
 ///|
 fn IriRef::new_unchecked(iri : Iri) -> IriRef {
@@ -424,15 +414,13 @@ pub fn IriRef::parse_domain_host(self : IriRef) -> Result[Unit, IriError] {
 
 ///|
 pub fn IriRef::parse_path(self : IriRef) -> Result[Unit, IriError] {
-  // self.val.state.positions.path_start = self.val.state.pos
-
-  while self.peek() is Some(c) {
-    if c == '?' || c == '#' {
-      break
+  while !self.is_at_end() {
+    match self.peek() {
+      Some(c) if c == '?' || c == '#' => break
+      Some(c) if is_valid_iri_char(c) => self.val.state.pos += c.utf16_len()
+      _ => return Err(IriError::InvalidPath(self.val.state.pos))
     }
-    self.val.state.pos += c.utf16_len()
   }
-
   self.val.state.positions.path_end = self.val.state.pos
   Ok(())
 }
@@ -1359,4 +1347,24 @@ pub impl IriComponents for IriRef with fn fragment(self : IriRef) -> String? {
   } else {
     None
   }
+}
+
+///|
+/// 字符验证：IRI 合法字符
+fn is_valid_iri_char(c : Char) -> Bool {
+  if c == ' ' || c == '<' || c == '>' {
+    return false
+  }
+  if c == '"' || c == '{' || c == '}' {
+    return false
+  }
+  if c == '|' || c == '^' || c == '`' {
+    return false
+  }
+  true
+}
+
+///|
+fn IriRef::is_at_end(self : IriRef) -> Bool {
+  self.val.state.pos >= self.val.as_stringview().length()
 }

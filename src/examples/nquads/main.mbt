@@ -21,7 +21,6 @@ async fn main {
 
     // Read file content as binary
     let data = @fs.read_file(path).binary()
-    let data_world = @lib.DataWorld::default()
 
     // Create lexer for N-Triples mode
     let lexer = @lib.Lexer::Lexer(
@@ -41,9 +40,10 @@ async fn main {
     let machine = @lib.NQuadsRecognizer::{
       current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
-      subjects: [],
-      predicates: [],
-      objects: [],
+      emit_quad: false,
+      // finalize_literal: None,
+      // last_output: None,
+      temp_literal: None,
       lenient: false,
       debug_logger: logger,
       last_range: @lib.Range::default(),
@@ -81,7 +81,7 @@ async fn main {
       if count >= 100 {
         break
       } // Safety limit
-      match parser.parse_next(data_world) {
+      match parser.parse_next() {
         Some(Err(e)) => {
           count += 1
           println("[\{count}] Error: \{e}")

@@ -12,7 +12,6 @@ async test "multi-line NQuads from file" {
     @fs.write_file(path, content, create_mode=CreateOrTruncate)
 
     let data = @fs.read_file(path).binary()
-    let data_world = @lib.DataWorld::default()
 
     let lexer = @lib.Lexer::Lexer(
       @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
@@ -30,9 +29,10 @@ async test "multi-line NQuads from file" {
     let machine = @lib.NQuadsRecognizer::{
       current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
-      subjects: [],
-      predicates: [],
-      objects: [],
+      emit_quad: false,
+      // finalize_literal: None,
+      // last_output: None,
+      temp_literal: None,
       lenient: false,
       debug_logger: logger,
       last_range: @lib.Range::default(),
@@ -48,6 +48,7 @@ async test "multi-line NQuads from file" {
       machine,
       context,
       outputs: [],
+      data_world: @lib.DataWorld::default(),
       debug_logger: logger,
     }
 
@@ -66,7 +67,7 @@ async test "multi-line NQuads from file" {
       if count >= 20 {
         break
       }
-      match parser.parse_next(data_world) {
+      match parser.parse_next() {
         Some(Ok(quad)) => {
           count += 1
           debug("[\{count}] ✓ \{quad}")
@@ -100,7 +101,6 @@ async test "single quad from file" {
     @fs.write_file(path, content, create_mode=CreateOrTruncate)
 
     let data = @fs.read_file(path).binary()
-    let data_world = @lib.DataWorld::default()
 
     let lexer = @lib.Lexer::Lexer(
       @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
@@ -118,9 +118,10 @@ async test "single quad from file" {
     let machine = @lib.NQuadsRecognizer::{
       current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
-      subjects: [],
-      predicates: [],
-      objects: [],
+      emit_quad: false,
+      // finalize_literal: None,
+      // last_output: None,
+      temp_literal: None,
       lenient: false,
       debug_logger: logger,
       last_range: @lib.Range::default(),
@@ -136,6 +137,7 @@ async test "single quad from file" {
       machine,
       context,
       outputs: [],
+      data_world: @lib.DataWorld::default(),
       debug_logger: logger,
     }
 
@@ -153,7 +155,7 @@ async test "single quad from file" {
       if count >= 20 {
         break
       }
-      match parser.parse_next(data_world) {
+      match parser.parse_next() {
         Some(Ok(quad)) => {
           count += 1
           quads.push(quad)

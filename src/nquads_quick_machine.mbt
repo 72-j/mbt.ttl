@@ -138,8 +138,7 @@ fn semantics(command : Command, system : NQuadsSystem) -> Response {
     }
     ParseTypedLiteral(subject, predicate, value, datatype, graph) => {
       // let datatype = NamedNodeRef::new_unchecked(datatype_str)
-      let data_value = datatype.into_datatype(value)
-      let literal = LiteralRef::new_typed_literal(data_value, datatype)
+      let literal = LiteralRef::new_typed_literal(value, datatype)
       let quad = make_quad(
         subject,
         predicate,
@@ -271,8 +270,8 @@ fn transition(model : Model, command : Command, response : Response) -> Model {
       model_add_quad(model, make_quad(s, p, TermRef::LiteralRef(literal), g))
     }
     (ParseTypedLiteral(s, p, v, dt, g), TypedLiteralParsed) => {
-      let data_value = dt.into_datatype(v)
-      let lit = LiteralRef::new_typed_literal(data_value, dt)
+      // let data_value = dt.into_datatype(v)
+      let lit = LiteralRef::new_typed_literal(v, dt)
       model_add_quad(model, make_quad(s, p, TermRef::LiteralRef(lit), g))
     }
     (ParseBlankSubject(bn, p, o, g), BlankSubjectParsed) =>
@@ -325,8 +324,7 @@ fn postcondition(
       )
     }
     (ParseTypedLiteral(s, p, v, dt, g), TypedLiteralParsed) => {
-      let data_value = dt.into_datatype(v)
-      let expected_lit = LiteralRef::new_typed_literal(data_value, dt)
+      let expected_lit = LiteralRef::new_typed_literal(v, dt)
       let expected = make_quad(s, p, TermRef::LiteralRef(expected_lit), g)
       @qs.Logic::predicate(
         name="typed literal matches",

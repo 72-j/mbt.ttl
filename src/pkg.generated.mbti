@@ -299,7 +299,7 @@ pub struct AsyncReaderIterator[TR, RR] {
   reader : &@io.Reader
   parser : Parser[TR, RR]
 }
-pub async fn[TR : TokenRecognizer, RR : StateMachine + RuleRecognizer] AsyncReaderIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
+pub async fn[TR : TokenRecognizer, RR : StateMachine] AsyncReaderIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
 
 pub struct AsyncReaderN3Parser[RL] {
   inner : AsyncReaderIterator[RL, N3Recognizer]
@@ -384,6 +384,7 @@ pub(all) enum BlankNodeRef {
 pub fn BlankNodeRef::as_enum(Self) -> NamedOrBlankNodeRef
 pub fn BlankNodeRef::as_n3term(Self) -> N3Term
 pub fn BlankNodeRef::as_term(Self) -> TermRef
+pub fn BlankNodeRef::default() -> Self
 pub fn BlankNodeRef::new_unchecked(String) -> Self
 
 pub(all) enum Command {
@@ -397,6 +398,22 @@ pub(all) enum Command {
 
 type ConsoleLogger
 pub impl DebugLogger for ConsoleLogger
+
+pub(all) struct DataWorld {
+  mut subjects : Array[NamedOrBlankNodeRef]
+  mut predicates : Array[NamedNodeRef]
+  mut objects : Array[TermRef]
+  mut temp_literal : String?
+  mut finalize_literal : LiteralKind?
+  mut graph_name : GraphNameRef
+  mut stack_push : Array[NQuadsState]
+  mut emit_quad : Bool
+  mut emit_quad_with_graph : Bool
+  mut finalize_quoted_triple : Bool
+  mut clear_accumulator : Bool
+}
+pub fn DataWorld::DataWorld(Array[NamedOrBlankNodeRef], Array[NamedNodeRef], Array[TermRef], String?, LiteralKind?, GraphNameRef, Array[NQuadsState], Bool, Bool, Bool, Bool) -> Self
+pub fn DataWorld::default() -> Self
 
 pub(all) struct ExtensionsIterator {
   input : String
@@ -413,7 +430,8 @@ pub(all) struct GenericStateMachine[M] {
 }
 pub fn[M] GenericStateMachine::GenericStateMachine(M, RdfContext, debug_logger? : &DebugLogger) -> Self[M]
 pub fn[M] GenericStateMachine::remove_first_output(Self[M]) -> Self[M]
-pub fn[M : StateMachine] GenericStateMachine::run(Self[M], Array[LocatedTokenOrLineJump]) -> Result[Array[RdfOut], RuleRecognizerError]?
+pub fn[M : StateMachine] GenericStateMachine::run(Self[M], Array[LocatedToken]) -> Result[Array[RdfOut], RuleRecognizerError]?
+pub fn[M] GenericStateMachine::set_context(Self[M], RdfContext) -> Self[M]
 pub impl[M : StateMachine] StateMachine for GenericStateMachine[M]
 
 pub(all) enum GraphName {
@@ -520,14 +538,14 @@ pub fn[RL] Lexer::current_token_start_location(Self[RL]) -> SourcePos
 pub fn[RL] Lexer::end(Self[RL]) -> Unit
 pub async fn[RL] Lexer::extend_from_async_read(Self[RL], &@io.Reader) -> Result[Int, LexerError]
 pub async fn[RL] Lexer::extend_from_reader(Self[RL], &@io.Reader) -> Result[Int, LexerError]
-pub fn[RL] Lexer::extend_from_slice(Self[RL], Bytes) -> Unit
+pub fn[RL] Lexer::extend_from_slice(Self[RL], Array[Byte]) -> Unit
 pub fn[RL] Lexer::is_end(Self[RL]) -> Bool
 pub fn[RL] Lexer::last_token_end(Self[RL]) -> SourcePos
 pub fn[RL] Lexer::last_token_range(Self[RL]) -> SourceRange
 pub fn[RL] Lexer::last_token_source(Self[RL]) -> String
 pub fn[RL] Lexer::last_token_start(Self[RL]) -> SourcePos
 pub fn[RL] Lexer::location_from_buffer_offset_range(Self[RL], Range) -> SourceRange
-pub fn[RL : TokenRecognizer] Lexer::parse_next(Self[RL], LexerOptions?) -> Result[LocatedTokenOrLineJump, TokenRecognizerError]?
+pub fn[RL : TokenRecognizer] Lexer::parse_next(Self[RL], LexerOptions?) -> Result[LocatedToken, TokenRecognizerError]?
 pub fn[T] Lexer::record_token_end(Self[T]) -> Unit
 pub fn[T] Lexer::record_token_start(Self[T]) -> Unit
 pub fn[RL] Lexer::shrink_data(Self[RL]) -> Unit
@@ -558,6 +576,13 @@ pub(all) enum LiteralContent {
   TypedLiteral(value~ : VarDataType, datatype~ : NamedNode)
 } derive(Eq, Hash, ToJson, @debug.Debug)
 
+pub(all) enum LiteralKind {
+  Simple
+  Lang(LanguageTag, BaseDirection)
+  Typed(VarDataType, NamedNodeRef)
+} derive(Eq, Hash, @debug.Debug)
+pub impl Show for LiteralKind
+
 pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Hash, @debug.Debug)
 pub fn LiteralRef::as_n3term(Self) -> N3Term
 pub fn LiteralRef::as_term(Self) -> TermRef
@@ -579,26 +604,18 @@ pub(all) enum LiteralRefContent {
   TypedLiteral(value~ : VarDataType, datatype~ : NamedNodeRef)
 } derive(Eq, Hash, @debug.Debug)
 
+#alias(Event)
 pub struct LocatedToken(N3Token, Range) derive(@debug.Debug)
 pub fn LocatedToken::into_token(Self) -> N3Token
+pub fn LocatedToken::new(N3Token, Range) -> Self
 pub impl Show for LocatedToken
-
-#alias(Event)
-pub enum LocatedTokenOrLineJump {
-  LocatedToken(LocatedToken)
-  LineJump(Int)
-  End
-} derive(@debug.Debug)
-pub fn LocatedTokenOrLineJump::into_token(Self) -> N3Token?
-pub fn LocatedTokenOrLineJump::range(Self) -> Range?
-pub impl Show for LocatedTokenOrLineJump
 
 pub struct LowLevelN3Parser[RL] {
   parser : Parser[RL, N3Recognizer]
 }
 pub fn[RL] LowLevelN3Parser::base_iri(Self[RL]) -> String?
 pub fn[RL] LowLevelN3Parser::end(Self[RL]) -> Unit
-pub fn[RL] LowLevelN3Parser::extend_from_slice(Self[RL], Bytes) -> Unit
+pub fn[RL] LowLevelN3Parser::extend_from_slice(Self[RL], Array[Byte]) -> Unit
 pub fn[RL] LowLevelN3Parser::is_end(Self[RL]) -> Bool
 pub fn[RL : TokenRecognizer] LowLevelN3Parser::parse_next(Self[RL]) -> Result[RdfOut, TurtleError]?
 pub fn[RL] LowLevelN3Parser::prefixes(Self[RL]) -> N3PrefixesIter
@@ -607,7 +624,7 @@ pub struct LowLevelNQuadsParser[RL] {
   parser : Parser[RL, NQuadsRecognizer]
 }
 pub fn[RL] LowLevelNQuadsParser::end(Self[RL]) -> Unit
-pub fn[RL] LowLevelNQuadsParser::extend_from_slice(Self[RL], Bytes) -> Unit
+pub fn[RL] LowLevelNQuadsParser::extend_from_slice(Self[RL], Array[Byte]) -> Unit
 pub fn[RL] LowLevelNQuadsParser::is_end(Self[RL]) -> Bool
 pub fn[RL : TokenRecognizer] LowLevelNQuadsParser::parse_next(Self[RL]) -> Result[Quad, TurtleError]?
 
@@ -619,7 +636,7 @@ pub struct LowLevelNTriplesParser[RL] {
   parser : Parser[RL, NQuadsRecognizer]
 }
 pub fn LowLevelNTriplesParser::end(Self[RdfLexer]) -> Unit
-pub fn LowLevelNTriplesParser::extend_from_slice(Self[RdfLexer], Bytes) -> Unit
+pub fn LowLevelNTriplesParser::extend_from_slice(Self[RdfLexer], Array[Byte]) -> Unit
 pub fn LowLevelNTriplesParser::is_end(Self[RdfLexer]) -> Bool
 pub fn[RL : TokenRecognizer] LowLevelNTriplesParser::parse_next(Self[RL]) -> Result[Triple, TurtleError]?
 
@@ -632,7 +649,7 @@ pub struct LowLevelTriGParser[RL] {
 }
 pub fn[RL] LowLevelTriGParser::base_iri(Self[RL]) -> String?
 pub fn[RL] LowLevelTriGParser::end(Self[RL]) -> Unit
-pub fn[RL] LowLevelTriGParser::extend_from_slice(Self[RL], Bytes) -> Unit
+pub fn[RL] LowLevelTriGParser::extend_from_slice(Self[RL], Array[Byte]) -> Unit
 pub fn[RL] LowLevelTriGParser::is_end(Self[RL]) -> Bool
 pub fn[RL : TokenRecognizer] LowLevelTriGParser::parse_next(Self[RL]) -> Result[Quad, TurtleError]?
 pub fn[RL] LowLevelTriGParser::prefixes(Self[RL]) -> TriGPrefixesIter
@@ -652,7 +669,7 @@ pub struct LowLevelTurtleParser[RL] {
 }
 pub fn[RL] LowLevelTurtleParser::base_iri(Self[RL]) -> String?
 pub fn[RL] LowLevelTurtleParser::end(Self[RL]) -> Unit
-pub fn[RL] LowLevelTurtleParser::extend_from_slice(Self[RL], Bytes) -> Unit
+pub fn[RL] LowLevelTurtleParser::extend_from_slice(Self[RL], Array[Byte]) -> Unit
 pub fn[RL] LowLevelTurtleParser::is_end(Self[RL]) -> Bool
 pub fn[RL : TokenRecognizer] LowLevelTurtleParser::parse_next(Self[RL]) -> Result[RdfOut, TurtleError]?
 pub fn[RL] LowLevelTurtleParser::prefixes(Self[RL]) -> TurtlePrefixesIter
@@ -767,8 +784,27 @@ pub(all) enum N3Token {
   LangTag(language~ : String, direction~ : BaseDirection?)
   Punctuation(String)
   PlainKeyword(String)
+  LineJump
+  End
 } derive(Eq, @debug.Debug)
 pub impl Show for N3Token
+
+pub(all) enum NQuadsAction {
+  PushSubject(NamedOrBlankNodeRef)
+  PushPredicate(NamedNodeRef)
+  PushObject(TermRef)
+  SetTempLiteral(String)
+  FinalizeSimpleLiteral
+  FinalizeLangLiteral(String, BaseDirection)
+  SetGraphName(NamedOrBlankNodeRef)
+  EmitQuad
+  EmitQuadWithGraphName
+  PushStack(NQuadsState)
+  PopStack
+  FinalizeQuotedTriple
+  SetError(RuleRecognizerError)
+  ClearAccumulator
+}
 
 pub struct NQuadsParser {
   mut lenient : Bool
@@ -783,20 +819,18 @@ pub async fn NQuadsParser::split_file_for_parallel_parsing(Self, String, Int64) 
 pub fn NQuadsParser::split_slice_for_parallel_parsing(Self, BytesView, Int) -> Array[SliceNQuadsParser[NQuadsRecognizer]]
 
 pub(all) struct NQuadsRecognizer {
+  current_state : NQuadsState
   stack : Array[NQuadsState]
   subjects : Array[NamedOrBlankNodeRef]
   predicates : Array[NamedNodeRef]
   objects : Array[TermRef]
+  data_world : DataWorld
   lenient : Bool
   mut debug_logger : &DebugLogger
   mut last_range : Range
   errors : Array[RuleRecognizerError]
 }
-pub fn NQuadsRecognizer::handle_after_quoted_triple(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
-pub fn NQuadsRecognizer::handle_expect_line_jump(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
-pub fn NQuadsRecognizer::handle_expect_literal_datatype(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext, String) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
-pub fn NQuadsRecognizer::handle_expect_possible_graph_or_end_of_quoted_triple(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
-pub fn NQuadsRecognizer::handle_recover_to_line_jump(Self, LocatedTokenOrLineJump, NQuadsRecognizerContext) -> Result[(Self, NQuadsState, RdfOut?), RuleRecognizerError]
+pub fn NQuadsRecognizer::emit_current_quad(Self, graph_name? : GraphName) -> RdfOut?
 pub fn NQuadsRecognizer::new_parser(Array[Byte], Bool, Bool, debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
 pub impl RuleRecognizer for NQuadsRecognizer
 pub impl StateMachine for NQuadsRecognizer
@@ -815,16 +849,16 @@ pub fn NQuadsSerializer::new() -> Self
 pub fn NQuadsSerializer::to_string(Self, Quad) -> String
 
 pub(all) enum NQuadsState {
+  Start
   ExpectSubject
   ExpectPredicate
-  ExpectedObject
-  ExpectPossibleGraphOrEndOfQuotedTriple
+  ExpectObject
+  ExpectDotOrGraphName
+  ExpectGraphName
   ExpectDot
-  ExpectLiteralAnnotationOrGraphNameOrDot(value~ : String)
-  ExpectLiteralDatatype(value~ : String)
+  ExpectLiteralSuffix
+  ExpectDatatype
   ExpectLineJump
-  RecoverToLineJump
-  AfterQuotedTriple
 } derive(Eq, Hash, @debug.Debug)
 pub fn NQuadsState::to_str(Self) -> String
 
@@ -901,11 +935,12 @@ pub(all) struct Parser[TR, M] {
 }
 pub fn[TR, M] Parser::Parser(Lexer[TR], GenericStateMachine[M], RdfContext) -> Self[TR, M]
 pub fn[TR, M] Parser::end(Self[TR, M]) -> Unit
-pub fn[TR, RR] Parser::extend_from_slice(Self[TR, RR], Bytes) -> Unit
+pub fn[TR, RR] Parser::extend_from_slice(Self[TR, RR], Array[Byte]) -> Unit
 pub fn[TR, RR] Parser::for_async_reader(Self[TR, RR], &@io.Reader) -> AsyncReaderIterator[TR, RR]
 pub fn[TR, RR] Parser::for_reader(Self[TR, RR], &@io.Reader) -> ReaderIterator[TR, RR]
 pub fn[TR, M : StateMachine] Parser::is_end(Self[TR, M]) -> Bool
-pub fn[TR : TokenRecognizer, M : StateMachine + RuleRecognizer] Parser::parse_next(Self[TR, M]) -> Result[RdfOut, TurtleError]?
+pub fn[TR, RR] Parser::lexer_options(Self[TR, RR]) -> LexerOptions?
+pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(Self[TR, M]) -> Result[RdfOut, TurtleError]?
 pub fn[TR, M : StateMachine] Parser::try_finish(Self[TR, M]) -> Result[RdfOut, TurtleError]?
 pub fn[TR, M] Parser::try_output(Self[TR, M]) -> Result[RdfOut, TurtleError]?
 
@@ -992,7 +1027,7 @@ pub struct ReaderIterator[TR, RR] {
   reader : &@io.Reader
   parser : Parser[TR, RR]
 }
-pub async fn[RR : RuleRecognizer + StateMachine] ReaderIterator::next(Self[RdfLexer, RR]) -> Result[RdfOut, LexerError]?
+pub async fn[RR : StateMachine] ReaderIterator::next(Self[RdfLexer, RR]) -> Result[RdfOut, LexerError]?
 
 pub struct ReaderN3Parser[RL] {
   inner : ReaderIterator[RL, N3Recognizer]
@@ -1038,7 +1073,7 @@ pub impl Show for SerializationError
 pub(all) struct SliceIterator[TR, RR] {
   parser : Parser[TR, RR]
 }
-pub fn[TR : TokenRecognizer, RR : RuleRecognizer + StateMachine] SliceIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
+pub fn[TR : TokenRecognizer, RR : StateMachine] SliceIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
 
 pub struct SliceN3Parser[RL] {
   inner : SliceIterator[RdfLexer, RL]
@@ -1106,6 +1141,7 @@ pub fn Term::is_blank_node(Self) -> Bool
 pub fn Term::is_literal(Self) -> Bool
 pub fn Term::is_named_node(Self) -> Bool
 pub fn Term::is_triple(Self) -> Bool
+pub impl Show for Term
 
 pub(all) enum TermRef {
   NamedNodeRef(NamedNodeRef)
@@ -1360,13 +1396,12 @@ pub trait RuleRecognizer {
 
 pub trait StateMachine {
   fn initial_state(Self) -> RdfState
-  fn transition(Self, RdfState, LocatedTokenOrLineJump, RdfContext) -> Result[(Self, RdfState, RdfOut?), RuleRecognizerError]
+  fn transition(Self, RdfState, LocatedToken, RdfContext) -> Result[(Self, RdfState, RdfOut?), RuleRecognizerError]
   fn current_state(Self) -> RdfState
-  fn step(Self, LocatedTokenOrLineJump) -> Self
+  fn step(Self, LocatedToken) -> Self
   fn reset(Self) -> Self
   fn is_accepting(Self) -> Bool
   fn context(Self) -> RdfContext
-  fn set_context(Self, RdfContext) -> Self
   fn[ST : StateWrapper] set_current_state(Self, ST) -> Self
   fn error_recovery_statemachine(Self) -> Self
 }
@@ -1381,6 +1416,6 @@ pub trait StringRepr {
 }
 
 pub trait TokenRecognizer {
-  fn recognize_next_token(Self, ArrayView[Byte], Bool, LexerOptions?, SourcePos) -> (Int, Result[LocatedTokenOrLineJump, TokenRecognizerError])?
+  fn recognize_next_token(Self, ArrayView[Byte], Bool, LexerOptions?, SourcePos) -> (Int, Result[LocatedToken, TokenRecognizerError])?
 }
 

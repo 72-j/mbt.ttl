@@ -42,7 +42,7 @@ pub fn remove_dot_segments_from_array(
 }
 
 ///|
-fn array_to_view(arr : ArrayView[Byte]) -> BytesView {
+pub fn array_to_view(arr : ArrayView[Byte]) -> BytesView {
   let bytes : Bytes = Bytes::from_array(arr)
   return bytes
 }
@@ -464,33 +464,6 @@ fn parse_xsd_date(s : String) -> Result[String, String] {
 }
 
 ///|
-fn sort_prefixes(prefixes : Map[String, Iri]) -> Array[(String, String)] {
-  // 1. 将 Map 转换为可变数组
-  let prefix_array : Array[(String, String)] = []
-  for item in prefixes.iter() {
-    let k = item.0
-    let v = item.1
-    prefix_array.push((k, v.to_string()))
-  }
-  // 比较逻辑：如果 a 的长度 > b 的长度，返回 -1 (排在前面)
-  prefix_array.sort_by(fn(a, b) {
-    let len_a = a.1.length()
-    let len_b = b.1.length()
-    if len_a > len_b {
-      -1
-    } else if len_a < len_b {
-      1
-    } else {
-      0
-    }
-  })
-
-  prefix_array
-}
-
-// 将十六进制字符串转为整数
-
-///|
 fn hex_to_uint(hex : String) -> UInt {
   let mut result : UInt = 0
   for c in hex {
@@ -517,7 +490,45 @@ fn hex_to_uint(hex : String) -> UInt {
   }
   result
 }
-// 检查字符串是否全是有效的十六进制字符
+
+///|
+fn UInt::to_hex_string(self : UInt) -> String {
+  if self == 0 {
+    return "0"
+  }
+  let chars : Array[Char] = []
+  let mut n = self
+  while n > 0 {
+    let digit = n % 16
+    chars.push(digit_to_hex_char(digit))
+    n = n / 16
+  }
+  let sb = StringBuilder::new()
+  let rev_chars = chars.rev()
+  for c in rev_chars {
+    sb.write_char(c)
+  }
+  sb.to_string()
+}
+
+///|
+fn digit_to_hex_char(d : UInt) -> Char {
+  if d < 10 {
+    (d + 48).to_uint16().to_char().unwrap() // '0' = 48
+  } else {
+    (d - 10 + 65).to_uint16().to_char().unwrap()
+  } // 'A' = 65
+}
+
+///|
+fn UInt::lpad(self : UInt, width : Int, char : Char) -> String {
+  let s = self.to_hex_string()
+  let pad_count = width - s.length()
+  if pad_count <= 0 {
+    return s
+  }
+  String::make(pad_count, char) + s
+}
 
 ///|
 pub fn is_valid_hex_string(hex : String) -> Bool {

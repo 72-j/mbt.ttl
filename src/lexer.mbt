@@ -108,9 +108,12 @@ pub fn[RL] Lexer::Lexer(
 }
 
 ///|
-pub fn[RL] Lexer::extend_from_slice(self : Lexer[RL], other : Bytes) -> Unit {
+pub fn[RL] Lexer::extend_from_slice(
+  self : Lexer[RL],
+  other : Array[Byte],
+) -> Unit {
   self.shrink_data()
-  self.data.append(BytesView::to_array(other))
+  self.data.append(other)
 }
 
 ///|

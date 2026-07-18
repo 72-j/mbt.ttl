@@ -79,7 +79,6 @@ async fn parse_file(path : String, verbose : Bool) -> Unit {
 ///|
 fn parse_content(content : String, verbose : Bool) -> Unit {
   let data = @utf8.encode(content)
-  let data_world = @lib.DataWorld::default()
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
@@ -96,9 +95,10 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
     @lib.NQuadsRecognizer::{
       current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
-      subjects: [],
-      predicates: [],
-      objects: [],
+      emit_quad: false,
+      // finalize_literal: None,
+      // last_output: None,
+      temp_literal: None,
       lenient: false,
       debug_logger: @lib.make_console_logger(),
       last_range: @lib.Range::default(),
@@ -108,9 +108,10 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
     @lib.NQuadsRecognizer::{
       current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
-      subjects: [],
-      predicates: [],
-      objects: [],
+      emit_quad: false,
+      // finalize_literal: None,
+      // last_output: None,
+      temp_literal: None,
       lenient: false,
       debug_logger: @lib.make_mute_logger(),
       last_range: @lib.Range::default(),
@@ -141,7 +142,7 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
     if count >= 100 {
       break
     }
-    match parser.parse_next(data_world) {
+    match parser.parse_next() {
       Some(Ok(quad)) => {
         count += 1
         quads.push(quad)

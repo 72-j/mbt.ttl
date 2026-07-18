@@ -2,11 +2,6 @@
 pub(all) struct Literal(LiteralContent) derive(Eq, Debug, Hash, ToJson)
 
 ///|
-pub fn Literal::as_n3term(self : Literal) -> N3Term {
-  N3Term::Literal(self)
-}
-
-///|
 pub impl Show for Literal with fn to_string(self : Literal) -> String {
   let f = StringBuilder::new()
   match self.0 {
@@ -31,7 +26,7 @@ pub impl Show for Literal with fn to_string(self : Literal) -> String {
       f.to_string()
     }
     LiteralContent::TypedLiteral(value~, datatype~) => {
-      let _ = print_quoted_str(f, value.into_value())
+      let _ = print_quoted_str(f, value)
       f.write("^^")
       f.write(datatype)
       f.to_string()
@@ -48,7 +43,7 @@ pub(all) enum LiteralContent {
     language~ : String,
     direction~ : BaseDirection
   )
-  TypedLiteral(value~ : VarDataType, datatype~ : NamedNode)
+  TypedLiteral(value~ : String, datatype~ : NamedNode)
 } derive(Eq, Debug, Hash, ToJson)
 
 ///|
@@ -119,7 +114,7 @@ pub fn Literal::value(self : Literal) -> String {
   match self.0 {
     LiteralContent::String(value)
     | LiteralContent::LanguageTaggedString(value~, ..) => value
-    LiteralContent::TypedLiteral(value~, ..) => value.into_value()
+    LiteralContent::TypedLiteral(value~, ..) => value
     LiteralContent::DirectionalLanguageTaggedString(value~, ..) =>
       value.to_owned()
   }
@@ -197,7 +192,7 @@ pub fn Literal::destruct(
       direction~
     ) => (value, None, Some(language), Some(direction))
     LiteralContent::TypedLiteral(value~, datatype~) =>
-      (value.into_value(), Some(datatype), None, None)
+      (value, Some(datatype), None, None)
   }
 }
 
@@ -213,7 +208,7 @@ pub(all) enum LiteralRefContent {
     language~ : StringView,
     direction~ : BaseDirection
   )
-  TypedLiteral(value~ : VarDataType, datatype~ : NamedNodeRef)
+  TypedLiteral(value~ : String, datatype~ : NamedNodeRef)
 } derive(Eq, Debug, Hash)
 
 ///|
@@ -222,7 +217,7 @@ pub fn LiteralRef::into_value(self : LiteralRef) -> StringView {
     LiteralRefContent::String(s) => s
     LiteralRefContent::LanguageTaggedString(value~, ..) => value
     LiteralRefContent::DirectionalLanguageTaggedString(value~, ..) => value
-    LiteralRefContent::TypedLiteral(value~, ..) => value.into_value()
+    LiteralRefContent::TypedLiteral(value~, ..) => value
   }
 }
 
@@ -237,20 +232,13 @@ pub fn LiteralRef::as_term(self : Self) -> TermRef {
 }
 
 ///|
-pub fn LiteralRef::as_n3term(self : LiteralRef) -> N3Term {
-  match self {
-    LiteralRef(_) => N3Term::Literal(self.into_owned())
-  }
-}
-
-///|
 pub fn LiteralRef::new_typed_literal(
-  value : VarDataType,
+  value : String,
   datatype : NamedNodeRef,
 ) -> LiteralRef {
   LiteralRef(
     if datatype == lwSTRING {
-      LiteralRefContent::String(value.into_value())
+      LiteralRefContent::String(value)
     } else {
       LiteralRefContent::TypedLiteral(value~, datatype~)
     },
@@ -362,7 +350,7 @@ pub impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
       f.to_string()
     }
     LiteralRefContent::TypedLiteral(value~, datatype~) => {
-      let _ = print_quoted_str(f, value.into_value())
+      let _ = print_quoted_str(f, value)
       f.write("^^")
       f.write(datatype)
       f.to_string()
@@ -374,7 +362,7 @@ pub impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
 pub fn print_quoted_str(f : StringBuilder, string : StringView) -> String {
   f.write('\"')
   for c in string {
-    let code = Char::to_int(c)
+    let code = Char::to_uint(c)
     match c {
       '\u{08}' => f.write("\\b")
       '\t' => f.write("\\t")
@@ -384,7 +372,8 @@ pub fn print_quoted_str(f : StringBuilder, string : StringView) -> String {
       '"' => f.write("\\\"")
       '\\' => f.write("\\\\")
       _ if code <= 0x1F || code == 0x7F || code == 0xFFFE || code == 0xFFFF =>
-        f.write("\\u{:04X}\{code}")
+        f.write("\\u\{code.lpad(4, '0')}") // 假设 code 已转为 UInt16
+      _ if code >= 0x10000 => f.write("\\U\{code.lpad(8, '0')}")
       _ => f.write_char(c)
     }
   }

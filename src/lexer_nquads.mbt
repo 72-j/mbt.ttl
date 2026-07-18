@@ -2,11 +2,10 @@
 pub(all) struct NQuadsRecognizer {
   current_state : NQuadsState
   stack : Array[NQuadsState]
-  subjects : Array[NamedOrBlankNodeRef]
-  predicates : Array[NamedNodeRef]
-  objects : Array[TermRef]
+  mut emit_quad : Bool
+  temp_literal : String?
   lenient : Bool
-  mut debug_logger : &DebugLogger
+  debug_logger : &DebugLogger
   mut last_range : Range
   errors : Array[RuleRecognizerError]
 }
@@ -18,37 +17,86 @@ pub(all) struct NQuadsRecognizerContext {
 }
 
 ///|
-/// 数据操作集合（可选字段模式）
 pub(all) struct DataWorld {
-  subjects : Array[NamedOrBlankNodeRef]
-  predicates : Array[NamedNodeRef]
-  objects : Array[TermRef]
+  mut subjects : Array[NamedOrBlankNodeRef]
+  mut predicates : Array[NamedNodeRef]
+  mut objects : Array[TermRef]
   mut temp_literal : String?
-  finalize_literal : LiteralKind?
-  graph_name : NamedOrBlankNodeRef
-  stack_push : Array[NQuadsState]
-  emit_quad : Bool
-  emit_quad_with_graph : Bool
-  finalize_quoted_triple : Bool
-  clear_accumulator : Bool
+  mut finalize_literal : LiteralKind?
+  mut graph_name : GraphNameRef?
 }
 
-// impl Show for DataWorld with fn output(self, logger : &Logger) -> Unit {
-//   logger.write("DataWorld(")
-//   logger.write("subjects=")
-//   logger.write(@debug.to_string(self.subjects))
-//   logger.write(", ")
-//   logger.write("predicates=")
-//   logger.write(@debug.to_string(self.predicates))
-//   logger.write(", ")
-//   logger.write("objects=")
-//   logger.write(@debug.to_string(self.objects))
-//   logger.write(", ")
-//   logger.write("temp_literal=")
-//   logger.write(@debug.to_string(self.temp_literal))
-//   logger.write(", ")
-//   logger.write("finalize_literal=")
-// }
+///|
+pub(all) enum DataAction {
+  NoOp // ✅ 新增
+  AddSubject(NamedOrBlankNodeRef)
+  AddPredicate(NamedNodeRef)
+  AddObject(TermRef)
+  SetTempLiteral(String)
+  SetGraphName(GraphNameRef)
+  EmitQuad
+  EmitQuadWithLiteral(LiteralKind)
+  EmitQuadWithTempLiteral(NamedNodeRef)
+  PushStack(NQuadsState)
+  ClearAccumulator
+  FinalizeLiteral(LiteralKind)
+  FinalizeQuotedTriple
+}
+
+///|
+impl Show for DataAction with fn output(self, logger : &Logger) -> Unit {
+  match self {
+    DataAction::NoOp => logger.write("NoOp")
+    DataAction::AddSubject(subject) => {
+      logger.write("AddSubject(")
+      logger.write(subject)
+      logger.write(")")
+    }
+    DataAction::AddPredicate(predicate) => {
+      logger.write("AddPredicate(")
+      logger.write(predicate)
+      logger.write(")")
+    }
+    DataAction::AddObject(object) => {
+      logger.write("AddObject(")
+      logger.write(object)
+      logger.write(")")
+    }
+    DataAction::SetTempLiteral(temp_literal) => {
+      logger.write("SetTempLiteral(")
+      logger.write(temp_literal)
+      logger.write(")")
+    }
+    DataAction::SetGraphName(graph_name) => {
+      logger.write("SetGraphName(")
+      logger.write(graph_name)
+      logger.write(")")
+    }
+    DataAction::EmitQuad => logger.write("EmitQuad")
+    DataAction::EmitQuadWithLiteral(finalize_literal) => {
+      logger.write("EmitQuadWithLiteral(")
+      logger.write(finalize_literal)
+      logger.write(")")
+    }
+    DataAction::EmitQuadWithTempLiteral(finalize_literal) => {
+      logger.write("EmitQuadWithTempLiteral(")
+      logger.write(finalize_literal)
+      logger.write(")")
+    }
+    DataAction::PushStack(state) => {
+      logger.write("PushStack(")
+      logger.write(state)
+      logger.write(")")
+    }
+    DataAction::ClearAccumulator => logger.write("ClearAccumulator")
+    DataAction::FinalizeLiteral(finalize_literal) => {
+      logger.write("FinalizeLiteral(")
+      logger.write(finalize_literal)
+      logger.write(")")
+    }
+    DataAction::FinalizeQuotedTriple => logger.write("FinalizeQuotedTriple")
+  }
+}
 
 ///|
 pub fn DataWorld::DataWorld(
@@ -57,12 +105,7 @@ pub fn DataWorld::DataWorld(
   objects : Array[TermRef],
   temp_literal : String?,
   finalize_literal : LiteralKind?,
-  graph_name : NamedOrBlankNodeRef,
-  stack_push : Array[NQuadsState],
-  emit_quad : Bool,
-  emit_quad_with_graph : Bool,
-  finalize_quoted_triple : Bool,
-  clear_accumulator : Bool,
+  graph_name : GraphNameRef?,
 ) -> DataWorld {
   DataWorld::{
     subjects,
@@ -71,11 +114,6 @@ pub fn DataWorld::DataWorld(
     temp_literal,
     finalize_literal,
     graph_name,
-    stack_push,
-    emit_quad,
-    emit_quad_with_graph,
-    finalize_quoted_triple,
-    clear_accumulator,
   }
 }
 
@@ -87,12 +125,7 @@ pub fn DataWorld::default() -> DataWorld {
     Array::new(),
     None,
     None,
-    NamedOrBlankNodeRef::NamedNodeRef(NamedNode::default().as_ref()),
-    Array::new(),
-    false,
-    false,
-    false,
-    false,
+    None,
   )
 }
 
@@ -100,25 +133,25 @@ pub fn DataWorld::default() -> DataWorld {
 pub(all) enum LiteralKind {
   Simple
   Lang(LanguageTag, BaseDirection)
-  Typed(VarDataType, NamedNodeRef)
+  Typed(String, NamedNodeRef)
 } derive(Debug, Eq, Hash)
 
 ///|
-impl Show for LiteralKind with fn output(self, logger : &Logger) -> Unit {
+pub impl Show for LiteralKind with fn output(self, logger : &Logger) -> Unit {
   match self {
     LiteralKind::Simple => logger.write("Simple")
     LiteralKind::Lang(lang, dir) => {
       logger.write("Lang(")
-      lang.output(logger)
+      logger.write(lang)
       logger.write(", ")
-      dir.output(logger)
+      logger.write(dir)
       logger.write(")")
     }
     LiteralKind::Typed(data_type, iri) => {
       logger.write("Typed(")
-      data_type.output(logger)
+      logger.write(data_type)
       logger.write(", ")
-      iri.output(logger)
+      logger.write(iri)
       logger.write(")")
     }
   }
@@ -172,18 +205,31 @@ pub(all) enum NQuadsState {
 } derive(Debug, Eq, Hash)
 
 ///|
-// pub(all) enum NQuadsState {
-//   ExpectSubject
-//   ExpectPredicate
-//   ExpectedObject
-//   ExpectPossibleGraphOrEndOfQuotedTriple
-//   ExpectDot
-//   ExpectLiteralAnnotationOrGraphNameOrDot(value~ : String)
-//   ExpectLiteralDatatype(value~ : String)
-//   ExpectLineJump
-//   RecoverToLineJump
-//   AfterQuotedTriple
-// } derive(Debug, Eq, Hash)
+pub(all) enum NQuadsAction {
+  // 主体积木操作
+  PushSubject(NamedOrBlankNodeRef)
+  PushPredicate(NamedNodeRef)
+  PushObject(TermRef)
+
+  // 字面量处理
+  SetTempLiteral(String)
+  FinalizeSimpleLiteral
+  FinalizeLangLiteral(String, BaseDirection)
+
+  // 图名处理
+  SetGraphName(NamedOrBlankNodeRef)
+  EmitQuad
+  EmitQuadWithGraphName
+
+  // 引号三元组 (<< >>)
+  PushStack(NQuadsState)
+  PopStack
+  FinalizeQuotedTriple
+
+  // 错误恢复
+  SetError(RuleRecognizerError)
+  ClearAccumulator
+}
 
 ///|
 impl StateWrapper for NQuadsState with fn as_state_enum(self : NQuadsState) -> RdfState {
@@ -212,19 +258,19 @@ pub impl RuleRecognizer for NQuadsRecognizer with fn error_recovery_state(
 ) -> NQuadsRecognizer {
   // self.stack.clear()
   // self.stack.push(NQuadsState::RecoverToLineJump)
-  self.subjects.clear()
-  self.predicates.clear()
-  self.objects.clear()
+  // self.subjects.clear()
+  // self.predicates.clear()
+  // self.objects.clear()
   self
 }
 
 ///|
-pub impl RuleRecognizer for NQuadsRecognizer with fn[DL : DebugLogger] debug_logger(
-  self : NQuadsRecognizer,
-  debug_logger : DL,
-) {
-  self.debug_logger = debug_logger
-}
+// pub impl RuleRecognizer for NQuadsRecognizer with fn[DL : DebugLogger] debug_logger(
+//   self : NQuadsRecognizer,
+//   debug_logger : DL,
+// ) {
+//   self.debug_logger = debug_logger
+// }
 
 ///|
 pub impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
@@ -232,26 +278,7 @@ pub impl RuleRecognizer for NQuadsRecognizer with fn recognize_end(
   _context : RdfContext,
   _results : Array[RdfOut],
 ) -> Unit {
-  ...
-  // match self.stack {
-  //   [NQuadsState::ExpectSubject | NQuadsState::ExpectLineJump] | [] => ()
-  //   [NQuadsState::ExpectDot] =>
-  //     self.errors.push(RuleRecognizerError::TripleMissingDot)
-  //   [NQuadsState::ExpectPossibleGraphOrEndOfQuotedTriple] => {
-  //     self.emit_curr_quad(results, GraphName::DefaultGraph.as_ref())
-  //     self.errors.push(RuleRecognizerError::TripleMissingDot)
-  //   }
-  //   [NQuadsState::ExpectLiteralAnnotationOrGraphNameOrDot(value~)] => {
-  //     let literal = LiteralRef::new_simple_literal(value)
-  //     self.objects.push(TermRef::LiteralRef(literal))
-  //     self.emit_curr_quad(results, GraphName::DefaultGraph.as_ref())
-  //     self.errors.push(RuleRecognizerError::TripleMissingDot)
-  //   }
-  //   _ =>
-  //     self.errors.push(
-  //       RuleRecognizerError::SyntaxError("Unexpected end", Range::default()),
-  //     )
-  // }
+  ()
 }
 
 ///|
@@ -260,7 +287,6 @@ pub impl RuleRecognizer for NQuadsRecognizer with fn lexer_options(
 ) -> LexerOptions? {
   match context {
     RdfContext::NQuadsRecognizerContext(ctx) => Some(ctx.lexer_options)
-    _ => None
   }
 }
 
@@ -289,9 +315,10 @@ pub fn NQuadsRecognizer::new_parser(
   let machine = NQuadsRecognizer::{
     current_state: NQuadsState::Start,
     stack: [NQuadsState::Start],
-    subjects: [],
-    predicates: [],
-    objects: [],
+    emit_quad: false,
+    // finalize_literal: None,
+    // last_output: None,
+    temp_literal: None,
     lenient,
     debug_logger, // 修复：包装为 Option 类型
     last_range: Range::default(),
@@ -302,70 +329,9 @@ pub fn NQuadsRecognizer::new_parser(
     machine,
     context,
     outputs: [],
+    data_world: DataWorld::default(),
     debug_logger,
   }
   Parser::{ lexer, engine: generic_machine, context, errors: [] }
   // Parser::Parser(lexer, machine, context)
-}
-
-///|
-// pub fn NQuadsRecognizer::emit_curr_quad(
-//   self : NQuadsRecognizer,
-//   results : Array[RdfOut],
-//   graph_name : GraphNameRef,
-// ) -> Unit {
-//   let subject_opt = self.subjects.pop()
-//   let predicate_opt = self.predicates.pop()
-//   let object_opt = self.objects.pop()
-
-//   match (subject_opt, predicate_opt, object_opt) {
-//     (Some(subject), Some(predicate), Some(object)) =>
-//       results.push(
-//         RdfOut::Quad({
-//           subject: subject.into_owned(),
-//           predicate: predicate.into_owned(),
-//           object: object.into_owned(),
-//           graph_name: graph_name.into_owned(),
-//         }),
-//       )
-//     _ =>
-//       // 栈中元素不足，记录内部错误
-//       self.errors.push(
-//         RuleRecognizerError::SyntaxError(
-//           "Internal error: incomplete quad on stack during emission",
-//           Range::default(),
-//         ),
-//       )
-//     // 可以选择在此处调用 self.error_recovery_state()，但这会改变 self
-//   }
-// }
-
-///|
-pub fn NQuadsRecognizer::emit_current_quad(
-  self : NQuadsRecognizer,
-  graph_name? : GraphName,
-) -> RdfOut? {
-  self.debug_logger.info("emit_current_quad called")
-  self.debug_logger.info("  subjects length: \{self.subjects.length()}")
-  self.debug_logger.info("  predicates length: \{self.predicates.length()}")
-  self.debug_logger.info("  objects length: \{self.objects.length()}")
-
-  let subject = self.subjects.pop()
-  let predicate = self.predicates.pop()
-  let object = self.objects.pop()
-
-  match (subject, predicate, object) {
-    (Some(s), Some(p), Some(o)) => {
-      let graph_name = graph_name.unwrap_or(GraphName::DefaultGraph)
-      Some(
-        RdfOut::Quad(
-          Quad::Quad(s.into_owned(), p.into_owned(), o.into_owned(), graph_name),
-        ),
-      )
-    }
-    _ => {
-      self.debug_logger.info("ERROR: missing data!")
-      None
-    }
-  }
 }

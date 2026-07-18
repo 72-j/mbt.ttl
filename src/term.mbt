@@ -72,22 +72,6 @@ pub(all) enum NamedOrBlankNode {
 } derive(Debug, Eq, Hash, ToJson)
 
 ///|
-fn NamedOrBlankNode::as_term(self : NamedOrBlankNode) -> Term {
-  match self {
-    NamedOrBlankNode::NamedNode(v) => Term::NamedNode(v)
-    NamedOrBlankNode::BlankNode(v) => Term::BlankNode(v)
-  }
-}
-
-///|
-pub fn NamedOrBlankNode::as_n3term(self : NamedOrBlankNode) -> N3Term {
-  match self {
-    NamedOrBlankNode::NamedNode(node) => N3Term::NamedNode(node)
-    NamedOrBlankNode::BlankNode(node) => N3Term::BlankNode(node)
-  }
-}
-
-///|
 pub fn NamedOrBlankNode::as_ref(self : NamedOrBlankNode) -> NamedOrBlankNodeRef {
   match self {
     NamedOrBlankNode::NamedNode(node) =>
@@ -116,7 +100,10 @@ pub impl Show for NamedOrBlankNode with fn output(
     NamedOrBlankNode::NamedNode(v) => f.write_string(v.iri)
     NamedOrBlankNode::BlankNode(v) =>
       match v {
-        BlankNode::Named(v) => f.write_string(v)
+        BlankNode::Named(v) => {
+          f.write("_:")
+          f.write(v)
+        }
         BlankNode::Anonymous(v) => f.write_string(v.str)
       }
   }
@@ -143,11 +130,6 @@ pub fn NamedNode::as_term(self : NamedNode) -> Term {
 }
 
 ///|
-pub fn NamedNode::as_n3term(self : NamedNode) -> N3Term {
-  N3Term::NamedNode(self)
-}
-
-///|
 pub(all) struct NamedNodeRef {
   iri : StringView
 } derive(Debug, Eq, Hash)
@@ -155,11 +137,6 @@ pub(all) struct NamedNodeRef {
 ///|
 pub fn NamedNodeRef::as_term(self : NamedNodeRef) -> TermRef {
   TermRef::NamedNodeRef(self)
-}
-
-///|
-pub fn NamedNodeRef::as_n3term(self : NamedNodeRef) -> N3Term {
-  N3Term::NamedNode(self.into_owned())
 }
 
 ///|
@@ -277,7 +254,7 @@ pub(all) enum BlankNodeRef {
 ///|
 impl Show for BlankNodeRef with fn to_string(self : BlankNodeRef) -> String {
   match self {
-    BlankNodeRef::Named(v) => v.to_owned()
+    BlankNodeRef::Named(v) => "_:\{v}"
     BlankNodeRef::Anonymous(v) => v.str
   }
 }
@@ -295,11 +272,6 @@ pub fn BlankNodeRef::as_enum(self : BlankNodeRef) -> NamedOrBlankNodeRef {
 ///|
 pub fn BlankNodeRef::as_term(self : BlankNodeRef) -> TermRef {
   TermRef::BlankNodeRef(self)
-}
-
-///|
-pub fn BlankNodeRef::as_n3term(self : BlankNodeRef) -> N3Term {
-  N3Term::BlankNode(self.into_owned())
 }
 
 ///|
@@ -353,11 +325,6 @@ pub fn BlankNode::as_ref(self : BlankNode) -> BlankNodeRef {
 ///|
 pub fn BlankNode::as_enum(self : BlankNode) -> NamedOrBlankNode {
   NamedOrBlankNode::BlankNode(self)
-}
-
-///|
-pub fn BlankNode::as_n3term(self : BlankNode) -> N3Term {
-  N3Term::BlankNode(self)
 }
 
 ///|
@@ -436,16 +403,6 @@ pub fn GraphName::as_ref(self : GraphName) -> GraphNameRef {
 }
 
 ///|
-pub fn GraphName::as_n3term(self : GraphName) -> N3Term {
-  match self {
-    GraphName::NamedNode(v) => N3Term::NamedNode(v)
-    GraphName::BlankNode(v) => N3Term::BlankNode(v)
-    GraphName::DefaultGraph =>
-      abort("DefaultGraph cannot be converted to N3Term.")
-  }
-}
-
-///|
 pub(all) enum GraphNameRef {
   DefaultGraph
   NamedNodeRef(NamedNodeRef)
@@ -453,9 +410,18 @@ pub(all) enum GraphNameRef {
 } derive(Debug, Eq, Hash)
 
 ///|
-// fn GraphNameRef::new_unchecked(iri : String) -> GraphNameRef {
-//   GraphNameRef::NamedNodeRef(NamedNodeRef::new_unchecked(iri))
-// }
+impl Show for GraphNameRef with fn to_string(self : GraphNameRef) -> String {
+  match self {
+    GraphNameRef::DefaultGraph => "".to_string()
+    GraphNameRef::NamedNodeRef(v) => v.to_string()
+    GraphNameRef::BlankNodeRef(v) => v.to_string()
+  }
+}
+
+///|
+fn GraphNameRef::new_unchecked(iri : String) -> GraphNameRef {
+  GraphNameRef::NamedNodeRef(NamedNodeRef::new_unchecked(iri))
+}
 
 ///|
 fn GraphNameRef::into_owned(graph_name : GraphNameRef) -> GraphName {
@@ -480,16 +446,16 @@ impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
   logger.write("Quad")
   logger.write(" {")
   logger.write(" subject: ")
-  self.subject.output(logger)
+  logger.write(self.subject)
   logger.write(", ")
   logger.write(" predicate: ")
-  self.predicate.output(logger)
+  logger.write(self.predicate)
   logger.write(", ")
   logger.write(" object: ")
-  self.object.output(logger)
+  logger.write(self.object)
   if !self.graph_name.is_default_graph() {
     logger.write(" graph_name: ")
-    self.graph_name.output(logger)
+    logger.write(self.graph_name.to_string())
   }
   logger.write(" }")
 }
@@ -502,16 +468,6 @@ pub fn Quad::Quad(
   graph_name : GraphName,
 ) -> Quad {
   { subject, predicate, object, graph_name }
-}
-
-///|
-pub fn Quad::as_n3quad(self : Quad) -> N3Quad {
-  N3Quad::N3Quad(
-    self.subject.as_n3term(),
-    self.predicate.as_n3term(),
-    self.object.as_n3term(),
-    self.graph_name,
-  )
 }
 
 ///|
@@ -551,12 +507,19 @@ pub(all) enum Term {
 } derive(Debug, Eq, Hash, ToJson)
 
 ///|
-impl Show for Term with fn to_string(self : Term) -> String {
+impl Show for Term with fn output(self : Term, logger : &Logger) -> Unit {
   match self {
-    Term::NamedNode(node) => node.to_string()
-    Term::BlankNode(node) => node.to_string()
-    Term::Literal(literal) => literal.to_string()
-    Term::Triple(triple) => triple.to_string()
+    Term::NamedNode(n) => logger.write(n)
+    Term::BlankNode(b) =>
+      match b {
+        BlankNode::Named(v) => {
+          logger.write("_:")
+          logger.write(v)
+        }
+        BlankNode::Anonymous(v) => logger.write(v.str)
+      }
+    Term::Literal(l) => l.output(logger)
+    Term::Triple(t) => t.output(logger)
   }
 }
 
@@ -591,16 +554,6 @@ pub fn Term::as_ref(self : Term) -> TermRef {
 }
 
 ///|
-pub fn Term::as_n3term(self : Term) -> N3Term {
-  match self {
-    Term::NamedNode(node) => N3Term::NamedNode(node)
-    Term::BlankNode(node) => N3Term::BlankNode(node)
-    Term::Literal(literal) => N3Term::Literal(literal)
-    Term::Triple(triple) => N3Term::Triple(triple)
-  }
-}
-
-///|
 pub(all) enum TermRef {
   NamedNodeRef(NamedNodeRef)
   BlankNodeRef(BlankNodeRef)
@@ -612,7 +565,14 @@ pub(all) enum TermRef {
 impl Show for TermRef with fn output(self : TermRef, logger : &Logger) -> Unit {
   match self {
     TermRef::NamedNodeRef(v) => logger.write(v.to_string())
-    TermRef::BlankNodeRef(v) => logger.write(v)
+    TermRef::BlankNodeRef(b) =>
+      match b {
+        BlankNodeRef::Named(v) => {
+          logger.write("_:")
+          logger.write(v)
+        }
+        BlankNodeRef::Anonymous(v) => logger.write(v.str)
+      }
     TermRef::LiteralRef(v) => logger.write(v.to_string())
     TermRef::TripleRef(v) => logger.write(v)
   }

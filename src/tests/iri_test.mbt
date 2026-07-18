@@ -17,12 +17,12 @@ test "parse_unchecked: basic absolute IRI" {
 
 ///|
 test "parse absolute IRI" {
-  let iri = "<scheme:!$%25&'()*+,-./0123456789:/@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~?#>"
+  let iri = "scheme:!$%25&'()*+,-./0123456789:/@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~?#"
   let iri = @lib.Iri::new(iri)
 
   @debug.assert_eq(
     iri.into_string(),
-    "<scheme:!$%25&'()*+,-./0123456789:/@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~?#>",
+    "scheme:!$%25&'()*+,-./0123456789:/@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~?#",
   )
   let result = @lib.IriRef::parse(iri)
   match result {
