@@ -1,5 +1,8 @@
 ///|
-pub type IrParser[A] = @parserc.Parser[Char, Result[A, IriError]]
+pub type IriParser[A] = @parserc.Parser[Char, Result[A, IriError]]
+
+///|
+pub type ResParser[A] = (Result[A, IriError], @parserc.Seq[Char])?
 
 ///|
 pub(all) struct IriR {
@@ -9,6 +12,187 @@ pub(all) struct IriR {
   query : StringView?
   fragment : StringView?
 } derive(Debug, Eq, Default)
+
+///|
+pub let parse_iri : IriParser[IriR] = @parserc.Parser::new(fn(
+  input : @parserc.Seq[Char],
+) -> ResParser[IriR] {
+
+  // 🔑 用组合子检查是否有 scheme
+  let scheme_part = @parserc.pvalue(fn(c : Char) {
+    if is_ascii_alphanumeric(c) {
+      Some(c)
+    } else {
+      None
+    }
+  }).repeat()
+  let with_colon = scheme_part.and_then(@parserc.pchar(':'))
+
+  match with_colon.run(input) {
+    Some(((scheme_chars, _), rest2)) => {
+      // 有 scheme
+      let scheme = scheme_chars.fold(init=""[:], fn(a, b) { a + b.to_string() })
+
+      parse_iri_body(scheme).run(rest2)
+    }
+    None =>
+      // 无 scheme
+
+      parse_iri_body(""[:]).run(input)
+  }
+})
+
+///|
+fn parse_iri_body(scheme : StringView) -> IriParser[IriR] {
+
+  // query（遇到 # 停止）
+  let query_parser = @parserc.pchar('?')
+    .and_then(
+      @parserc.pvalue(fn(c : Char) {
+        // 🔑 修改：遇到 # 也要停止
+        if c != ' ' && c != '\n' && c != '#' {
+          Some(c)
+        } else {
+          None
+        }
+      }).repeat(),
+    )
+    .omit_first()
+    .optional()
+    .map(fn(opt) -> StringView? {
+      match opt {
+        Some(chars) => Some(chars.fold(init="", fn(a, b) { a + b.to_string() }))
+        None => None
+      }
+    })
+
+  // fragment
+  let fragment_parser = @parserc.pchar('#')
+    .and_then(
+      @parserc.pvalue(fn(c : Char) {
+        if c != ' ' && c != '\n' {
+          Some(c)
+        } else {
+          None
+        }
+      }).repeat(),
+    )
+    .omit_first()
+    .optional()
+    .map(fn(opt) -> StringView? {
+      match opt {
+        Some(chars) => Some(chars.fold(init="", fn(a, b) { a + b.to_string() }))
+        None => None
+      }
+    })
+
+  // authority（遇到 / 或 ? 或 # 停止）
+  let authority_parser = @parserc.pstring("//")
+    .and_then(
+      @parserc.pvalue(fn(c : Char) {
+        // 🔑 修改：遇到 / 或 ? 或 # 停止
+        if c != '/' && c != '?' && c != '#' && c != ' ' {
+          Some(c)
+        } else {
+          None
+        }
+      }).repeat(),
+    )
+    .omit_first()
+    .optional()
+    .map(fn(opt) -> StringView? {
+      match opt {
+        Some(chars) => Some(chars.fold(init="", fn(a, b) { a + b.to_string() }))
+        None => None
+      }
+    })
+
+  // path（遇到 ? 或 # 停止）
+  let path_parser = @parserc.pvalue(fn(c : Char) {
+      // 🔑 修改：遇到 ? 或 # 停止
+      if c != '?' && c != '#' && c != ' ' && c != '\n' {
+        Some(c)
+      } else {
+        None
+      }
+    })
+    .repeat()
+    .map(fn(chars) -> String {
+      chars.fold(init="", fn(a, b) { a + b.to_string() })
+    })
+
+  // 完整解析器
+  @parserc.Parser::new(fn(input : @parserc.Seq[Char]) -> ResParser[IriR] {
+
+    // 🔑 修复顺序：先尝试 query，再尝试 fragment，再尝试 authority
+
+    // 尝试 query
+    let query_result = query_parser.run(input)
+    let (query, rest_q) = match query_result {
+      Some((q, rest)) => (q, rest)
+      _ => (None, input)
+    }
+
+    // 尝试 fragment
+    let fragment_result = fragment_parser.run(rest_q)
+    let (fragment, rest_qf) = match fragment_result {
+      Some((f, rest)) => (f, rest)
+      _ => (None, rest_q)
+    }
+
+    // 如果有 query 或 fragment，直接返回（authority 一定为 None）
+    if query is Some(_) || fragment is Some(_) {
+      return Some(
+        (
+          Ok(IriR::{ scheme, authority: None, path: "", query, fragment }),
+          rest_qf,
+        ),
+      )
+    }
+
+    // 没有 query/fragment，尝试 authority
+
+    let auth_result = authority_parser.run(rest_qf)
+    let (auth, rest_after_auth) = match auth_result {
+      Some((a, rest)) => (a, rest)
+      _ => (None, rest_qf)
+    }
+
+    // 解析 path
+    let path_result = path_parser.run(rest_after_auth)
+    let (path, rest_after_path) = match path_result {
+      Some((p, rest)) => (p, rest)
+      _ => ("", rest_after_auth)
+    }
+
+    // 解析 path 后的 query 和 fragment
+    let query_result2 = query_parser.run(rest_after_path)
+    let (query2, rest_q2) = match query_result2 {
+      Some((q, rest)) => (q, rest)
+      _ => (None, rest_after_path)
+    }
+
+    let fragment_result2 = fragment_parser.run(rest_q2)
+    let (fragment2, rest_f2) = match fragment_result2 {
+      Some((f, rest)) => (f, rest)
+      _ => (None, rest_q2)
+    }
+
+    // 返回结果
+    Some(
+      (
+        Ok(IriR::{
+          scheme,
+          authority: auth,
+          path,
+          query: query2,
+          fragment: fragment2,
+        }),
+        rest_f2,
+      ),
+    )
+  })
+}
 
 ///|
 pub fn IriR::parse(_self : IriR, s : String) -> Result[IriR, IriError] {
@@ -171,186 +355,6 @@ pub fn IriR::into_string(self : IriR) -> String {
 
   s
 }
-
-///|
-fn parse_authority(
-  input : @parserc.Seq[Char],
-) -> (StringView?, @parserc.Seq[Char]) {
-  match input.uncons() {
-    Some(('/', rest1)) =>
-      match rest1.uncons() {
-        Some(('/', rest2)) => {
-          let body = @parserc.pvalue(fn(ch : Char) {
-            if ch != '/' && ch != '?' && ch != '#' && ch != ' ' && ch != '\n' {
-              Some(ch)
-            } else {
-              None
-            }
-          }).repeat()
-          match body.run(rest2) {
-            Some((chars, r)) => {
-              let result = (
-                Some(
-                  chars.iter().fold(init=""[:], fn(a, b) { a + b.to_string() }),
-                ),
-                r,
-              )
-
-              result
-            }
-            None => (Some(""), rest2)
-          }
-        }
-        _ => (None, input)
-      }
-    _ => (None, input)
-  }
-}
-
-///|
-fn parse_query(input : @parserc.Seq[Char]) -> (StringView?, @parserc.Seq[Char]) {
-  let result = match input.uncons() {
-    Some(('?', rest)) => {
-      let content = @parserc.pvalue(fn(c : Char) {
-        if c != '#' && c != ' ' && c != '\n' {
-          Some(c)
-        } else {
-          None
-        }
-      }).repeat()
-      match content.run(rest) {
-        Some((chars, r)) =>
-          (
-            Some(chars.iter().fold(init=""[:], fn(a, b) { a + b.to_string() })),
-            r,
-          )
-        None => (Some(""), rest)
-      }
-    }
-    _ => (None, input)
-  }
-
-  result
-}
-
-///|
-fn parse_fragment(
-  input : @parserc.Seq[Char],
-) -> (StringView?, @parserc.Seq[Char]) {
-  let result = match input.uncons() {
-    Some(('#', rest)) => {
-      let content = @parserc.pvalue(fn(c : Char) {
-        if c != ' ' && c != '\n' {
-          Some(c)
-        } else {
-          None
-        }
-      }).repeat()
-      match content.run(rest) {
-        Some((chars, r)) =>
-          (
-            Some(chars.iter().fold(init=""[:], fn(a, b) { a + b.to_string() })),
-            r,
-          )
-        None => (Some(""), rest)
-      }
-    }
-    _ => (None, input)
-  }
-
-  result
-}
-
-///|
-fn parse_path(input : @parserc.Seq[Char]) -> (StringView, @parserc.Seq[Char]) {
-  let content = @parserc.pvalue(fn(c : Char) {
-    if c != '?' && c != '#' && c != ' ' && c != '\n' {
-      Some(c)
-    } else {
-      None
-    }
-  }).repeat()
-  let result = match content.run(input) {
-    Some((chars, r)) =>
-      (chars.iter().fold(init=""[:], fn(a, b) { a + b.to_string() }), r)
-    None => ("", input)
-  }
-
-  result
-}
-
-///|
-fn parse_scheme(input : @parserc.Seq[Char]) -> (StringView, @parserc.Seq[Char]) {
-  let chars = @parserc.pvalue(fn(c : Char) {
-    if is_ascii_alphanumeric(c) {
-      Some(c)
-    } else {
-      None
-    }
-  }).repeat()
-  let result = match chars.run(input) {
-    Some((arr, rest)) =>
-      (arr.iter().fold(init=""[:], fn(a, b) { a + b.to_string() }), rest)
-    None => ("", input)
-  }
-
-  result
-}
-
-///|
-fn parse_iri_rest(
-  scheme : StringView,
-  input : @parserc.Seq[Char],
-) -> (Result[IriR, IriError], @parserc.Seq[Char])? {
-  // 1. 先解析 query 和 fragment
-  let (query, rest_q) = parse_query(input)
-  let (fragment, rest_qf) = parse_fragment(rest_q)
-
-  // 2. 如果有 query 或 fragment，不解析 path
-  if query is Some(_) || fragment is Some(_) {
-    return Some(
-      (
-        Ok(IriR::{ scheme, authority: None, path: "", query, fragment }),
-        rest_qf,
-      ),
-    )
-  }
-
-  // 3. 没有 query/fragment，解析 authority
-  let (auth, rest) = parse_authority(input)
-
-  if auth is Some(_) {
-    let (path, rest) = parse_path(rest)
-    let (query, rest) = parse_query(rest)
-    let (fragment, _) = parse_fragment(rest)
-    Some((Ok(IriR::{ scheme, authority: auth, path, query, fragment }), rest))
-  } else {
-    // 无 authority 时，需要用 rest_qf 来解析 path
-    let (path, rest) = parse_path(rest_qf)
-    let (query, rest) = parse_query(rest)
-    let (fragment, _) = parse_fragment(rest)
-    Some((Ok(IriR::{ scheme, authority: None, path, query, fragment }), rest))
-  }
-}
-
-///|
-pub let parse_iri : IrParser[IriR] = @parserc.Parser::new(fn(
-  input : @parserc.Seq[Char],
-) -> (Result[IriR, IriError], @parserc.Seq[Char])? {
-  let result = match input.uncons() {
-    Some((':', rest)) => parse_iri_rest(""[:], rest)
-    _ => {
-      let (scheme, rest) = parse_scheme(input)
-
-      match rest.uncons() {
-        Some((':', rest)) => parse_iri_rest(scheme, rest)
-        _ => parse_iri_rest(""[:], input)
-      }
-    }
-  }
-  // 
-  result
-})
 
 ///|
 pub fn fn_remove_dot_segments(path : StringView) -> StringView {
