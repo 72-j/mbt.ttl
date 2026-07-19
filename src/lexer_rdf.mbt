@@ -182,42 +182,103 @@ fn RdfLexer::parse_iri(
       ),
     )
   }
+
   // 2. 解析或解析并合并 Base IRI
   let final_iri = if options.base_iri is Some(base_iri) {
     // 如果有 base_iri，尝试解析相对 IRI
-    let base_iri = base_iri.as_ref()
     if self.lenient {
       // 宽松模式：直接合并，不检查有效性
       Ok(base_iri.resolve_unchecked(iri_str))
     } else {
       // 严格模式：解析并检查有效性
-      base_iri
-      .resolve(iri_str)
-      .map_err(fn(e) {
-        TokenRecognizerError::IriParsingError(e.to_string(), position)
-      })
+      base_iri.resolve(iri_str)
     }
   } else {
     // 没有 base_iri，直接解析绝对 IRI
-    let iri = Iri::new(iri_str)
+    let iri = IriR::default()
 
     if self.lenient {
-      Ok(IriRef::parse_unchecked(iri))
+      Ok(iri.parse_unchecked(iri_str))
     } else {
       // 严格模式
-      IriRef::parse(iri).map_err(fn(e) {
-        TokenRecognizerError::IriParsingError(e.to_string(), position)
-      })
+      iri.parse(iri_str)
     }
   }
 
   // 3. 返回 Token
   let final_iri = match final_iri {
     Ok(iri) => iri
-    Err(e) => return Err(e)
+    Err(_e) => return Err(TokenRecognizerError::Invalid)
   }
   // 使用传入的 position (已经是全局 Range)
-  Ok(LocatedToken(N3Token::Iri(final_iri.base_iri), position))
+  Ok(LocatedToken(N3Token::Iri(final_iri.into_string()), position))
+}
+
+///|
+pub fn IriR::resolve_unchecked(
+  self : IriR,
+  ref_iri : String,
+  remove_dot_segments? : Bool = true,
+) -> IriR {
+  // 尝试解析参考 IRI（忽略错误）
+  let ref_parsed = IriR::{
+    scheme: "",
+    authority: None,
+    path: "",
+    query: None,
+    fragment: None,
+  }.parse_unchecked(ref_iri)
+
+  // 如果参考 IRI 是绝对的，直接返回
+  if ref_parsed.scheme.length() > 0 {
+    return ref_parsed
+  }
+
+  // 合并各个组件
+  let scheme = self.scheme
+  let authority = if ref_parsed.authority is Some(_) {
+    ref_parsed.authority
+  } else {
+    self.authority
+  }
+
+  // 合并路径
+  let path = if ref_parsed.path.has_prefix("/") {
+    ref_parsed.path // 绝对路径，直接用
+  } else if ref_parsed.path.length() > 0 {
+    // 相对路径，合并到 base 的目录
+    let base_path = self.path
+    let last_slash = base_path.rev_find("/")
+    match last_slash {
+      Some(idx) =>
+        if idx == 0 {
+          // base = "/base"，没有中间目录
+          // 直接拼接："/base" + "/" + "relative/path"
+          base_path.to_owned() + "/" + ref_parsed.path.to_owned()
+        } else {
+          // base = "/dir/base"
+          base_path[0:idx + 1].to_owned() + ref_parsed.path.to_owned()
+        }
+      None => ref_parsed.path.to_owned() // base 为空，直接用 reference
+    }
+  } else {
+    self.path // reference 为空，用 base
+  }
+  let path = if remove_dot_segments {
+    fn_remove_dot_segments(path)
+  } else {
+    path
+  }
+
+  let query = if ref_parsed.query is Some(_) {
+    ref_parsed.query
+  } else {
+    self.query
+  }
+
+  let fragment = ref_parsed.fragment
+
+  IriR::{ scheme, authority, path, query, fragment }
 }
 
 ///|
@@ -1711,21 +1772,32 @@ pub fn resolve_local_name(
   prefix : String,
   localx : String,
   might_be_invalid_iri : Bool,
-  prefixes : Map[String, Iri],
+  prefixes : Map[String, IriR],
 ) -> Result[NamedNodeRef, String] {
-  if prefixes.get(prefix) is Some(start) {
-    let iri = "\{start.into_string()}\{localx}"
-    let iri = Iri::Iri(iri).as_ref()
-    if might_be_invalid_iri || start.path() is Some("") {
-      if IriRef::parse(iri) is Err(e) {
-        return Err(
-          "The prefixed name \{prefix}:\{localx} builds IRI \{iri.into_string()} that is invalid:\{e.to_string()}",
-        )
+  match prefixes.get(prefix) {
+    Some(start) => {
+      let iri_str = start.into_string() + localx
+
+      if might_be_invalid_iri || start.path.length() == 0 {
+        let temp = IriR::{
+          scheme: "",
+          authority: None,
+          path: "",
+          query: None,
+          fragment: None,
+        }
+        match temp.parse(iri_str) {
+          Err(e) =>
+            return Err(
+              "Invalid IRI \{prefix}:\{localx} -> \{iri_str}: \{e.to_string()}",
+            )
+          _ => ()
+        }
       }
+
+      Ok(NamedNodeRef::new_unchecked(iri_str))
     }
-    Ok(NamedNodeRef::new_unchecked(iri.into_string()))
-  } else {
-    Err("The prefix \{prefix}: has not been declared")
+    None => Err("Prefix \{prefix}: not declared")
   }
 }
 

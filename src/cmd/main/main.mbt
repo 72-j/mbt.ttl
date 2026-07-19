@@ -155,12 +155,11 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
         println("[\{count}] Error: \{e}")
         break
       }
-      None => {
-        if verbose {
-          println("End of file")
-        }
+      None =>
+        // if !verbose {
+        //   println("End of file")
+        // }
         break
-      }
     }
   }
 

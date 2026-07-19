@@ -10,6 +10,7 @@ import {
   "moonbitlang/core/quickcheck/splitmix",
   "moonbit-community/quickcheck_statemachine" @qs,
   "brickfrog/tempo",
+  "thy1016/moonttl/parserc",
 }
 
 import {

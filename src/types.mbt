@@ -50,7 +50,7 @@ pub using @ref {type Ref}
 // using @string {trait FromStr}
 
 ///|
-type CharMatch = Array[Char]
+// type CharMatch = Array[Char]
 
 ///|
-type CharMatchRule = (Char, Char?)
+// type CharMatchRule = (Char, Char?)

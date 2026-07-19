@@ -8,11 +8,11 @@
 
 ///|
 pub(all) struct LexerOptions {
-  mut base_iri : Iri?
+  mut base_iri : IriR?
 } derive(Debug)
 
 ///|
-fn LexerOptions::default(base_iri : Iri?) -> LexerOptions {
+fn LexerOptions::default(base_iri : IriR?) -> LexerOptions {
   { base_iri, }
 }
 

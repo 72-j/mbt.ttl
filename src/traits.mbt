@@ -24,42 +24,6 @@ pub trait StateWrapper {
 }
 
 ///|
-pub trait IriComponents {
-  fn query(self : Self) -> String?
-  fn is_absolute(self : Self) -> Bool
-  fn scheme(self : Self) -> String?
-  fn authority(self : Self) -> String?
-  fn path(self : Self) -> String?
-  fn fragment(self : Self) -> String?
-}
-
-///|
-pub trait StringRepr {
-  fn as_stringview(self : Self) -> StringView
-  fn into_string(self : Self) -> String
-}
-
-///|
-pub impl StringRepr for Iri with fn as_stringview(self : Iri) -> StringView {
-  self.base_iri
-}
-
-///|
-pub impl StringRepr for Iri with fn into_string(self : Iri) -> String {
-  self.base_iri
-}
-
-///|
-pub impl StringRepr for IriRef with fn as_stringview(self : IriRef) -> StringView {
-  self.val.base_iri
-}
-
-///|
-pub impl StringRepr for IriRef with fn into_string(self : IriRef) -> String {
-  self.val.base_iri
-}
-
-///|
 pub trait TokenRecognizer {
   fn recognize_next_token(
     Self,

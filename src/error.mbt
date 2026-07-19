@@ -1,17 +1,20 @@
 ///|
 pub(all) suberror IriError {
-  NoScheme
-  Expected(Char, Int)
+  /// 没有 scheme
+  NoScheme(Int)
+  /// 无效的 scheme 字符
+  InvalidScheme(Char, Int)
+  /// 无效的字符（IRI 中不允许的）
+  InvalidCharacter(Char, Int)
+  /// 无效的路径
   InvalidPath(Int)
-  InvalidIriCodePoint(Char, Int)
+  /// 无效的授权部分
+  InvalidAuthority(String)
+  /// 无效的 percent 编码
   InvalidPercentEncoding(Int)
-  InvalidHostCharacter(Char, Int)
-  InvalidHostIp(String, Int)
-  InvalidPortCharacter(Char, Int)
-  PathStartingWithTwoSlashes(Int)
-  RelativePathSegment(Char, Int)
-  InvalidErrMessage(String)
-}
+  /// 意外的结束
+  UnexpectedEnd(Int)
+} derive(Debug)
 
 ///|
 pub trait ErrOut {
@@ -23,58 +26,39 @@ pub trait ErrOut {
 ///|
 pub fn IriError::position(self : IriError) -> Int {
   match self {
-    IriError::NoScheme => 0
-    IriError::Expected(_, pos) => pos
-    IriError::InvalidPath(pos) => pos
-    IriError::RelativePathSegment(_, pos) => pos
-    IriError::InvalidHostCharacter(_, pos) => pos
-    IriError::InvalidHostIp(_, pos) => pos
-    IriError::InvalidPortCharacter(_, pos) => pos
-    IriError::InvalidIriCodePoint(_, pos) => pos
-    IriError::InvalidPercentEncoding(pos) => pos
-    IriError::PathStartingWithTwoSlashes(pos) => pos
-    IriError::InvalidErrMessage(_) => 0
-    // _ => 0 // 默认位置
+    NoScheme(p) => p
+    InvalidScheme(_, p) => p
+    InvalidCharacter(_, p) => p
+    InvalidPath(p) => p
+    InvalidAuthority(_) => -1
+    InvalidPercentEncoding(p) => p
+    UnexpectedEnd(p) => p
   }
 }
 
 ///|
 pub impl ErrOut for IriError with fn message(self : IriError) -> String {
   match self {
-    IriError::NoScheme(_) => "The IRI does not have a scheme"
-    IriError::Expected(_, _) => "An expected character was not found"
-    IriError::InvalidPath(_) => "A path character was invalid"
-    IriError::RelativePathSegment(_, _) => "A path segment is relative"
-    IriError::InvalidHostCharacter(_, _) =>
-      "The host contains a character not allowed"
-    IriError::InvalidHostIp(_, _) => "The host is not a valid IP address"
-    IriError::InvalidPortCharacter(_, _) =>
-      "The port contains a character not allowed"
-    IriError::InvalidIriCodePoint(_, _) =>
-      "The IRI contains a code point not allowed"
-    IriError::InvalidPercentEncoding(_) =>
-      "The IRI contains invalid percent encoding"
-    IriError::PathStartingWithTwoSlashes(_) =>
-      "The path starts with two slashes"
-    IriError::InvalidErrMessage(msg) => msg
+    NoScheme(_) => "No scheme found"
+    InvalidScheme(_, _) => "Invalid scheme character"
+    InvalidCharacter(_, _) => "Invalid character"
+    InvalidPath(_) => "Invalid path"
+    InvalidAuthority(msg) => "Invalid authority: \{msg}"
+    InvalidPercentEncoding(_) => "Invalid percent encoding"
+    UnexpectedEnd(_) => "Unexpected end of input"
   }
 }
 
 ///|
 pub impl ErrOut for IriError with fn err_kind(self : IriError) -> String {
   match self {
-    IriError::NoScheme(_) => "NoScheme"
-    IriError::Expected(_, _) => "Expected"
-    IriError::InvalidPath(_) => "InvalidPath"
-    IriError::RelativePathSegment(_, _) => "RelativePathSegment"
-    IriError::InvalidHostCharacter(_, _) => "InvalidHostCharacter"
-    IriError::InvalidHostIp(_, _) => "InvalidHostIp"
-    IriError::InvalidPortCharacter(_, _) => "InvalidPortCharacter"
-    IriError::InvalidIriCodePoint(_, _) => "InvalidIriCodePoint"
-    IriError::InvalidPercentEncoding(_) => "InvalidPercentEncoding"
-    IriError::PathStartingWithTwoSlashes(_) => "PathStartingWithTwoSlashes"
-    IriError::InvalidErrMessage(_) => "InvalidErrMessage"
-    // _ => "UnknownError" // 默认错误类型
+    NoScheme(_) => "NoScheme"
+    InvalidScheme(_, _) => "InvalidScheme"
+    InvalidCharacter(_, _) => "InvalidCharacter"
+    InvalidPath(_) => "InvalidPath"
+    InvalidAuthority(_) => "InvalidAuthority"
+    InvalidPercentEncoding(_) => "InvalidPercentEncoding"
+    UnexpectedEnd(_) => "UnexpectedEnd"
   }
 }
 
