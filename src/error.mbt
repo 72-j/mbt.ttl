@@ -426,7 +426,7 @@ pub(all) suberror TagParseErr {
   EmptyExtension
   EmptyPrivateUse
   ForbiddenChar
-  InvalidSubtag
+  InvalidSubtag(Int, StringView)
   InvalidLanguage
   SubtagTooLong
   EmptySubtag
@@ -440,7 +440,10 @@ pub impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
     TagParseErr::EmptyExtension => logger.write_string("EmptyExtension")
     TagParseErr::EmptyPrivateUse => logger.write_string("EmptyPrivateUse")
     TagParseErr::ForbiddenChar => logger.write_string("ForbiddenChar")
-    TagParseErr::InvalidSubtag => logger.write_string("InvalidSubtag")
+    TagParseErr::InvalidSubtag(_, str) => {
+      logger.write_string("InvalidSubtag: ")
+      logger.write_view(str)
+    }
     TagParseErr::InvalidLanguage => logger.write_string("InvalidLanguage")
     TagParseErr::SubtagTooLong => logger.write_string("SubtagTooLong")
     TagParseErr::EmptySubtag => logger.write_string("EmptySubtag")

@@ -523,9 +523,9 @@ async test "run official n-triples test suite" {
   debug("Failed: \{failed}")
 
   if Array::length(errors) > 0 {
-    debug("\nFailures:")
+    debug("Failures:")
     for err in errors {
-      debug("  - \{err}")
+      debug("Err - \{err}")
     }
     // panic() // 如果有失败，让测试挂掉
   }

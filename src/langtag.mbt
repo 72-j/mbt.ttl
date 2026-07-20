@@ -1,6 +1,6 @@
 ///|
 pub(all) struct LanguageTag {
-  tag : String
+  tag : StringView
   positions : TagElementsPositions
 } derive(Debug, Default, Hash, Eq)
 
@@ -47,23 +47,26 @@ struct TagElementsPositions {
 ///|
 pub fn LanguageTag::parse(tag : StringView) -> Result[LanguageTag, TagParseErr] {
   match parse_language_tag(tag) {
-    Ok(pos) => Ok({ tag: tag.to_owned(), positions: pos })
+    Ok(pos) => Ok({ tag, positions: pos })
     Err(e) => Err(e)
   }
 }
 
 ///|
 pub fn LanguageTag::into_str(self : LanguageTag) -> String {
-  self.tag
+  self.tag.to_owned()
 }
 
 ///|
-pub fn LanguageTag::primary_language(self : LanguageTag) -> String {
-  sub_string(self.tag, 0, self.positions.language_end)
+pub fn LanguageTag::primary_language(self : LanguageTag) -> StringView? {
+  if self.positions.language_end <= 0 {
+    return Some("")
+  }
+  extract_subtag(self.tag, 0, self.positions.language_end)
 }
 
 ///|
-pub fn LanguageTag::extended_language(self : LanguageTag) -> String? {
+pub fn LanguageTag::extended_language(self : LanguageTag) -> StringView? {
   if self.positions.language_end == self.positions.extlang_end {
     None
   } else {
@@ -80,18 +83,18 @@ pub fn LanguageTag::extended_language(self : LanguageTag) -> String? {
 ///|
 pub fn LanguageTag::extended_language_subtags(
   self : LanguageTag,
-) -> Array[String] {
+) -> Array[StringView] {
   let s = self.extended_language().unwrap_or("")
-  split_to_strings(s, '-')
+  split_stringview(s, '-')
 }
 
 ///|
-pub fn LanguageTag::full_language(self : LanguageTag) -> String {
-  sub_string(self.tag, 0, self.positions.extlang_end)
+pub fn LanguageTag::full_language(self : LanguageTag) -> StringView {
+  extract_subtag(self.tag, 0, self.positions.extlang_end).unwrap_or("")
 }
 
 ///|
-pub fn LanguageTag::script(self : LanguageTag) -> String? {
+pub fn LanguageTag::script(self : LanguageTag) -> StringView? {
   if self.positions.extlang_end == self.positions.script_end {
     None
   } else {
@@ -106,7 +109,7 @@ pub fn LanguageTag::script(self : LanguageTag) -> String? {
 }
 
 ///|
-pub fn LanguageTag::region(self : LanguageTag) -> String? {
+pub fn LanguageTag::region(self : LanguageTag) -> StringView? {
   if self.positions.script_end == self.positions.region_end {
     None
   } else {
@@ -121,7 +124,7 @@ pub fn LanguageTag::region(self : LanguageTag) -> String? {
 }
 
 ///|
-pub fn LanguageTag::variant(self : LanguageTag) -> String? {
+pub fn LanguageTag::variant(self : LanguageTag) -> StringView? {
   if self.positions.region_end == self.positions.variant_end {
     None
   } else {
@@ -136,13 +139,13 @@ pub fn LanguageTag::variant(self : LanguageTag) -> String? {
 }
 
 ///|
-pub fn LanguageTag::variant_subtags(self : LanguageTag) -> Array[String] {
+pub fn LanguageTag::variant_subtags(self : LanguageTag) -> Array[StringView] {
   let s = self.variant().unwrap_or("")
-  split_to_strings(s, '-')
+  split_stringview(s, '-')
 }
 
 ///|
-pub fn LanguageTag::extension(self : LanguageTag) -> String? {
+pub fn LanguageTag::extension(self : LanguageTag) -> StringView? {
   if self.positions.variant_end == self.positions.extension_end {
     None
   } else {
@@ -158,14 +161,11 @@ pub fn LanguageTag::extension(self : LanguageTag) -> String? {
 
 ///|
 pub fn LanguageTag::extension_subtags(self : LanguageTag) -> ExtensionsIterator {
-  match self.extension() {
-    Some(parts) => ExtensionsIterator::ExtensionsIterator(parts)
-    None => ExtensionsIterator::ExtensionsIterator("")
-  }
+  ExtensionsIterator::ExtensionsIterator(self.extension().unwrap_or(""))
 }
 
 ///|
-pub fn LanguageTag::private_use(self : LanguageTag) -> String? {
+pub fn LanguageTag::private_use(self : LanguageTag) -> StringView? {
   // 查找 x 的位置
   let tag_str = self.tag
   if tag_str.find("-x-") is Some(x_pos) {
@@ -180,17 +180,18 @@ pub fn LanguageTag::private_use(self : LanguageTag) -> String? {
 }
 
 ///|
-pub fn LanguageTag::private_use_subtags(self : LanguageTag) -> Array[String] {
-  let opt = self.private_use()
-  match opt {
+pub fn LanguageTag::private_use_subtags(
+  self : LanguageTag,
+) -> Array[StringView] {
+  match self.private_use() {
     None => []
-    Some(part) => split_to_strings(sub_string(part, 2, part.length()), '-')
+    Some(part) => split_stringview(sub_string(part, 2, part.length()), '-')
   }
 }
 
 ///|
 pub fn LanguageTag::parse_and_normalize(
-  tag : String,
+  tag : StringView,
 ) -> Result[LanguageTag, TagParseErr] {
   match normalize_tag(tag) {
     Ok(normalized) => LanguageTag::parse(normalized)
@@ -199,7 +200,9 @@ pub fn LanguageTag::parse_and_normalize(
 }
 
 ///|
-pub fn parse_primary_language(subtag : String) -> Result[String, TagParseErr] {
+pub fn parse_primary_language(
+  subtag : StringView,
+) -> Result[StringView, TagParseErr] {
   let len = subtag.length()
 
   // 快速长度过滤
@@ -212,33 +215,16 @@ pub fn parse_primary_language(subtag : String) -> Result[String, TagParseErr] {
     return Err(TagParseErr::ForbiddenChar)
   }
 
-  // 根据长度分类
-  match len {
-    2 =>
-      // 2字母语言代码 (ISO 639-1)
-      // 可选：在此处查表验证是否为注册代码，若需宽松模式则直接通过
-      Ok(subtag.to_lower())
-    3 =>
-      // 3字母语言代码 (ISO 639-2/3)
-      // 可选：在此处查表验证
-      Ok(subtag.to_lower())
-    4..=8 =>
-      // 4-8字母语言代码 (Registered languages)
-      // 标准规定只要格式符合即视为 Well-formed，无需查表
-      Ok(subtag.to_lower())
-    _ =>
-      // 理论上前面已经过滤了 <2 和 >8，这里是防御性编程
-      Err(TagParseErr::InvalidLanguageLength)
-  }
+  Ok(subtag.to_lower())
 }
 
 ///|
 pub impl Show for LanguageTag with fn to_string(self : LanguageTag) -> String {
-  self.tag
+  self.tag.to_owned()
 }
 
 ///|
-fn sub_string(s : String, start : Int, end : Int) -> String {
+fn sub_string(s : StringView, start : Int, end : Int) -> StringView {
   if start >= s.length() {
     return ""
   }
@@ -251,14 +237,11 @@ fn sub_string(s : String, start : Int, end : Int) -> String {
 }
 
 ///|
-fn split_to_strings(s : String, delim : Char) -> Array[String] {
+fn split_stringview(s : StringView, delim : Char) -> Array[StringView] {
   if s.is_empty() {
     return []
   }
-  s
-  .split(String::from_array([delim]))
-  .map(fn(part) { part.to_owned() })
-  .collect()
+  s.split(StringView::from_array([delim])).collect()
 }
 
 ///|
@@ -268,7 +251,6 @@ fn parse_language_tag(
   if input.is_empty() {
     return Err(TagParseErr::EmptySubtag)
   }
-  let subtags = input.split("-").to_array()
   // Check for grandfathered tags
   for record in grandfathereds {
     if eq_ignore_ascii_case(record, input) {
@@ -306,17 +288,17 @@ fn parse_language_tag(
 }
 
 ///|
-fn split_with_positions(input : StringView) -> Iter[(String, Int)] {
+fn split_with_positions(input : StringView) -> Array[(StringView, Int)] {
   // 返回 (subtag, end_position) 对
   // end_position 是 subtag 结束位置的索引
   let mut pos = 0
-  let results = []
+  let results : Array[(StringView, Int)] = []
   for subtag in input.split("-") {
     let s = subtag.to_owned()
     pos += s.length() + 1
     results.push((s, pos - 1))
   }
-  results.iter()
+  results
 }
 
 ///|
@@ -363,7 +345,7 @@ fn calculate_positions(
       State::InPrivateUse(_expected) => {
         // 私有使用内容
         if subtag.is_empty() || subtag.length() > 8 {
-          return Err(TagParseErr::InvalidSubtag)
+          return Err(TagParseErr::InvalidSubtag(end, subtag))
         }
         // 不检查 is_alphanumeric
         state = State::InPrivateUse(false)
@@ -405,7 +387,7 @@ fn calculate_positions(
         // 4. 扩展内容
         if state is State::InExtension(_) {
           if !is_alphanumeric(subtag) {
-            return Err(TagParseErr::InvalidSubtag)
+            return Err(TagParseErr::InvalidSubtag(end, subtag))
           }
           extension_end = end
           state = State::InExtension(false)
@@ -459,7 +441,7 @@ fn calculate_positions(
           continue
         }
 
-        return Err(TagParseErr::InvalidSubtag)
+        return Err(TagParseErr::InvalidSubtag(end, subtag))
       }
     }
   }
@@ -503,7 +485,7 @@ fn calculate_positions(
 }
 
 ///|
-fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
+fn normalize_tag(input : StringView) -> Result[StringView, TagParseErr] {
   for record in grandfathereds {
     if eq_ignore_ascii_case(record, input) {
       return Ok(record.to_owned())
@@ -518,7 +500,7 @@ fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
       return Err(TagParseErr::EmptyPrivateUse)
     }
     // 私有使用标签整体小写
-    return Ok(String::to_lower(input.to_owned()))
+    return Ok(StringView::to_lower(input.to_owned()))
   }
 
   let result = StringBuilder::new()
@@ -554,33 +536,33 @@ fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
       subtag_str.length() == 1 &&
       is_alphanumeric(subtag_str) {
       is_in_extension = true
-      result.write_string(String::to_lower(subtag_str))
+      result.write_view(StringView::to_lower(subtag_str))
       continue
     }
 
     if is_private_use {
       // 私有子标签始终小写
-      result.write_string(String::to_lower(subtag_str))
+      result.write_view(StringView::to_lower(subtag_str))
     } else if is_in_extension {
       // 扩展子标签始终小写
-      result.write_string(String::to_lower(subtag_str))
+      result.write_view(StringView::to_lower(subtag_str))
     } else if is_primary { // ✅ 使用标志
       // 主语言子标签：小写
-      result.write_string(String::to_lower(subtag_str))
+      result.write_view(StringView::to_lower(subtag_str))
       is_primary = false
     } else if subtag_str.length() == 3 && is_alphabetic(subtag_str) {
       // 扩展语言子标签：小写
-      result.write_string(String::to_lower(subtag_str))
+      result.write_view(StringView::to_lower(subtag_str))
     } else if subtag_str.length() == 4 && is_alphabetic(subtag_str) {
       // 脚本子标签：标题大小写 (Latn)
-      result.write_string(to_title_case(subtag_str))
+      result.write_view(to_title_case(subtag_str))
     } else if (subtag_str.length() == 2 && is_alphabetic(subtag_str)) ||
       (subtag_str.length() == 3 && is_numeric(subtag_str)) {
       // 地区子标签：大写 (US, 419)
-      result.write_string(String::to_upper(subtag_str))
+      result.write_view(StringView::to_upper(subtag_str))
     } else {
       // 变体和其他：小写
-      result.write_string(String::to_lower(subtag_str))
+      result.write_view(StringView::to_lower(subtag_str))
     }
   }
   Ok(result.to_string())
@@ -588,36 +570,38 @@ fn normalize_tag(input : StringView) -> Result[String, TagParseErr] {
 
 ///|
 pub(all) struct ExtensionsIterator {
-  input : String
-  subtags : Array[String]
+  input : StringView
+  subtags : Array[StringView]
   index : Int
 }
 
 ///|
-fn ExtensionsIterator::ExtensionsIterator(input : String) -> ExtensionsIterator {
-  let subtags = if input.is_empty() { [] } else { split_to_strings(input, '-') }
+fn ExtensionsIterator::ExtensionsIterator(
+  input : StringView,
+) -> ExtensionsIterator {
+  let subtags = if input.is_empty() { [] } else { split_stringview(input, '-') }
   { input, subtags, index: 0 }
 }
 
 ///|
-fn ExtensionsIterator::next(
-  self : ExtensionsIterator,
-) -> (String?, ExtensionsIterator) {
-  if self.index >= self.subtags.length() {
-    (None, self)
-  } else {
-    let tag = self.subtags[self.index]
-    let next_iter = {
-      input: self.input,
-      subtags: self.subtags,
-      index: self.index + 1,
-    }
-    (Some(tag), next_iter)
-  }
-}
+// fn ExtensionsIterator::next(
+//   self : ExtensionsIterator,
+// ) -> (StringView?, ExtensionsIterator) {
+//   if self.index >= self.subtags.length() {
+//     (None, self)
+//   } else {
+//     let tag = self.subtags[self.index]
+//     let next_iter = {
+//       input: self.input,
+//       subtags: self.subtags,
+//       index: self.index + 1,
+//     }
+//     (Some(tag), next_iter)
+//   }
+// }
 
 ///|
-fn classify_subtag(s : StringView) -> SubtagType {
+pub fn classify_subtag(s : StringView) -> SubtagType {
   if s.is_empty() {
     return SubtagType::Invalid
   }
@@ -650,28 +634,28 @@ fn classify_subtag(s : StringView) -> SubtagType {
 }
 
 ///|
-fn extract_subtag(tag : String, start : Int, end : Int) -> String? {
-  if start >= end {
+fn extract_subtag(tag : StringView, start : Int, end : Int) -> StringView? {
+  if start >= end || start < 0 {
     None
   } else {
-    Some(sub_string(tag, start + 1, end))
+    Some(sub_string(tag, start, end))
   }
 }
 
 ///|
-fn normalize_subtag(
-  subtag : String,
-  is_primary : Bool,
-  is_in_extension : Bool,
-) -> String {
-  if is_primary {
-    String::to_lower(subtag)
-  } else if subtag.length() == 4 && is_alphabetic(subtag) {
-    to_title_case(subtag)
-  } else {
-    String::to_lower(subtag)
-  }
-}
+// fn normalize_subtag(
+//   subtag : StringView,
+//   is_primary : Bool,
+//   is_in_extension : Bool,
+// ) -> StringView {
+//   if is_primary {
+//     StringView::to_lower(subtag)
+//   } else if subtag.length() == 4 && is_alphabetic(subtag) {
+//     to_title_case(subtag)
+//   } else {
+//     StringView::to_lower(subtag)
+//   }
+// }
 
 ///|
 let grandfathereds : Array[StringView] = [

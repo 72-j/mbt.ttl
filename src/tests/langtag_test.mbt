@@ -49,101 +49,127 @@ test "formatting" {
 test "primary language" {
   @debug.assert_eq(
     "fr",
-    @lib.LanguageTag::parse_and_normalize("fr").unwrap().primary_language(),
+    @lib.LanguageTag::parse_and_normalize("fr")
+    .unwrap()
+    .primary_language()
+    .unwrap()
+    .to_owned(),
   )
   @debug.assert_eq(
     "de",
-    @lib.LanguageTag::parse_and_normalize("de").unwrap().primary_language(),
+    @lib.LanguageTag::parse_and_normalize("de")
+    .unwrap()
+    .primary_language()
+    .unwrap()
+    .to_owned(),
   )
   @debug.assert_eq(
     "x-fr-ch",
-    @lib.LanguageTag::parse_and_normalize("x-fr-CH").unwrap().primary_language(),
+    @lib.LanguageTag::parse_and_normalize("x-fr-CH")
+    .unwrap()
+    .primary_language()
+    .unwrap()
+    .to_owned(),
   )
   @debug.assert_eq(
     "i-klingon",
     @lib.LanguageTag::parse_and_normalize("i-klingon")
     .unwrap()
-    .primary_language(),
+    .primary_language()
+    .unwrap()
+    .to_owned(),
   )
   @debug.assert_eq(
     "i-bnn",
-    @lib.LanguageTag::parse_and_normalize("i-bnn").unwrap().primary_language(),
+    @lib.LanguageTag::parse_and_normalize("i-bnn")
+    .unwrap()
+    .primary_language()
+    .unwrap()
+    .to_owned(),
   )
   @debug.assert_eq(
     "zh-hakka",
     @lib.LanguageTag::parse_and_normalize("zh-hakka")
     .unwrap()
-    .primary_language(),
+    .primary_language()
+    .unwrap()
+    .to_owned(),
   )
 }
 
 ///|
 test "extended language" {
   let tag_zh = @lib.LanguageTag::parse("zh").unwrap()
-  @debug.assert_eq("zh", tag_zh.full_language())
-  @debug.assert_eq("zh", tag_zh.primary_language())
+  @debug.assert_eq("zh", tag_zh.full_language().to_owned())
+  @debug.assert_eq("zh", tag_zh.primary_language().unwrap().to_owned())
   @debug.assert_eq(None, tag_zh.extended_language())
 
   @debug.assert_eq([], tag_zh.extended_language_subtags())
 
   let tag_zh_gan = @lib.LanguageTag::parse("zh-gan").unwrap()
-  @debug.assert_eq("zh-gan", tag_zh_gan.full_language())
-  @debug.assert_eq("zh", tag_zh_gan.primary_language())
-  @debug.assert_eq(Some("gan"), tag_zh_gan.extended_language())
-  @debug.assert_eq(["gan"], tag_zh_gan.extended_language_subtags())
+  @debug.assert_eq("zh-gan"[:], tag_zh_gan.full_language().to_owned())
+  @debug.assert_eq("zh", tag_zh_gan.primary_language().unwrap().to_owned())
+  @debug.assert_eq(Some("gan"[:]), tag_zh_gan.extended_language())
+  @debug.assert_eq(["gan"[:]], tag_zh_gan.extended_language_subtags())
 
   let tag_zh_gan_foo = @lib.LanguageTag::parse("zh-gan-foo").unwrap()
-  @debug.assert_eq("zh-gan-foo", tag_zh_gan_foo.full_language())
-  @debug.assert_eq("zh", tag_zh_gan_foo.primary_language())
-  @debug.assert_eq(Some("gan-foo"), tag_zh_gan_foo.extended_language())
-  @debug.assert_eq(["gan", "foo"], tag_zh_gan_foo.extended_language_subtags())
+  @debug.assert_eq("zh-gan-foo"[:], tag_zh_gan_foo.full_language().to_owned())
+  @debug.assert_eq("zh", tag_zh_gan_foo.primary_language().unwrap().to_owned())
+  @debug.assert_eq(Some("gan-foo"[:]), tag_zh_gan_foo.extended_language())
+  @debug.assert_eq(
+    ["gan"[:], "foo"],
+    tag_zh_gan_foo.extended_language_subtags(),
+  )
 
   let tag_zh_min_nan = @lib.LanguageTag::parse("zh-min-nan").unwrap()
-  @debug.assert_eq("zh-min-nan", tag_zh_min_nan.full_language())
-  @debug.assert_eq("zh-min-nan", tag_zh_min_nan.primary_language())
+  @debug.assert_eq("zh-min-nan"[:], tag_zh_min_nan.full_language().to_owned())
+  @debug.assert_eq(
+    "zh-min-nan",
+    tag_zh_min_nan.primary_language().unwrap().to_owned(),
+  )
   @debug.assert_eq(None, tag_zh_min_nan.extended_language())
 
   @debug.assert_eq(0, tag_zh_min_nan.extended_language_subtags().length())
 
   let tag_i_tsu = @lib.LanguageTag::parse("i-tsu").unwrap()
-  @debug.assert_eq("i-tsu", tag_i_tsu.full_language())
-  @debug.assert_eq("i-tsu", tag_i_tsu.primary_language())
+  @debug.assert_eq("i-tsu", tag_i_tsu.full_language().to_owned())
+  @debug.assert_eq("i-tsu", tag_i_tsu.primary_language().unwrap().to_owned())
   @debug.assert_eq(None, tag_i_tsu.extended_language())
 
   @debug.assert_eq(0, tag_i_tsu.extended_language_subtags().length())
 
   let tag_zh_cn = @lib.LanguageTag::parse("zh-CN").unwrap()
-  @debug.assert_eq("zh", tag_zh_cn.full_language())
-  @debug.assert_eq("zh", tag_zh_cn.primary_language())
+  @debug.assert_eq("zh", tag_zh_cn.full_language().to_owned())
+  @debug.assert_eq("zh", tag_zh_cn.primary_language().unwrap().to_owned())
   @debug.assert_eq(None, tag_zh_cn.extended_language())
 
   @debug.assert_eq(0, tag_zh_cn.extended_language_subtags().length())
 
   let tag_zh_gan_cn = @lib.LanguageTag::parse("zh-gan-CN").unwrap()
-  @debug.assert_eq("zh-gan", tag_zh_gan_cn.full_language())
-  @debug.assert_eq("zh", tag_zh_gan_cn.primary_language())
-  @debug.assert_eq(Some("gan"), tag_zh_gan_cn.extended_language())
-  @debug.assert_eq(["gan"], tag_zh_gan_cn.extended_language_subtags())
+  @debug.assert_eq("zh-gan", tag_zh_gan_cn.full_language().to_owned())
+  @debug.assert_eq("zh", tag_zh_gan_cn.primary_language().unwrap().to_owned())
+  @debug.assert_eq(Some("gan"[:]), tag_zh_gan_cn.extended_language())
+  @debug.assert_eq(["gan"[:]], tag_zh_gan_cn.extended_language_subtags())
 
   let tag_ar_afb = @lib.LanguageTag::parse("ar-afb").unwrap()
-  @debug.assert_eq("ar-afb", tag_ar_afb.full_language())
-  @debug.assert_eq("ar", tag_ar_afb.primary_language())
+  @debug.assert_eq("ar-afb", tag_ar_afb.full_language().to_owned())
+  @debug.assert_eq("ar", tag_ar_afb.primary_language().unwrap().to_owned())
   match tag_ar_afb.extended_language() {
     Some(ext) => @debug.assert_eq(ext, "afb")
     None => fail("Expected extended language 'afb', got None")
   }
-  @debug.assert_eq(["afb"], tag_ar_afb.extended_language_subtags())
-  @debug.assert_eq(["afb"], tag_ar_afb.extended_language_subtags())
+  @debug.assert_eq(["afb"[:]], tag_ar_afb.extended_language_subtags())
+  @debug.assert_eq(["afb"[:]], tag_ar_afb.extended_language_subtags())
 }
 
 ///|
 test "script" {
   @debug.assert_eq(
-    Some("Latn"),
+    Some("Latn"[:]),
     @lib.LanguageTag::parse("sr-Latn").unwrap().script(),
   )
   @debug.assert_eq(
-    Some("Latn"),
+    Some("Latn"[:]),
     @lib.LanguageTag::parse("ar-afb-Latn").unwrap().script(),
   )
 }
@@ -151,23 +177,23 @@ test "script" {
 ///|
 test "region" {
   @debug.assert_eq(
-    Some("AT"),
+    Some("AT"[:]),
     @lib.LanguageTag::parse("de-AT").unwrap().region(),
   )
   @debug.assert_eq(
-    Some("RS"),
+    Some("RS"[:]),
     @lib.LanguageTag::parse("sr-Latn-RS").unwrap().region(),
   )
   @debug.assert_eq(
-    Some("419"),
+    Some("419"[:]),
     @lib.LanguageTag::parse("es-419").unwrap().region(),
   )
   @debug.assert_eq(
-    Some("DE"),
+    Some("DE"[:]),
     @lib.LanguageTag::parse("ar-DE").unwrap().region(),
   )
   @debug.assert_eq(
-    Some("005"),
+    Some("005"[:]),
     @lib.LanguageTag::parse("ar-005").unwrap().region(),
   )
 }
@@ -176,11 +202,11 @@ test "region" {
 test "variant" {
   @debug.assert_eq([], @lib.LanguageTag::parse("sl").unwrap().variant_subtags())
   @debug.assert_eq(
-    ["nedis"],
+    ["nedis"[:]],
     @lib.LanguageTag::parse("sl-nedis").unwrap().variant_subtags(),
   )
   @debug.assert_eq(
-    ["1996"],
+    ["1996"[:]],
     @lib.LanguageTag::parse("de-CH-1996").unwrap().variant_subtags(),
   )
   @debug.assert_eq(
@@ -193,21 +219,21 @@ test "variant" {
 test "extension" {
   @debug.assert_eq(None, @lib.LanguageTag::parse("en").unwrap().extension())
   let tag_ext = @lib.LanguageTag::parse("en-a-bbb-x-a-ccc").unwrap()
-  @debug.assert_eq(Some("a-bbb"), tag_ext.extension())
+  @debug.assert_eq(Some("a-bbb"[:]), tag_ext.extension())
 
   let tag_multi_ext = @lib.LanguageTag::parse("en-a-babble-b-warble").unwrap()
-  @debug.assert_eq(Some("a-babble-b-warble"), tag_multi_ext.extension())
+  @debug.assert_eq(Some("a-babble-b-warble"[:]), tag_multi_ext.extension())
 
   let tag_fr = @lib.LanguageTag::parse("fr-a-Latn").unwrap()
-  @debug.assert_eq(Some("a-Latn"), tag_fr.extension())
+  @debug.assert_eq(Some("a-Latn"[:]), tag_fr.extension())
 
   let tag_complex = @lib.LanguageTag::parse(
     "en-Latn-GB-boont-r-extended-sequence-x-private",
   ).unwrap()
-  @debug.assert_eq(Some("r-extended-sequence"), tag_complex.extension())
+  @debug.assert_eq(Some("r-extended-sequence"[:]), tag_complex.extension())
 
   let tag_r = @lib.LanguageTag::parse("en-r-az-r-qt").unwrap()
-  @debug.assert_eq(Some("r-az-r-qt"), tag_r.extension())
+  @debug.assert_eq(Some("r-az-r-qt"[:]), tag_r.extension())
 
   @debug.assert_eq(None, @lib.LanguageTag::parse("i-tsu").unwrap().extension())
 }
@@ -216,38 +242,38 @@ test "extension" {
 test "privateuse" {
   @debug.assert_eq(None, @lib.LanguageTag::parse("en").unwrap().private_use())
   @debug.assert_eq(
-    Some("x-US"),
+    Some("x-US"[:]),
     @lib.LanguageTag::parse("en-x-US").unwrap().private_use(),
   )
   @debug.assert_eq(
-    ["US"],
+    ["US"[:]],
     @lib.LanguageTag::parse("en-x-US").unwrap().private_use_subtags(),
   )
 
   @debug.assert_eq(
-    Some("x-koine"),
+    Some("x-koine"[:]),
     @lib.LanguageTag::parse("el-x-koine").unwrap().private_use(),
   )
   @debug.assert_eq(
-    ["koine"],
+    ["koine"[:]],
     @lib.LanguageTag::parse("el-x-koine").unwrap().private_use_subtags(),
   )
 
   @debug.assert_eq(
-    Some("x-fr-ch"),
+    Some("x-fr-ch"[:]),
     @lib.LanguageTag::parse("x-fr-ch").unwrap().private_use(),
   )
   @debug.assert_eq(
-    ["fr", "ch"],
+    ["fr"[:], "ch"[:]],
     @lib.LanguageTag::parse("x-fr-ch").unwrap().private_use_subtags(),
   )
 
   @debug.assert_eq(
-    Some("x-foobar-AT-007"),
+    Some("x-foobar-AT-007"[:]),
     @lib.LanguageTag::parse("es-x-foobar-AT-007").unwrap().private_use(),
   )
   @debug.assert_eq(
-    ["foobar", "AT", "007"],
+    ["foobar"[:], "AT"[:], "007"[:]],
     @lib.LanguageTag::parse("es-x-foobar-AT-007").unwrap().private_use_subtags(),
   )
 }
@@ -450,7 +476,7 @@ test "eq" {
   let tag = @lib.LanguageTag::parse("en-fr").unwrap()
   @debug.assert_eq(tag.tag, "en-fr")
   assert_not_eq(tag.tag, "en-FR")
-  @debug.assert_eq("en-fr", tag.tag)
+  @debug.assert_eq("en-fr", tag.tag.to_owned())
 }
 
 ///|
@@ -588,7 +614,7 @@ test "extension_subtags iteration" {
 
   let collected = []
   for subtag in lang_tag.extension_subtags().subtags {
-    collected.push(subtag.to_string())
+    collected.push(subtag.to_owned())
   }
 
   @debug.assert_eq(collected, ["u", "co", "phonebk", "ca", "gregory"])
@@ -614,7 +640,7 @@ test "extension_subtags single extension intro" {
 
   let collected = []
   for subtag in lang_tag.extension_subtags().subtags {
-    collected.push(subtag.to_string())
+    collected.push(subtag.to_owned())
   }
 
   @debug.assert_eq(collected, ["u", "co"])
@@ -627,7 +653,7 @@ test "extension_subtags multiple extensions" {
 
   let collected = []
   for subtag in lang_tag.extension_subtags().subtags {
-    collected.push(subtag.to_string())
+    collected.push(subtag.to_owned())
   }
 
   @debug.assert_eq(collected, ["u", "co", "phonebk", "t", "it"])
