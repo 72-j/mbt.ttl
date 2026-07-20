@@ -5,7 +5,7 @@ pub(all) struct LanguageTag {
 } derive(Debug, Default, Hash, Eq)
 
 ///|
-enum State {
+priv enum State {
   Start
   AfterLanguage
   AfterLongLanguage // 主语言 4-8 位，不允许 Extlang
@@ -14,7 +14,7 @@ enum State {
   AfterRegion
   InExtension(Bool) // true = 期待扩展内容
   InPrivateUse(Bool) // true = 期待私有使用内容
-} derive(Hash, Eq)
+} derive(Eq)
 
 // 已知的遗留 3 字母变体 (RFC 5646 允许)
 
@@ -199,7 +199,7 @@ pub fn LanguageTag::parse_and_normalize(
 }
 
 ///|
-fn parse_primary_language(subtag : String) -> Result[String, TagParseErr] {
+pub fn parse_primary_language(subtag : String) -> Result[String, TagParseErr] {
   let len = subtag.length()
 
   // 快速长度过滤
@@ -268,6 +268,7 @@ fn parse_language_tag(
   if input.is_empty() {
     return Err(TagParseErr::EmptySubtag)
   }
+  let subtags = input.split("-").to_array()
   // Check for grandfathered tags
   for record in grandfathereds {
     if eq_ignore_ascii_case(record, input) {
@@ -599,7 +600,7 @@ fn ExtensionsIterator::ExtensionsIterator(input : String) -> ExtensionsIterator 
 }
 
 ///|
-pub fn ExtensionsIterator::next(
+fn ExtensionsIterator::next(
   self : ExtensionsIterator,
 ) -> (String?, ExtensionsIterator) {
   if self.index >= self.subtags.length() {
@@ -616,7 +617,7 @@ pub fn ExtensionsIterator::next(
 }
 
 ///|
-pub fn classify_subtag(s : StringView) -> SubtagType {
+fn classify_subtag(s : StringView) -> SubtagType {
   if s.is_empty() {
     return SubtagType::Invalid
   }
@@ -646,6 +647,30 @@ pub fn classify_subtag(s : StringView) -> SubtagType {
   }
 
   SubtagType::Invalid
+}
+
+///|
+fn extract_subtag(tag : String, start : Int, end : Int) -> String? {
+  if start >= end {
+    None
+  } else {
+    Some(sub_string(tag, start + 1, end))
+  }
+}
+
+///|
+fn normalize_subtag(
+  subtag : String,
+  is_primary : Bool,
+  is_in_extension : Bool,
+) -> String {
+  if is_primary {
+    String::to_lower(subtag)
+  } else if subtag.length() == 4 && is_alphabetic(subtag) {
+    to_title_case(subtag)
+  } else {
+    String::to_lower(subtag)
+  }
 }
 
 ///|

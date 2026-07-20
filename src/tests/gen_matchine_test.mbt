@@ -510,7 +510,7 @@ async test "run official n-triples test suite" {
       let status = if is_bad_test {
         "Should have failed but passed"
       } else {
-        "Should have passed but failed"
+        "Should have failed!"
       }
       errors.push("\{file}: \{status}")
     }

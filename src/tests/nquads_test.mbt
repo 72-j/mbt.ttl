@@ -4,6 +4,9 @@ test "parse basic quad" {
   let low_level = parser.low_level()
 
   let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> ."
+  // let input = 
+  // #| <http://example/s> <http://example/p> "abc' .
+
   low_level.extend_from_slice(@utf8.encode(input).to_array())
   low_level.end()
 

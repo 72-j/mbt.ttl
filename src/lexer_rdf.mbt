@@ -783,6 +783,7 @@ fn RdfLexer::recognize_optional_pn_local(
 
 ///|
 fn RdfLexer::recognize_blank_node_label(
+  _self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
   location_pos : SourcePos,
@@ -1272,6 +1273,7 @@ fn RdfLexer::recognize_long_string(
 
 ///|
 fn RdfLexer::recognize_number(
+  _self : RdfLexer,
   data : ArrayView[Byte],
   is_ending : Bool,
   location_pos : SourcePos,

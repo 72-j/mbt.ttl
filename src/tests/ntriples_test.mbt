@@ -327,11 +327,11 @@ async test "test bad n-triples files" {
 
 ///|
 async test "test bad file" {
-  let path = "src/tests/src/rdf/rdf11/bak/nt-syntax-bad-uri-01.nt"
+  let path = "src/tests/src/rdf/rdf11/bak/nt-syntax-bad-uri-01"
 
   debug("Testing: \{path}")
 
-  let content = @fs.read_file(path).binary().to_array()
+  let content = @fs.read_file(path + ".nt").binary().to_array()
   debug(
     "Content: \{@debug.to_string(@utf8.decode(@lib.array_to_view(content)))}",
   )

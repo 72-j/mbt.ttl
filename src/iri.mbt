@@ -61,7 +61,8 @@ fn parse_iri_body(scheme : StringView) -> IriParser[IriR] {
     .optional()
     .map(fn(opt) -> StringView? {
       match opt {
-        Some(chars) => Some(chars.fold(init="", fn(a, b) { a + b.to_string() }))
+        Some(chars) =>
+          Some(chars.fold(init=""[:], fn(a, b) { a + b.to_string() }))
         None => None
       }
     })
@@ -81,7 +82,8 @@ fn parse_iri_body(scheme : StringView) -> IriParser[IriR] {
     .optional()
     .map(fn(opt) -> StringView? {
       match opt {
-        Some(chars) => Some(chars.fold(init="", fn(a, b) { a + b.to_string() }))
+        Some(chars) =>
+          Some(chars.fold(init=""[:], fn(a, b) { a + b.to_string() }))
         None => None
       }
     })
@@ -102,7 +104,8 @@ fn parse_iri_body(scheme : StringView) -> IriParser[IriR] {
     .optional()
     .map(fn(opt) -> StringView? {
       match opt {
-        Some(chars) => Some(chars.fold(init="", fn(a, b) { a + b.to_string() }))
+        Some(chars) =>
+          Some(chars.fold(init=""[:], fn(a, b) { a + b.to_string() }))
         None => None
       }
     })
@@ -117,8 +120,8 @@ fn parse_iri_body(scheme : StringView) -> IriParser[IriR] {
       }
     })
     .repeat()
-    .map(fn(chars) -> String {
-      chars.fold(init="", fn(a, b) { a + b.to_string() })
+    .map(fn(chars) -> StringView {
+      chars.fold(init=""[:], fn(a, b) { a + b.to_string() })
     })
 
   // 完整解析器
@@ -325,35 +328,47 @@ pub fn IriR::relativize(self : IriR, target : IriR) -> Result[IriR, IriError] {
 
 ///|
 pub fn IriR::into_string(self : IriR) -> String {
-  let mut s = ""
+  let s = StringBuilder::new()
 
   // scheme
   if self.scheme.length() > 0 {
-    s = s + self.scheme.to_owned() + ":"
+    s.write_view(self.scheme)
+    s.write_char(':')
   }
 
   // authority
   match self.authority {
-    Some(auth) => s = s + "//" + auth.to_owned()
+    Some(auth) => {
+      s.write_string("//")
+      if auth.length() > 0 {
+        // 添加 authority
+        s.write_view(auth)
+      }
+    }
     None => ()
   }
 
   // path
-  s = s + self.path.to_owned()
-
+  s.write_view(self.path)
   // query
   match self.query {
-    Some(q) => s = s + "?" + q.to_owned()
+    Some(q) => {
+      s.write_char('?')
+      s.write_view(q)
+    }
     None => ()
   }
 
   // fragment
   match self.fragment {
-    Some(f) => s = s + "#" + f.to_owned()
+    Some(f) => {
+      s.write_char('#')
+      s.write_view(f)
+    }
     None => ()
   }
 
-  s
+  s.to_string()
 }
 
 ///|
