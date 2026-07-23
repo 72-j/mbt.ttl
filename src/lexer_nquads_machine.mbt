@@ -48,6 +48,13 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
 
   let token = event
   self.debug_logger.info("NQuads State: \{nquads_state}, Event: \{token}")
+  let token_name = match token.0 {
+    N3Token::Punctuation(p) => "Punctuation('\{p}')"
+    N3Token::PlainKeyword(k) => "PlainKeyword('\{k}')"
+    N3Token::Iri(i) => "Iri('\{i}')"
+    _ => "Other"
+  }
+  self.debug_logger.info("[DEBUG] ExpectDotOrGraphName token: \{token_name}")
 
   let (next_state, action) = match (nquads_state, token) {
     // ── Start / ExpectSubject ─────────────────────────────────
@@ -137,7 +144,11 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
     }
 
     // ── ExpectDotOrGraphName ───────────────────────────────────
-    (ExpectDotOrGraphName, LocatedToken(N3Token::Punctuation("."), _)) => {
+    (
+      ExpectDotOrGraphName,
+      LocatedToken(N3Token::Punctuation("."), _)
+      | LocatedToken(N3Token::PlainKeyword("."), _),
+    ) => {
       self.debug_logger.info("[ExpectDotOrGraphName] DOT")
       (ExpectLineJump, DataAction::EmitQuad)
     }
@@ -150,6 +161,11 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
       self.debug_logger.info("[ExpectDotOrGraphName] GraphName Blank: _:\{l}")
       let gn = GraphNameRef::new_unchecked(l)
       (ExpectDot, DataAction::SetGraphName(gn))
+    }
+    // 添加转换
+    (ExpectDotOrGraphName, LocatedToken(N3Token::LineJump, _)) => {
+      self.debug_logger.info("[ExpectDotOrGraphName] LineJump")
+      (ExpectDotOrGraphName, DataAction::NoOp) // 跳过换行
     }
 
     // ── ExpectDot ──────────────────────────────────────────────

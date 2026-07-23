@@ -24,7 +24,7 @@ async fn main {
 
     // Create lexer for N-Triples mode
     let lexer = @lib.Lexer::Lexer(
-      @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+      @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
       data.to_array(),
       true, // resize enabled
       @lib.MIN_BUFFER_SIZE,

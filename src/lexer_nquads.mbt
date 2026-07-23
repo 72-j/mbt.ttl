@@ -302,7 +302,7 @@ pub fn NQuadsRecognizer::new_parser(
     lexer_options: { base_iri: None },
   }
   let lexer = Lexer::Lexer(
-    RdfLexer::RdfLexer(RdfLexerMode::NTriples, lenient),
+    RdfLexer::RdfLexer(RdfLexerMode::NTriples, lenient, []),
     data,
     true,
     MIN_BUFFER_SIZE,

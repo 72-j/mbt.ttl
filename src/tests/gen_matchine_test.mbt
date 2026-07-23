@@ -2,11 +2,18 @@
 async test "Parser_basic_single_line for NQuads" {
   let input =
     #|<http://example/\U00000053> <http://example/p> <http://example/o> .
+  // #| <http://example/s> <http://example/p> "abc' .
 
   let data = @utf8.encode(input).to_array()
+  let logger = @lib.make_console_logger()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    @lib.RdfLexer::RdfLexer(
+      @lib.RdfLexerMode::NTriples,
+      false,
+      debug_logger=logger,
+      [],
+    ),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -15,8 +22,6 @@ async test "Parser_basic_single_line for NQuads" {
     0,
     0,
   )
-
-  let logger = @lib.make_console_logger()
 
   let machine = @lib.NQuadsRecognizer::{
     current_state: @lib.NQuadsState::ExpectSubject,
@@ -89,7 +94,7 @@ async test "multi-line  for NQuads" {
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -168,7 +173,7 @@ async test "Parser_basic_single_line for NQuads GraphName" {
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -262,7 +267,7 @@ async test "Parser_NQuads_complete_dataset" {
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -336,9 +341,9 @@ async test "Parser_NQuads_complete_dataset" {
 
 ///|
 async test "run official n-triples test file" {
-  let test_dir = "src/tests/src/rdf/rdf11/n-triples"
+  let test_dir = "src/tests/src/rdf/rdf11/bak"
 
-  let file = "nt-syntax-string-01"
+  let file = "nt-syntax-bad-string-02"
 
   debug("--------------------------------------")
   debug("Testing: \{file}")
@@ -351,9 +356,8 @@ async test "run official n-triples test file" {
   // 如果文件不存在或不可读，await read_file 会 panic。
   // 若需更健壮的处理，可先用 @fs.exists 检查，或在 try-catch 块中运行（如果支持）
   let data = @fs.read_file(path).binary().to_array()
-
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -450,7 +454,7 @@ async test "run official n-triples test suite" {
     let data = @fs.read_file(path).binary().to_array()
 
     let lexer = @lib.Lexer::Lexer(
-      @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+      @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
       data,
       true,
       @lib.MIN_BUFFER_SIZE,

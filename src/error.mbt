@@ -93,7 +93,7 @@ pub(all) suberror TokenRecognizerError {
   IriParsingError(String, Range)
   UnexpectedEndOfInput(ArrayView[Byte], Range)
   InvalidErrMessage(ArrayView[Byte], Range, String)
-}
+} derive(Debug)
 
 ///|
 
@@ -201,7 +201,7 @@ pub(all) suberror RuleRecognizerError {
   TripleMissingDot
   InvalidLanguageTag
   BlankNodePropertyListMissingEndBracket
-}
+} derive(Debug)
 
 ///|
 pub(all) struct Range {
@@ -409,7 +409,7 @@ pub impl Show for LexerError with fn output(self, logger : &Logger) -> Unit {
 pub(all) suberror LanguageTagParseError {
   // LanguageTagParseError
   TagParseErr(TagParseErr)
-}
+} derive(Debug)
 
 ///|
 pub impl Show for LanguageTagParseError with fn output(self, logger : &Logger) -> Unit {
@@ -432,7 +432,7 @@ pub(all) suberror TagParseErr {
   EmptySubtag
   TooManyExtlangs
   InvalidLanguageLength
-}
+} derive(Debug)
 
 ///|
 pub impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {

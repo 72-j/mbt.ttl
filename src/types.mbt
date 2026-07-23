@@ -54,3 +54,6 @@ pub using @ref {type Ref}
 
 ///|
 // type CharMatchRule = (Char, Char?)
+// ===== 定义 Result 类型 =====
+
+pub type TransitionResult[TR, S, O] = Result[(TR, S, O), RuleRecognizerError]

@@ -395,6 +395,6 @@ test "serialize literal with all punctuation marks" {
 
   // 序列化结果应该包含转义的双引号
   let expected_serialized = "\" !\\\"#$%&():;<=>?@[]^_`{|}~\""
-  debug(serialized)
+  // debug(serialized)
   @debug.assert_eq(serialized, expected_serialized)
 }

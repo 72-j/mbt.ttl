@@ -464,32 +464,32 @@ fn parse_xsd_date(s : String) -> Result[String, String] {
 }
 
 ///|
-fn hex_to_uint(hex : String) -> UInt {
-  let mut result : UInt = 0
-  for c in hex {
-    let digit = match c {
-      '0' => 0
-      '1' => 1
-      '2' => 2
-      '3' => 3
-      '4' => 4
-      '5' => 5
-      '6' => 6
-      '7' => 7
-      '8' => 8
-      '9' => 9
-      'A' | 'a' => 10
-      'B' | 'b' => 11
-      'C' | 'c' => 12
-      'D' | 'd' => 13
-      'E' | 'e' => 14
-      'F' | 'f' => 15
-      _ => 0
-    }
-    result = result * 16 + Int::reinterpret_as_uint(digit)
-  }
-  result
-}
+// fn hex_to_uint(hex : String) -> UInt {
+//   let mut result : UInt = 0
+//   for c in hex {
+//     let digit = match c {
+//       '0' => 0
+//       '1' => 1
+//       '2' => 2
+//       '3' => 3
+//       '4' => 4
+//       '5' => 5
+//       '6' => 6
+//       '7' => 7
+//       '8' => 8
+//       '9' => 9
+//       'A' | 'a' => 10
+//       'B' | 'b' => 11
+//       'C' | 'c' => 12
+//       'D' | 'd' => 13
+//       'E' | 'e' => 14
+//       'F' | 'f' => 15
+//       _ => 0
+//     }
+//     result = result * 16 + Int::reinterpret_as_uint(digit)
+//   }
+//   result
+// }
 
 ///|
 fn UInt::to_hex_string(self : UInt) -> String {

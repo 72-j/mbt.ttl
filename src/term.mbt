@@ -454,6 +454,7 @@ impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
   logger.write(" object: ")
   logger.write(self.object)
   if !self.graph_name.is_default_graph() {
+    logger.write(", ")
     logger.write(" graph_name: ")
     logger.write(self.graph_name.to_string())
   }

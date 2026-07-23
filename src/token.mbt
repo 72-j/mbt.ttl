@@ -13,7 +13,11 @@ pub fn LocatedToken::new(token : N3Token, range : Range) -> Self {
 
 ///|
 pub impl Show for LocatedToken with fn output(self : LocatedToken, f : &Logger) -> Unit {
+  f.write("LocatedToken(")
   self.0.output(f)
+  f.write(", ")
+  self.1.output(f)
+  f.write(")")
 }
 
 ///|
@@ -23,10 +27,13 @@ pub(all) enum BaseDirection {
 } derive(Eq, Debug, Hash, ToJson)
 
 ///|
-pub impl Show for BaseDirection with fn to_string(self) {
+pub impl Show for BaseDirection with fn output(
+  self : BaseDirection,
+  f : &Logger,
+) -> Unit {
   match self {
-    BaseDirection::Ltr => "ltr"
-    BaseDirection::Rtl => "rtl"
+    BaseDirection::Ltr => f.write("ltr")
+    BaseDirection::Rtl => f.write("rtl")
   }
 }
 

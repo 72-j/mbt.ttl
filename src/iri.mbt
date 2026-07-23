@@ -327,6 +327,73 @@ pub fn IriR::relativize(self : IriR, target : IriR) -> Result[IriR, IriError] {
 }
 
 ///|
+pub fn IriR::resolve_unchecked(
+  self : IriR,
+  ref_iri : String,
+  remove_dot_segments? : Bool = true,
+) -> IriR {
+  // 尝试解析参考 IRI（忽略错误）
+  let ref_parsed = IriR::{
+    scheme: "",
+    authority: None,
+    path: "",
+    query: None,
+    fragment: None,
+  }.parse_unchecked(ref_iri)
+
+  // 如果参考 IRI 是绝对的，直接返回
+  if ref_parsed.scheme.length() > 0 {
+    return ref_parsed
+  }
+
+  // 合并各个组件
+  let scheme = self.scheme
+  let authority = if ref_parsed.authority is Some(_) {
+    ref_parsed.authority
+  } else {
+    self.authority
+  }
+
+  // 合并路径
+  let path = if ref_parsed.path.has_prefix("/") {
+    ref_parsed.path // 绝对路径，直接用
+  } else if ref_parsed.path.length() > 0 {
+    // 相对路径，合并到 base 的目录
+    let base_path = self.path
+    let last_slash = base_path.rev_find("/")
+    match last_slash {
+      Some(idx) =>
+        if idx == 0 {
+          // base = "/base"，没有中间目录
+          // 直接拼接："/base" + "/" + "relative/path"
+          base_path.to_owned() + "/" + ref_parsed.path.to_owned()
+        } else {
+          // base = "/dir/base"
+          base_path[0:idx + 1].to_owned() + ref_parsed.path.to_owned()
+        }
+      None => ref_parsed.path.to_owned() // base 为空，直接用 reference
+    }
+  } else {
+    self.path // reference 为空，用 base
+  }
+  let path = if remove_dot_segments {
+    fn_remove_dot_segments(path)
+  } else {
+    path
+  }
+
+  let query = if ref_parsed.query is Some(_) {
+    ref_parsed.query
+  } else {
+    self.query
+  }
+
+  let fragment = ref_parsed.fragment
+
+  IriR::{ scheme, authority, path, query, fragment }
+}
+
+///|
 pub fn IriR::into_string(self : IriR) -> String {
   let s = StringBuilder::new()
 

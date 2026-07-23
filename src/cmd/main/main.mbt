@@ -81,7 +81,7 @@ fn parse_content(content : String, verbose : Bool) -> Unit {
   let data = @utf8.encode(content)
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false),
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
     data.to_array(),
     true,
     @lib.MIN_BUFFER_SIZE,

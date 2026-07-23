@@ -5,6 +5,7 @@ import {
   "moonbitlang/core/ref",
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/hashmap",
   "moonbitlang/async/io",
   "moonbitlang/async/fs",
   "moonbitlang/core/quickcheck/splitmix",

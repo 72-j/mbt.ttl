@@ -10,24 +10,9 @@ pub impl Show for RdfState with fn to_string(self) -> String {
   }
 }
 
-// ===== 定义 Result 类型 =====
-
-///|
-pub type TransitionResult[TR, S, O] = Result[(TR, S, O), RuleRecognizerError]
-
 ///|
 pub impl StateWrapper for RdfState with fn as_state_enum(self) -> RdfState {
   self
-}
-
-///|
-priv enum PnameParseState {
-  /// 解析前缀的第一个字符（必须是 pn_chars_base）
-  FirstChar
-  /// 解析前缀的后续字符（可以是 pn_chars 或 '.'）
-  Rest
-  /// 找到冒号，解析完成，准备进入本地部分
-  Done
 }
 
 ///|
@@ -40,1937 +25,1316 @@ pub(all) enum RdfLexerMode {
 pub(all) struct RdfLexer {
   mode : RdfLexerMode
   lenient : Bool
+  debug_logger : &DebugLogger
 }
 
 ///|
-pub fn RdfLexer::RdfLexer(mode : RdfLexerMode, lenient : Bool) -> RdfLexer {
-  { mode, lenient }
+pub fn RdfLexer::default() -> RdfLexer {
+  RdfLexer::RdfLexer(RdfLexerMode::NTriples, true, [])
 }
 
 ///|
-fn RdfLexer::recognize_iri(
-  self : RdfLexer,
-  data : ArrayView[Byte],
-  options : LexerOptions,
-  location_pos : SourcePos,
-) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
-  let string = []
-  let mut i = 1
-
-  // 循环直到找到 '>'
-  for ;; {
-    let end_opt = array_view_memchr(b'>', data[i:])
-
-    let end = match end_opt {
-      Some(e) => e
-      None =>
-        return Some(
-          (
-            data.length(),
-            Err(
-              TokenRecognizerError::IriTruncated(
-                data[i:],
-                Range(
-                  location_pos.offset + i,
-                  location_pos.offset + i + data.length(),
-                ),
-              ),
-            ),
-          ),
-        )
-    }
-
-    // 将内容追加到 string，同时处理 Unicode 转义
-    let mut j = i
-    while j < i + end {
-      let byte = data[j]
-      if byte == b'\\' && j + 1 < data.length() {
-        let next_byte = data[j + 1]
-        if next_byte == b'u' && j + 5 < i + end {
-          // \uXXXX - 4 位十六进制
-          let hex = str_from_utf8(data[j + 2:j + 6], Range::Range(j + 2, j + 6)).unwrap_or(
-            "0000",
-          )
-          // 检查是否全是有效的十六进制字符
-          if !is_valid_hex_string(hex) {
-            return Some(
-              (
-                i + end + 1,
-                Err(
-                  TokenRecognizerError::InvalidErrMessage(
-                    data[j:j + 6],
-                    Range(location_pos.offset + j, location_pos.offset + j + 6),
-                    "Invalid unicode escape: \\u followed by non-hex characters",
-                  ),
-                ),
-              ),
-            )
-          }
-          let code = hex.to_upper()
-          let codepoint = hex_to_uint(code)
-          let ch = UInt::to_byte(codepoint)
-          string.append([ch])
-          j += 6
-        } else if next_byte == b'U' && j + 9 < i + end {
-          // \UXXXXXXXX - 8 位十六进制
-          let hex = str_from_utf8(
-            data[j + 2:j + 10],
-            Range::Range(j + 2, j + 10),
-          ).unwrap_or("00000000")
-          // 检查是否全是有效的十六进制字符
-          if !is_valid_hex_string(hex) {
-            return Some(
-              (
-                i + end + 1,
-                Err(
-                  TokenRecognizerError::InvalidErrMessage(
-                    data[j:j + 10],
-                    Range(location_pos.offset + j, location_pos.offset + j + 10),
-                    "Invalid unicode escape: \\U followed by non-hex characters",
-                  ),
-                ),
-              ),
-            )
-          }
-          let code = hex.to_upper()
-          let codepoint = hex_to_uint(code)
-          let ch = UInt::to_byte(codepoint)
-          string.append([ch])
-          j += 10
-        } else {
-          // 其他转义，保持原样
-          string.push(byte)
-          j += 1
-        }
-      } else {
-        string.push(byte)
-        j += 1
-      }
-    }
-
-    i += end + 1
-
-    return Some(
-      (
-        i,
-        self.parse_iri(
-          string,
-          Range(location_pos.offset, location_pos.offset + i),
-          options,
-        ),
-      ),
-    )
-  }
+pub fn RdfLexer::RdfLexer(
+  mode : RdfLexerMode,
+  lenient : Bool,
+  _data_buffer : ArrayView[Byte],
+  debug_logger? : &DebugLogger = make_mute_logger(),
+) -> RdfLexer {
+  { mode, lenient, debug_logger }
 }
 
 ///|
-fn RdfLexer::parse_iri(
-  self : RdfLexer,
-  iri_bytes : Array[Byte],
-  position : Range,
-  options : LexerOptions,
-) -> Result[LocatedToken, TokenRecognizerError] {
-  // 1. 将字节数组转换为字符串，处理可能的 UTF-8 错误
-  let iri_str = match string_from_utf8(iri_bytes, position) {
-    Ok(s) => s
-    Err(e) => return Err(e)
-  }
-  if iri_str.contains("\\") {
-    return Err(
-      TokenRecognizerError::InvalidErrMessage(
-        iri_bytes, position, "IRIs in N-Triples cannot contain backslashes",
-      ),
-    )
-  }
-
-  // 2. 解析或解析并合并 Base IRI
-  let final_iri = if options.base_iri is Some(base_iri) {
-    // 如果有 base_iri，尝试解析相对 IRI
-    if self.lenient {
-      // 宽松模式：直接合并，不检查有效性
-      Ok(base_iri.resolve_unchecked(iri_str))
-    } else {
-      // 严格模式：解析并检查有效性
-      base_iri.resolve(iri_str)
-    }
-  } else {
-    // 没有 base_iri，直接解析绝对 IRI
-    let iri = IriR::default()
-
-    if self.lenient {
-      Ok(iri.parse_unchecked(iri_str))
-    } else {
-      // 严格模式
-      iri.parse(iri_str)
-    }
-  }
-
-  // 3. 返回 Token
-  let final_iri = match final_iri {
-    Ok(iri) => iri
-    Err(_e) => return Err(TokenRecognizerError::Invalid)
-  }
-  // 使用传入的 position (已经是全局 Range)
-  Ok(LocatedToken(N3Token::Iri(final_iri.into_string()), position))
-}
-
-///|
-pub fn IriR::resolve_unchecked(
-  self : IriR,
-  ref_iri : String,
-  remove_dot_segments? : Bool = true,
-) -> IriR {
-  // 尝试解析参考 IRI（忽略错误）
-  let ref_parsed = IriR::{
-    scheme: "",
-    authority: None,
-    path: "",
-    query: None,
-    fragment: None,
-  }.parse_unchecked(ref_iri)
-
-  // 如果参考 IRI 是绝对的，直接返回
-  if ref_parsed.scheme.length() > 0 {
-    return ref_parsed
-  }
-
-  // 合并各个组件
-  let scheme = self.scheme
-  let authority = if ref_parsed.authority is Some(_) {
-    ref_parsed.authority
-  } else {
-    self.authority
-  }
-
-  // 合并路径
-  let path = if ref_parsed.path.has_prefix("/") {
-    ref_parsed.path // 绝对路径，直接用
-  } else if ref_parsed.path.length() > 0 {
-    // 相对路径，合并到 base 的目录
-    let base_path = self.path
-    let last_slash = base_path.rev_find("/")
-    match last_slash {
-      Some(idx) =>
-        if idx == 0 {
-          // base = "/base"，没有中间目录
-          // 直接拼接："/base" + "/" + "relative/path"
-          base_path.to_owned() + "/" + ref_parsed.path.to_owned()
-        } else {
-          // base = "/dir/base"
-          base_path[0:idx + 1].to_owned() + ref_parsed.path.to_owned()
-        }
-      None => ref_parsed.path.to_owned() // base 为空，直接用 reference
-    }
-  } else {
-    self.path // reference 为空，用 base
-  }
-  let path = if remove_dot_segments {
-    fn_remove_dot_segments(path)
-  } else {
-    path
-  }
-
-  let query = if ref_parsed.query is Some(_) {
-    ref_parsed.query
-  } else {
-    self.query
-  }
-
-  let fragment = ref_parsed.fragment
-
-  IriR::{ scheme, authority, path, query, fragment }
-}
+/// 字符分类
+pub(all) enum CharClass {
+  Other
+  Space
+  Newline
+  LAngle // <
+  RAngle // >
+  Colon // :
+  Semicolon // ;
+  Period // .
+  Comma // ,
+  LParen // (
+  RParen // )
+  LBracket // [
+  RBracket // ]
+  LBrace // {
+  RBrace // }
+  Quote // "
+  At // @
+  QuestionMark // ?
+  Plus // +
+  Minus // -
+  Underscore // _
+  Percent // %
+  Hash // #
+  Slash // /
+  Backslash // \\
+  Star // *
+  Eq // =
+  Less // <
+  Greater // >
+  Caret // ^
+  Pipe // |
+  Tilde // ~
+  Exclamation // !
+  Dollar // $
+  Ampersand // &
+  Apostrophe // '
+  // 多字符标点
+  LtLt // <<
+  GtGt // >>
+  CaretCaret // ^^
+  LBracePipe // {|
+  PipeRBrace // |}
+  LtLtLParen // <<(
+  RParenGtGt // )>>
+  LtMinus // <-
+  EqGt // =>
+  LtEq // <=
+  LtLtRParen // <<(
+  ColonColon // ::
+  ColonSlash // :/ (用于 IRI scheme)
+  Digit
+} derive(Debug, Eq, Hash)
 
 ///|
-fn parse_pname_prefix(
-  data : ArrayView[Byte],
-  start_offset : Int,
-) -> (Int, PnameParseState, TokenRecognizerError?) {
-  // 尝试跳过末尾的点（用于 PlainKeyword 回退）
-
-  let mut i = 0
-  let mut state = PnameParseState::FirstChar
-
-  for ;; {
-    match RdfLexer::recognize_unicode_char(data[i:], i) {
-      Some(Ok((c, consumed))) =>
-        match state {
-          PnameParseState::FirstChar =>
-            if c == ':' {
-              // 冒号立即出现：空前缀
-              return (consumed, PnameParseState::Done, None)
-            } else if !RdfLexer::is_possible_pn_chars_base(c) {
-              // 第一个字符无效
-              return (
-                consumed,
-                state,
-                Some(
-                  TokenRecognizerError::InvalidErrMessage(
-                    data[0:consumed],
-                    Range(start_offset, start_offset + consumed),
-                    "'\{c}' is not allowed at the beginning of a prefix name",
-                  ),
-                ),
-              )
-            } else {
-              i += consumed
-              state = PnameParseState::Rest
-            }
-          PnameParseState::Rest =>
-            if c == ':' {
-              // 找到冒号，前缀解析完成
-              i += consumed
-              return (i, PnameParseState::Done, None)
-            } else if RdfLexer::is_possible_pn_chars(c) || c == '.' {
-              // 继续解析前缀
-              i += consumed
-            } else {
-              // 遇到无效字符，需要回退末尾的点作为 PlainKeyword
-              i = strip_trailing_dots(data[:i], i)
-              return (i, state, None)
-            }
-          PnameParseState::Done =>
-            // 不应该到达这里
-            abort("Unexpected state: Done")
-        }
-      Some(Err(e)) => return (e.range().end - start_offset, state, Some(e))
-      None => return (i, state, None)
-    }
+pub impl Show for CharClass with fn output(self : CharClass, logger : &Logger) -> Unit {
+  match self {
+    CharClass::Other => logger.write("Other")
+    CharClass::Space => logger.write("Space")
+    CharClass::Newline => logger.write("Newline")
+    CharClass::LAngle => logger.write("LAngle")
+    CharClass::RAngle => logger.write("RAngle")
+    CharClass::Colon => logger.write("Colon")
+    CharClass::Semicolon => logger.write("Semicolon")
+    CharClass::Period => logger.write("Period")
+    CharClass::Comma => logger.write("Comma")
+    CharClass::LParen => logger.write("LParen")
+    CharClass::RParen => logger.write("RParen")
+    CharClass::LBracket => logger.write("LBracket")
+    CharClass::RBracket => logger.write("RBracket")
+    CharClass::LBrace => logger.write("LBrace")
+    CharClass::RBrace => logger.write("RBrace")
+    CharClass::Quote => logger.write("Quote")
+    CharClass::At => logger.write("At")
+    CharClass::QuestionMark => logger.write("QuestionMark")
+    CharClass::Plus => logger.write("Plus")
+    CharClass::Minus => logger.write("Minus")
+    CharClass::Underscore => logger.write("Underscore")
+    CharClass::Percent => logger.write("Percent")
+    CharClass::Hash => logger.write("Hash")
+    CharClass::Slash => logger.write("Slash")
+    CharClass::Backslash => logger.write("Backslash")
+    CharClass::Star => logger.write("Star")
+    CharClass::Eq => logger.write("Eq")
+    CharClass::Less => logger.write("Less")
+    CharClass::Greater => logger.write("Greater")
+    CharClass::Caret => logger.write("Caret")
+    CharClass::Pipe => logger.write("Pipe")
+    CharClass::Tilde => logger.write("Tilde")
+    CharClass::Exclamation => logger.write("Exclamation")
+    CharClass::Dollar => logger.write("Dollar")
+    CharClass::Ampersand => logger.write("Ampersand")
+    CharClass::Apostrophe => logger.write("Apostrophe")
+    CharClass::LtLt => logger.write("LtLt")
+    CharClass::GtGt => logger.write("GtGt")
+    CharClass::LtMinus => logger.write("LtMinus")
+    CharClass::EqGt => logger.write("EqGt")
+    CharClass::LtLtLParen => logger.write("LtLtLParen")
+    CharClass::LtLtRParen => logger.write("LtLtRParen")
+    CharClass::CaretCaret => logger.write("CaretCaret")
+    CharClass::LBracePipe => logger.write("LBracePipe")
+    CharClass::ColonColon => logger.write("ColonColon")
+    CharClass::ColonSlash => logger.write("ColonSlash")
+    CharClass::PipeRBrace => logger.write("PipeRBrace")
+    CharClass::RParenGtGt => logger.write("RParenGtGt")
+    CharClass::LtEq => logger.write("LtEq")
+    CharClass::Digit => logger.write("Digit")
   }
 }
 
 ///|
-fn build_plain_keyword_result(
-  data : ArrayView[Byte],
-  consumed : Int,
-  start_offset : Int,
-) -> (Int, Result[LocatedToken, TokenRecognizerError]) {
-  let range = Range(start_offset, start_offset + consumed)
-  (
-    consumed,
-    str_from_utf8(data[:consumed], range).map(fn(s) {
-      LocatedToken(N3Token::PlainKeyword(s), range)
-    }),
+/// 词法分析器状态
+pub(all) enum LexStateMachine {
+  Start
+  // ----- IRI -----
+  InIri
+  // InIriEsc // \u 或 \U 转义
+  // InIriEscU
+  // InIriEscHex8
+  // ----- Blank Node -----
+  InBlank
+  InBlankLabel
+  // ----- String -----
+  InString // "..."
+  InStringEsc // \" 转义
+  InLongStringStart // 检测 """
+  InLongString // """...""" 内部
+  InLongStringEsc // 长字符串转义
+  InLongStringQuote(Int) // 已匹配 n 个引号 (n=1,2)
+  // ----- Number -----
+  InNumber
+  InInteger // 整数
+  InDecimal // 小数
+  InDecimalStart // . 开始
+  InDouble // 科学计数法
+  InExponent
+  // ----- Lang Tag -----
+  InLangTag
+  InLangTagExt // @lang-ext
+  // ----- Variable (N3) -----
+  InVariable
+  // ----- Pname -----
+  InPnamePrefix
+  InPnameLocalStart
+  InPnameLocal
+  // ----- Keyword -----
+  InKeyword
+  // ----- Punctuation -----
+  InPunct
+  // ----- Skip -----
+  SkipWhitespace
+  SkipLineComment
+  SkipBlockComment(Int) // 嵌套层级
+  // ----- Error -----
+  Error
+  // ----- Done -----
+  Done
+} derive(Debug, Eq, Hash)
+
+///|
+pub impl Show for LexStateMachine with fn output(
+  self : LexStateMachine,
+  logger : &Logger,
+) -> Unit {
+  match self {
+    LexStateMachine::Start => logger.write("Start")
+    LexStateMachine::InIri => logger.write("InIri")
+    // LexStateMachine::InIriEsc => logger.write("InIriEsc")
+    LexStateMachine::InBlank => logger.write("InBlank")
+    LexStateMachine::InBlankLabel => logger.write("InBlankLabel")
+    LexStateMachine::InString => logger.write("InString")
+    LexStateMachine::InStringEsc => logger.write("InStringEsc")
+    LexStateMachine::InLongStringStart => logger.write("InLongStringStart")
+    LexStateMachine::InLongString => logger.write("InLongString")
+    LexStateMachine::InLongStringEsc => logger.write("InLongStringEsc")
+    LexStateMachine::InLongStringQuote(n) =>
+      logger.write("InLongStringQuote \{n}")
+    LexStateMachine::InNumber => logger.write("InNumber")
+    LexStateMachine::InInteger => logger.write("InInteger")
+    LexStateMachine::InDecimal => logger.write("InDecimal")
+    LexStateMachine::InDecimalStart => logger.write("InDecimalStart")
+    LexStateMachine::InDouble => logger.write("InDouble")
+    LexStateMachine::InExponent => logger.write("InExponent")
+    LexStateMachine::InLangTag => logger.write("InLangTag")
+    LexStateMachine::InLangTagExt => logger.write("InLangTagExt")
+    LexStateMachine::InVariable => logger.write("InVariable")
+    LexStateMachine::InPnamePrefix => logger.write("InPnamePrefix")
+    LexStateMachine::InPnameLocalStart => logger.write("InPnameLocalStart")
+    LexStateMachine::InPnameLocal => logger.write("InPnameLocal")
+    LexStateMachine::InKeyword => logger.write("InKeyword")
+    LexStateMachine::InPunct => logger.write("InPunct")
+    LexStateMachine::SkipWhitespace => logger.write("SkipWhitespace")
+    LexStateMachine::SkipBlockComment(n) =>
+      logger.write("SkipBlockComment \{n}")
+    LexStateMachine::Error => logger.write("Error")
+    LexStateMachine::Done => logger.write("Done")
+    LexStateMachine::SkipLineComment => logger.write("SkipLineComment")
+  }
+}
+
+///|
+/// 词法动作
+pub(all) enum LexAction {
+  Continue // 继续消费
+  Skip // 跳过字符
+  EmitToken // 输出当前 token
+  EmitTokenWithDirection(BaseDirection?) // 新增：带方向的 Emit
+  PushState(LexStateMachine) // 入栈状态
+  PopState // 出栈状态
+  SetState(LexStateMachine) // 设置状态
+  StartCapture // 开始捕获
+  AppendCapture // 追加到捕获
+  // CheckDirectionSuffix // 新增：检查 -bidi 后缀
+  EndCapture // 结束捕获
+  EmitError(String) // 输出错误
+  Done // 完成
+} derive(Debug, Eq, Hash)
+
+///|
+pub impl Show for LexAction with fn output(self : LexAction, logger : &Logger) -> Unit {
+  match self {
+    LexAction::Continue => logger.write("Continue")
+    LexAction::Skip => logger.write("Skip")
+    LexAction::EmitToken => logger.write("EmitToken")
+    LexAction::EmitTokenWithDirection(dir) =>
+      logger.write("EmitTokenWithDirection \{@debug.to_string(dir)}")
+    LexAction::PushState(state) => logger.write("PushState \{state}")
+    LexAction::PopState => logger.write("PopState")
+    LexAction::SetState(state) => logger.write("SetState \{state}")
+    LexAction::StartCapture => logger.write("StartCapture")
+    LexAction::AppendCapture => logger.write("AppendCapture")
+    LexAction::EndCapture => logger.write("EndCapture")
+    LexAction::EmitError(msg) => logger.write("EmitError \{msg}")
+    LexAction::Done => logger.write("Done")
+  }
+}
+
+///|
+/// 转换规则
+pub(all) struct Transition {
+  from : LexStateMachine
+  char_class : CharClass
+  to : LexStateMachine
+  action : LexAction
+} derive(Debug, Eq, Hash)
+
+///|
+pub impl Show for Transition with fn output(self : Transition, logger : &Logger) -> Unit {
+  logger.write("Transition: ")
+  self.from.output(logger)
+  logger.write(" -> ")
+  self.to.output(logger)
+  logger.write(" char_class: ")
+  self.char_class.output(logger)
+  logger.write("action: ")
+  self.action.output(logger)
+}
+
+///|
+pub fn Transition::Transition(
+  from : LexStateMachine,
+  char_class : CharClass,
+  to : LexStateMachine,
+  action : LexAction,
+) -> Transition {
+  { from, char_class, to, action }
+}
+
+///|
+/// 状态转移表
+pub let initialize_transitions : Array[Transition] = [
+  // ========== Start 状态 ==========
+
+  // 冒号（用于 scheme）
+  Transition::Transition(
+    LexStateMachine::InIri,
+    CharClass::Colon,
+    LexStateMachine::InIri,
+    LexAction::AppendCapture,
+  ),
+  // InIriEsc 进入对应转义状态
+  // Transition::Transition(
+  //   LexStateMachine::InIriEsc,
+  //   CharClass::Other, // u 或 U
+  //   LexStateMachine::InIriEscU, // 需要根据字符判断
+  //   LexAction::AppendCapture,
+  // ),
+
+  // 转换表只需要一个规则
+  Transition::Transition(
+    LexStateMachine::InIri,
+    CharClass::Backslash,
+    LexStateMachine::InIri,
+    LexAction::AppendCapture, // 通用处理
+  ),
+  // 斜杠
+  Transition::Transition(
+    LexStateMachine::InIri,
+    CharClass::Slash,
+    LexStateMachine::InIri,
+    LexAction::AppendCapture,
+  ),
+  // 点号（允许在 IRI 中）
+  Transition::Transition(
+    LexStateMachine::InIri,
+    CharClass::Period,
+    LexStateMachine::InIri,
+    LexAction::AppendCapture,
+  ),
+  // 问号（query string）
+  Transition::Transition(
+    LexStateMachine::InIri,
+    CharClass::QuestionMark,
+    LexStateMachine::InIri,
+    LexAction::AppendCapture,
+  ),
+  // # (fragment)
+  Transition::Transition(
+    LexStateMachine::InIri,
+    CharClass::Hash,
+    LexStateMachine::InIri,
+    LexAction::AppendCapture,
+  ),
+  // 百分号（percent encoding）
+  Transition::Transition(
+    LexStateMachine::InIri,
+    CharClass::Percent,
+    LexStateMachine::InIri,
+    LexAction::AppendCapture,
+  ),
+  // 空白跳过
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Space,
+    LexStateMachine::SkipWhitespace,
+    LexAction::Continue,
+  ),
+  // 换行跳过
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Newline,
+    LexStateMachine::SkipWhitespace,
+    LexAction::EmitToken,
+  ),
+  // 注释跳过
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Hash,
+    LexStateMachine::SkipLineComment,
+    LexAction::Continue,
+  ),
+  // IRI 开始
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::LAngle,
+    LexStateMachine::InIri,
+    LexAction::StartCapture,
+  ),
+  // Blank 节点开始
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Underscore,
+    LexStateMachine::InBlank,
+    LexAction::StartCapture,
+  ),
+  // 字符串开始
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Quote,
+    LexStateMachine::InString,
+    LexAction::StartCapture,
+  ),
+  // 单引号字符串 (N3)
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Apostrophe,
+    LexStateMachine::InString,
+    LexAction::StartCapture,
+  ),
+  // Lang Tag 开始
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::At,
+    LexStateMachine::InLangTag,
+    LexAction::StartCapture,
+  ),
+  // 变量开始 (N3)
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::QuestionMark,
+    LexStateMachine::InVariable,
+    LexAction::StartCapture,
+  ),
+  // 数字开始
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Plus,
+    LexStateMachine::InInteger,
+    LexAction::StartCapture,
+  ),
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Minus,
+    LexStateMachine::InInteger,
+    LexAction::StartCapture,
+  ),
+
+  // 标点符号
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Period,
+    LexStateMachine::InPunct,
+    LexAction::EmitToken,
+  ),
+  // 其他字符作为 keyword
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Other,
+    LexStateMachine::InKeyword,
+    LexAction::StartCapture,
+  ),
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Other, // 数字 0-9
+    LexStateMachine::InInteger,
+    LexAction::StartCapture,
+  ),
+  // ========== InIri 状态 ==========
+  // IRI 内普通字符
+  Transition::Transition(
+    LexStateMachine::InIri,
+    CharClass::Other,
+    LexStateMachine::InIri,
+    LexAction::AppendCapture,
+  ),
+  // IRI 结束
+  Transition::Transition(
+    LexStateMachine::InIri,
+    CharClass::RAngle,
+    LexStateMachine::Start,
+    LexAction::EmitToken,
+  ),
+  // IRI 内转义
+  // Transition::Transition(
+  //   LexStateMachine::InIri,
+  //   CharClass::Backslash,
+  //   LexStateMachine::InIriEsc,
+  //   LexAction::AppendCapture,
+  // ),
+
+  // ========== InString 状态 ==========
+  // 字符串内普通字符
+  Transition::Transition(
+    LexStateMachine::InString,
+    CharClass::Other,
+    LexStateMachine::InString,
+    LexAction::AppendCapture,
+  ),
+  // 字符串结束
+  Transition::Transition(
+    LexStateMachine::InString,
+    CharClass::Quote,
+    LexStateMachine::Start,
+    LexAction::EmitToken,
+  ),
+  // 字符串转义
+  Transition::Transition(
+    LexStateMachine::InString,
+    CharClass::Backslash,
+    LexStateMachine::InStringEsc,
+    LexAction::AppendCapture,
+  ),
+
+  // ========== SkipWhitespace 状态 ==========
+  Transition::Transition(
+    LexStateMachine::SkipWhitespace,
+    CharClass::Space,
+    LexStateMachine::SkipWhitespace,
+    LexAction::Skip,
+  ),
+  Transition::Transition(
+    LexStateMachine::SkipWhitespace,
+    CharClass::Newline,
+    LexStateMachine::SkipWhitespace,
+    LexAction::Skip,
+  ),
+  Transition::Transition(
+    LexStateMachine::SkipWhitespace,
+    CharClass::Other,
+    LexStateMachine::Start,
+    LexAction::Continue,
+  ),
+
+  // ========== SkipLineComment 状态 ==========
+  Transition::Transition(
+    LexStateMachine::SkipLineComment,
+    CharClass::Newline,
+    LexStateMachine::Start,
+    LexAction::Skip,
+  ),
+  Transition::Transition(
+    LexStateMachine::SkipLineComment,
+    CharClass::Other,
+    LexStateMachine::SkipLineComment,
+    LexAction::Skip,
+  ),
+
+  // ========== InBlank 状态 ==========
+  Transition::Transition(
+    LexStateMachine::InBlank,
+    CharClass::Colon,
+    LexStateMachine::InBlankLabel,
+    LexAction::Continue,
+  ),
+
+  // ========== InBlankLabel 状态 ==========
+  Transition::Transition(
+    LexStateMachine::InBlankLabel,
+    CharClass::Other,
+    LexStateMachine::InBlankLabel,
+    LexAction::AppendCapture,
+  ),
+
+  // ========== InLangTag 状态 ==========
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::At,
+    LexStateMachine::InLangTag,
+    LexAction::StartCapture,
+  ),
+  Transition::Transition(
+    LexStateMachine::InLangTag,
+    CharClass::Other,
+    LexStateMachine::InLangTag,
+    LexAction::AppendCapture,
+  ),
+  // // 结束 - 检查方向后缀
+  // Transition::Transition(
+  //   LexStateMachine::InLangTag,
+  //   CharClass::Space,
+  //   LexStateMachine::Start,
+  //   LexAction::CheckDirectionSuffix,
+  // ),
+  // Lang Tag 结束（非字母数字）
+  Transition::Transition(
+    LexStateMachine::InLangTag,
+    CharClass::Space,
+    LexStateMachine::Start,
+    LexAction::EmitToken,
+  ),
+
+  // 其他结束条件
+  Transition::Transition(
+    LexStateMachine::InLangTag,
+    CharClass::Newline,
+    LexStateMachine::Start,
+    LexAction::EmitToken,
+  ),
+  Transition::Transition(
+    LexStateMachine::InLangTag,
+    CharClass::Period, // 句号结束
+    LexStateMachine::Start,
+    LexAction::EmitToken,
+  ),
+  // ========== InKeyword 状态 ==========
+  Transition::Transition(
+    LexStateMachine::InKeyword,
+    CharClass::Other,
+    LexStateMachine::InKeyword,
+    LexAction::AppendCapture,
+  ),
+  // Keyword 结束
+  Transition::Transition(
+    LexStateMachine::InKeyword,
+    CharClass::Space,
+    LexStateMachine::Start,
+    LexAction::EmitToken,
+  ),
+  // ========== Pname 前缀 ==========
+  // a-z 开始的前缀
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Other, // 假设 a-z 在这里
+    LexStateMachine::InPnamePrefix,
+    LexAction::StartCapture,
+  ),
+  // 前缀内字符
+  Transition::Transition(
+    LexStateMachine::InPnamePrefix,
+    CharClass::Other,
+    LexStateMachine::InPnamePrefix,
+    LexAction::AppendCapture,
+  ),
+  // 遇到冒号
+  Transition::Transition(
+    LexStateMachine::InPnamePrefix,
+    CharClass::Colon,
+    LexStateMachine::InPnameLocalStart,
+    LexAction::AppendCapture,
+  ),
+
+  // ========== Pname 本地部分 ==========
+  // 本地部分开始（冒号后的字符）
+  Transition::Transition(
+    LexStateMachine::InPnameLocalStart,
+    CharClass::Other,
+    LexStateMachine::InPnameLocal,
+    LexAction::AppendCapture,
+  ),
+  // 本地部分继续
+  Transition::Transition(
+    LexStateMachine::InPnameLocal,
+    CharClass::Other,
+    LexStateMachine::InPnameLocal,
+    LexAction::AppendCapture,
+  ),
+  // 本地部分结束（空白）
+  Transition::Transition(
+    LexStateMachine::InPnameLocal,
+    CharClass::Space,
+    LexStateMachine::Start,
+    LexAction::EmitToken,
+  ),
+
+  // ========== 特殊 Pname 前缀（关键字）==========
+  // a, b, g, l, s, t 等关键字作为前缀名
+  Transition::Transition(
+    LexStateMachine::Start,
+    CharClass::Other, // 'a' 等
+    LexStateMachine::InPnamePrefix,
+    LexAction::StartCapture,
+  ),
+]
+
+///|
+/// 256 字节的字符分类表
+pub let initialize_char_class_table : FixedArray[CharClass] = {
+  let table = FixedArray::make(256, CharClass::Other)
+
+  // 空格类
+  table[b' '.to_int()] = CharClass::Space
+  table[b'\t'.to_int()] = CharClass::Space
+  table[b'\r'.to_int()] = CharClass::Space
+
+  // 换行
+  table[b'\n'.to_int()] = CharClass::Newline
+
+  // 标点符号
+  table[b'<'.to_int()] = CharClass::LAngle
+  table[b'>'.to_int()] = CharClass::RAngle
+  table[b':'.to_int()] = CharClass::Colon
+  table[b';'.to_int()] = CharClass::Semicolon
+  table[b'.'.to_int()] = CharClass::Period
+  table[b','.to_int()] = CharClass::Comma
+  table[b'('.to_int()] = CharClass::LParen
+  table[b')'.to_int()] = CharClass::RParen
+  table[b'['.to_int()] = CharClass::LBracket
+  table[b']'.to_int()] = CharClass::RBracket
+  table[b'{'.to_int()] = CharClass::LBrace
+  table[b'}'.to_int()] = CharClass::RBrace
+  table[b'@'.to_int()] = CharClass::At
+  table[b'?'.to_int()] = CharClass::QuestionMark
+  table[b'+'.to_int()] = CharClass::Plus
+  table[b'-'.to_int()] = CharClass::Minus
+  table[b'_'.to_int()] = CharClass::Underscore
+  table[b'%'.to_int()] = CharClass::Percent
+  table[b'#'.to_int()] = CharClass::Hash
+  table[b'/'.to_int()] = CharClass::Slash
+  table[b'\\'.to_int()] = CharClass::Backslash
+  table[b'*'.to_int()] = CharClass::Star
+  table[b'='.to_int()] = CharClass::Eq
+  table[b'^'.to_int()] = CharClass::Caret
+  table[b'|'.to_int()] = CharClass::Pipe
+  table[b'~'.to_int()] = CharClass::Tilde
+  table[b'!'.to_int()] = CharClass::Exclamation
+  table[b'$'.to_int()] = CharClass::Dollar
+  table[b'&'.to_int()] = CharClass::Ampersand
+  table[b'\''.to_int()] = CharClass::Apostrophe // 单引号 '
+  table[b'"'.to_int()] = CharClass::Quote // 双引号 "
+
+  // 多字符标点（单字符部分）
+  // 注意：多字符标点需要在状态机中特殊处理
+  // 这里只分类首字符
+
+  table
+}
+
+///|
+// fn init {
+let transitions_by_state : @hashmap.HashMap[LexStateMachine, Array[Transition]] = {
+  let map : @hashmap.HashMap[LexStateMachine, Array[Transition]] = HashMap(
+    [],
+    capacity=64,
   )
+  for t in initialize_transitions {
+    match map.get(t.from) {
+      Some(arr) => arr.push(t)
+      None => map.set(t.from, [t])
+    }
+  }
+  map
 }
+// }
 
 ///|
-fn build_unexpected_end_result(
-  data : ArrayView[Byte],
-  start_offset : Int,
-) -> (Int, Result[LocatedToken, TokenRecognizerError]) {
-  if data.length() == 0 {
-    (
-      1,
-      Err(
-        TokenRecognizerError::UnexpectedEndOfInput(
-          data[0:1],
-          Range(start_offset, start_offset + 1),
-        ),
-      ),
-    )
+/// 快速字符分类 - O(1)
+pub fn classify_byte(b : Byte) -> CharClass {
+  if b.to_int() < 256 {
+    initialize_char_class_table[b.to_int()]
   } else {
-    (
-      data.length(),
-      Err(
-        TokenRecognizerError::UnexpectedEndOfInput(
-          data,
-          Range(start_offset, start_offset + data.length()),
-        ),
-      ),
-    )
+    CharClass::Other
+  }
+}
+
+// 编译时常量表
+
+///|
+// pub let char_class_table : FixedArray[CharClass] = {
+//   let t = initialize_char_class_table()
+//   t
+// }
+
+///|
+/// ===== 状态机上下文 =====
+pub(all) struct LexContext {
+  data_buffer : ArrayView[Byte]
+  mut position : Int
+  mut state : LexStateMachine
+  mut capture_start : Int
+  mut capture_current : Int
+  state_stack : Array[LexStateMachine]
+  is_ending : Bool
+  mut captured : String?
+  // 前瞻缓冲区
+  mut lookahead_buffer : Array[Byte] // 存储前瞻的字节
+  mut lookahead_pos : Int // 前瞻中的当前位置
+  mut emit_state : LexStateMachine? // ★ 新增}
+}
+
+///|
+pub fn LexContext::new(
+  data_buffer : ArrayView[Byte],
+  is_ending? : Bool = false,
+) -> LexContext {
+  {
+    data_buffer,
+    position: 0,
+    state: LexStateMachine::Start,
+    capture_start: 0,
+    capture_current: 0,
+    state_stack: [],
+    is_ending,
+    captured: None,
+    lookahead_buffer: [],
+    lookahead_pos: 0,
+    emit_state: None,
   }
 }
 
 ///|
-fn build_prefixed_name_result(
-  prefix : String,
-  consumed : Int,
-  start_offset : Int,
-  localx : String,
-  might_be_invalid_iri : Bool,
-) -> (Int, Result[LocatedToken, TokenRecognizerError]) {
-  let range = Range(start_offset, start_offset + consumed)
-  (
-    consumed,
-    Ok(
-      LocatedToken::new(
-        N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri~),
-        range,
-      ),
-    ),
-  )
-}
-
-///|
-fn build_prefix_error(
-  data : ArrayView[Byte],
-  consumed : Int,
-  start_offset : Int,
-  prefix : String,
-) -> (Int, Result[LocatedToken, TokenRecognizerError]) {
-  (
-    consumed,
-    Err(
-      TokenRecognizerError::InvalidErrMessage(
-        data[0:consumed],
-        Range(start_offset, start_offset + consumed),
-        "'\{prefix}' is not a valid prefix: prefixes are not allowed to end with '.'",
-      ),
-    ),
-  )
-}
-
-///|
-fn RdfLexer::recognize_pname_or_keyword(
-  self : RdfLexer,
-  data : ArrayView[Byte],
-  is_ending : Bool,
-  location_pos : SourcePos,
-) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
-  let start_offset = location_pos.offset
-
-  // 第一阶段：解析前缀部分
-  let (prefix_consumed, state, prefix_error) = parse_pname_prefix(
-    data, start_offset,
-  )
-
-  // 处理解析错误
-  if prefix_error is Some(err) {
-    return Some((prefix_consumed, Err(err)))
-  }
-
-  // 根据状态决定下一步
-  match state {
-    PnameParseState::FirstChar | PnameParseState::Rest =>
-      // 没有找到冒号，需要更多数据或作为 PlainKeyword 处理
-      if is_ending {
-        // 结束输入：回退末尾的点，构建 PlainKeyword
-        if prefix_consumed == 0 {
-          return Some(build_unexpected_end_result(data, start_offset))
-        }
-        return Some(
-          build_plain_keyword_result(data, prefix_consumed, start_offset),
-        )
-      } else if prefix_consumed > 0 && data.length() > 0 {
-        // 需要更多输入
-        return None
-      } else {
-        return None
-      }
-    PnameParseState::Done =>
-      // 找到冒号，继续解析本地部分
-      self.parse_prefixed_name_or_suffix(
-        data, prefix_consumed, start_offset, is_ending,
-      )
-  }
-}
-
-///|
-fn RdfLexer::parse_prefixed_name_or_suffix(
-  self : RdfLexer,
-  data : ArrayView[Byte],
-  prefix_consumed : Int, // 包括冒号的消耗量
-  start_offset : Int,
-  is_ending : Bool,
-) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
-  // 提取前缀（不包括冒号）
-  let prefix_bytes = data[:prefix_consumed - 1] // 去掉最后的 ':'
-  let prefix_range = Range(start_offset, start_offset + prefix_consumed - 1)
-
-  let pn_prefix = match str_from_utf8(prefix_bytes, prefix_range) {
-    Ok(p) => p
-    Err(e) => return Some((prefix_consumed, Err(e)))
-  }
-
-  // 验证前缀不能以 '.' 结尾
-  if pn_prefix.has_suffix(".") {
-    return Some(
-      build_prefix_error(data, prefix_consumed, start_offset, pn_prefix),
-    )
-  }
-
-  // 解析本地部分
-  let local_start = start_offset + prefix_consumed
-  match
-    self.recognize_optional_pn_local(
-      data[prefix_consumed:],
-      is_ending,
-      local_start,
-    ) {
-    Some((local_consumed, Ok((localx, might_be_invalid_iri)))) => {
-      let total_consumed = prefix_consumed + local_consumed
-      Some(
-        build_prefixed_name_result(
-          pn_prefix, total_consumed, start_offset, localx, might_be_invalid_iri,
-        ),
-      )
-    }
-    Some((local_consumed, Err(e))) =>
-      Some((prefix_consumed + local_consumed, Err(e)))
-    None => None
-  }
-}
-
-///|
-fn RdfLexer::recognize_variable(
-  self : RdfLexer,
-  data : ArrayView[Byte],
-  is_ending : Bool,
-  location_pos : SourcePos,
-) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
-  if data.is_empty() || data[0] != b'?' {
-    return None
-  }
-
-  // 修复：对 Option 类型进行模式匹配
-  // 传递 ? 之后的起始位置
-  match
-    self.recognize_optional_pn_local(
-      data[1:],
-      is_ending,
-      location_pos.offset + 1,
-    ) {
-    Some((consumed, name_result)) => {
-      let total_consumed = consumed + 1
-
-      let token_result = match name_result {
-        Ok((name, _)) if !name.is_empty() =>
-          Ok(
-            LocatedToken::new(
-              N3Token::Variable(name),
-              Range(location_pos.offset, location_pos.offset + total_consumed),
-            ),
-          )
-        Ok((_name, _)) =>
-          Err(
-            TokenRecognizerError::InvalidErrMessage(
-              data[0:total_consumed],
-              Range(location_pos.offset, location_pos.offset + total_consumed),
-              "A variable name is not allowed to be empty",
-            ),
-          )
-        Err(e) => Err(e)
-      }
-
-      Some((total_consumed, token_result))
-    }
-    None => None
-  }
-}
-
-///|
-fn RdfLexer::recognize_optional_pn_local(
-  self : RdfLexer,
-  data : ArrayView[Byte],
-  is_ending : Bool,
-  start_offset : Int, // 接收起始全局偏移量
-) -> (Int, Result[(String, Bool), TokenRecognizerError])? {
-  let mut i = 0
-  let mut buffer : StringBuilder? = None
-  let mut position_that_is_already_in_buffer = 0
-  let mut might_be_invalid_iri = false
-  let mut ends_with_unescaped_dot = 0
-
-  for ;; {
-    if RdfLexer::recognize_unicode_char(data[i:], i) is Some(r) {
-      match r {
-        Ok((c, consumed)) =>
-          if c == '%' {
-            i += 1
-            match (data.get(i), data.get(i + 1)) {
-              (Some(byte_a), Some(byte_b)) => {
-                let a = Byte::to_char(byte_a)
-                i += 1
-                let b = Byte::to_char(byte_b)
-                if !a.is_ascii_hexdigit() || !b.is_ascii_hexdigit() {
-                  return Some(
-                    (
-                      i + 1,
-                      Err(
-                        TokenRecognizerError::InvalidErrMessage(
-                          data[i - 2:i],
-                          Range(start_offset + i - 2, start_offset + i),
-                          "escapes in IRIs should be % followed by two hexadecimal characters, found '\{a}\{b}'",
-                        ),
-                      ),
-                    ),
-                  )
-                }
-                i += 1
-                ends_with_unescaped_dot = 0
-              }
-              _ =>
-                // 数据不足，等待更多输入
-                return None
-            }
-          } else if c == '\'' {
-            i += 1
-            match data.get(i) {
-              Some(next_byte) => {
-                let a = Byte::to_char(next_byte)
-
-                if self.lenient ||
-                  a == '_' ||
-                  a == '~' ||
-                  a == '.' ||
-                  a == '-' ||
-                  a == '!' ||
-                  a == '$' ||
-                  a == '&' ||
-                  a == '\'' ||
-                  a == '(' ||
-                  a == ')' ||
-                  a == '*' ||
-                  a == '+' ||
-                  a == ',' ||
-                  a == ';' ||
-                  a == '=' {
-                  // allowed
-                } else if a == '/' ||
-                  a == '?' ||
-                  a == '#' ||
-                  a == '@' ||
-                  a == '%' {
-                  might_be_invalid_iri = true
-                } else {
-                  return Some(
-                    (
-                      i + 1,
-                      Err(
-                        TokenRecognizerError::InvalidErrMessage(
-                          data[i:i + 1],
-                          Range(start_offset + i, start_offset + i + 1),
-                          "The character that are allowed to be escaped in IRIs are _~.-!$&'()*+,;=/?#@%, found '\{a}'",
-                        ),
-                      ),
-                    ),
-                  )
-                }
-
-                if buffer is None {
-                  buffer = Some(StringBuilder::new())
-                }
-                match buffer {
-                  Some(b) => {
-                    if i - position_that_is_already_in_buffer > 1 {
-                      match
-                        str_from_utf8(
-                          data[position_that_is_already_in_buffer:i - 1],
-                          Range(
-                            start_offset + position_that_is_already_in_buffer,
-                            start_offset + i - 1,
-                          ),
-                        ) {
-                        Ok(data_str) => b.write_stringview(data_str)
-                        Err(e) => return Some((i, Err(e)))
-                      }
-                    }
-                    b.write_char(a)
-                    i += 1
-                    position_that_is_already_in_buffer = i
-                    ends_with_unescaped_dot = 0
-                  }
-                  None => abort(" cannot happen")
-                }
-              }
-              None =>
-                // 数据不足，等待更多输入
-                return None
-            }
-          } else if i == 0 {
-            if !(RdfLexer::is_possible_pn_chars_u(c) ||
-              c == ':' ||
-              c.is_ascii_digit()) {
-              return Some((0, Ok(("".to_string(), false))))
-            }
-            if !self.lenient {
-              might_be_invalid_iri = RdfLexer::is_possible_pn_chars_base_but_not_valid_iri(
-                  c,
-                ) ||
-                c == ':'
-            }
-            i += consumed
-          } else if RdfLexer::is_possible_pn_chars(c) || c == ':' {
-            if !self.lenient {
-              might_be_invalid_iri = RdfLexer::is_possible_pn_chars_base_but_not_valid_iri(
-                  c,
-                ) ||
-                c == ':'
-            }
-            i += consumed
-            ends_with_unescaped_dot = 0
-          } else if c == '.' {
-            i += consumed
-            ends_with_unescaped_dot += 1
-          } else {
-            // 遇到非法字符，准备返回结果
-            let result = if buffer is Some(buffer_val) {
-              match
-                str_from_utf8(
-                  data[position_that_is_already_in_buffer:i],
-                  Range(
-                    start_offset + position_that_is_already_in_buffer,
-                    start_offset + i,
-                  ),
-                ) {
-                Ok(data_str) => buffer_val.write_stringview(data_str)
-                Err(e) => return Some((i, Err(e)))
-              }
-              let mut res_str = buffer_val.to_string()
-              if ends_with_unescaped_dot > 0 {
-                let len = res_str.length()
-                if len >= ends_with_unescaped_dot {
-                  res_str = res_str[:len - ends_with_unescaped_dot].to_owned()
-                }
-              }
-              i -= ends_with_unescaped_dot
-              res_str
-            } else {
-              let mut data_str = match
-                str_from_utf8(data[:i], Range(start_offset, start_offset + i)) {
-                Ok(d) => d
-                Err(e) => return Some((i, Err(e)))
-              }
-              data_str = data_str[:data_str.length() - ends_with_unescaped_dot].to_owned()
-              i -= ends_with_unescaped_dot
-              data_str
-            }
-            return Some((i, Ok((result, might_be_invalid_iri))))
-          }
-        Err(e) => return Some((e.range().end - start_offset, Err(e)))
-      }
-    } else if is_ending {
-      let result = if buffer is Some(buffer_val) {
-        if i - position_that_is_already_in_buffer > 0 {
-          match
-            str_from_utf8(
-              data[position_that_is_already_in_buffer:i],
-              Range(
-                start_offset + position_that_is_already_in_buffer,
-                start_offset + i,
-              ),
-            ) {
-            Ok(data_str) => buffer_val.write_stringview(data_str)
-            Err(e) => return Some((i, Err(e)))
-          }
-        }
-        let mut res_str = buffer_val.to_string()
-        while res_str.has_suffix(".") {
-          let len = res_str.length()
-          res_str = res_str[:len - 1].to_owned()
-          i -= 1
-        }
-        res_str
-      } else {
-        let mut data_str = match
-          str_from_utf8(data[:i], Range(start_offset, start_offset + i)) {
-          Ok(d) => d
-          Err(e) => return Some((i, Err(e)))
-        }
-        while data_str.has_suffix(".") {
-          data_str = data_str[:data_str.length() - 1].to_owned()
-          i -= 1
-        }
-        data_str
-      }
-      return Some((i, Ok((result, might_be_invalid_iri))))
-    } else {
-      return None
-    }
-  }
-}
-
-///|
-fn RdfLexer::recognize_blank_node_label(
-  _self : RdfLexer,
-  data : ArrayView[Byte],
-  is_ending : Bool,
-  location_pos : SourcePos,
-) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
-  let mut i = 2
-  while true {
-    match RdfLexer::recognize_unicode_char(data[i:], i) {
-      Some(c) =>
-        match c {
-          Ok((c, consumed)) => {
-            if (
-                i == 2 &&
-                (RdfLexer::is_possible_pn_chars_u(c) || c.is_ascii_digit())
-              ) ||
-              (i > 2 && RdfLexer::is_possible_pn_chars(c)) {
-
-            } else if i == 2 {
-              return Some(
-                (
-                  i,
-                  Err(
-                    TokenRecognizerError::InvalidErrMessage(
-                      data[0:i],
-                      Range(location_pos.offset, location_pos.offset + i),
-                      "A blank node ID cannot be empty",
-                    ),
-                  ),
-                ),
-              )
-            } else if c == '.' {
-              if data[i - 1] == b'.' {
-                i -= 1
-                return Some(
-                  (
-                    i,
-                    str_from_utf8(
-                      data[2:i],
-                      Range(location_pos.offset + 2, location_pos.offset + i),
-                    ).map(s => {
-                      LocatedToken::new(
-                        N3Token::BlankNodeLabel(s),
-                        Range(location_pos.offset + 2, location_pos.offset + i),
-                      )
-                    }),
-                  ),
-                )
-              }
-            } else if data[i - 1] == b'.' {
-              i -= 1
-              return Some(
-                (
-                  i,
-                  str_from_utf8(
-                    data[2:i],
-                    Range(location_pos.offset + 2, location_pos.offset + i),
-                  ).map(s => {
-                    LocatedToken::new(
-                      N3Token::BlankNodeLabel(s),
-                      Range(location_pos.offset + 2, location_pos.offset + i),
-                    )
-                  }),
-                ),
-              )
-            } else {
-              return Some(
-                (
-                  i,
-                  str_from_utf8(
-                    data[2:i],
-                    Range(location_pos.offset + 2, location_pos.offset + i),
-                  ).map(s => {
-                    LocatedToken::new(
-                      N3Token::BlankNodeLabel(s),
-                      Range(location_pos.offset + 2, location_pos.offset + i),
-                    )
-                  }),
-                ),
-              )
-            }
-            i += consumed
-          }
-          Err(e) => return Some((e.range().end - location_pos.offset, Err(e)))
-        }
-      _ => break
-    }
-  }
-  if is_ending {
-    if data[i - 1] == b'.' {
-      i -= 1
-    }
-    if i > 2 {
-      return Some(
-        (
-          i,
-          str_from_utf8(
-            data[2:i],
-            Range(location_pos.offset + 2, location_pos.offset + i),
-          ).map(s => {
-            LocatedToken::new(
-              N3Token::BlankNodeLabel(s),
-              Range(location_pos.offset + 2, location_pos.offset + i),
-            )
-          }),
-        ),
-      )
-    } else {
-      return Some(
-        (
-          i,
-          Err(
-            TokenRecognizerError::InvalidErrMessage(
-              data[0:i],
-              Range(location_pos.offset, location_pos.offset + i),
-              "A blank node ID cannot be empty",
-            ),
-          ),
-        ),
-      )
-    }
-  }
-
-  None
-}
-
-///|
-fn RdfLexer::recognize_lang_tag(
-  self : RdfLexer,
-  data : ArrayView[Byte],
-  location_pos : SourcePos,
-) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
-  let mut is_last_block_empty = true
-  let mut are_digits_allowed = false
-  let mut last_valid_index = 1
-
-  for _item in data[1:].iter2() {
-    let (i, c) = _item
-    if (are_digits_allowed && is_ascii_alphanumeric(Byte::to_char(c))) ||
-      (!are_digits_allowed && Byte::to_char(c).is_ascii_alphabetic()) {
-      is_last_block_empty = false
-      last_valid_index = i + 2
-    } else if i == 0 {
-      // ... 错误处理 ...
-    } else if is_last_block_empty {
-      // ... 处理连字符逻辑 ...
-    } else if c == b'-' {
-      is_last_block_empty = true
-      are_digits_allowed = true
-    } else {
-      // 遇到非字母数字字符（如空格、标点），说明语言标签结束
-      return Some(
-        (
-          i + 1,
-          self.parse_lang_tag(
-            data[1:i + 1].to_owned(),
-            None,
-            Range(location_pos.offset + 1, location_pos.offset + i + 1),
-          ),
-        ),
-      )
-    }
-  }
-
-  // 循环结束，说明到了输入末尾
-  if !is_last_block_empty {
-    // 返回已识别的部分
-    return Some(
-      (
-        last_valid_index,
-        self.parse_lang_tag(
-          data[1:last_valid_index].to_owned(),
-          None,
-          Range(location_pos.offset + 1, location_pos.offset + last_valid_index),
-        ),
-      ),
-    )
-  }
-
-  None
-}
-
-///|
-fn RdfLexer::parse_lang_tag(
-  self : RdfLexer,
-  lang_tag : ArrayView[Byte],
-  direction : Bytes?,
-  position : Range,
-) -> Result[LocatedToken, TokenRecognizerError] {
-  let lang_str_result = str_from_utf8(lang_tag, position)
-
-  let parsed_lang = match lang_str_result {
-    Err(e) =>
-      Err(
-        TokenRecognizerError::InvalidErrMessage(
-          lang_tag[position.start:position.end],
-          position,
-          e.to_string(),
-        ),
-      )
-    Ok(lang_str) =>
-      if self.lenient {
-        Ok(lang_str)
-      } else {
-        LanguageTag::parse(lang_str)
-        .map(fn(tag) { tag.to_string() })
-        .map_err(fn(e) {
-          TokenRecognizerError::InvalidErrMessage(
-            lang_tag[position.start:position.end],
-            position,
-            e.to_string(),
-          )
-        })
-      }
-  }
-
-  match parsed_lang {
-    Err(e) => Err(e)
-    Ok(lang_str) => {
-      let parsed_dir = match direction {
-        None => Ok(None)
-        Some(dir_bytes) =>
-          if dir_bytes == b"ltr" {
-            Ok(Some(BaseDirection::Ltr))
-          } else if dir_bytes == b"rtl" {
-            Ok(Some(BaseDirection::Rtl))
-          } else {
-            Err(
-              TokenRecognizerError::InvalidErrMessage(
-                dir_bytes.to_array(),
-                Range(position.end - dir_bytes.length(), position.end),
-                "The allowed base directions are --ltr and --rtl, found --" +
-                @utf8.decode_lossy(dir_bytes),
-              ),
-            )
-          }
-      }
-
-      match parsed_dir {
-        Err(e) => Err(e)
-        Ok(dir_opt) =>
-          Ok(
-            LocatedToken::new(
-              N3Token::LangTag(language=lang_str, direction=dir_opt),
-              Range(position.start, position.end),
-            ),
-          )
-      }
-    }
-  }
-}
-
-///|
-fn RdfLexer::recognize_string(
-  self : RdfLexer,
-  data : ArrayView[Byte],
-  delimiter : Byte,
-  is_ending : Bool,
-  location_pos : SourcePos,
-) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
-  let string = StringBuilder::new()
-  let mut i = 1
-
-  for ;; {
-    // 1. 查找下一个定界符或反斜杠
-    let end_opt = array_view_memchr2(delimiter, b'\\', data[i:])
-
-    let mut end = match end_opt {
-      Some(e) => e
-      None =>
-        if is_ending {
-          return Some(
-            (
-              data.length(),
-              Err(
-                TokenRecognizerError::UnexpectedEndOfInput(
-                  data[i:],
-                  Range(
-                    location_pos.offset + i,
-                    location_pos.offset + data.length(),
-                  ),
-                ),
-              ),
-            ),
-          )
-        } else {
-          return None
-        }
-    }
-
-    // 2. 在非宽松模式下，检查这段普通字符中是否包含未转义的换行符
-    if !self.lenient {
-      if array_view_memchr2(b'\n', b'\r', data[i:i + end])
-        is Some(line_jump_end) {
-        end = line_jump_end
-      }
-    }
-
-    // 3. 将普通字符部分追加到字符串缓冲区
-    match
-      str_from_utf8(
-        data[i:i + end],
-        Range(location_pos.offset + i, location_pos.offset + i + end),
-      ) {
-      Ok(s) => string.write_string(s)
-      Err(e) => return Some((i + end, Err(e)))
-    }
-    i += end
-
-    if i >= data.length() {
-      return None
-    }
-
-    match data[i] {
-      c if c == delimiter =>
-        // 遇到定界符，字符串结束
-        return Some(
-          (
-            i + 1,
-            Ok(
-              LocatedToken::new(
-                N3Token::String(string.to_string()),
-                Range(location_pos.offset, location_pos.offset + i + 1),
-              ),
-            ),
-          ),
-        )
-      b'\\' => {
-        // 遇到反斜杠，处理转义序列
-        let escape_result = self.recognize_escape(
-          data[i:],
-          location_pos.offset + i,
-          true,
-        )
-
-        match escape_result {
-          Some((additional, c_result)) => {
-            i += additional + 1
-            if i > data.length() {
-              return None
-            }
-            match c_result {
-              Ok(c) => string.write_char(c)
-              Err(e) => {
-                let end_opt = array_view_memchr(delimiter, data[i:])
-                let final_end = match end_opt {
-                  Some(e) => i + e + 1
-                  None => data.length()
-                }
-                return Some((final_end, Err(e)))
-              }
-            }
-          }
-          None => return None
-        }
-      }
-      b'\n' | b'\r' => {
-        let end_opt = array_view_memchr(delimiter, data[i:])
-        let final_end = match end_opt {
-          Some(e) => i + e + 1
-          None => i + 1
-        }
-        return Some(
-          (
-            final_end,
-            Err(
-              TokenRecognizerError::InvalidErrMessage(
-                data[i:i + 1],
-                Range(location_pos.offset + i, location_pos.offset + i + 1),
-                "Line jumps are not allowed in string literals, use \\n",
-              ),
-            ),
-          ),
-        )
-      }
-      _ =>
-        return Some(
-          (
-            i + 1,
-            Err(
-              TokenRecognizerError::InvalidErrMessage(
-                data[i:i + 1],
-                Range(location_pos.offset + i, location_pos.offset + i + 1),
-                "Unexpected character in string literal",
-              ),
-            ),
-          ),
-        )
-    }
-  }
-}
-
-///|
-fn RdfLexer::recognize_long_string(
-  self : RdfLexer,
-  data : ArrayView[Byte],
-  delimiter : Byte,
-  is_ending : Bool,
-  location_ctx : SourcePos,
-) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
-  // 检查前三个字符是否匹配 delimiter（即 """ 或 '''）
-  if data.length() < 3 {
-    return if is_ending {
-      Some(
-        (
-          data.length(),
-          Err(
-            TokenRecognizerError::UnexpectedEndOfInput(
-              data,
-              Range(location_ctx.offset, location_ctx.offset + data.length()),
-            ),
-          ),
-        ),
-      )
-    } else {
-      None
-    }
-  }
-
-  // 确认开头三个 delimiter
-  if data[0] != delimiter || data[1] != delimiter || data[2] != delimiter {
-    return None
-  }
-
-  // 调用内容识别，跳过前三个 delimiter
-  match
-    self.recognize_triple_quote_content(
-      data[3:],
-      delimiter,
-      location_ctx.offset + 3,
-    ) {
-    Some((bytes_consumed, content, found_ending)) => {
-      let total_bytes = bytes_consumed + 3
-      let end_offset = location_ctx.offset + total_bytes
-
-      if found_ending {
-        // 成功找到结束符 """ 或 '''
-        Some(
-          (
-            total_bytes,
-            Ok(
-              LocatedToken::new(
-                N3Token::LongString(content),
-                Range(location_ctx.offset, end_offset),
-              ),
-            ),
-          ),
-        )
-      } else if is_ending {
-        // 到文件末尾仍未找到结束符
-        Some(
-          (
-            total_bytes,
-            Err(
-              TokenRecognizerError::UnexpectedEndOfInput(
-                data, // 或 data[3:3+bytes_consumed]，已解析的部分
-                Range(
-                  location_ctx.offset + 3,
-                  location_ctx.offset + data.length(),
-                ),
-              ),
-            ),
-          ),
-        )
-      } else {
-        // 未结束但未到文件尾，可能是跨行长字符串，返回 None 让上层处理
-        None
-      }
-    }
-    None =>
-      // recognize_triple_quote_content 完全无法识别
-      if is_ending {
-        Some(
-          (
-            data.length(),
-            Err(
-              TokenRecognizerError::UnexpectedEndOfInput(
-                data,
-                Range(location_ctx.offset, location_ctx.offset + data.length()),
-              ),
-            ),
-          ),
-        )
-      } else {
-        None
-      }
-  }
-}
-
-///|
-fn RdfLexer::recognize_number(
-  _self : RdfLexer,
-  data : ArrayView[Byte],
-  is_ending : Bool,
-  location_pos : SourcePos,
-) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
-  let mut i = 0
-  match data.get(0) {
-    Some(c) => if c == b'+' || c == b'-' { i += 1 }
-    None => return None
-  }
-  let count_before = match RdfLexer::recognize_digits(data[i:], is_ending) {
-    Some(count) => count
-    None => return None
-  }
-  i += count_before
-  let c = if data.get(i) is Some(c) {
-    Some(c)
-  } else if is_ending {
-    None
-  } else {
-    return None
-  }
-  let count_after = if c == Some(b'.') {
-    i += 1
-    let count_after = match RdfLexer::recognize_digits(data[i:], is_ending) {
-      Some(count) => count
-      None => return None
-    }
-    i += count_after
-    Some(count_after)
-  } else {
-    None
-  }
-  let c = if data.get(i) is Some(c) {
-    Some(c)
-  } else if is_ending {
-    None
-  } else {
-    return None
-  }
-  if c is Some(b'e' | b'E') {
-    i += 1
-    let c = if data.get(i) is Some(c) {
-      Some(c)
-    } else if is_ending {
-      None
-    } else {
-      return None
-    }
-    if c is Some(b'+' | b'-') {
-      i += 1
-    }
-    let count_exp = match RdfLexer::recognize_digits(data[i:], is_ending) {
-      Some(count) => count
-      None => return None
-    }
-    i += count_exp
-    Some(
-      (
-        i,
-        if count_exp == 0 {
-          Err(
-            TokenRecognizerError::InvalidErrMessage(
-              data[0:i],
-              Range(location_pos.offset, location_pos.offset + i),
-              "A double exponent cannot be empty",
-            ),
-          )
-        } else if count_before == 0 && count_after.unwrap_or(0) == 0 {
-          Err(
-            TokenRecognizerError::InvalidErrMessage(
-              data[0:i],
-              Range(location_pos.offset, location_pos.offset + i),
-              "A double should not be empty",
-            ),
-          )
-        } else {
-          str_from_utf8(
-            data[:i],
-            Range(location_pos.offset, location_pos.offset + i),
-          ).map(s => {
-            LocatedToken::new(
-              N3Token::Double(s),
-              Range(location_pos.offset, location_pos.offset + i),
-            )
-          })
-        },
-      ),
-    )
-  } else if count_after is Some(count_after) {
-    if count_after == 0 {
-      i -= 1
-      Some(
-        (
-          i,
-          if count_before == 0 {
-            Err(
-              TokenRecognizerError::InvalidErrMessage(
-                data[0:i],
-                Range(location_pos.offset, location_pos.offset + i),
-                "An integer should not be empty",
-              ),
-            )
-          } else {
-            str_from_utf8(
-              data[:i],
-              Range(location_pos.offset, location_pos.offset + i),
-            ).map(s => {
-              LocatedToken::new(
-                N3Token::Integer(s),
-                Range(location_pos.offset, location_pos.offset + i),
-              )
-            })
-          },
-        ),
-      )
-    } else {
-      Some(
-        (
-          i,
-          str_from_utf8(
-            data[:i],
-            Range(location_pos.offset, location_pos.offset + i),
-          ).map(s => {
-            LocatedToken::new(
-              N3Token::Decimal(s),
-              Range(location_pos.offset, location_pos.offset + i),
-            )
-          }),
-        ),
-      )
-    }
-  } else {
-    Some(
-      (
-        i,
-        if count_before == 0 {
-          Err(
-            TokenRecognizerError::InvalidErrMessage(
-              data[0:i],
-              Range(location_pos.offset, location_pos.offset + i),
-              "An integer should not be empty",
-            ),
-          )
-        } else {
-          str_from_utf8(
-            data[:i],
-            Range(location_pos.offset, location_pos.offset + i),
-          ).map(s => {
-            LocatedToken::new(
-              N3Token::Integer(s),
-              Range(location_pos.offset, location_pos.offset + i),
-            )
-          })
-        },
-      ),
-    )
-  }
-}
-
-///|
-fn RdfLexer::recognize_digits(data : ArrayView[Byte], is_ending : Bool) -> Int? {
-  for _item in data.iter2() {
-    let (i, c) = _item
-    if !Byte::to_char(c).is_ascii_digit() {
-      return Some(i)
-    }
-  }
-  if is_ending {
-    Some(data.length())
+pub fn LexContext::current_char(self : LexContext) -> Byte? {
+  if self.position < self.data_buffer.length() {
+    Some(self.data_buffer[self.position])
   } else {
     None
   }
 }
 
 ///|
-
-///|
-fn RdfLexer::recognize_escape(
-  self : RdfLexer,
-  data : ArrayView[Byte],
-  position : Int, // 全局起始位置
-  with_echar : Bool,
-) -> (Int, Result[Char, TokenRecognizerError])? {
-  match data.get(1) {
-    Some(b'u') =>
-      match RdfLexer::recognize_hex_char(data[2:], 4, 'u', position) {
-        Ok(Some(c)) => Some((5, Ok(c)))
-        Ok(None) => None
-        Err(e) =>
-          if self.lenient {
-            match RdfLexer::recognize_utf16_surrogate_pair(data[2:], position) {
-              Ok(Some(c)) => Some((11, Ok(c)))
-              Ok(None) => None
-              Err(e) => Some((5, Err(e)))
-            }
-          } else {
-            Some((5, Err(e)))
-          }
-      }
-    Some(b'U') =>
-      match RdfLexer::recognize_hex_char(data[2:], 8, 'U', position) {
-        Ok(Some(c)) => Some((9, Ok(c)))
-        Ok(None) => None
-        Err(e) => Some((9, Err(e)))
-      }
-    Some(b't') if with_echar => Some((1, Ok('\t')))
-    Some(b'b') if with_echar => Some((1, Ok('\u{0008}')))
-    Some(b'n') if with_echar => Some((1, Ok('\n')))
-    Some(b'r') if with_echar => Some((1, Ok('\r')))
-    Some(b'f') if with_echar => Some((1, Ok('\u{000C}')))
-    Some(b'"') if with_echar => Some((1, Ok('"')))
-    Some(b'\'') if with_echar => Some((1, Ok('\'')))
-    Some(b'\\') if with_echar => Some((1, Ok('\\')))
-    Some(c) =>
-      Some(
-        (
-          1,
-          Err(
-            TokenRecognizerError::InvalidErrMessage(
-              data[1:2],
-              Range(position + 1, position + 2),
-              "Unexpected escape character \{c}",
-            ),
-          ),
-        ),
-      )
-    None => None
+pub fn LexContext::peek_char(self : LexContext) -> Byte? {
+  if self.position + 1 < self.data_buffer.length() {
+    Some(self.data_buffer[self.position + 1])
+  } else {
+    None
   }
 }
 
 ///|
-fn RdfLexer::recognize_hex_char(
-  data : ArrayView[Byte],
-  len : Int,
-  escape_char : Char,
-  position : Int,
-) -> Result[Char?, TokenRecognizerError] {
-  if data.length() < len {
-    return Ok(None)
-  }
-  let mut codepoint = 0
-  for i in 0..<len {
-    let c = data[i]
-
-    codepoint = codepoint * 16 +
-      Char::to_int(
-        match c {
-          b'0'..=b'9' => Byte::to_char(c - b'0')
-          b'a'..=b'f' => Byte::to_char(c - b'a' + 10)
-          b'A'..=b'F' => Byte::to_char(c - b'A' + 10)
-          _ => {
-            let val = @utf8.decode_lossy(array_to_view(data[:len]))
-            return Err(
-              TokenRecognizerError::InvalidErrMessage(
-                data[position + i + 2:position + i + 3],
-                Range(position + i + 2, position + i + 3),
-                "The escape sequence '\{escape_char}\{val}' is not a valid hexadecimal string",
-              ),
-            )
-          }
-        },
-      )
-  }
-  let c = Int::unsafe_to_char(codepoint)
-  Ok(Some(c))
+pub fn LexContext::advance(self : LexContext) -> Unit {
+  self.position += 1
 }
 
 ///|
-fn RdfLexer::recognize_utf16_surrogate_pair(
-  data : ArrayView[Byte],
-  position : Int,
-) -> Result[Char?, TokenRecognizerError] {
-  if data.length() < 12 {
-    return Ok(None)
+pub fn LexContext::get_capture(self : LexContext) -> String {
+  let mut s = ""
+  for i in self.capture_start..<self.capture_current {
+    s = s + self.data_buffer[i].to_int().unsafe_to_char().to_string()
   }
-
-  let val_high_bytes = data[2:6]
-  let val_high = match
-    str_from_utf8(val_high_bytes, Range(position + 2, position + 6)) {
-    Ok(s) => s
-    Err(e) => return Err(e)
-  }
-
-  let surrogate_high = match from_str_radix(val_high, 16) {
-    Ok(v) => v
-    Err(_) =>
-      return Err(
-        TokenRecognizerError::InvalidErrMessage(
-          val_high_bytes,
-          Range(position + 2, position + 6),
-          "The escape sequence '\\u{val_high}' is not a valid hexadecimal string",
-        ),
-      )
-  }
-
-  if !(surrogate_high >= 0xD800 && surrogate_high <= 0xDBFF) {
-    return Err(
-      TokenRecognizerError::InvalidErrMessage(
-        val_high_bytes,
-        Range(position + 2, position + 6),
-        "The escape sequence '\\u{val_high}' is not a UTF-16 high surrogate",
-      ),
-    )
-  }
-
-  if data[6] != b'\\' || data[7] != b'u' {
-    return Err(
-      TokenRecognizerError::InvalidErrMessage(
-        data[6:8],
-        Range(position + 6, position + 8),
-        "UTF-16 surrogate escape sequence must be followed by another surrogate escape sequence '\\u'",
-      ),
-    )
-  }
-
-  let val_low_bytes = data[8:12]
-  let val_low = match
-    str_from_utf8(val_low_bytes, Range(position + 8, position + 12)) {
-    Ok(s) => s
-    Err(e) => return Err(e)
-  }
-
-  let surrogate_low = match from_str_radix(val_low, 16) {
-    Ok(v) => v
-    Err(_) =>
-      return Err(
-        TokenRecognizerError::InvalidErrMessage(
-          val_low_bytes,
-          Range(position + 8, position + 12),
-          "The escape sequence '\\u\{val_low}' is not a valid hexadecimal string",
-        ),
-      )
-  }
-
-  if !(surrogate_low >= 0xDC00 && surrogate_low <= 0xDFFF) {
-    return Err(
-      TokenRecognizerError::InvalidErrMessage(
-        val_low_bytes,
-        Range(position + 8, position + 12),
-        "The escape sequence '\\u\{val_low}' is not a UTF-16 low surrogate",
-      ),
-    )
-  }
-
-  let c = Int::to_char(
-    ((UInt::reinterpret_as_int(surrogate_high) - 0xD800) << 10) +
-    (UInt::reinterpret_as_int(surrogate_low) - 0xDC00) +
-    0x10000,
-  )
-
-  match c {
-    Some(char) => Ok(Some(char))
-    None =>
-      Err(
-        TokenRecognizerError::InvalidErrMessage(
-          data[2:12],
-          Range(position + 2, position + 12),
-          "Escape sequences do not form a valid Unicode character",
-        ),
-      )
-  }
-}
-
-///|
-fn RdfLexer::recognize_unicode_char(
-  data : ArrayView[Byte],
-  position : Int,
-) -> Result[(Char, Int), TokenRecognizerError]? {
-  let mut code_point : UInt = 0
-  let mut bytes_needed : Int = 0
-  let mut lower_boundary = 0x80
-  let mut upper_boundary = 0xBF
-  let byte = match data.get(0) {
-    Some(b) => b
-    None => return None
-  }
-  match byte {
-    0x00..=0x7F => return Some(Ok((Byte::to_char(byte), 1)))
-    0xC2..=0xDF => {
-      bytes_needed = 1
-      code_point = Byte::to_uint(byte) & 0x1F
-    }
-    0xE0..=0xEF => {
-      if byte == 0xE0 {
-        lower_boundary = 0xA0
-      }
-      if byte == 0xED {
-        upper_boundary = 0x9F
-      }
-      bytes_needed = 2
-      code_point = Byte::to_uint(byte) & 0xF
-    }
-    0xF0..=0xF4 => {
-      if byte == 0xF0 {
-        lower_boundary = 0x90
-      }
-      if byte == 0xF4 {
-        upper_boundary = 0x8F
-      }
-      bytes_needed = 3
-      code_point = Byte::to_uint(byte) & 0x7
-    }
-    _ =>
-      return Some(
-        Err(
-          TokenRecognizerError::InvalidErrMessage(
-            data[position:position + 1],
-            Range(position, position + 1),
-            "Invalid UTF-8 character encoding",
-          ),
-        ),
-      )
-  }
-  for i in 1..<=bytes_needed {
-    let next_byte = match data.get(i) {
-      Some(b) => b
-      None => return None
-    }
-    if next_byte < Int::to_byte(lower_boundary) ||
-      upper_boundary < Byte::to_int(byte) {
-      return Some(
-        Err(
-          TokenRecognizerError::InvalidErrMessage(
-            data[position:position + i],
-            Range(position, position + i),
-            "Invalid UTF-8 character encoding",
-          ),
-        ),
-      )
-    }
-    lower_boundary = 0x80
-    upper_boundary = 0xBF
-    code_point = (code_point << 6) | (Byte::to_uint(byte) & 0x3F)
-  }
-  match Int::to_char(UInt::reinterpret_as_int(code_point)) {
-    Some(c) => Some(Ok((c, bytes_needed + 1)))
-    None => {
-      let error_range = Range(position, position + bytes_needed)
-      let msg = "The codepoint \{code_point} is not a valid unicode character"
-
-      Some(
-        Err(
-          TokenRecognizerError::InvalidErrMessage(
-            data[position:position + bytes_needed],
-            error_range,
-            msg,
-          ),
-        ),
-      )
-    }
-  }
-}
-
-///|
-fn RdfLexer::is_possible_pn_chars_base(c : Char) -> Bool {
-  c
-  is ('A'..='Z'
-  | 'a'..='z'
-  | '\u{00C0}'..='\u{00D6}'
-  | '\u{00D8}'..='\u{00F6}'
-  | '\u{00F8}'..='\u{02FF}'
-  | '\u{0370}'..='\u{037D}'
-  | '\u{037F}'..='\u{1FFF}'
-  | '\u{200C}'..='\u{200D}'
-  | '\u{2070}'..='\u{218F}'
-  | '\u{2C00}'..='\u{2FEF}'
-  | '\u{3001}'..='\u{D7FF}'
-  | '\u{F900}'..='\u{FDCF}'
-  | '\u{FDF0}'..='\u{FFFD}'
-  | '\u{10000}'..='\u{EFFFF}')
-}
-
-///|
-pub fn RdfLexer::is_possible_pn_chars_u(c : Char) -> Bool {
-  RdfLexer::is_possible_pn_chars_base(c) || c == '_'
-}
-
-///|
-pub fn RdfLexer::is_possible_pn_chars(c : Char) -> Bool {
-  RdfLexer::is_possible_pn_chars_u(c) ||
-  c
-  is ('-'
-  | '0'..='9'
-  | '\u{00B7}'
-  | '\u{0300}'..='\u{036F}'
-  | '\u{203F}'..='\u{2040}')
-}
-
-///|
-fn RdfLexer::is_possible_pn_chars_base_but_not_valid_iri(c : Char) -> Bool {
-  c is ('\u{FFF0}'..='\u{FFFD}') ||
-  Char::to_int(c) % Char::to_int('\u{FFFE}') == 0 ||
-  Char::to_int(c) % Char::to_int('\u{FFFF}') == 0
-}
-
-///|
-pub fn resolve_local_name(
-  prefix : String,
-  localx : String,
-  might_be_invalid_iri : Bool,
-  prefixes : Map[String, IriR],
-) -> Result[NamedNodeRef, String] {
-  match prefixes.get(prefix) {
-    Some(start) => {
-      let iri_str = start.into_string() + localx
-
-      if might_be_invalid_iri || start.path.length() == 0 {
-        let temp = IriR::{
-          scheme: "",
-          authority: None,
-          path: "",
-          query: None,
-          fragment: None,
-        }
-        match temp.parse(iri_str) {
-          Err(e) =>
-            return Err(
-              "Invalid IRI \{prefix}:\{localx} -> \{iri_str}: \{e.to_string()}",
-            )
-          _ => ()
-        }
-      }
-
-      Ok(NamedNodeRef::new_unchecked(iri_str))
-    }
-    None => Err("Prefix \{prefix}: not declared")
-  }
-}
-
-///|
-fn str_from_utf8(
-  data : ArrayView[Byte],
-  range : Range,
-) -> Result[String, TokenRecognizerError] {
-  let view = array_to_view(data)
-
-  let s = try @utf8.decode(view.to_owned()) |> Ok() catch {
-    _e => {
-      let error_start = range.start
-      let error_end = Int::min(range.end, error_start + 4)
-
-      return Err(
-        TokenRecognizerError::InvalidErrMessage(
-          data[error_start:error_end],
-          Range(error_start, error_end),
-          "Invalid UTF-8 sequence",
-        ),
-      )
-    }
-  }
-
   s
 }
 
 ///|
-fn string_from_utf8(
-  data : Array[Byte],
-  range : Range,
-) -> Result[String, TokenRecognizerError] {
-  str_from_utf8(data[:], range)
+/// 填充前瞻缓冲区
+fn fill_lookahead(ctx : LexContext, count : Int) -> Bool {
+  let start = ctx.position
+  let end = Int::min(start + count, ctx.data_buffer.length())
+
+  ctx.lookahead_buffer = []
+  for i in start..<end {
+    match ctx.data_buffer.get(i) {
+      Some(b) => ctx.lookahead_buffer.push(b)
+      None => break
+    }
+  }
+  ctx.lookahead_pos = 0
+
+  ctx.lookahead_buffer.length() >= count
 }
 
 ///|
-fn RdfLexer::recognize_triple_quote_content(
+/// 获取前瞻字节
+fn peek_lookahead(ctx : LexContext, offset : Int) -> Byte? {
+  ctx.lookahead_buffer.get(ctx.lookahead_pos + offset)
+}
+
+///|
+/// 消费前瞻字节
+fn consume_lookahead(ctx : LexContext) -> Byte? {
+  match ctx.lookahead_buffer.get(ctx.lookahead_pos) {
+    Some(b) => {
+      ctx.lookahead_pos += 1
+      ctx.position += 1
+      Some(b)
+    }
+    None => None
+  }
+}
+
+///|
+/// 返回转义序列的长度（4 或 8），或 None
+fn peek_hex_length(ctx : LexContext) -> Int? {
+  let pos = ctx.position
+
+  // 检查是否有足够字符 (\u + 4 hex 或 \U + 8 hex)
+  let prefix = match ctx.data_buffer.get(pos) {
+    Some(b) => b
+    None => return None
+  }
+
+  if prefix == b'u' {
+    // \u 需要 4 个十六进制
+    let mut count = 0
+    for i in 1..<5 {
+      match ctx.data_buffer.get(pos + i) {
+        Some(b) if b.is_ascii_hexdigit() => count += 1
+        _ => break
+      }
+    }
+    if count == 4 {
+      Some(4)
+    } else {
+      None
+    }
+  } else if prefix == b'U' {
+    // \U 需要 8 个十六进制
+    let mut count = 0
+    for i in 1..<9 {
+      match ctx.data_buffer.get(pos + i) {
+        Some(b) if b.is_ascii_hexdigit() => count += 1
+        _ => break
+      }
+    }
+    if count == 8 {
+      Some(8)
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+/// 检查转义序列是否有效，返回需要消费的字节数
+fn check_escape(ctx : LexContext) -> Int? {
+  let remaining = ctx.data_buffer.length() - ctx.position
+
+  match ctx.data_buffer.get(ctx.position) {
+    Some(b'u') if remaining >= 5 => {
+      // 检查 4 个十六进制
+      for i in 1..<5 {
+        if !ctx.data_buffer[ctx.position + i].is_ascii_hexdigit() {
+          return None
+        }
+      }
+      Some(5) // \\u + 4 hex
+    }
+    Some(b'U') if remaining >= 9 => {
+      // 检查 8 个十六进制
+      for i in 1..<9 {
+        if !ctx.data_buffer[ctx.position + i].is_ascii_hexdigit() {
+          return None
+        }
+      }
+      Some(9) // \\U + 8 hex
+    }
+    _ => None
+  }
+}
+
+///|
+/// 消费转义序列
+fn consume_escape(ctx : LexContext) -> LexAction {
+  match check_escape(ctx) {
+    Some(count) => {
+      ctx.position += count
+      ctx.capture_current = ctx.position
+      LexAction::Continue
+    }
+    None => LexAction::EmitError("Invalid escape sequence")
+  }
+}
+
+///|
+/// 检查字节是否为十六进制
+fn Byte::is_ascii_hexdigit(b : Byte) -> Bool {
+  (b >= b'0' && b <= b'9') ||
+  (b >= b'a' && b <= b'f') ||
+  (b >= b'A' && b <= b'F')
+}
+
+///|
+/// ===== 查找转换 =====
+pub fn RdfLexer::find_transition(
+  _self : RdfLexer,
+  state : LexStateMachine,
+  char_class : CharClass,
+) -> Transition? {
+  match transitions_by_state.get(state) {
+    Some(transitions) => {
+      for t in transitions {
+        if t.char_class == char_class {
+          return Some(t)
+        }
+      }
+      None
+    }
+    None => None
+  }
+}
+
+///|
+/// ===== 状态机执行器 =====
+pub fn RdfLexer::execute_action(
   self : RdfLexer,
-  data : ArrayView[Byte],
-  delimiter : Byte,
-  start_offset : Int,
-) -> (Int, String, Bool)? {
-  // 返回: (消耗的字节数, 解析的字符串, 是否遇到结束标记)
-  let string = StringBuilder::new()
-  let mut i = 0
-  let len = data.length()
+  action : LexAction,
+  ctx : LexContext,
+  current : Byte,
+  _data_buffer : ArrayView[Byte],
+) -> (LexAction, LexContext) {
+  match action {
+    LexAction::Continue => {
+      ctx.advance()
+      let pos = ctx.position
+      self.debug_logger.info("Continue: pos=\{pos}")
+      (LexAction::Continue, ctx)
+    }
+    LexAction::Skip => {
+      ctx.advance()
+      let pos = ctx.position
+      self.debug_logger.info("Skip: pos=\{pos}")
+      (LexAction::Continue, ctx)
+    }
+    LexAction::StartCapture => {
+      let pos = ctx.position
+      self.debug_logger.info(
+        "StartCapture: pos=\{pos}, capture_start will be=\{pos}",
+      )
+
+      ctx.capture_start = pos
+      ctx.capture_current = pos
+      ctx.advance()
+
+      self.debug_logger.info(
+        "After: pos=\{pos}, capture_start=\{ctx.capture_start}",
+      )
+      (LexAction::Continue, ctx)
+    }
+    LexAction::AppendCapture => {
+      ctx.advance()
+      ctx.capture_current = ctx.position
+
+      // 处理转义
+      if ctx.state == LexStateMachine::InIri && current == b'\\' {
+        match consume_escape(ctx) {
+          LexAction::Continue => ()
+          e => return (e, ctx)
+        }
+      }
+
+      (LexAction::Continue, ctx)
+    }
+    LexAction::EndCapture => {
+      let pos = ctx.position
+
+      ctx.capture_current = pos
+      self.debug_logger.info(
+        "EndCapture: capture_current=\{ctx.capture_current}",
+      )
+      (LexAction::Continue, ctx)
+    }
+    LexAction::EmitToken => {
+      ctx.capture_current = ctx.position + 1
+      let s = ctx.get_capture()
+      ctx.captured = Some(s)
+      ctx.emit_state = Some(ctx.state) // ★ 保存 emit 前的状态
+      ctx.advance()
+      self.debug_logger.info("EmitToken: pos=\{ctx.position}, Captured='\{s}'")
+      self.debug_logger.info("EmitToken: state before advance: \{ctx.state}") // 添加调试
+      self.debug_logger.info("EmitToken: content: '\{s}'")
+
+      (LexAction::EmitToken, ctx)
+    }
+    LexAction::EmitTokenWithDirection(dir) => {
+      ctx.advance()
+      let pos = ctx.position
+      self.debug_logger.info(
+        "EmitTokenWithDirection: pos=\{pos}, dir=\{@debug.to_string(dir)}",
+      )
+      (LexAction::EmitTokenWithDirection(dir), ctx)
+    }
+    LexAction::PushState(s) => {
+      ctx.state_stack.push(ctx.state)
+      ctx.state = s
+      ctx.advance()
+      let pos = ctx.position
+
+      self.debug_logger.info("PushState: new state=\{s}, pos=\{pos}")
+      (LexAction::Continue, ctx)
+    }
+    LexAction::PopState => {
+      let old_state = ctx.state
+      match ctx.state_stack.pop() {
+        Some(s) => ctx.state = s
+        None => ()
+      }
+
+      self.debug_logger.info("PopState: \{old_state} -> \{ctx.state}")
+      (LexAction::Continue, ctx)
+    }
+    LexAction::SetState(s) => {
+      ctx.state = s
+      ctx.advance()
+      let pos = ctx.position
+
+      self.debug_logger.info("SetState: new state=\{s}, pos=\{pos}")
+      (LexAction::Continue, ctx)
+    }
+    LexAction::EmitError(msg) => {
+      self.debug_logger.info("EmitError: \{msg}")
+
+      (LexAction::EmitError(msg), ctx)
+    }
+    LexAction::Done => {
+      self.debug_logger.info("Done")
+
+      (LexAction::Done, ctx)
+    }
+  }
+}
+
+///|
+/// 创建 Token（包含完整的 LangTag）
+pub fn make_token(state : LexStateMachine, content : String) -> N3Token {
+  match state {
+    LexStateMachine::InIri => N3Token::Iri(content)
+    LexStateMachine::InBlankLabel => N3Token::BlankNodeLabel(content)
+    LexStateMachine::InBlank => N3Token::BlankNodeLabel(content)
+    LexStateMachine::InString => N3Token::String(content)
+    LexStateMachine::InLongString => N3Token::LongString(content)
+    LexStateMachine::InLangTag => {
+      // 直接使用 content，-bidi 决定方向
+      let direction = if content.has_suffix("-bidi") {
+        Some(BaseDirection::Rtl)
+      } else {
+        None
+      }
+      N3Token::LangTag(language=content, direction~)
+    }
+    LexStateMachine::InVariable => N3Token::Variable(content)
+    LexStateMachine::InKeyword => N3Token::PlainKeyword(content)
+    LexStateMachine::InInteger => N3Token::Integer(content)
+    LexStateMachine::InDecimal => N3Token::Decimal(content)
+    LexStateMachine::InDouble => N3Token::Double(content)
+    LexStateMachine::InPunct => N3Token::Punctuation(content)
+    LexStateMachine::InPnamePrefix | LexStateMachine::InPnameLocal =>
+      match content.find(":") {
+        Some(idx) => {
+          let prefix = content.sub(start=0, end=idx).to_owned()
+          let localx = content
+            .sub(start=idx + 1, end=content.length())
+            .to_owned()
+          N3Token::PrefixedName(prefix~, localx~, might_be_invalid_iri=false)
+        }
+        None => N3Token::PlainKeyword(content)
+      }
+    _ => N3Token::PlainKeyword(content)
+  }
+}
+
+///|
+/// 单步执行状态机
+/// 返回 (action, pos)，如果无法继续则返回 None
+fn RdfLexer::step(
+  self : RdfLexer,
+  ctx : LexContext,
+  data_buffer : ArrayView[Byte],
+) -> (LexAction, LexContext)? {
+  // 1. 获取当前字符
+  let current = match ctx.data_buffer.get(ctx.position) {
+    Some(b) => b
+    None => return None
+  }
+  // debug("  current: \{@utf8.decode_lossy([current])}")
+
+  // 2. 字符分类
+  let char_class = classify_byte(current)
+
+  // 3. 查找转换
+  let t = self.find_transition(ctx.state, char_class)
+
+  match t {
+    Some(transition) => {
+      // 4. 执行动作
+      let (action, new_ctx) = self.execute_action(
+        transition.action,
+        ctx,
+        current,
+        data_buffer,
+      )
+
+      // 5. 更新状态（如果需要）
+      let final_ctx = if transition.to != new_ctx.state {
+        { ..new_ctx, state: transition.to }
+      } else {
+        new_ctx
+      }
+
+      Some((action, final_ctx))
+    }
+    None => None
+  }
+}
+
+///|
+/// 执行状态机直到输出 Token
+pub fn RdfLexer::run_state_machine(
+  self : RdfLexer,
+  data_buffer : ArrayView[Byte],
+  is_ending : Bool,
+  location_pos : SourcePos,
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
+  let mut ctx = LexContext::new(data_buffer, is_ending~)
 
   for ;; {
-    if i >= len {
-      return None // 未找到结束标记，且没有更多数据
-    }
-    // println("[DEBUG triple_quote] i=\{i}, len=\{len}")
-    // 查找下一个 delimiter 或反斜杠
-    let search_result = array_view_memchr2(delimiter, b'\\', data[i:])
+    self.debug_logger.info("step: pos=\{ctx.position}, state=\{ctx.state}")
 
-    match search_result {
-      None => {
-        // 没有找到 delimiter 或反斜杠，将剩余内容写入字符串
-        match
-          str_from_utf8(data[i:], Range(start_offset + i, start_offset + len)) {
-          Ok(s) => string.write_string(s)
-          Err(_) => return None
+    match self.step(ctx, data_buffer) {
+      Some((action, new_ctx)) => {
+        ctx = new_ctx // ★ 更新 ctx
+
+        match action {
+          LexAction::EmitToken => {
+            let state = ctx.emit_state.unwrap_or(ctx.state) // ★ 使用 emit_state
+            let token = make_token(state, ctx.captured.unwrap_or(""))
+            self.debug_logger.info("  -> Emit: \{token}")
+            let range = Range::Range(
+              location_pos.offset,
+              location_pos.offset + ctx.position,
+            )
+            return Some((ctx.position, Ok(LocatedToken(token, range))))
+          }
+          LexAction::EmitError(_msg) => {
+            let range = Range::Range(
+              location_pos.offset,
+              location_pos.offset + ctx.position,
+            )
+            return Some(
+              (
+                ctx.position,
+                Err(TokenRecognizerError::InvalidToken(data_buffer, range)),
+              ),
+            )
+          }
+          _ => continue
         }
-        return None // 内容结束但未找到结束标记
       }
-      Some(pos) => {
-        let offset = i + pos
-        let c = data[offset]
-
-        if c == b'\\' {
-          // 处理转义字符
-          match
-            self.recognize_escape(data[offset:], start_offset + offset, true) {
-            Some((additional, c_result)) => {
-              i = offset + additional + 1
-              match c_result {
-                Ok(ch) => string.write_char(ch)
-                Err(_) => {
-                  // 无效转义，把 \ 和下一个字符都当作普通内容
-                  if pos > 0 {
-                    match
-                      str_from_utf8(
-                        data[i:offset],
-                        Range(start_offset + i, start_offset + offset),
-                      ) {
-                      Ok(s) => string.write_string(s)
-                      Err(_) => return None
-                    }
-                  }
-                  // 把 \ 当作普通字符
-                  string.write_string("\\")
-                  i = offset + 1
-                }
-              }
-            }
-            None => {
-              // 没有足够的字符来形成完整的转义，把 \ 当作普通字符
-              if pos > 0 {
-                match
-                  str_from_utf8(
-                    data[i:offset],
-                    Range(start_offset + i, start_offset + offset),
-                  ) {
-                  Ok(s) => string.write_string(s)
-                  Err(_) => return None
-                }
-              }
-              string.write_string("\\")
-              i = offset + 1
-            }
-          }
-        } else {
-          // c == delimiter，找到了 delimiter
-          // 检查是否是三引号结束
-          if data.get(offset + 1) == Some(delimiter) &&
-            data.get(offset + 2) == Some(delimiter) {
-            // 三引号结束！
-            // 在结束之前，先将当前找到 delimiter 之前的内容写入
-            if pos > 0 {
-              match
-                str_from_utf8(
-                  data[i:offset],
-                  Range(start_offset + i, start_offset + offset),
-                ) {
-                Ok(s) => string.write_string(s)
-                Err(_) => return None
-              }
-            }
-            return Some((offset + 3, string.to_string(), true))
-          }
-
-          // 单个或两个 delimiter，作为内容处理
-          // 先将 delimiter 之前的内容写入
-          if pos > 0 {
-            match
-              str_from_utf8(
-                data[i:offset],
-                Range(start_offset + i, start_offset + offset),
-              ) {
-              Ok(s) => string.write_string(s)
-              Err(_) => return None
-            }
-          }
-
-          // 计算连续 delimiter 的数量
-          let mut quote_count = 1
-          while offset + quote_count < len &&
-                data[offset + quote_count] == delimiter {
-            quote_count += 1
-          }
-
-          // 将 delimiter 写入字符串（除了最后一个，因为可能还有更多）
-          // 如果是连续 2 个 delimiter，写入 2 个
-          // 如果是连续 3 个 delimiter（前面已经处理过三引号情况），写入 2 个
-          for _q in 0..<quote_count {
-            string.write_char(Byte::to_char(delimiter))
-          }
-
-          i = offset + quote_count
+      None => {
+        // 无转换，尝试恢复
+        if ctx.capture_current > ctx.capture_start {
+          let token = make_token(ctx.state, ctx.get_capture())
+          let pos = ctx.position
+          let range = Range::Range(
+            location_pos.offset,
+            location_pos.offset + pos,
+          )
+          return Some((ctx.capture_current, Ok(LocatedToken(token, range))))
         }
+        let pos = ctx.position
+
+        let range = Range::Range(
+          location_pos.offset,
+          location_pos.offset + pos + 1,
+        )
+
+        return Some(
+          (
+            ctx.position + 1,
+            Err(TokenRecognizerError::InvalidToken(data_buffer, range)),
+          ),
+        )
       }
     }
   }
 }
 
 ///|
-fn strip_trailing_dots(data : ArrayView[Byte], i : Int) -> Int {
-  let mut j = i
-  while j > 0 && data[j - 1] == b'.' {
-    j -= 1
+/// 跳过空白字符，返回跳过的数量
+pub fn[RL] Lexer::skip_whitespace(self : Lexer[RL]) -> Int {
+  let mut count = 0
+  while self.position.buffer_offset + count < self.data.length() {
+    let b = self.data[self.position.buffer_offset + count]
+    match b {
+      b' ' | b'\t' | b'\r' => count += 1
+      _ => break
+    }
   }
-  j
+  count
+}
+
+///|
+/// 跳过空白和注释
+pub fn[RL] Lexer::skip_whitespaces_and_comments(self : Lexer[RL]) -> Bool {
+  let mut skipped = 0
+
+  for ;; {
+    if self.position.buffer_offset + skipped >= self.data.length() {
+      // 没有更多数据
+      break
+    }
+
+    let b = self.data[self.position.buffer_offset + skipped]
+
+    // 空白字符
+    if b == b' ' || b == b'\t' || b == b'\r' || b == b'\n' {
+      skipped += 1
+      // 注释（# 开头）
+    } else if b == b'#' {
+      skipped += 1
+      // 跳过注释直到行尾
+      for ;; {
+        if self.position.buffer_offset + skipped >= self.data.length() {
+          break
+        }
+        if self.data[self.position.buffer_offset + skipped] == b'\n' {
+          break
+        }
+        skipped += 1
+      }
+      // 非空白字符，结束
+    } else {
+      break
+    }
+  }
+
+  // 更新位置
+  if skipped > 0 {
+    self.position.buffer_offset += skipped
+    self.position.global_offset += skipped
+
+    // 统计换行
+    let view = self.data[self.position.buffer_offset - skipped:self.position.buffer_offset]
+    for b in view {
+      if b == b'\n' {
+        self.position.global_line += 1
+      }
+    }
+  }
+
+  skipped > 0
+}
+
+///|
+/// ===== TokenRecognizer 实现 =====
+pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
+  self : RdfLexer,
+  data_buffer : ArrayView[Byte],
+  is_ending : Bool,
+  _options : LexerOptions?,
+  location_pos : SourcePos,
+) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
+  self.run_state_machine(data_buffer, is_ending, location_pos)
 }

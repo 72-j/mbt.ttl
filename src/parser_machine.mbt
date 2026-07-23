@@ -156,7 +156,7 @@ pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(
             // 未完成
             self.errors.push(
               RuleRecognizerError::SyntaxError(
-                "Maybe end of input",
+                "Unexpected end of input",
                 self.lexer.last_token_range().to_range(),
               ),
             )

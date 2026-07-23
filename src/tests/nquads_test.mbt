@@ -1,4 +1,62 @@
 ///|
+test "parse simple IRI" {
+  // #|<\U00000053> .
+  let input =
+    #|<s> <p> <o> .
+  debug("Input: \{input}")
+
+  let data = @utf8.encode(input).to_array()
+  for i in 0..<data.length() {
+    let b = data[i]
+    let cc = @lib.classify_byte(b)
+    debug("  [\{i}] '\{b.to_int().unsafe_to_char()}' -> \{cc}")
+  }
+  let lexer = @lib.Lexer::Lexer(
+    @lib.RdfLexer::RdfLexer(
+      @lib.RdfLexerMode::NTriples,
+      false,
+      [],
+      debug_logger=@lib.make_console_logger(),
+    ),
+    data,
+    true,
+    @lib.MIN_BUFFER_SIZE,
+    @lib.MAX_BUFFER_SIZE,
+    Some(b"#"),
+    0,
+    0,
+  )
+
+  let result = lexer.parse_next(None)
+  debug("Result: \{result}")
+}
+
+///|
+test "parse IRI full" {
+  let input = "<http://example.org> ."
+  let data = @utf8.encode(input).to_array()
+
+  let lexer = @lib.Lexer::Lexer(
+    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+    data,
+    true,
+    @lib.MIN_BUFFER_SIZE,
+    @lib.MAX_BUFFER_SIZE,
+    Some(b"#"),
+    0,
+    0,
+  )
+
+  let result = lexer.parse_next(None)
+  debug("Result: \{@debug.to_string(result)}")
+
+  match result {
+    Some(Ok(token)) => debug("Token: \{token}")
+    _ => ()
+  }
+}
+
+///|
 test "parse basic quad" {
   let parser = @lib.NQuadsParser::new()
   let low_level = parser.low_level()
@@ -48,12 +106,12 @@ test "low level parser initialization" {
 
 ///|
 async test "Parser_basic_single_line for NQuads" {
+  // #| <http://example/s> <http://example/p> _:o . # comment
+  // #|<http://example.org/s> <http://example.org/p> "Hello\u0020World" .
+  // #| <http://example/s> <http://example/p> "o"^^<http://example/dt> . # comment
+  // #|<http://example.org/s> <http://example.org/p> <http://example.org/o> .
+  // #|<http://example.org/s> <http://example.org/p> <http://example.org/o>  <http://example.org/g> .
   let input =
-    #| <http://example/s> <http://example/p> _:o . # comment
-    #|<http://example.org/s> <http://example.org/p> "Hello\u0020World" .
-    #| <http://example/s> <http://example/p> "o"^^<http://example/dt> . # comment
-    #|<http://example.org/s> <http://example.org/p> <http://example.org/o> .
-    #|<http://example.org/s> <http://example.org/p> <http://example.org/o>  <http://example.org/g> .
     #|<http://example.org/s> <http://example.org/p> "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\t\u000B\u000C\u000E\u000F\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001A\u001B\u001C\u001D\u001E\u001F" .
     #|
   let data = @utf8.encode(input).to_array()
