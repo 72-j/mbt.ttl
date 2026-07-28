@@ -360,7 +360,7 @@ pub impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
 
 ///|
 pub fn print_quoted_str(f : StringBuilder, string : StringView) -> String {
-  f.write('\"')
+  // f.write('\"')
   for c in string {
     let code = Char::to_uint(c)
     match c {
@@ -369,14 +369,14 @@ pub fn print_quoted_str(f : StringBuilder, string : StringView) -> String {
       '\n' => f.write("\\n")
       '\u{0C}' => f.write("\\f")
       '\r' => f.write("\\r")
-      '"' => f.write("\\\"")
-      '\\' => f.write("\\\\")
+      // '"' => f.write("\"")
+      // '\\' => f.write("\\")
       _ if code <= 0x1F || code == 0x7F || code == 0xFFFE || code == 0xFFFF =>
         f.write("\\u\{code.lpad(4, '0')}") // 假设 code 已转为 UInt16
       _ if code >= 0x10000 => f.write("\\U\{code.lpad(8, '0')}")
       _ => f.write_char(c)
     }
   }
-  f.write('\"')
+  // f.write('\"')
   f.to_string()
 }

@@ -100,10 +100,9 @@ pub impl Show for NamedOrBlankNode with fn output(
     NamedOrBlankNode::NamedNode(v) => f.write_string(v.iri)
     NamedOrBlankNode::BlankNode(v) =>
       match v {
-        BlankNode::Named(v) => {
-          f.write("_:")
+        BlankNode::Named(v) =>
+          // f.write("_:")
           f.write(v)
-        }
         BlankNode::Anonymous(v) => f.write_string(v.str)
       }
   }
@@ -254,7 +253,7 @@ pub(all) enum BlankNodeRef {
 ///|
 impl Show for BlankNodeRef with fn to_string(self : BlankNodeRef) -> String {
   match self {
-    BlankNodeRef::Named(v) => "_:\{v}"
+    BlankNodeRef::Named(v) => v.to_owned()
     BlankNodeRef::Anonymous(v) => v.str
   }
 }
@@ -296,7 +295,7 @@ pub(all) enum BlankNode {
 ///|
 impl Show for BlankNode with fn to_string(self : BlankNode) -> String {
   match self {
-    BlankNode::Named(v) => v
+    BlankNode::Named(v) => "_:\{v}"
     BlankNode::Anonymous(v) => v.str
   }
 }
@@ -513,10 +512,9 @@ impl Show for Term with fn output(self : Term, logger : &Logger) -> Unit {
     Term::NamedNode(n) => logger.write(n)
     Term::BlankNode(b) =>
       match b {
-        BlankNode::Named(v) => {
-          logger.write("_:")
+        BlankNode::Named(v) =>
+          // logger.write("_:")
           logger.write(v)
-        }
         BlankNode::Anonymous(v) => logger.write(v.str)
       }
     Term::Literal(l) => l.output(logger)
@@ -568,10 +566,9 @@ impl Show for TermRef with fn output(self : TermRef, logger : &Logger) -> Unit {
     TermRef::NamedNodeRef(v) => logger.write(v.to_string())
     TermRef::BlankNodeRef(b) =>
       match b {
-        BlankNodeRef::Named(v) => {
-          logger.write("_:")
+        BlankNodeRef::Named(v) =>
+          // logger.write("_:")
           logger.write(v)
-        }
         BlankNodeRef::Anonymous(v) => logger.write(v.str)
       }
     TermRef::LiteralRef(v) => logger.write(v.to_string())

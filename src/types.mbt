@@ -57,3 +57,9 @@ pub using @ref {type Ref}
 // ===== 定义 Result 类型 =====
 
 pub type TransitionResult[TR, S, O] = Result[(TR, S, O), RuleRecognizerError]
+
+///|
+pub type IriParser[A] = @parserc.Parser[Char, Result[A, IriError]]
+
+///|
+pub type ResParser[A] = (Result[A, IriError], @parserc.Seq[Char])?

@@ -1,8 +1,11 @@
 ///|
 async test "Parser_basic_single_line for NQuads" {
   let input =
-    #|<http://example/\U00000053> <http://example/p> <http://example/o> .
-  // #| <http://example/s> <http://example/p> "abc' .
+    #| <a> <b> """abc""" .
+  // #|"""abc""" .
+  // #|<http://example/\u0053> <http://example/p> <http://example/o> .
+
+  debug("Input: \{input}")
 
   let data = @utf8.encode(input).to_array()
   let logger = @lib.make_console_logger()
@@ -341,9 +344,9 @@ async test "Parser_NQuads_complete_dataset" {
 
 ///|
 async test "run official n-triples test file" {
-  let test_dir = "src/tests/src/rdf/rdf11/bak"
+  let test_dir = "src/tests/src/rdf/rdf11/n-triples"
 
-  let file = "nt-syntax-bad-string-02"
+  let file = "nt-syntax-bad-uri-02"
 
   debug("--------------------------------------")
   debug("Testing: \{file}")

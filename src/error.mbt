@@ -333,7 +333,7 @@ pub(all) suberror TurtleError {
   TurtleSyntaxError(String, Range)
   InvalidEscapeSequence
   InvalidCharacter(String)
-  InvalidToken(SourcePos, String)
+  InvalidTurtleToken(SourcePos, String)
   UnexpectedEndOfInput(SourcePos, String)
 } derive(Debug)
 
@@ -344,7 +344,7 @@ pub impl ErrOut for TurtleError with fn message(self : TurtleError) -> String {
     TurtleError::TurtleSyntaxError(msg, _) => msg
     TurtleError::InvalidEscapeSequence => "Invalid escape sequence"
     TurtleError::InvalidCharacter(c) => "Invalid character: " + c
-    TurtleError::InvalidToken(_, token) => token
+    TurtleError::InvalidTurtleToken(_, token) => token
     TurtleError::UnexpectedEndOfInput(_, str) => str
   }
 }
@@ -356,7 +356,7 @@ pub impl ErrOut for TurtleError with fn err_kind(self : TurtleError) -> String {
     TurtleError::TurtleSyntaxError(_, _) => "TurtleSyntaxError"
     TurtleError::InvalidEscapeSequence => "InvalidEscapeSequence"
     TurtleError::InvalidCharacter(_) => "InvalidCharacter"
-    TurtleError::InvalidToken(_, _) => "InvalidTurtleToken"
+    TurtleError::InvalidTurtleToken(_, _) => "InvalidTurtleToken"
     TurtleError::UnexpectedEndOfInput(_, _) => "UnexpectedEndOfInput"
   }
 }

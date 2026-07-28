@@ -1,4 +1,104 @@
 ///|
+test "classify apostrophe" {
+  let cc = @lib.classify_byte(b'\'')
+  debug("' classified as: \{cc}")
+}
+
+///|
+test "classify underscore" {
+  let cc = @lib.classify_byte(b'_')
+  debug("'_' classified as: \{cc}")
+}
+
+///|
+test "classify colon" {
+  let cc = @lib.classify_byte(b':')
+  debug("':' classified as: \{cc}")
+}
+
+///|
+test "classify slash" {
+  let slash = b'/'
+  let cc = @lib.classify_byte(slash)
+  debug("'/' classified as: \{cc}")
+
+  // 应该是 Other 或某个合法 IRI 字符
+  if cc == @lib.CharClass::Other {
+    debug("OK: / is Other")
+  } else {
+    debug("ERROR: / is \{cc}")
+  }
+}
+
+///|
+test "verify slash classification" {
+  let slash = b'/'
+  let cc = @lib.classify_byte(slash)
+  if cc != @lib.CharClass::Other {
+    debug("ERROR: / is not Other")
+  }
+}
+
+///|
+test "check string content" {
+  let input =
+    #| "abc' .
+    // #|<http://example/s> <http://example/p>  .
+    #| '''abc''' .
+
+  let data = @utf8.encode(input).to_array()
+
+  let lexer = @lib.Lexer::Lexer(
+    @lib.RdfLexer::RdfLexer(
+      @lib.RdfLexerMode::NTriples,
+      false,
+      [],
+      debug_logger=@lib.make_console_logger(),
+    ),
+    data,
+    true,
+    @lib.MIN_BUFFER_SIZE,
+    @lib.MAX_BUFFER_SIZE,
+    Some(b"#"),
+    0,
+    0,
+  )
+  let result = lexer.parse_next(None)
+
+  match result {
+    Some(Ok(token)) => {
+      debug("Token content bytes:")
+      debug("\{token.0}")
+    }
+    _ => ()
+  }
+}
+
+///|
+test "check caret parsing" {
+  let data =
+    #| "abc' .
+  let data = @utf8.encode(data).to_array()
+  for i, b in data.iter2() {
+    let cc = @lib.classify_byte(b)
+    debug("[\{i}] '\{b.to_int().unsafe_to_char()}' -> \{cc}")
+  }
+}
+
+///|
+test "check quote classification" {
+  let b = b'"'
+  let cc = @lib.classify_byte(b)
+  debug("'\"' classified as: \{cc}")
+
+  match cc {
+    @lib.CharClass::Quote => debug("OK: is Quote")
+    @lib.CharClass::Other => debug("ERROR: is Other")
+    _ => debug("ERROR: unexpected: \{cc}")
+  }
+}
+
+///|
 test "check char classification" {
   // 测试 '>' 的分类
   let gt = b'>'
@@ -11,12 +111,22 @@ test "check char classification" {
     @lib.CharClass::RAngle => debug("OK: is RAngle")
     _ => debug("ERROR: not RAngle, is: \{cc}")
   }
-
+  let ctx = @lib.LexContext::{
+    data_buffer: [],
+    position: 0,
+    state: @lib.LexStateMachine::InIri,
+    capture_start: 0,
+    capture_current: 0,
+    state_stack: [],
+    is_ending: false,
+    captured: None,
+    escape_quote: @lib.EscapeQuote::default(),
+    has_error: false,
+    error_message: None,
+    prev_char: None,
+  }
   // 检查转换表
-  let t = rdflexer.find_transition(
-    @lib.LexStateMachine::InIri,
-    @lib.CharClass::RAngle,
-  )
+  let t = rdflexer.find_transition(ctx, @lib.CharClass::RAngle)
   match t {
     Some(t) => debug("Found transition: to=\{t.to}, action=\{t.action}")
     None => debug("ERROR: No transition for InIri + RAngle")
@@ -27,10 +137,23 @@ test "check char classification" {
 test "check all IRI chars have transition" {
   let iri_chars = "<http://example.org>"
   let rdflexer = @lib.RdfLexer::default()
-
+  let ctx = @lib.LexContext::{
+    data_buffer: [],
+    position: 0,
+    state: @lib.LexStateMachine::InIri,
+    capture_start: 0,
+    capture_current: 0,
+    state_stack: [],
+    is_ending: false,
+    captured: None,
+    escape_quote: @lib.EscapeQuote::default(),
+    has_error: false,
+    error_message: None,
+    prev_char: None,
+  }
   for i, b in @utf8.encode(iri_chars).iter2() {
     let cc = @lib.classify_byte(b)
-    let t = rdflexer.find_transition(@lib.LexStateMachine::InIri, cc)
+    let t = rdflexer.find_transition(ctx, cc)
     debug(
       "  [\{i}] '\{b.to_int().unsafe_to_char()}' (\{cc}): \{if t is Some(_) { "OK" } else { "MISSING" }}",
     )
@@ -67,11 +190,21 @@ test "test transitions initialization" {
 ///|
 test "test find_transition - Start with Space" {
   let rdflexer = @lib.RdfLexer::default()
-
-  let t = rdflexer.find_transition(
-    @lib.LexStateMachine::Start,
-    @lib.CharClass::Space,
-  )
+  let ctx = @lib.LexContext::{
+    data_buffer: [],
+    position: 0,
+    state: @lib.LexStateMachine::Start,
+    capture_start: 0,
+    capture_current: 0,
+    state_stack: [],
+    is_ending: false,
+    captured: None,
+    escape_quote: @lib.EscapeQuote::default(),
+    has_error: false,
+    error_message: None,
+    prev_char: None,
+  }
+  let t = rdflexer.find_transition(ctx, @lib.CharClass::Space)
   match t {
     Some(t) => {
       assert_eq(t.from, @lib.LexStateMachine::Start)
@@ -86,7 +219,7 @@ test "test find_transition - Start with LAngle" {
   let rdflexer = @lib.RdfLexer::default()
 
   let t = rdflexer.find_transition(
-    @lib.LexStateMachine::Start,
+    @lib.LexContext::default(),
     @lib.CharClass::LAngle,
   )
   match t {
@@ -101,11 +234,21 @@ test "test find_transition - Start with LAngle" {
 ///|
 test "test find_transition - InIri with RAngle" {
   let rdflexer = @lib.RdfLexer::default()
-
-  let t = rdflexer.find_transition(
-    @lib.LexStateMachine::InIri,
-    @lib.CharClass::RAngle,
-  )
+  let ctx = @lib.LexContext::{
+    data_buffer: [],
+    position: 0,
+    state: @lib.LexStateMachine::InIri,
+    capture_start: 0,
+    capture_current: 0,
+    state_stack: [],
+    is_ending: false,
+    captured: None,
+    escape_quote: @lib.EscapeQuote::default(),
+    has_error: false,
+    error_message: None,
+    prev_char: None,
+  }
+  let t = rdflexer.find_transition(ctx, @lib.CharClass::RAngle)
   match t {
     Some(t) => assert_eq(t.to, @lib.LexStateMachine::Start)
     None => fail("Should find transition")
@@ -191,7 +334,7 @@ test "test state machine - IRI token" {
   let ctx = @lib.LexContext::new(data)
   let rdflexer = @lib.RdfLexer::default()
   // Start -> InIri
-  match rdflexer.find_transition(ctx.state, @lib.classify_byte(data[0])) {
+  match rdflexer.find_transition(ctx, @lib.classify_byte(data[0])) {
     Some(t) => {
       let (_action, _new_ctx) = rdflexer.execute_action(
         t.action,
@@ -211,7 +354,7 @@ test "test state machine - IRI token" {
   }
 
   // InIri -> Start (遇到 >)
-  match rdflexer.find_transition(ctx.state, @lib.CharClass::RAngle) {
+  match rdflexer.find_transition(ctx, @lib.CharClass::RAngle) {
     Some(t) => {
       let (action, _) = rdflexer.execute_action(t.action, ctx, b'>', data)
       match action {
@@ -237,7 +380,7 @@ test "test state machine - keyword token" {
   let rdflexer = @lib.RdfLexer::default()
 
   // Start -> InKeyword
-  let t = rdflexer.find_transition(ctx.state, char_class)
+  let t = rdflexer.find_transition(ctx, char_class)
   println("transition found: \{@debug.to_string(t)}")
 
   match t {
@@ -265,7 +408,7 @@ test "test state machine - keyword token" {
   println("Space char class: \{@lib.CharClass::Space}")
 
   // InKeyword -> Start (遇到空格)
-  match rdflexer.find_transition(ctx.state, @lib.CharClass::Space) {
+  match rdflexer.find_transition(ctx, @lib.CharClass::Space) {
     Some(t) => {
       let (action, _) = rdflexer.execute_action(
         t.action,
@@ -289,7 +432,7 @@ test "test state machine - blank node" {
   let rdflexer = @lib.RdfLexer::default()
 
   // Start -> InBlank
-  match rdflexer.find_transition(ctx.state, @lib.CharClass::Underscore) {
+  match rdflexer.find_transition(ctx, @lib.CharClass::Underscore) {
     Some(t) => {
       let (_, new_ctx) = rdflexer.execute_action(t.action, ctx, b'_', data)
       new_ctx.state = t.to
@@ -298,7 +441,7 @@ test "test state machine - blank node" {
   }
 
   // InBlank -> InBlankLabel (遇到 :)
-  match rdflexer.find_transition(ctx.state, @lib.CharClass::Colon) {
+  match rdflexer.find_transition(ctx, @lib.CharClass::Colon) {
     Some(t) => {
       let (_, new_ctx) = rdflexer.execute_action(t.action, ctx, b':', data)
       new_ctx.state = t.to
@@ -319,14 +462,14 @@ test "test state machine - skip whitespace" {
   let rdflexer = @lib.RdfLexer::default()
 
   // Start -> SkipWhitespace
-  match rdflexer.find_transition(ctx.state, @lib.CharClass::Space) {
+  match rdflexer.find_transition(ctx, @lib.CharClass::Space) {
     Some(t) => ctx.state = t.to
     None => fail("Should find transition for space")
   }
 
   // SkipWhitespace -> SkipWhitespace
   for _i in 1..<3 {
-    match rdflexer.find_transition(ctx.state, @lib.CharClass::Space) {
+    match rdflexer.find_transition(ctx, @lib.CharClass::Space) {
       Some(t) => {
         let (_action, new_ctx) = rdflexer.execute_action(
           t.action,
@@ -341,7 +484,7 @@ test "test state machine - skip whitespace" {
   }
 
   // SkipWhitespace -> Start (遇到非空白)
-  match rdflexer.find_transition(ctx.state, @lib.classify_byte(b'h')) {
+  match rdflexer.find_transition(ctx, @lib.classify_byte(b'h')) {
     Some(t) => assert_eq(t.to, @lib.LexStateMachine::Start)
     None => fail("Should find transition")
   }
@@ -354,7 +497,7 @@ test "test state machine - lang tag" {
   let rdflexer = @lib.RdfLexer::default()
 
   // Start -> InLangTag
-  match rdflexer.find_transition(ctx.state, @lib.CharClass::At) {
+  match rdflexer.find_transition(ctx, @lib.CharClass::At) {
     Some(t) => {
       let (_action, new_ctx) = rdflexer.execute_action(
         t.action,
@@ -376,7 +519,7 @@ test "test state machine - lang tag" {
   ctx.state = @lib.LexStateMachine::InLangTag
 
   // InLangTag -> Start (遇到空格)
-  match rdflexer.find_transition(ctx.state, @lib.CharClass::Space) {
+  match rdflexer.find_transition(ctx, @lib.CharClass::Space) {
     Some(t) => {
       let (action, _new_ctx) = rdflexer.execute_action(
         t.action,
@@ -398,48 +541,115 @@ test "test state machine - lang tag" {
 
 ///|
 test "test make_token - Iri" {
-  let token = @lib.make_token(
-    @lib.LexStateMachine::InIri,
-    "<http://example.org>",
-  )
+  let ctx = @lib.LexContext::{
+    data_buffer: [],
+    position: 0,
+    state: @lib.LexStateMachine::InIri,
+    capture_start: 0,
+    capture_current: 0,
+    state_stack: [],
+    is_ending: false,
+    captured: None,
+    escape_quote: None,
+    has_error: false,
+    error_message: None,
+    prev_char: None,
+  }
+  let token = @lib.make_token(ctx, "<http://example.org>")
   match token {
-    @lib.N3Token::Iri(s) => assert_eq(s, "<http://example.org>")
+    Ok(@lib.N3Token::Iri(s)) => assert_eq(s, "<http://example.org>")
     _ => fail("Should be Iri token")
   }
 }
 
 ///|
 test "test make_token - BlankNodeLabel" {
-  let token = @lib.make_token(@lib.LexStateMachine::InBlankLabel, "node1")
+  let ctx = @lib.LexContext::{
+    data_buffer: [],
+    position: 0,
+    state: @lib.LexStateMachine::InBlankLabel,
+    capture_start: 0,
+    capture_current: 0,
+    state_stack: [],
+    is_ending: false,
+    captured: None,
+    escape_quote: None,
+    has_error: false,
+    error_message: None,
+    prev_char: None,
+  }
+  let token = @lib.make_token(ctx, "node1")
   match token {
-    @lib.N3Token::BlankNodeLabel(s) => assert_eq(s, "node1")
+    Ok(@lib.N3Token::BlankNodeLabel(s)) => assert_eq(s, "node1")
     _ => fail("Should be BlankNodeLabel token")
   }
 }
 
 ///|
 test "test make_token - String" {
-  let token = @lib.make_token(@lib.LexStateMachine::InString, "hello")
+  let ctx = @lib.LexContext::{
+    data_buffer: [],
+    position: 0,
+    state: @lib.LexStateMachine::InString,
+    capture_start: 0,
+    capture_current: 0,
+    state_stack: [],
+    is_ending: false,
+    captured: None,
+    escape_quote: None,
+    has_error: false,
+    error_message: None,
+    prev_char: None,
+  }
+  let token = @lib.make_token(ctx, "hello")
   match token {
-    @lib.N3Token::String(s) => assert_eq(s, "hello")
+    Ok(@lib.N3Token::String(s)) => assert_eq(s, "hello")
     _ => fail("Should be String token")
   }
 }
 
 ///|
 test "test make_token - Integer" {
-  let token = @lib.make_token(@lib.LexStateMachine::InInteger, "123")
+  let ctx = @lib.LexContext::{
+    data_buffer: [],
+    position: 0,
+    state: @lib.LexStateMachine::InInteger,
+    capture_start: 0,
+    capture_current: 0,
+    state_stack: [],
+    is_ending: false,
+    captured: None,
+    escape_quote: None,
+    has_error: false,
+    error_message: None,
+    prev_char: None,
+  }
+  let token = @lib.make_token(ctx, "123")
   match token {
-    @lib.N3Token::Integer(s) => assert_eq(s, "123")
+    Ok(@lib.N3Token::Integer(s)) => assert_eq(s, "123")
     _ => fail("Should be Integer token")
   }
 }
 
 ///|
 test "test make_token - PlainKeyword" {
-  let token = @lib.make_token(@lib.LexStateMachine::InKeyword, "SELECT")
+  let ctx = @lib.LexContext::{
+    data_buffer: [],
+    position: 0,
+    state: @lib.LexStateMachine::InKeyword,
+    capture_start: 0,
+    capture_current: 0,
+    state_stack: [],
+    is_ending: false,
+    captured: None,
+    escape_quote: None,
+    has_error: false,
+    error_message: None,
+    prev_char: None,
+  }
+  let token = @lib.make_token(ctx, "SELECT")
   match token {
-    @lib.N3Token::PlainKeyword(s) => assert_eq(s, "SELECT")
+    Ok(@lib.N3Token::PlainKeyword(s)) => assert_eq(s, "SELECT")
     _ => fail("Should be PlainKeyword token")
   }
 }

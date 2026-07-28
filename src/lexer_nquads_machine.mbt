@@ -52,6 +52,7 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
     N3Token::Punctuation(p) => "Punctuation('\{p}')"
     N3Token::PlainKeyword(k) => "PlainKeyword('\{k}')"
     N3Token::Iri(i) => "Iri('\{i}')"
+    N3Token::LongString(s) => "LongString('\{s}')"
     _ => "Other"
   }
   self.debug_logger.info("[DEBUG] ExpectDotOrGraphName token: \{token_name}")
@@ -80,7 +81,7 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
       (ExpectPredicate, DataAction::AddSubject(node))
     }
     (ExpectSubject, LocatedToken(N3Token::BlankNodeLabel(l), _)) => {
-      self.debug_logger.info("[ExpectSubject] Blank: _:\{l}")
+      self.debug_logger.info("[ExpectSubject] Blank: \{l}")
       let node = BlankNodeRef::new_unchecked(l).as_enum()
       (ExpectPredicate, DataAction::AddSubject(node))
     }
@@ -101,7 +102,7 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
       (ExpectDotOrGraphName, DataAction::AddObject(obj))
     }
     (ExpectObject, LocatedToken(N3Token::BlankNodeLabel(l), _)) => {
-      self.debug_logger.info("[ExpectObject] Blank: _:\{l}")
+      self.debug_logger.info("[ExpectObject] Blank: \{l}")
       let obj = BlankNodeRef::new_unchecked(l).as_term()
       (ExpectDotOrGraphName, DataAction::AddObject(obj))
     }
@@ -109,9 +110,40 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
       self.debug_logger.info("[ExpectObject] STRING: '\{v}'")
       (ExpectLiteralSuffix, DataAction::SetTempLiteral(v))
     }
+    // ★ 添加 LongString 处理
+    (ExpectObject, LocatedToken(N3Token::LongString(v), _)) => {
+      self.debug_logger.info("[ExpectObject] LONGSTRING: '\{v}'")
+      (ExpectLiteralSuffix, DataAction::SetTempLiteral(v))
+    }
+    (ExpectObject, LocatedToken(N3Token::PlainKeyword(k), range)) if k.length() >
+      0 &&
+      k[0] == '"' => {
+      self.debug_logger.info("[ERROR] Invalid token: \{k}")
+      return Err(RuleRecognizerError::SyntaxError("Expected string", range))
+    }
+    (ExpectObject, LocatedToken(N3Token::PlainKeyword(k), range)) => {
+      let quote_count = {
+        let mut count = 0
+        for c in k {
+          if c == '"' {
+            count += 1
+          }
+        }
+        count
+      }
+      if quote_count % 2 != 0 {
+        self.debug_logger.info("[ERROR] Unmatched quote: \{k}")
+        return Err(RuleRecognizerError::SyntaxError("Unmatched quote", range))
+      }
+      return Err(RuleRecognizerError::SyntaxError("Unexpected string", range))
+    }
 
     // ── ExpectLiteralSuffix ────────────────────────────────────
-    (ExpectLiteralSuffix, LocatedToken(N3Token::Punctuation("."), _)) => {
+    (
+      ExpectLiteralSuffix,
+      // | LocatedToken(N3Token::PlainKeyword("."), _),
+      LocatedToken(N3Token::Punctuation("."), _),
+    ) => {
       self.debug_logger.info("[ExpectLiteralSuffix] DOT, finalize=Simple")
       (ExpectLineJump, DataAction::EmitQuadWithLiteral(LiteralKind::Simple))
     }
@@ -144,13 +176,22 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
     }
 
     // ── ExpectDotOrGraphName ───────────────────────────────────
-    (
-      ExpectDotOrGraphName,
-      LocatedToken(N3Token::Punctuation("."), _)
-      | LocatedToken(N3Token::PlainKeyword("."), _),
-    ) => {
-      self.debug_logger.info("[ExpectDotOrGraphName] DOT")
-      (ExpectLineJump, DataAction::EmitQuad)
+    // (
+    //   ExpectDotOrGraphName,
+    //   LocatedToken(N3Token::Punctuation("."), _)
+    //   // | LocatedToken(N3Token::PlainKeyword("."), _),
+    // ) => {
+    //   (ExpectLineJump, DataAction::EmitQuad)
+    // }
+
+    (ExpectDotOrGraphName, LocatedToken(N3Token::Punctuation("."), _)) => {
+      self.debug_logger.info(
+        "[ExpectDotOrGraphName] PUNCTUATION DOT temp_literal\{self.temp_literal}",
+      )
+      match self.temp_literal {
+        Some(_) => (ExpectLiteralSuffix, DataAction::NoOp)
+        None => (ExpectLineJump, DataAction::EmitQuad)
+      }
     }
     (ExpectDotOrGraphName, LocatedToken(N3Token::Iri(iri), _)) => {
       self.debug_logger.info("[ExpectDotOrGraphName] GraphName IRI: \{iri}")
@@ -169,7 +210,10 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
     }
 
     // ── ExpectDot ──────────────────────────────────────────────
-    (ExpectDot, LocatedToken(N3Token::Punctuation("."), _)) => {
+    (
+      ExpectDot,
+      LocatedToken(N3Token::Punctuation(".") | N3Token::PlainKeyword("."), _),
+    ) => {
       self.debug_logger.info("[ExpectDot] DOT")
       (ExpectLineJump, DataAction::EmitQuad)
     }
@@ -254,13 +298,16 @@ pub impl StateMachine for NQuadsRecognizer with fn accumulate(
 ) -> (NQuadsRecognizer, DataWorld) {
   let dw = data_world
   let m = self
-
+  self.debug_logger.info("[ACCUMULATE] \{action}")
   match action {
     DataAction::NoOp => return (m, dw)
     DataAction::AddSubject(s) => dw.subjects.push(s)
     DataAction::AddPredicate(p) => dw.predicates.push(p)
     DataAction::AddObject(o) => dw.objects.push(o)
-    DataAction::SetTempLiteral(s) => dw.temp_literal = Some(s)
+    DataAction::SetTempLiteral(s) => {
+      self.debug_logger.info("[ACCUMULATE] SetTempLiteral: \{s}")
+      dw.temp_literal = Some(s)
+    }
     DataAction::SetGraphName(gn) => dw.graph_name = Some(gn)
     DataAction::EmitQuad => m.emit_quad = true
     DataAction::EmitQuadWithLiteral(kind) => {
@@ -333,6 +380,7 @@ pub impl StateMachine for NQuadsRecognizer with fn get_and_clear_output(
 ) -> (NQuadsRecognizer, RdfOut?) {
   let m = self
   let dw = data_world
+  // self.debug_logger.info("[get_and_clear_output] \{dw.objects}")
   let output = if m.emit_quad {
     self.pop_quad_from_data_world(dw)
   } else {
@@ -361,7 +409,6 @@ fn NQuadsRecognizer::pop_quad_from_data_world(
   let subject = dw.subjects.pop()
   let predicate = dw.predicates.pop()
   let object = dw.objects.pop()
-
   match (subject, predicate, object) {
     (Some(s), Some(p), Some(o)) => {
       let graph_name = dw.graph_name.unwrap_or(GraphNameRef::DefaultGraph)

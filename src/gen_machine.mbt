@@ -68,7 +68,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
   // 2. 调用 accumulate
   let (m2, dw2) = m1.accumulate(self.data_world, action)
   self.debug_logger.info(
-    "[GSM step] after accumulate: subs=\{dw2.subjects.length()}, preds=\{dw2.predicates.length()},objs=\{dw2.objects.length()}",
+    "[GSM step] after accumulate: subs=\{dw2.subjects.length()}, preds=\{dw2.predicates.length()},objs=\{dw2.objects.length()}, temp_literal=\{@debug.to_string(dw2.temp_literal)}",
   )
 
   // 3. 调用 get_and_clear_output

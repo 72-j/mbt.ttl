@@ -1,10 +1,4 @@
 ///|
-pub type IriParser[A] = @parserc.Parser[Char, Result[A, IriError]]
-
-///|
-pub type ResParser[A] = (Result[A, IriError], @parserc.Seq[Char])?
-
-///|
 pub(all) struct IriR {
   scheme : StringView
   authority : StringView?
@@ -33,17 +27,17 @@ pub let parse_iri : IriParser[IriR] = @parserc.Parser::new(fn(
       // 有 scheme
       let scheme = scheme_chars.fold(init=""[:], fn(a, b) { a + b.to_string() })
 
-      parse_iri_body(scheme).run(rest2)
+      parse_iri_rest(scheme).run(rest2)
     }
     None =>
       // 无 scheme
 
-      parse_iri_body(""[:]).run(input)
+      parse_iri_rest(""[:]).run(input)
   }
 })
 
 ///|
-fn parse_iri_body(scheme : StringView) -> IriParser[IriR] {
+fn parse_iri_rest(scheme : StringView) -> IriParser[IriR] {
 
   // query（遇到 # 停止）
   let query_parser = @parserc.pchar('?')

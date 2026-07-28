@@ -68,7 +68,7 @@ pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(
     if self.errors.pop() is Some(e) {
       return Some(
         Err(
-          TurtleError::InvalidToken(
+          TurtleError::InvalidTurtleToken(
             self.lexer.last_token_start(),
             "\{self.lexer.last_token_source()}\{e.to_string()}",
           ),
@@ -130,9 +130,9 @@ pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(
         self.engine = self.engine.reset()
         return Some(
           Err(
-            TurtleError::InvalidToken(
+            TurtleError::InvalidTurtleToken(
               self.lexer.last_token_start(),
-              "- \{self.lexer.last_token_source()} \{e.to_string()} - TOKEN is not allowed here.",
+              " \{self.lexer.last_token_source()} \{e.err_kind()} - TOKEN is not allowed here.",
             ),
           ),
         )
@@ -156,7 +156,7 @@ pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(
             // 未完成
             self.errors.push(
               RuleRecognizerError::SyntaxError(
-                "Unexpected end of input",
+                "Unexpected end of last input",
                 self.lexer.last_token_range().to_range(),
               ),
             )

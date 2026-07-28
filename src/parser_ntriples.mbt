@@ -184,7 +184,7 @@ pub fn[RL : TokenRecognizer] LowLevelNTriplesParser::parse_next(
       }
     })
     .map_err(fn(e) {
-      TurtleError::InvalidToken(SourcePos::default(), e.to_string())
+      TurtleError::InvalidTurtleToken(SourcePos::default(), e.to_string())
     }) // 根据实际错误类型调整
   })
 }

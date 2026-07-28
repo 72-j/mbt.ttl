@@ -10,7 +10,11 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
 
   // 1. 记录跳过前的位置
   let before_offset = self.position.buffer_offset
-
+  // debug("skip_whitespaces_and_comments before offset: \{before_offset}")
+  // let _ = self.skip_whitespaces_and_comments()
+  // if before_offset >= self.data.length() {
+  //   return None
+  // }
   // 2. 跳过空白和注释
   if self.skip_whitespaces_and_comments() {
     // 返回 LineJump
@@ -49,6 +53,7 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
       match result {
         Ok(token) => {
           let range = Range::Range(start_offset, start_offset + actual_consumed)
+          debug("parse_next: token: \{token.into_token()}")
           Some(Ok(LocatedToken(token.into_token(), range)))
         }
         Err(e) => Some(Err(e))

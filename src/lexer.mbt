@@ -4,9 +4,9 @@ pub(all) struct LexerOptions {
 } derive(Debug)
 
 ///|
-// fn LexerOptions::default(base_iri : IriR?) -> LexerOptions {
-//   { base_iri, }
-// }
+fn LexerOptions::default(base_iri : IriR?) -> LexerOptions {
+  { base_iri, }
+}
 
 ///|
 pub(all) struct Lexer[RL] {

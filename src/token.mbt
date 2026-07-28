@@ -72,15 +72,13 @@ pub impl Show for N3Token with fn output(self : N3Token, f : &Logger) -> Unit {
       f.write("?")
       f.write(v)
     }
-    N3Token::BlankNodeLabel(v) => {
-      f.write("_:")
+    N3Token::BlankNodeLabel(v) =>
+      // f.write("_:")
       f.write(v)
-    }
-    N3Token::String(v) | N3Token::LongString(v) => {
-      f.write("\"")
+    N3Token::String(v) | N3Token::LongString(v) =>
+      // f.write("\"")
       f.write(v) // 注意：如果 v 包含引号，可能需要转义，但调试用通常直接写
-      f.write("\"")
-    }
+    // f.write("\"")
     N3Token::Integer(v) | N3Token::Decimal(v) | N3Token::Double(v) => f.write(v)
     N3Token::LangTag(language~, direction~) => {
       f.write("@")
