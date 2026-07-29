@@ -327,7 +327,7 @@ async test "test bad n-triples files" {
 
 ///|
 async test "test bad file" {
-  let path = "src/tests/src/rdf/rdf11/bak/nt-syntax-bad-uri-01"
+  let path = "src/tests/src/rdf/rdf11/n-triples/nt-syntax-bad-uri-01"
 
   debug("Testing: \{path}")
 

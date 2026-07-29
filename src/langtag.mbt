@@ -5,7 +5,7 @@ pub(all) struct LanguageTag {
 } derive(Debug, Default, Hash, Eq)
 
 ///|
-priv enum State {
+priv enum LanguageTagState {
   Start
   AfterLanguage
   AfterLongLanguage // 主语言 4-8 位，不允许 Extlang
@@ -305,7 +305,7 @@ fn split_with_positions(input : StringView) -> Array[(StringView, Int)] {
 fn calculate_positions(
   input : StringView,
 ) -> Result[TagElementsPositions, TagParseErr] {
-  let mut state = State::Start
+  let mut state = LanguageTagState::Start
   let mut language_end = 0
   let mut extlang_end = 0
   let mut script_end = 0
@@ -326,7 +326,7 @@ fn calculate_positions(
     }
 
     match state {
-      State::Start =>
+      LanguageTagState::Start =>
         // 使用专用的解析函数处理主语言子标签
         match parse_primary_language(subtag) {
           Ok(_normalized_lang) => {
@@ -335,24 +335,27 @@ fn calculate_positions(
             // 2-3 字母后可能跟扩展语言 (extlang)
             // 4-8 字母后不能跟扩展语言，直接进入脚本/地区判断阶段
             state = if len <= 3 {
-              State::AfterLanguage
+              LanguageTagState::AfterLanguage
             } else {
-              State::AfterLongLanguage // 4-8 位主语言
+              LanguageTagState::AfterLongLanguage // 4-8 位主语言
             }
           }
           Err(e) => return Err(e)
         }
-      State::InPrivateUse(_expected) => {
+      LanguageTagState::InPrivateUse(_expected) => {
         // 私有使用内容
         if subtag.is_empty() || subtag.length() > 8 {
           return Err(TagParseErr::InvalidSubtag(end, subtag))
         }
         // 不检查 is_alphanumeric
-        state = State::InPrivateUse(false)
+        state = LanguageTagState::InPrivateUse(false)
       }
       _ => {
         // 1. 扩展语言（排除旧式3字母变体）
-        if (state == State::AfterLanguage || state == State::AfterExtLang) &&
+        if (
+            state == LanguageTagState::AfterLanguage ||
+            state == LanguageTagState::AfterExtLang
+          ) &&
           subtag.length() == 3 &&
           is_alphabetic(subtag) {
           if !legacy_3letter_variants.contains(subtag.to_lower()) {
@@ -361,74 +364,74 @@ fn calculate_positions(
               return Err(TagParseErr::TooManyExtlangs)
             }
             extlang_end = end
-            state = State::AfterExtLang
+            state = LanguageTagState::AfterExtLang
             continue
           }
         }
 
         // 2. 私有使用引入
         if subtag == "x" || subtag == "X" {
-          if state is State::InExtension(true) {
+          if state is LanguageTagState::InExtension(true) {
             return Err(TagParseErr::EmptyExtension)
           }
-          state = State::InPrivateUse(true)
+          state = LanguageTagState::InPrivateUse(true)
           continue
         }
 
         // 3. 扩展引入（单字母）
         if subtag.length() == 1 && is_alphanumeric(subtag) {
-          if state is State::InExtension(true) {
+          if state is LanguageTagState::InExtension(true) {
             return Err(TagParseErr::EmptyExtension)
           }
-          state = State::InExtension(true)
+          state = LanguageTagState::InExtension(true)
           continue
         }
 
         // 4. 扩展内容
-        if state is State::InExtension(_) {
+        if state is LanguageTagState::InExtension(_) {
           if !is_alphanumeric(subtag) {
             return Err(TagParseErr::InvalidSubtag(end, subtag))
           }
           extension_end = end
-          state = State::InExtension(false)
+          state = LanguageTagState::InExtension(false)
           continue
         }
 
         // 5. 脚本
         if (
-            state == State::AfterLanguage ||
-            state == State::AfterExtLang ||
-            state == State::AfterLongLanguage
+            state == LanguageTagState::AfterLanguage ||
+            state == LanguageTagState::AfterExtLang ||
+            state == LanguageTagState::AfterLongLanguage
           ) &&
           subtag.length() == 4 &&
           is_alphabetic(subtag) {
           script_end = end
-          state = State::AfterScript
+          state = LanguageTagState::AfterScript
           continue
         }
 
         // 6. 地区
         if (
-            state == State::AfterLanguage ||
-            state == State::AfterExtLang ||
-            state == State::AfterLongLanguage ||
-            state == State::AfterScript
+            state == LanguageTagState::AfterLanguage ||
+            state == LanguageTagState::AfterExtLang ||
+            state == LanguageTagState::AfterLongLanguage ||
+            state == LanguageTagState::AfterScript
           ) &&
           (
             (subtag.length() == 2 && is_alphabetic(subtag)) ||
             (subtag.length() == 3 && is_numeric(subtag))
           ) {
           region_end = end
-          state = State::AfterRegion
+          state = LanguageTagState::AfterRegion
           continue
         }
 
         // 7. 变体（包括旧式3字母变体）
         if (
-            state == State::AfterLanguage ||
-            state == State::AfterExtLang ||
-            state == State::AfterScript ||
-            state == State::AfterRegion
+            state == LanguageTagState::AfterLanguage ||
+            state == LanguageTagState::AfterExtLang ||
+            state == LanguageTagState::AfterScript ||
+            state == LanguageTagState::AfterRegion
           ) &&
           is_alphanumeric(subtag) &&
           (
@@ -437,7 +440,7 @@ fn calculate_positions(
             legacy_3letter_variants.contains(subtag.to_lower())
           ) {
           variant_end = end
-          state = State::AfterRegion
+          state = LanguageTagState::AfterRegion
           continue
         }
 
@@ -447,10 +450,10 @@ fn calculate_positions(
   }
 
   // 结束检查
-  if state is State::InExtension(true) {
+  if state is LanguageTagState::InExtension(true) {
     return Err(TagParseErr::EmptyExtension)
   }
-  if state is State::InPrivateUse(true) {
+  if state is LanguageTagState::InPrivateUse(true) {
     return Err(TagParseErr::EmptyPrivateUse)
   }
 

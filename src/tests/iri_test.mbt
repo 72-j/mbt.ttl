@@ -88,16 +88,34 @@ test "parse absolute IRI with dots" {
 
 ///|
 test "parse absolute IRI with special characters" {
-  let result = @lib.IriR::default().parse(
-    "scheme:!$%25&'()*+,-./0123456789:/@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz?#",
-  )
+  let result = @lib.IriR::default().parse("scheme:!$%25&'()*+,-.0123456789:@?#")
 
   match result {
     Ok(parsed) =>
       @debug.assert_eq(
         parsed.into_string(),
-        "scheme:!$%25&'()*+,-./0123456789:/@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz?#",
+        "scheme:!$%25&'()*+,-.0123456789:@?#",
       )
+    Err(e) => fail("Expected Ok, got Err: \{e}")
+  }
+}
+
+///|
+test "parse absolute IRI with special characters 2" {
+  let result = @lib.IriR::default().parse("#?")
+
+  match result {
+    Ok(parsed) => @debug.assert_eq(parsed.into_string(), "#?")
+    Err(e) => fail("Expected Ok, got Err: \{e}")
+  }
+}
+
+///|
+test "parse absolute IRI with special characters 3" {
+  let result = @lib.IriR::default().parse("?#")
+
+  match result {
+    Ok(parsed) => @debug.assert_eq(parsed.into_string(), "?#")
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
 }

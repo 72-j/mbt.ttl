@@ -14,7 +14,7 @@ extend GraphName with Show::{to_string}
 extend Quad with Show::{to_string}
 
 ///|
-extend NQuadsState with Show::{to_string}
+// extend NQuadsState with Show::{to_string}
 
 ///|
 // extend N3State with Show::{to_string}

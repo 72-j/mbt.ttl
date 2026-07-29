@@ -4,9 +4,9 @@ pub(all) struct LexerOptions {
 } derive(Debug)
 
 ///|
-fn LexerOptions::default(base_iri : IriR?) -> LexerOptions {
-  { base_iri, }
-}
+// fn LexerOptions::default(base_iri : IriR?) -> LexerOptions {
+//   { base_iri, }
+// }
 
 ///|
 pub(all) struct Lexer[RL] {
@@ -44,13 +44,13 @@ fn SourcePos::default() -> SourcePos {
 
 ///|
 /// SourcePos 转换为 Range（字节偏移范围）
-fn SourcePos::to_range(self : SourcePos) -> Range {
+pub fn SourcePos::to_range(self : SourcePos) -> Range {
   Range::Range(self.offset, self.offset + 1)
 }
 
 ///|
 /// 带长度的 Range
-fn SourcePos::to_range_with_length(self : SourcePos, length : Int) -> Range {
+pub fn SourcePos::to_range_with_length(self : SourcePos, length : Int) -> Range {
   Range::Range(self.offset, self.offset + length)
 }
 
@@ -369,106 +369,7 @@ pub fn[RL] Lexer::is_end(self : Lexer[RL]) -> Bool {
 }
 
 ///|
-fn[RL] Lexer::skip_whitespaces(self : Lexer[RL]) -> Bool? {
-  let data = self.data
-  let mut pos = self.position.buffer_offset
-  let len = data.length()
-
-  while pos < len {
-    match data[pos] {
-      b' ' | b'\t' => pos += 1
-      b'\r' => {
-        // 处理 CR 或 CRLF
-        let mut incr = 1
-        if pos + 1 < len {
-          if data[pos + 1] == b'\n' {
-            incr = 2
-          }
-        } else if !self.is_ending {
-          // 如果后面可能还有数据，需要等待
-          return None
-        }
-
-        self.position.buffer_offset = pos + incr
-        self.position.line_start_buffer_offset = self.position.buffer_offset
-        self.position.global_offset += incr
-        self.position.global_line += 1
-        return Some(true)
-      }
-      b'\n' => {
-        // 处理 LF
-        self.position.buffer_offset = pos + 1
-        self.position.line_start_buffer_offset = self.position.buffer_offset
-        self.position.global_offset += 1
-        self.position.global_line += 1
-        return Some(true)
-      }
-      _ => {
-        self.position.buffer_offset = pos
-        return Some(false)
-      }
-    }
-  }
-
-  self.position.buffer_offset = pos
-  if self.is_ending {
-    Some(false)
-  } else {
-    None
-  }
-}
-
-///|
-// fn[RL] Lexer::skip_whitespaces_and_comments(self : Lexer[RL]) -> Bool? {
-//   // 首先跳过空白字符
-//   match self.skip_whitespaces() {
-//     Some(true) => return Some(true)
-//     Some(false) => ()
-//     None => return None
-//   }
-
-//   // 检查是否有行注释
-//   match self.line_comment_start {
-//     Some(comment_start) => {
-//       let buf = self.data[self.position.buffer_offset:]
-
-//       // 检查是否以注释开始
-//       if !array_view_has_prefix(buf, comment_start) {
-//         // 不是注释，但可能是不完整的注释开始
-//         if !self.is_ending && buf.length() < comment_start.length() {
-//           return None
-//         }
-//         return Some(false)
-//       }
-
-//       // 查找注释结束位置（换行符）
-//       let start_len = comment_start.length()
-//       let end_pos = Lexer::find_line_end(buf, start_len)
-
-//       match end_pos {
-//         Some(end) => {
-//           let comment_size = end + 1
-//           self.position.buffer_offset += comment_size
-//           self.position.line_start_buffer_offset = self.position.buffer_offset
-//           self.position.global_offset += comment_size
-//           self.position.global_line += 1
-//           Some(true)
-//         }
-//         None =>
-//           if self.is_ending {
-//             self.position.buffer_offset = self.data.length()
-//             Some(false)
-//           } else {
-//             None
-//           }
-//       }
-//     }
-//     None => return Some(false)
-//   }
-// }
-
-///|
-fn Lexer::find_line_end(buf : ArrayView[Byte], start : Int) -> Int? {
+pub fn Lexer::find_line_end(buf : ArrayView[Byte], start : Int) -> Int? {
   let mut i = start
   let len = buf.length()
 

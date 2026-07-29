@@ -184,15 +184,11 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
     //   (ExpectLineJump, DataAction::EmitQuad)
     // }
 
-    (ExpectDotOrGraphName, LocatedToken(N3Token::Punctuation("."), _)) => {
-      self.debug_logger.info(
-        "[ExpectDotOrGraphName] PUNCTUATION DOT temp_literal\{self.temp_literal}",
-      )
+    (ExpectDotOrGraphName, LocatedToken(N3Token::Punctuation("."), _)) =>
       match self.temp_literal {
         Some(_) => (ExpectLiteralSuffix, DataAction::NoOp)
         None => (ExpectLineJump, DataAction::EmitQuad)
       }
-    }
     (ExpectDotOrGraphName, LocatedToken(N3Token::Iri(iri), _)) => {
       self.debug_logger.info("[ExpectDotOrGraphName] GraphName IRI: \{iri}")
       let gn = GraphNameRef::new_unchecked(iri)

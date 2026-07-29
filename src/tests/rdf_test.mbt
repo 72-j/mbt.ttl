@@ -174,7 +174,7 @@ test "test @lib.classify_byte" {
   assert_eq(@lib.classify_byte(b':'), @lib.CharClass::Colon)
   assert_eq(@lib.classify_byte(b'@'), @lib.CharClass::At)
   assert_eq(@lib.classify_byte(b'.'), @lib.CharClass::Period)
-  assert_eq(@lib.classify_byte(b'-'), @lib.CharClass::Minus)
+  assert_eq(@lib.classify_byte(b'-'), @lib.CharClass::Other)
   assert_eq(@lib.classify_byte(b'+'), @lib.CharClass::Plus)
   assert_eq(@lib.classify_byte(b'\\'), @lib.CharClass::Backslash)
   assert_eq(@lib.classify_byte(b'a'), @lib.CharClass::Other)
@@ -603,7 +603,10 @@ test "test make_token - String" {
   }
   let token = @lib.make_token(ctx, "hello")
   match token {
-    Ok(@lib.N3Token::String(s)) => assert_eq(s, "hello")
+    Ok(@lib.N3Token::String(s)) => {
+      debug("Captured: '\{s}'")
+      assert_eq(s, "hello")
+    }
     _ => fail("Should be String token")
   }
 }

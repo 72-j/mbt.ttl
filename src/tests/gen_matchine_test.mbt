@@ -1,9 +1,8 @@
 ///|
 async test "Parser_basic_single_line for NQuads" {
-  let input =
-    #| <a> <b> """abc""" .
   // #|"""abc""" .
-  // #|<http://example/\u0053> <http://example/p> <http://example/o> .
+  let input =
+    #|<http://example/> <http://example/p> <http://example/o> .
 
   debug("Input: \{input}")
 

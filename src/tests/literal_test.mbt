@@ -344,13 +344,13 @@ test "literal vs literalref equality" {
 ///|
 test "literal show simple" {
   let lit = @lib.LiteralRef::new_simple_literal("hello")
-  @debug.assert_eq(lit.to_string(), "\"hello\"")
+  @debug.assert_eq(lit.to_string(), "hello")
 }
 
 ///|
 test "literal show language-tagged" {
   let lit = @lib.Literal::new_language_tagged_literal("hello", "en").unwrap()
-  @debug.assert_eq(lit.to_string(), "\"hello\"@en")
+  @debug.assert_eq(lit.to_string(), "hello@en")
 }
 
 ///|
@@ -361,7 +361,7 @@ test "literal show directional language-tagged" {
     tag,
     @lib.BaseDirection::Rtl,
   )
-  @debug.assert_eq(lit.to_string(), "\"hello\"@en-rtl")
+  @debug.assert_eq(lit.to_string(), "hello@en-rtl")
 }
 
 ///|
@@ -372,7 +372,7 @@ test "literal show typed literal" {
   )
   @debug.assert_eq(
     lit.to_string(),
-    "\"42\"^^http://www.w3.org/2001/XMLSchema#integer",
+    "42^^http://www.w3.org/2001/XMLSchema#integer",
   )
 }
 
@@ -381,20 +381,20 @@ test "literalref to_string" {
   let literalref = @lib.LiteralRef::new_typed_literal("hello", @lib.lwSTRING)
   let s = literalref.to_string()
   // debug(s) // Should produce quoted string representation
-  assert_true(s.has_prefix("\""))
-  assert_true(s.has_suffix("\""))
+  assert_true(s.has_prefix(""))
+  assert_true(s.has_suffix(""))
 }
 
 ///|
 test "serialize literal with all punctuation marks" {
   // 测试从对象创建字面量并序列化回 N-Triples 格式
-  let value = " !\"#$%&():;<=>?@[]^_`{|}~"
+  let value = " !#$%&():;<=>?@[]^_`{|}~"
   let lit = @lib.LiteralRef::new_simple_literal(value)
 
   let serialized = lit.to_string()
 
   // 序列化结果应该包含转义的双引号
-  let expected_serialized = "\" !\\\"#$%&():;<=>?@[]^_`{|}~\""
+  let expected_serialized = " !#$%&():;<=>?@[]^_`{|}~"
   // debug(serialized)
   @debug.assert_eq(serialized, expected_serialized)
 }

@@ -1693,162 +1693,6 @@ fn match_seq(bs : ArrayView[Byte], pattern : Array[Byte]) -> Bool {
   }
   true
 }
-//   const ESCAPE_MAP : @hashmap.HashMap[Array[Byte], Byte] = {
-//   // 字符串转义
-//   [(b'\\', b'"')] => b'"',    // \" → "
-//   [(b'\\', b'\\')] => b'\\',  // \\ → \
-//   [(b'\\', b'n')] => b'\n',   // \n → 换行
-//   [(b'\\', b't')] => b'\t',   // \t → 制表
-//   [(b'\\', b'r')] => b'\r',   // \r → 回车
-//   [(b'\\', b'b')] => b'\u{08}', // \b → 退格
-//   // ★ 只处理空格
-//   [((b'\\', b'u'), b'0', b'0', b'2', b'0')] => b' ', // \u0020 → 空格
-// }
-
-///|
-fn parse_hex4(h1 : Byte, h2 : Byte, h3 : Byte, h4 : Byte) -> Int {
-  (Byte::to_int(h1) << 12) |
-  (Byte::to_int(h2) << 8) |
-  (Byte::to_int(h3) << 4) |
-  Byte::to_int(h4)
-}
-
-///|
-fn is_hex(b : Byte) -> Bool {
-  (b >= b'0' && b <= b'9') ||
-  (b >= b'a' && b <= b'f') ||
-  (b >= b'A' && b <= b'F')
-}
-
-///|
-/// 填充前瞻缓冲区
-// fn fill_lookahead(ctx : LexContext, count : Int) -> Bool {
-//   let start = ctx.position
-//   let end = Int::min(start + count, ctx.data_buffer.length())
-
-//   ctx.lookahead_buffer = []
-//   for i in start..<end {
-//     match ctx.data_buffer.get(i) {
-//       Some(b) => ctx.lookahead_buffer.push(b)
-//       None => break
-//     }
-//   }
-//   ctx.lookahead_pos = 0
-
-//   ctx.lookahead_buffer.length() >= count
-// }
-
-///|
-/// 获取前瞻字节
-// fn peek_lookahead(ctx : LexContext, offset : Int) -> Byte? {
-//   ctx.lookahead_buffer.get(ctx.lookahead_pos + offset)
-// }
-
-///|
-/// 消费前瞻字节
-// fn consume_lookahead(ctx : LexContext) -> Byte? {
-//   match ctx.lookahead_buffer.get(ctx.lookahead_pos) {
-//     Some(b) => {
-//       ctx.lookahead_pos += 1
-//       ctx.position += 1
-//       Some(b)
-//     }
-//     None => None
-//   }
-// }
-
-///|
-/// 返回转义序列的长度（4 或 8），或 None
-fn peek_hex_length(ctx : LexContext) -> Int? {
-  let pos = ctx.position
-
-  // 检查是否有足够字符 (\u + 4 hex 或 \U + 8 hex)
-  let prefix = match ctx.data_buffer.get(pos) {
-    Some(b) => b
-    None => return None
-  }
-
-  if prefix == b'u' {
-    // \u 需要 4 个十六进制
-    let mut count = 0
-    for i in 1..<5 {
-      match ctx.data_buffer.get(pos + i) {
-        Some(b) if b.is_ascii_hexdigit() => count += 1
-        _ => break
-      }
-    }
-    if count == 4 {
-      Some(4)
-    } else {
-      None
-    }
-  } else if prefix == b'U' {
-    // \U 需要 8 个十六进制
-    let mut count = 0
-    for i in 1..<9 {
-      match ctx.data_buffer.get(pos + i) {
-        Some(b) if b.is_ascii_hexdigit() => count += 1
-        _ => break
-      }
-    }
-    if count == 8 {
-      Some(8)
-    } else {
-      None
-    }
-  } else {
-    None
-  }
-}
-
-///|
-/// 检查转义序列是否有效，返回需要消费的字节数
-fn check_escape(ctx : LexContext) -> Int? {
-  let remaining = ctx.data_buffer.length() - ctx.position
-
-  match ctx.data_buffer.get(ctx.position) {
-    Some(b'u') if remaining >= 5 => {
-      // 检查 4 个十六进制
-      for i in 1..<5 {
-        if !ctx.data_buffer[ctx.position + i].is_ascii_hexdigit() {
-          return None
-        }
-      }
-      Some(5) // \\u + 4 hex
-    }
-    Some(b'U') if remaining >= 9 => {
-      // 检查 8 个十六进制
-      for i in 1..<9 {
-        if !ctx.data_buffer[ctx.position + i].is_ascii_hexdigit() {
-          return None
-        }
-      }
-      Some(9) // \\U + 8 hex
-    }
-    _ => None
-  }
-}
-
-///|
-/// 消费转义序列
-fn consume_escape(ctx : LexContext) -> LexAction {
-  match check_escape(ctx) {
-    Some(count) => {
-      ctx.position += count
-      ctx.capture_current = ctx.position
-      LexAction::Continue
-    }
-    None => LexAction::EmitError("Invalid escape sequence")
-  }
-}
-
-///|
-/// 检查字节是否为十六进制
-fn Byte::is_ascii_hexdigit(b : Byte) -> Bool {
-  (b >= b'0' && b <= b'9') ||
-  (b >= b'a' && b <= b'f') ||
-  (b >= b'A' && b <= b'F')
-}
 
 ///|
 /// 是否为 ASCII 字母 (a-z, A-Z)
@@ -1907,9 +1751,9 @@ fn Byte::is_blank_label_char(b : Byte) -> Bool {
 
 ///|
 /// 空白字符
-fn Byte::is_whitespace(b : Byte) -> Bool {
-  b == b' ' || b == b'\t' || b == b'\r' || b == b'\n'
-}
+// fn Byte::is_whitespace(b : Byte) -> Bool {
+//   b == b' ' || b == b'\t' || b == b'\r' || b == b'\n'
+// }
 
 ///|
 /// ===== 查找转换 =====
@@ -1981,7 +1825,7 @@ pub fn RdfLexer::execute_action(
   _data_buffer : ArrayView[Byte],
 ) -> (LexAction, LexContext) {
   self.debug_logger.info(
-    "@@ execute_action: action=\{action}, state=\{ctx.state}, position=\{ctx.position}}",
+    "@@ execute_action: action=\{action}, state=\{ctx.state}, position=\{ctx.position}",
   )
   match action {
     // ============================================================
@@ -2017,39 +1861,24 @@ pub fn RdfLexer::execute_action(
         LexStateMachine::InLongStringQuoteContent
         // | LexStateMachine::InLongStringSingleQuoteEnd
         | LexStateMachine::InLongStringSingleQuoteContent => {
-          let s = s.trim_end(chars=".")
+          // let s = s.trim_end(chars=".")
           // let s = s.replace(old="\"", new="").replace(old="'", new="").trim()
-          self.debug_logger.info("LONG STRING: '\{s}'")
+          // self.debug_logger.info("LONG STRING: '\{s}'")
+          ctx.captured = Some(s)
+          // ctx.emit_state = Some(ctx.state)
+          ctx.advance()
+          (LexAction::EmitToken, ctx)
+        }
+        LexStateMachine::InIri => {
+          let s = if s.length() >= 2 && s[0] == '<' && s[s.length() - 1] == '>' {
+            s[1:s.length() - 1]
+          } else {
+            s
+          }
           ctx.captured = Some(s.to_owned())
           // ctx.emit_state = Some(ctx.state)
           ctx.advance()
           (LexAction::EmitToken, ctx)
-          //  let s = s.trim(chars="\"'. ").trim_end()
-          // 统计引号数量
-          // let quote_count = {
-          //   let mut count = 0
-          //   for c in s {
-          //     if c == '"' || c == '\'' {
-          //       count += 1
-          //     }
-          //   }
-          //   count
-          // }
-
-          // 检查引号是否闭合
-          // if quote_count < 6 || ctx.escape_count > 1 {
-          //   self.debug_logger.info(
-          //     "ERROR: Unclosed long string: quote_count=\{quote_count}, escape_count=\{ctx.escape_count}",
-          //   )
-          //   ctx.advance()
-          //   ctx.has_error = true
-          //   return (
-          //     LexAction::EmitError(
-          //       "Unclosed long string: expected 6 quotes, got \{quote_count}",
-          //     ),
-          //     ctx,
-          //   )
-          // }
         }
         _ => {
           ctx.captured = Some(s)
@@ -2153,15 +1982,7 @@ pub fn RdfLexer::execute_action(
           ctx.advance()
         }
         // ========== Blank Node ==========
-        // b'_' => {
-        //   ctx.escape_quote = EscapeQuote::None
-        //   ctx.state = LexStateMachine::InBlank
-        //   ctx.has_error = false
-        //   ctx.advance()
-        //   self.debug_logger.info(
-        //     "StartCapture: Blank node start, state=InBlank",
-        //   )
-        // }
+
         b'_' => {
           // ★ 前置检查
           let next1 = ctx.data_buffer.get(ctx.position + 1)
@@ -2270,157 +2091,6 @@ pub fn RdfLexer::execute_action(
       (LexAction::Continue, ctx)
     }
 
-    // LexAction::StartNestedCapture => {
-    //   // 前瞻检测是否是 '''
-    //   let p1 = ctx.position + 1
-    //   let p2 = ctx.position + 2
-
-    //   if ctx.data_buffer.get(ctx.position) == Some(b'\'') &&
-    //     ctx.data_buffer.get(p1) == Some(b'\'') &&
-    //     ctx.data_buffer.get(p2) == Some(b'\'') {
-    //     // 找到 '''，进入嵌套状态
-    //     ctx.advance() // 消费第1个 '
-    //     ctx.advance() // 消费第2个 '
-    //     ctx.advance() // 消费第3个 '
-    //     // state 已经是 InLongStringSingleQuoteContent
-    //     debug(
-    //       "StartNestedCapture: found ''', state=InLongStringSingleQuoteContent",
-    //     )
-    //     (LexAction::Continue, ctx)
-    //   } else {
-    //     // 不是 '''，当作普通字符
-    //     ctx.advance()
-    //     (LexAction::Continue, ctx)
-    //   }
-    // }
-
-    // ============================================================
-    // InLongStringQuoteCapture - 匹配开始引号
-    // ============================================================
-    // LexAction::InLongStringQuoteCapture => {
-    //   ctx.advance()
-    //   ctx.capture_current = ctx.position
-
-    //   self.debug_logger.info(
-    //     "InLongStringQuoteCapture: char='\{current.to_int().unsafe_to_char().to_string()}', escape_quote=\{ctx.escape_quote}",
-    //   )
-
-    //   // 只有在 InLongStringQuote 状态且遇到引号时才递减
-    //   match ctx.escape_quote {
-    //     EscapeQuote::StartDouble(n) =>
-    //       if current == b'"' && n > 0 {
-    //         let new_n = n - 1
-    //         ctx.escape_quote = EscapeQuote::StartDouble(new_n)
-    //         self.debug_logger.info("  -> matched quote, remaining=\{new_n}")
-
-    //         if new_n == 0 {
-    //           ctx.escape_quote = EscapeQuote::None
-    //           ctx.state = LexStateMachine::InLongStringQuoteContent
-    //           self.debug_logger.info(
-    //             "  -> complete, entering InLongStringQuoteContent",
-    //           )
-    //         }
-    //       }
-    //     _ => ()
-    //   }
-
-    //   (LexAction::Continue, ctx)
-    // }
-    // ============================================================
-    // InLongStringQuoteEndCapture - 匹配结束引号
-    // ============================================================
-    // LexAction::InLongStringQuoteEndCapture => {
-    //   ctx.advance()
-    //   ctx.capture_current = ctx.position
-
-    //   self.debug_logger.info(
-    //     "InLongStringQuoteEndCapture: char='\{current.to_int().unsafe_to_char().to_string()}', escape_quote=\{ctx.escape_quote}",
-    //   )
-
-    //   // 只有在 InLongStringQuoteEnd 状态且遇到引号时才递减
-    //   match ctx.escape_quote {
-    //     EscapeQuote::StartDouble(n) =>
-    //       if current == b'"' && n > 0 {
-    //         let new_n = n - 1
-    //         ctx.escape_quote = EscapeQuote::StartDouble(new_n)
-    //         self.debug_logger.info("  -> matched end quote, remaining=\{new_n}")
-
-    //         if new_n == 0 {
-    //           ctx.escape_quote = EscapeQuote::None
-    //           ctx.state = LexStateMachine::Start
-    //           self.debug_logger.info("  -> complete!")
-    //           return (LexAction::EmitToken, ctx)
-    //         }
-    //       }
-    //     _ => ()
-    //   }
-
-    //   (LexAction::Continue, ctx)
-    // }
-
-    // ============================================================
-    // InLongStringSingleQuoteCapture - 三单引号开始
-    // ============================================================
-    // LexAction::InLongStringSingleQuoteCapture => {
-    //   ctx.advance()
-    //   ctx.capture_current = ctx.position
-
-    //   self.debug_logger.info(
-    //     "InLongStringSingleQuoteCapture: char='\{current.to_int().unsafe_to_char().to_string()}',escape_quote=\{ctx.escape_quote}",
-    //   )
-
-    //   match ctx.escape_quote {
-    //     EscapeQuote::StartSingle(n) =>
-    //       if current == b'\'' && n > 0 {
-    //         let new_n = n - 1
-    //         ctx.escape_quote = EscapeQuote::StartSingle(new_n)
-    //         self.debug_logger.info("  -> matched quote, remaining=\{new_n}")
-
-    //         if new_n == 0 {
-    //           ctx.escape_quote = EscapeQuote::None
-    //           ctx.state = LexStateMachine::InLongStringSingleQuoteContent
-    //           self.debug_logger.info(
-    //             "  -> complete, entering InLongStringSingleQuoteContent",
-    //           )
-    //         }
-    //       }
-    //     _ => ()
-    //   }
-
-    //   (LexAction::Continue, ctx)
-    // }
-    // ============================================================
-    // InLongStringSingleQuoteEndCapture - 匹配结束引号
-    // ============================================================
-    // LexAction::InLongStringSingleQuoteEndCapture => {
-    //   ctx.advance()
-    //   ctx.capture_current = ctx.position
-
-    //   self.debug_logger.info(
-    //     "InLongStringSingleQuoteEndCapture: char='\{current.to_int().unsafe_to_char().to_string()}', escape_quote=\{ctx.escape_quote}",
-    //   )
-
-    //   // 只有在 InLongStringSingleQuoteEnd 状态且遇到引号时才递减
-    //   match ctx.escape_quote {
-    //     EscapeQuote::StartSingle(n) =>
-    //       if current == b'\'' && n > 0 {
-    //         let new_n = n - 1
-    //         ctx.escape_quote = EscapeQuote::StartSingle(new_n)
-    //         self.debug_logger.info("  -> matched end quote, remaining=\{new_n}")
-
-    //         if new_n == 0 {
-    //           ctx.escape_quote = EscapeQuote::None
-    //           ctx.state = LexStateMachine::Start
-    //           self.debug_logger.info("  -> complete!")
-    //           return (LexAction::EmitToken, ctx)
-    //         }
-    //       }
-    //     _ => ()
-    //   }
-
-    //   (LexAction::Continue, ctx)
-    // }
-
     // ============================================================
     // AppendCapture - 追加到捕获
     // ============================================================
@@ -2450,12 +2120,6 @@ pub fn RdfLexer::execute_action(
               _ => break
             }
           }
-
-        // ========== 长字符串 ==========
-        // LexStateMachine::InLongStringQuote => {
-        //   // 处理 """ 开头
-        //   ...
-        // }
 
         // ========== IRI ==========
         LexStateMachine::InIri =>
@@ -2649,7 +2313,7 @@ pub fn make_token(
   content : String,
 ) -> Result[N3Token, String] {
   let (state, has_error) = (ctx.state, ctx.has_error)
-  debug("make_token: state=\{state}, content='\{content}'")
+  debug("make_token: state=\{state}, content=\{content}")
   match state {
     LexStateMachine::InIri =>
       if has_error {
@@ -2669,19 +2333,18 @@ pub fn make_token(
     // }
     LexStateMachine::InBlankLabel => Ok(N3Token::BlankNodeLabel(content))
     // LexStateMachine::InBlank => Ok(N3Token::BlankNodeLabel(content))
-    LexStateMachine::InString | LexStateMachine::InStringEsc => {
-      let has_start_quote = content.length() > 0 && content[0] == '"'
-      let has_end_quote = content.length() > 0 &&
-        content[content.length() - 1] == '"'
+    LexStateMachine::InString | LexStateMachine::InStringEsc =>
+      // let has_start_quote = content.length() > 0 && content[0] == '"'
+      // let has_end_quote = content.length() > 0 &&
+      //   content[content.length() - 1] == '"'
 
-      if !(has_start_quote && has_end_quote) {
-        return Err("Unclosed string")
-      }
+      // if !(has_start_quote && has_end_quote) {
+      //   return Err("Unclosed string")
+      // }
 
       // let s = content.trim_start(chars="\"").trim_end(chars="\"")
       // debug("make_token -> String: \{content}")
       Ok(N3Token::String(content))
-    }
     LexStateMachine::InLongStringQuoteContent
     | LexStateMachine::InLongStringSingleQuoteContent =>
       // let quote_count = {
@@ -2773,10 +2436,10 @@ pub fn make_token(
         ":" => Ok(N3Token::Punctuation(":"))
         // 关键字
         "a" => Ok(N3Token::PlainKeyword("a"))
-        _ if content.starts_with("<") && content.ends_with(">") =>
-          Ok(N3Token::Iri(content))
-        _ if content.starts_with("_:") || content.starts_with(":") =>
-          Ok(N3Token::BlankNodeLabel(content))
+        // _ if content.starts_with("<") && content.ends_with(">") =>
+        //   Ok(N3Token::Iri(content))
+        // _ if content.starts_with("_:") || content.starts_with(":") =>
+        //   Ok(N3Token::BlankNodeLabel(content))
         _ => Ok(N3Token::PlainKeyword(content))
       }
     _ => {
