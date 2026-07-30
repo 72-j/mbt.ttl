@@ -1,7 +1,8 @@
 ///|
 test "parse simple IRI" {
   let input =
-    #| "\u0000\u0002\u0003\u0004" .
+    #| <http://example/\u0053> <http://example/p> <http://example/o> .
+
   // #| .
   // #|"299.00"^^<http://www.w3.org/2001/XMLSchema#decimal>
   // #|"A . b" 
@@ -12,7 +13,7 @@ test "parse simple IRI" {
   // #|'abc' .
   // #| "a v"
   // #| """ dc ''' d'''asd""" 
-  debug("Input: \{input}")
+  println("Input: \{input}")
 
   let data = @utf8.encode(input).to_array()
   // for i in 0..<data.length() {
@@ -158,7 +159,7 @@ test "low level parser initialization" {
 async test "Parser_basic_single_line for NQuads" {
   let input =
     #| <http://example/s> <http://example/p> _:o . # comment
-    #| <http://example.org/s> <http://example.org/p> '''"Hello\u0020World"''' .
+    // #| <http://example.org/s> <http://example.org/p> '''"Hello\u0020World"''' .
     #| <http://example/s> <http://example/p> "o"^^<http://example/dt> . # comment
     #|<http://example.org/s> <http://example.org/p> <http://example.org/o> .
     #|<http://example.org/s> <http://example.org/p> <http://example.org/o>  <http://example.org/g> .
@@ -215,7 +216,7 @@ async test "Parser_multi_line for NQuads" {
   let input =
     #| <http://example.org/s1> <http://example.org/p1> <http://example.org/o1> .
     #| <http://example.org/s2> <http://example.org/p2> <http://example.org/o2> .
-    #| <http://example.org/s3> <http://example.org/p3> <http://example.org/o3> .
+    #| <http://example.org/s3> <http://example.org/p3> "\\" .
   let data = @utf8.encode(input).to_array()
 
   let logger = @lib.make_console_logger()

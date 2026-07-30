@@ -11,6 +11,36 @@ pub impl Show for RdfState with fn output(self : RdfState, logger : &Logger) -> 
 }
 
 ///|
+pub(all) enum RdfFeature {
+  RelativeIri
+  Numbers
+  Prefixes
+  Variables
+  NonAsciiIri
+  StringEscapes
+  LangTags
+  LongStrings // ★ 新增
+  PunctuationList // ★ 逗号和分号
+}
+
+///|
+fn allows_feature(mode : RdfLexerMode, feature : RdfFeature) -> Bool {
+  match feature {
+    RdfFeature::RelativeIri => mode != RdfLexerMode::NTriples
+    RdfFeature::Numbers => mode != RdfLexerMode::NTriples
+    RdfFeature::Prefixes =>
+      mode == RdfLexerMode::Turtle || mode == RdfLexerMode::N3
+    RdfFeature::Variables => mode == RdfLexerMode::N3
+    RdfFeature::NonAsciiIri =>
+      mode == RdfLexerMode::Turtle || mode == RdfLexerMode::N3
+    RdfFeature::StringEscapes => true
+    RdfFeature::LangTags => mode != RdfLexerMode::NTriples
+    RdfFeature::LongStrings => mode != RdfLexerMode::NTriples //  NTriples 不允许
+    RdfFeature::PunctuationList => mode != RdfLexerMode::NTriples // 
+  }
+}
+
+///|
 pub impl StateWrapper for RdfState with fn as_state_enum(self) -> RdfState {
   self
 }
@@ -18,6 +48,7 @@ pub impl StateWrapper for RdfState with fn as_state_enum(self) -> RdfState {
 ///|
 pub(all) enum RdfLexerMode {
   NTriples
+  Turtle
   N3
 } derive(Eq)
 
@@ -169,7 +200,7 @@ pub(all) enum LexStateMachine {
   Start
   // ----- IRI -----
   InIri
-  InIriEsc // \u 或 \U 转义
+  InEsc // \u 或 \U 转义
   InStringEscHex4
   InStringEscHex8
   // ----- Blank Node -----
@@ -223,7 +254,7 @@ pub impl Show for LexStateMachine with fn output(
   match self {
     LexStateMachine::Start => logger.write("Start")
     LexStateMachine::InIri => logger.write("InIri")
-    LexStateMachine::InIriEsc => logger.write("InIriEsc")
+    LexStateMachine::InEsc => logger.write("InEsc")
     LexStateMachine::InStringEscHex4 => logger.write("InStringEscHex4")
     LexStateMachine::InStringEscHex8 => logger.write("InStringEscHex8")
     LexStateMachine::InBlank => logger.write("InBlank")
@@ -518,12 +549,12 @@ pub let initialize_transitions : FixedArray[Transition] = [
     LexAction::AppendCapture,
   ),
   // IRI 内转义开始
-  Transition::Transition(
-    LexStateMachine::InIri,
-    CharClass::Backslash,
-    LexStateMachine::InIriEsc,
-    LexAction::AppendCapture,
-  ),
+  // Transition::Transition(
+  //   LexStateMachine::InIri,
+  //   CharClass::Backslash,
+  //   LexStateMachine::InEsc,
+  //   LexAction::AppendCapture,
+  // ),
   Transition::Transition(
     LexStateMachine::InIri,
     CharClass::Period,
@@ -550,24 +581,24 @@ pub let initialize_transitions : FixedArray[Transition] = [
   ),
 
   // InIri 转义开始
-  Transition::Transition(
-    LexStateMachine::InIri,
-    CharClass::Backslash,
-    LexStateMachine::InIriEsc,
-    LexAction::AppendCapture,
-  ),
-
-  // InIriEsc - 检测 u 或 U
   // Transition::Transition(
-  //   LexStateMachine::InIriEsc,
+  //   LexStateMachine::InIri,
+  //   CharClass::Backslash,
+  //   LexStateMachine::InEsc,
+  //   LexAction::AppendCapture,
+  // ),
+
+  // InEsc - 检测 u 或 U
+  // Transition::Transition(
+  //   LexStateMachine::InEsc,
   //   CharClass::LowerU,
-  //   LexStateMachine::InIriEscHex4,
+  //   LexStateMachine::InEscHex4,
   //   LexAction::AppendCapture,
   // ),
   // Transition::Transition(
-  //   LexStateMachine::InIriEsc,
+  //   LexStateMachine::InEsc,
   //   CharClass::UpperU,
-  //   LexStateMachine::InIriEscHex8Start,
+  //   LexStateMachine::InEscHex8Start,
   //   LexAction::AppendCapture,
   // ),
 
@@ -590,7 +621,7 @@ pub let initialize_transitions : FixedArray[Transition] = [
 
   // 非法：\ 后面不是 u/U
   Transition::Transition(
-    LexStateMachine::InIriEsc,
+    LexStateMachine::InEsc,
     CharClass::Other,
     LexStateMachine::Error,
     LexAction::EmitError("Invalid IRI escape: expected \\u or \\U"),
@@ -674,7 +705,7 @@ pub let initialize_transitions : FixedArray[Transition] = [
   //   CharClass::Backslash,
   //   LexStateMachine::InStringEsc,
   //   LexAction::AppendCapture,
-  //   priority=50,
+  //   priority=100,
   // ),
   // Transition::Transition(
   //   LexStateMachine::InStringEsc,
@@ -1663,9 +1694,9 @@ pub fn LexContext::get_capture(self : LexContext) -> String {
     } else if match_seq(remaining, [b'\\', b'r']) {
       result.write_char('\r')
       i += 2
-    } else if match_seq(remaining, [b'\\', b'\\']) {
-      result.write_char('\\')
-      i += 2
+      // } else if match_seq(remaining, [b'\\', b'\\']) {
+      //   result.write_char('\\')
+      //   i += 2
     } else if match_seq(remaining, [b'\\', b'"']) {
       result.write_char('"')
       i += 2
@@ -1928,6 +1959,15 @@ pub fn RdfLexer::execute_action(
           )
         }
         _ if is_triple_quote => {
+          // 三引号长字符串：NTriples 不允许
+          if !allows_feature(self.mode, RdfFeature::LongStrings) {
+            ctx.has_error = true
+            ctx.error_message = Some(
+              "Long strings (triple quotes) not allowed in N-Triples",
+            )
+            return (LexAction::EmitError("Long strings not allowed"), ctx)
+          }
+
           // """ 长字符串：预消费所有三个引号
           ctx.escape_quote = EscapeQuote::None
           ctx.state = LexStateMachine::InLongStringQuoteContent
@@ -1944,6 +1984,14 @@ pub fn RdfLexer::execute_action(
           )
         }
         _ if is_triple_apostrophe => {
+          // 三单引号长字符串：NTriples 不允许
+          if !allows_feature(self.mode, RdfFeature::LongStrings) {
+            ctx.has_error = true
+            ctx.error_message = Some(
+              "Long strings (triple quotes) not allowed in N-Triples",
+            )
+            return (LexAction::EmitError("Long strings not allowed"), ctx)
+          }
           // ''' 长字符串
           ctx.escape_quote = EscapeQuote::None
           ctx.state = LexStateMachine::InLongStringSingleQuoteContent
@@ -2030,6 +2078,15 @@ pub fn RdfLexer::execute_action(
 
         // ========== 数字 ==========
         b'+' | b'-' | _ if current.to_char().is_ascii_digit() => {
+
+          // N-Triples 不允许数字
+          if !allows_feature(self.mode, RdfFeature::Numbers) {
+            ctx.has_error = true
+            ctx.error_message = Some("Numbers not allowed in N-Triples")
+            self.debug_logger.info("Error: Numbers not allowed in N-Triples")
+            return (LexAction::EmitError("Numbers not allowed"), ctx)
+          }
+
           ctx.escape_quote = EscapeQuote::None
           ctx.state = LexStateMachine::InInteger
           ctx.has_error = false
@@ -2041,6 +2098,14 @@ pub fn RdfLexer::execute_action(
         // b':'
         // |
         b';' | b',' | b'.' | b'(' | b')' | b'[' | b']' | b'{' | b'}' | b'*' => {
+          // ★ N-Triples 不允许逗号和分号
+          if !allows_feature(self.mode, RdfFeature::PunctuationList) &&
+            (current == b',' || current == b';') {
+            ctx.has_error = true
+            ctx.error_message = Some("Punctuation not allowed")
+            return (LexAction::EmitError("Punctuation not allowed"), ctx)
+          }
+
           ctx.escape_quote = EscapeQuote::None
           ctx.state = LexStateMachine::Start
           ctx.has_error = false
@@ -2071,12 +2136,10 @@ pub fn RdfLexer::execute_action(
         b'\\' => {
           // 需要在下一字符判断是否是 u/U
           ctx.escape_quote = EscapeQuote::None
-          ctx.state = LexStateMachine::InIriEsc
+          ctx.state = LexStateMachine::InEsc
           ctx.has_error = false
           ctx.advance()
-          self.debug_logger.info(
-            "StartCapture: IRI escape start, state=InIriEsc",
-          )
+          self.debug_logger.info("StartCapture: IRI escape start, state=InEsc")
         }
         // ========== 默认：关键字/标识符 ==========
         _ => {
@@ -2107,12 +2170,10 @@ pub fn RdfLexer::execute_action(
             let b = ctx.data_buffer.get(ctx.position)
             match b {
               // 转义字符，跳过下一个
-              Some(b'\\') => {
-                ctx.advance()
-                if ctx.position < ctx.data_buffer.length() {
-                  ctx.advance() // 跳过转义目标
-                }
-              }
+              Some(b'\\') => ctx.advance()
+              // if ctx.position < ctx.data_buffer.length() {
+              //   ctx.advance() // 跳过转义目标
+              // }
               // 结束引号，停止
               Some(b'"') => break
               // 其他字符，消费
@@ -2422,18 +2483,25 @@ pub fn make_token(
     LexStateMachine::InLongStringQuoteEnd
     | LexStateMachine::InLongStringSingleQuoteEnd =>
       Ok(N3Token::LongString(content))
-    LexStateMachine::Start =>
-      match content {
-        "." => Ok(N3Token::Punctuation("."))
-        "," => Ok(N3Token::Punctuation(","))
-        ";" => Ok(N3Token::Punctuation(";"))
-        "(" => Ok(N3Token::Punctuation("("))
-        ")" => Ok(N3Token::Punctuation(")"))
-        "[" => Ok(N3Token::Punctuation("["))
-        "]" => Ok(N3Token::Punctuation("]"))
-        "{" => Ok(N3Token::Punctuation("{"))
-        "}" => Ok(N3Token::Punctuation("}"))
-        ":" => Ok(N3Token::Punctuation(":"))
+    LexStateMachine::Start => {
+      let s = match ctx.prev_char {
+        Some(b',') => ","
+        Some(b';') => ";"
+        Some(b'.') => "."
+        Some(b'(') => "("
+        Some(b')') => ")"
+        Some(b'[') => "["
+        Some(b']') => "]"
+        Some(b'{') => "{"
+        Some(b'}') => "}"
+        Some(b':') => ":"
+        _ => ctx.get_capture()
+      }
+
+      match s {
+        "," | ";" | "." | "(" | ")" | "[" | "]" | "{" | "}" | ":" =>
+          Ok(N3Token::Punctuation(s))
+
         // 关键字
         "a" => Ok(N3Token::PlainKeyword("a"))
         // _ if content.starts_with("<") && content.ends_with(">") =>
@@ -2442,6 +2510,7 @@ pub fn make_token(
         //   Ok(N3Token::BlankNodeLabel(content))
         _ => Ok(N3Token::PlainKeyword(content))
       }
+    }
     _ => {
       debug("make_token -> PlainKeyword: '\{content}'")
       Ok(N3Token::PlainKeyword(content))

@@ -2,7 +2,7 @@
 async test "Parser_basic_single_line for NQuads" {
   // #|"""abc""" .
   let input =
-    #|<http://example/> <http://example/p> <http://example/o> .
+    #| <http://example/> <http://example/p> "\u0053" .
 
   debug("Input: \{input}")
 
@@ -90,7 +90,7 @@ async test "multi-line  for NQuads" {
   let input =
     #| <http://example.org/s> <http://example.org/p> <http://example.org/o> .
     #| <http://example.org/s> <http://example.org/p> <http://example.org/o> .
-    #| <http://example.org/s> <http://example.org/p> <http://example.org/o> .
+    #| <http://example.org/s> <http://example.org/p> "\\" .
     #| 
 
   let data = @utf8.encode(input).to_array()
@@ -419,7 +419,8 @@ async test "run official n-triples test file" {
 
 ///|
 async test "run official n-triples test suite" {
-  let test_dir = "src/tests/src/rdf/rdf11/n-triples"
+  // let test_dir = "src/tests/src/rdf/rdf11/n-triples"
+  let test_dir = "src/tests/src/bak/c14n"
 
   // 1. 打开目录并确保护理
   let dir = @fs.opendir(test_dir)

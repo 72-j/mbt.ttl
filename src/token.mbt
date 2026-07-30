@@ -81,7 +81,7 @@ pub impl Show for N3Token with fn output(self : N3Token, f : &Logger) -> Unit {
     // f.write("\"")
     N3Token::Integer(v) | N3Token::Decimal(v) | N3Token::Double(v) => f.write(v)
     N3Token::LangTag(language~, direction~) => {
-      f.write("@")
+      // f.write("@")
       f.write(language)
       match direction {
         Some(BaseDirection::Ltr) => f.write(";ltr")
