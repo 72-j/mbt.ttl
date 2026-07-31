@@ -419,8 +419,8 @@ async test "run official n-triples test file" {
 
 ///|
 async test "run official n-triples test suite" {
-  // let test_dir = "src/tests/src/rdf/rdf11/n-triples"
-  let test_dir = "src/tests/src/bak/c14n"
+  let test_dir = "src/tests/src/rdf/rdf11/n-triples"
+  // let test_dir = "src/tests/src/bak/c14n"
 
   // 1. 打开目录并确保护理
   let dir = @fs.opendir(test_dir)

@@ -324,23 +324,27 @@ pub fn[RL] Lexer::location_from_buffer_offset_range(
 
 ///|
 pub fn[RL] Lexer::current_token_start_location(self : Lexer[RL]) -> SourcePos {
-  self.position_from_position(self.previous_position)
+  self.position_from_range(
+    Range::Range(self.current_token_start, self.current_token_end),
+  )
 }
 
 ///|
 /// 获取当前 Token 的**结束**位置 (即 Lexer 指针当前位置)
 pub fn[RL] Lexer::current_token_end_location(self : Lexer[RL]) -> SourcePos {
-  self.position_from_position(self.position)
+  self.position_from_range(
+    Range::Range(self.current_token_end, self.current_token_end),
+  )
 }
 
 ///|
 /// 获取当前 Token 的完整范围
-pub fn[RL] Lexer::current_token_source_range(self : Lexer[RL]) -> SourceRange {
-  SourceRange::SourceRange(
-    self.current_token_start_location(),
-    self.current_token_end_location(),
-  )
-}
+// pub fn[RL] Lexer::current_token_source_range(self : Lexer[RL]) -> SourceRange {
+//   SourceRange::SourceRange(
+//     self.current_token_start_location(),
+//     self.current_token_end_location(),
+//   )
+// }
 
 ///|
 fn[RL] Lexer::position_from_position(
@@ -354,13 +358,6 @@ fn[RL] Lexer::position_from_position(
     column: Lexer::column_from_bytes(view),
     offset: position.global_offset,
   }
-}
-
-///|
-pub fn[RL] Lexer::last_token_source(self : Lexer[RL]) -> String {
-  let arr_view = self.data[self.previous_position.buffer_offset:self.position.buffer_offset]
-  let bytes : Bytes = Bytes::from_array(arr_view) // 假设有此 API，或者 Bytes::of_array_view
-  @utf8.decode_lossy(bytes)
 }
 
 ///|
@@ -481,7 +478,14 @@ pub fn[T] Lexer::current_position(self : Lexer[T]) -> SourcePos {
 ///|
 /// 获取 token 范围
 pub fn[T] Lexer::current_token_range(self : Lexer[T]) -> Range {
-  Range::Range(self.current_token_start, self.current_token_end)
+  // 确保 start <= end，且在有效范围内
+  let start = self.current_token_start
+  let end = self.current_token_end
+  if start < 0 || end < start {
+    Range::Range(0, 0)
+  } else {
+    Range::Range(start, end)
+  }
 }
 
 ///|
@@ -513,4 +517,33 @@ pub fn[RL] Lexer::last_token_end(self : Lexer[RL]) -> SourcePos {
 ///|
 pub fn[RL] Lexer::last_token_range(self : Lexer[RL]) -> SourceRange {
   SourceRange(self.last_token_start(), self.last_token_end())
+}
+
+///|
+/// 从 Range 计算 SourcePos（使用 position 的全局行号）
+pub fn[RL] Lexer::position_from_range(
+  self : Lexer[RL],
+  range : Range,
+) -> SourcePos {
+  let offset = range.start
+  let line = self.position.global_line
+  // 列号：从行起始到 offset 的距离
+  let line_start = self.position.line_start_buffer_offset
+  let column = if offset >= line_start { offset - line_start } else { 0 }
+  debug("position_from_range \{line} \{column} \{offset}")
+  SourcePos::SourcePos(line, column, offset)
+}
+
+///|
+/// 从 Range 获取 bytes
+pub fn[RL] Lexer::range_to_bytes(
+  self : Lexer[RL],
+  range : Range,
+) -> ArrayView[Byte] {
+  let start = range.start
+  let end = Int::min(range.end, self.data.length())
+  if start < 0 || start >= self.data.length() {
+    return []
+  }
+  self.data[start:end]
 }

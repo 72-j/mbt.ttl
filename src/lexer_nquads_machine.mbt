@@ -118,7 +118,7 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
     (ExpectObject, LocatedToken(N3Token::PlainKeyword(k), range)) if k.length() >
       0 &&
       k[0] == '"' => {
-      self.debug_logger.info("[ERROR] Invalid token: \{k}")
+      self.debug_logger.error("Invalid token: \{k}")
       return Err(RuleRecognizerError::SyntaxError("Expected string", range))
     }
     (ExpectObject, LocatedToken(N3Token::PlainKeyword(k), range)) => {
@@ -132,7 +132,7 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
         count
       }
       if quote_count % 2 != 0 {
-        self.debug_logger.info("[ERROR] Unmatched quote: \{k}")
+        self.debug_logger.error("Unmatched quote: \{k}")
         return Err(RuleRecognizerError::SyntaxError("Unmatched quote", range))
       }
       return Err(RuleRecognizerError::SyntaxError("Unexpected string", range))
@@ -230,7 +230,7 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
         "Unexpected token in state '\{nquads_state}': \{token.0}",
         token.1,
       )
-      self.debug_logger.info("[ERROR] \{err}")
+      self.debug_logger.error("\{err}")
       return Ok(
         (
           self.add_error(err),

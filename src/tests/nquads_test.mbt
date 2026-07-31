@@ -1,7 +1,7 @@
 ///|
 test "parse simple IRI" {
   let input =
-    #| <http://example/\u0053> <http://example/p> <http://example/o> .
+    #| <http://example/s> <http://example/p> """abc""" .
 
   // #| .
   // #|"299.00"^^<http://www.w3.org/2001/XMLSchema#decimal>
@@ -44,7 +44,8 @@ test "parse simple IRI" {
 ///|
 test "full parse with string" {
   let input =
-    #|<http://example.org/s> <http://example.org/p> <http://example.org/o>  <http://example.org/g> .
+    #|<http://example/s> <http://example/p> <http://example/o>, <http://example/o2> .
+
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
@@ -158,13 +159,13 @@ test "low level parser initialization" {
 ///|
 async test "Parser_basic_single_line for NQuads" {
   let input =
+    #| <http://example.org/s> <http://example.org/p> '''"Hello\u0020World"''' .
     #| <http://example/s> <http://example/p> _:o . # comment
-    // #| <http://example.org/s> <http://example.org/p> '''"Hello\u0020World"''' .
     #| <http://example/s> <http://example/p> "o"^^<http://example/dt> . # comment
     #|<http://example.org/s> <http://example.org/p> <http://example.org/o> .
     #|<http://example.org/s> <http://example.org/p> <http://example.org/o>  <http://example.org/g> .
     #|<http://example.org/s> <http://example.org/p> "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\t\u000B\u000C\u000E\u000F\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001A\u001B\u001C\u001D\u001E\u001F" .
-    #|
+
   let data = @utf8.encode(input).to_array()
   // debug("Input bytes: \{@debug.to_string(data)}")
 

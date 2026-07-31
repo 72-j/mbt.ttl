@@ -50,6 +50,7 @@ async test "multi-line NQuads from file" {
       outputs: [],
       data_world: @lib.DataWorld::default(),
       debug_logger: logger,
+      lexer_errors: [],
     }
 
     let parser = @lib.Parser::{
@@ -139,6 +140,7 @@ async test "single quad from file" {
       outputs: [],
       data_world: @lib.DataWorld::default(),
       debug_logger: logger,
+      lexer_errors: [],
     }
 
     let parser = @lib.Parser::{

@@ -7,6 +7,7 @@ pub(all) struct GenericStateMachine[M] {
   outputs : Array[O]
   data_world : DataWorld
   debug_logger : &DebugLogger
+  lexer_errors : Array[(String, ArrayView[Byte], Range)]
 }
 
 ///|
@@ -21,6 +22,7 @@ pub fn[M] GenericStateMachine::GenericStateMachine(
     outputs: [],
     data_world: DataWorld::default(),
     debug_logger,
+    lexer_errors: [],
   }
 }
 
@@ -92,6 +94,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
     outputs,
     data_world: dw2,
     debug_logger: self.debug_logger,
+    lexer_errors: self.lexer_errors,
   }
 }
 
@@ -101,12 +104,20 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn reset
 ) -> GenericStateMachine[M] {
   let new_machine = self.machine.error_recovery_statemachine()
   // let new_state = new_machine.initial_state()
+  if self.lexer_errors.length() > 0 {
+    let (msg, bytes, range) = self.lexer_errors.pop().unwrap()
+    self.debug_logger.error(
+      "[GSM step] lexer error: \{msg} at \{range.start} to \{range.end} \{@debug.debug(bytes)}",
+    )
+  }
+
   GenericStateMachine::{
     machine: new_machine,
     context: self.context,
     outputs: [],
     data_world: DataWorld::default(),
     debug_logger: self.debug_logger,
+    lexer_errors: self.lexer_errors,
   }
 }
 
@@ -128,6 +139,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn trans
         outputs: self.outputs,
         data_world: self.data_world,
         debug_logger: self.debug_logger,
+        lexer_errors: self.lexer_errors,
       }
       // 4. 返回 Ok
       Ok((new_gsm, new_state, output))
@@ -157,6 +169,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
     outputs: self.outputs,
     data_world: self.data_world,
     debug_logger: self.debug_logger,
+    lexer_errors: self.lexer_errors,
   }
 }
 
@@ -231,6 +244,7 @@ pub fn[M] GenericStateMachine::set_context(
     outputs: self.outputs,
     data_world: self.data_world,
     debug_logger: self.debug_logger,
+    lexer_errors: self.lexer_errors,
   }
 }
 
@@ -251,6 +265,7 @@ pub fn[M] GenericStateMachine::remove_first_output(
     outputs: new_outputs,
     data_world: self.data_world,
     debug_logger: self.debug_logger,
+    lexer_errors: self.lexer_errors,
   }
 }
 

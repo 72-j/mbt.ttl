@@ -84,7 +84,7 @@ pub impl Show for IriError with fn output(self : IriError, logger : &Logger) -> 
 pub(all) suberror TokenRecognizerError {
   Invalid
   InvalidFormat(ArrayView[Byte], Range)
-  InvalidToken(ArrayView[Byte], Range)
+  InvalidToken(String, ArrayView[Byte], Range)
   InvalidCharacter(ArrayView[Byte], Range)
   IncompleteEscapeSequence(ArrayView[Byte], Range)
   InvalidEscapeSequence(ArrayView[Byte], Range)
@@ -102,7 +102,7 @@ pub fn TokenRecognizerError::range(self : TokenRecognizerError) -> Range {
   match self {
     TokenRecognizerError::Invalid => Range::{ start: -1, end: -1 }
     TokenRecognizerError::InvalidFormat(_, range) => range
-    TokenRecognizerError::InvalidToken(_, range) => range
+    TokenRecognizerError::InvalidToken(_, _, range) => range
     TokenRecognizerError::InvalidCharacter(_, range) => range
     TokenRecognizerError::IncompleteEscapeSequence(_, range) => range
     TokenRecognizerError::InvalidEscapeSequence(_, range) => range
@@ -121,7 +121,8 @@ pub impl ErrOut for TokenRecognizerError with fn message(
   match self {
     TokenRecognizerError::Invalid => "Invalid token was provided"
     TokenRecognizerError::InvalidFormat(msg, range) => range.utf8_range(msg)
-    TokenRecognizerError::InvalidToken(msg, range) => range.utf8_range(msg)
+    TokenRecognizerError::InvalidToken(str, msg, range) =>
+      str + range.utf8_range(msg)
     TokenRecognizerError::InvalidCharacter(msg, range) => range.utf8_range(msg)
     TokenRecognizerError::IncompleteEscapeSequence(msg, range) =>
       range.utf8_range(msg)
@@ -145,7 +146,7 @@ pub impl ErrOut for TokenRecognizerError with fn err_kind(
   match self {
     TokenRecognizerError::Invalid => "Invalid"
     TokenRecognizerError::InvalidFormat(_, _) => "InvalidFormat"
-    TokenRecognizerError::InvalidToken(_, _) => "InvalidRecognizerToken"
+    TokenRecognizerError::InvalidToken(_, _, _) => "InvalidRecognizerToken"
     TokenRecognizerError::InvalidCharacter(_, _) => "InvalidCharacter"
     TokenRecognizerError::IncompleteEscapeSequence(_, _) =>
       "IncompleteEscapeSequence"
@@ -231,9 +232,15 @@ pub fn Range::contains(self : Self, pos : Int) -> Bool {
 
 ///|
 pub fn Range::utf8_range(self : Range, data : ArrayView[Byte]) -> String {
-  let data = data[self.start:self.end]
-  let str = @utf8.decode_lossy(array_to_view(data))
-  str
+  let start = self.start
+  let end = Int::min(self.end, data.length())
+
+  if start < 0 || start >= end {
+    return ""
+  }
+
+  let view = data[start:end]
+  @utf8.decode_lossy(array_to_view(view))
 }
 
 ///|

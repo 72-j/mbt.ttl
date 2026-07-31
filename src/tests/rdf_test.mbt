@@ -208,7 +208,7 @@ test "test find_transition - Start with Space" {
   match t {
     Some(t) => {
       assert_eq(t.from, @lib.LexStateMachine::Start)
-      assert_eq(t.to, @lib.LexStateMachine::SkipWhitespace)
+      assert_eq(t.to, @lib.LexStateMachine::Start)
     }
     None => fail("Should find transition")
   }
@@ -458,34 +458,27 @@ test "test state machine - blank node" {
 ///|
 test "test state machine - skip whitespace" {
   let data = @utf8.encode("hello").to_array()
-  let ctx = @lib.LexContext::new(data)
+  let mut ctx = @lib.LexContext::new(data)
   let rdflexer = @lib.RdfLexer::default()
 
-  // Start -> SkipWhitespace
+  // Start -> Start (space skipped)
   match rdflexer.find_transition(ctx, @lib.CharClass::Space) {
-    Some(t) => ctx.state = t.to
+    Some(t) => {
+      assert_eq(t.to, @lib.LexStateMachine::Start) // ★ 直接回到 Start
+      let (_action, new_ctx) = rdflexer.execute_action(
+        t.action,
+        ctx,
+        b' ',
+        data,
+      )
+      ctx = new_ctx
+    }
     None => fail("Should find transition for space")
   }
 
-  // SkipWhitespace -> SkipWhitespace
-  for _i in 1..<3 {
-    match rdflexer.find_transition(ctx, @lib.CharClass::Space) {
-      Some(t) => {
-        let (_action, new_ctx) = rdflexer.execute_action(
-          t.action,
-          ctx,
-          b' ',
-          data,
-        )
-        new_ctx.state = t.to
-      }
-      None => fail("Should find transition")
-    }
-  }
-
-  // SkipWhitespace -> Start (遇到非空白)
+  // Start + h -> InKeyword
   match rdflexer.find_transition(ctx, @lib.classify_byte(b'h')) {
-    Some(t) => assert_eq(t.to, @lib.LexStateMachine::Start)
+    Some(t) => assert_eq(t.to, @lib.LexStateMachine::InKeyword)
     None => fail("Should find transition")
   }
 }

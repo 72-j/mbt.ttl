@@ -24,7 +24,11 @@ pub(all) struct DataWorld {
   mut temp_literal : String?
   mut finalize_literal : LiteralKind?
   mut graph_name : GraphNameRef?
-}
+} derive(Debug, Eq, Hash)
+
+// impl DataWorld for DataWorld with fn default(self) -> Unit {
+// ...
+// }
 
 ///|
 pub(all) enum DataAction {
@@ -331,6 +335,7 @@ pub fn NQuadsRecognizer::new_parser(
     outputs: [],
     data_world: DataWorld::default(),
     debug_logger,
+    lexer_errors: [],
   }
   Parser::{ lexer, engine: generic_machine, context, errors: [] }
   // Parser::Parser(lexer, machine, context)

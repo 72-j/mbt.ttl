@@ -62,17 +62,14 @@ pub fn[TR, M] Parser::Parser(
 ///|
 pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(
   self : Parser[TR, M],
-) -> Result[RdfOut, TurtleError]? {
+) -> Result[RdfOut, TokenRecognizerError]? {
   for ;; {
     // 1. 优先处理错误
     if self.errors.pop() is Some(e) {
+      let range = self.lexer.current_token_range()
+      let bytes = self.lexer.range_to_bytes(range)
       return Some(
-        Err(
-          TurtleError::InvalidTurtleToken(
-            self.lexer.last_token_start(),
-            "\{self.lexer.last_token_source()}\{e.to_string()}",
-          ),
-        ),
+        Err(TokenRecognizerError::InvalidToken(e.message(), bytes, range)),
       )
     }
 
@@ -106,36 +103,34 @@ pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(
 
         continue
       }
-      // Some(Ok(located_token)) => {
-      //   let result = self.engine.step(located_token)
-
-      //   // 检查是否 transition 成功
-      //   match
-      //     self.engine.transition(
-      //       self.engine.current_state(),
-      //       located_token,
-      //       self.engine.context(),
-      //     ) {
-      //     Err(e) => {
-      //       // transition 失败，跳过此 token
-      //       self.errors.push(e)
-      //       self.engine = self.engine.reset()
-      //       continue
-      //     }
-      //     Ok((new_machine, _, _)) => self.engine = new_machine
-      //   }
-      // }
       Some(Err(e)) => {
         // 词法错误
         self.engine = self.engine.reset()
-        return Some(
-          Err(
-            TurtleError::InvalidTurtleToken(
-              self.lexer.last_token_start(),
-              " \{self.lexer.last_token_source()} \{e.err_kind()} - TOKEN is not allowed here.",
-            ),
-          ),
-        )
+        let range = self.lexer.current_token_range()
+        let bytes = self.lexer.range_to_bytes(range)
+
+        let range = self.lexer.current_token_range()
+        // self.errors.push(RuleRecognizerError::SyntaxError(e.message(), range))
+        self.engine.lexer_errors.push((e.message(), bytes, range))
+        // 跳过至少一个字符
+        // 消费并继续
+        self.lexer.position.buffer_offset += bytes.length().max(1)
+        self.engine = self.engine.reset()
+
+        self.engine = self.engine.reset()
+        // ★ 跳过到下一个空白或换行
+        // while self.lexer.position.buffer_offset < self.lexer.data.length() {
+        //   if self.lexer.data[self.lexer.position.buffer_offset] == b'\n' {
+        //     self.lexer.position.buffer_offset += 1 // 跳过换行
+        //     break
+        //   }
+        //   self.lexer.position.buffer_offset += 1
+        // }
+        continue
+        // ★ 继续解析下一行！
+        // return Some(
+        //   Err(TokenRecognizerError::InvalidToken(e.message(), bytes, range)),
+        // )
       }
       None =>
         if self.lexer.is_end() {
@@ -195,16 +190,25 @@ pub fn[TR, M] Parser::end(self : Parser[TR, M]) -> Unit {
 /// 尝试返回一个输出
 pub fn[TR, M] Parser::try_output(
   self : Parser[TR, M],
-) -> Result[RdfOut, TurtleError]? {
+) -> Result[RdfOut, TokenRecognizerError]? {
+  // 先检查是否有输出
   if self.engine.outputs.length() > 0 {
-    // ✅ 使用 get(0) 获取第一个元素
     let output = match self.engine.outputs.get(0) {
       Some(o) => o
       None => return None
     }
     self.engine = self.engine.remove_first_output()
+
+    // ★ 如果还有词法错误，记录到输出中（或者先清空）
     return Some(Ok(output))
   }
+
+  // 没有输出了，检查词法错误
+  // if self.engine.lexer_errors.length() > 0 {
+  //   let (msg, bytes, range) = self.engine.lexer_errors.pop().unwrap()
+  //   return Some(Err(TokenRecognizerError::InvalidToken(msg, bytes, range)))
+  // }
+
   None
 }
 
@@ -212,7 +216,7 @@ pub fn[TR, M] Parser::try_output(
 /// 检查并处理完成状态
 pub fn[TR, M : StateMachine] Parser::try_finish(
   self : Parser[TR, M],
-) -> Result[RdfOut, TurtleError]? {
+) -> Result[RdfOut, TokenRecognizerError]? {
   if self.engine.is_accepting() {
     if self.engine.outputs.length() > 0 {
       let output = match self.engine.outputs.get(0) {

@@ -114,7 +114,7 @@ pub(all) enum CharClass {
   Dollar // $
   Ampersand // &
   Apostrophe // '
-  TripleApostrophe // '''
+  // TripleApostrophe // '''
   // 多字符标点
   LtLt // <<
   GtGt // >>
@@ -174,7 +174,7 @@ pub impl Show for CharClass with fn output(self : CharClass, logger : &Logger) -
     CharClass::Dollar => logger.write("Dollar")
     CharClass::Ampersand => logger.write("Ampersand")
     CharClass::Apostrophe => logger.write("Apostrophe")
-    CharClass::TripleApostrophe => logger.write("TripleApostrophe")
+    // CharClass::TripleApostrophe => logger.write("TripleApostrophe")
     CharClass::LtLt => logger.write("LtLt")
     CharClass::GtGt => logger.write("GtGt")
     CharClass::LtMinus => logger.write("LtMinus")
@@ -237,7 +237,7 @@ pub(all) enum LexStateMachine {
   // ----- Punctuation -----
   InPunct
   // ----- Skip -----
-  SkipWhitespace
+  // SkipWhitespace
   SkipLineComment
   SkipBlockComment(Int) // 嵌套层级
   // ----- Error -----
@@ -287,7 +287,7 @@ pub impl Show for LexStateMachine with fn output(
     LexStateMachine::InPnameLocal => logger.write("InPnameLocal")
     LexStateMachine::InKeyword => logger.write("InKeyword")
     LexStateMachine::InPunct => logger.write("InPunct")
-    LexStateMachine::SkipWhitespace => logger.write("SkipWhitespace")
+    // LexStateMachine::SkipWhitespace => logger.write("SkipWhitespace")
     LexStateMachine::SkipBlockComment(n) =>
       logger.write("SkipBlockComment \{n}")
     LexStateMachine::Error => logger.write("Error")
@@ -399,8 +399,8 @@ pub let initialize_transitions : FixedArray[Transition] = [
   Transition::Transition(
     LexStateMachine::Start,
     CharClass::Space,
-    LexStateMachine::SkipWhitespace,
-    LexAction::Continue, // ★ 不发射 token，只跳过
+    LexStateMachine::Start,
+    LexAction::Skip, // ★ 不发射 token，只跳过
   ),
 
   // 换行 -> 发射 LineJump
@@ -1200,12 +1200,12 @@ pub let initialize_transitions : FixedArray[Transition] = [
     LexAction::Continue,
   ),
   // InBlank → 其他 → 报错（_ 后面必须是 :）
-  Transition::Transition(
-    LexStateMachine::InBlank,
-    CharClass::Other,
-    LexStateMachine::Start,
-    LexAction::Continue,
-  ),
+  // Transition::Transition(
+  //   LexStateMachine::InBlank,
+  //   CharClass::Other,
+  //   LexStateMachine::Start,
+  //   LexAction::Continue,
+  // ),
   Transition::Transition(
     LexStateMachine::InBlank,
     CharClass::Space,
@@ -1344,41 +1344,35 @@ pub let initialize_transitions : FixedArray[Transition] = [
   // ============================================================
 
   // 跳过空白
-  Transition::Transition(
-    LexStateMachine::SkipWhitespace,
-    CharClass::Space,
-    LexStateMachine::SkipWhitespace,
-    LexAction::Skip,
-  ),
-  Transition::Transition(
-    LexStateMachine::SkipWhitespace,
-    CharClass::Newline,
-    LexStateMachine::SkipWhitespace,
-    LexAction::Skip,
-  ),
-  Transition::Transition(
-    LexStateMachine::SkipWhitespace,
-    CharClass::Other,
-    LexStateMachine::Start,
-    LexAction::Continue,
-  ),
+  // Transition::Transition(
+  //   LexStateMachine::SkipWhitespace,
+  //   CharClass::Space,
+  //   LexStateMachine::SkipWhitespace,
+  //   LexAction::Skip,
+  // ),
+  // Transition::Transition(
+  //   LexStateMachine::SkipWhitespace,
+  //   CharClass::Newline,
+  //   LexStateMachine::SkipWhitespace,
+  //   LexAction::Skip,
+  // ),
+  // Transition::Transition(
+  //   LexStateMachine::SkipWhitespace,
+  //   CharClass::Other,
+  //   LexStateMachine::Start,
+  //   LexAction::Continue,
+  // ),
   // SkipWhitespace + _ → 直接开始，不经过 Start
-  Transition::Transition(
-    LexStateMachine::SkipWhitespace,
-    CharClass::Underscore,
-    LexStateMachine::InBlank,
-    LexAction::StartCapture,
-    priority=50,
-  ),
+  //
 
   // SkipWhitespace + : → 直接开始
-  Transition::Transition(
-    LexStateMachine::SkipWhitespace,
-    CharClass::Colon,
-    LexStateMachine::InBlankLabel,
-    LexAction::StartCapture,
-    priority=50,
-  ),
+  // Transition::Transition(
+  //   LexStateMachine::SkipWhitespace,
+  //   CharClass::Colon,
+  //   LexStateMachine::InBlankLabel,
+  //   LexAction::StartCapture,
+  //   priority=50,
+  // ),
 
   // 跳过行注释
   Transition::Transition(
@@ -2057,12 +2051,10 @@ pub fn RdfLexer::execute_action(
         }
         b':' =>
           match ctx.prev_char {
-            // 前一个字符是空白 → Blank Node
-            Some(b' ') | Some(b'\t') | Some(b'\n') | None =>
-              ctx.state = LexStateMachine::InBlankLabel
-            // 前一个字符是字母数字 → PrefixedName
+            // 字母数字 : → PrefixedName
             Some(c) if c.is_ascii_alnum() =>
               ctx.state = LexStateMachine::InPnamePrefix
+            // 其他情况（_、空白、开头）→ Blank Node
             _ => ctx.state = LexStateMachine::InBlankLabel
           }
         // ========== Lang Tag ==========
@@ -2494,7 +2486,6 @@ pub fn make_token(
         Some(b']') => "]"
         Some(b'{') => "{"
         Some(b'}') => "}"
-        Some(b':') => ":"
         _ => ctx.get_capture()
       }
 
@@ -2547,35 +2538,16 @@ fn RdfLexer::step(
         data_buffer,
       )
 
-      let final_ctx : LexContext = if ctx.state ==
-        LexStateMachine::SkipWhitespace &&
-        transition.to == LexStateMachine::Start {
-        // 从 SkipWhitespace 回退到 Start 时，重置捕获
-        {
-          ..new_ctx,
-          state: transition.to,
-          capture_start: ctx.position,
-          capture_current: ctx.position,
-        }
-
-        // } else if new_ctx.escape_quote != ctx.escape_quote {
-        //   { ..new_ctx, state: transition.to }
-      } else {
-        match action {
-          LexAction::EmitToken | LexAction::EmitError(_) => new_ctx
-          _ =>
-            // ★ 只在状态真的改变时才用 transition.to
-            if new_ctx.state != ctx.state {
-              {
-                ..new_ctx,
-                state: transition.to,
-                capture_start: new_ctx.capture_start,
-              }
-            } else {
-              // 状态没变，保持 new_ctx（原样）
-              new_ctx
-            }
-        }
+      // 根据 action 类型决定返回值
+      let final_ctx = match action {
+        LexAction::EmitToken | LexAction::EmitError(_) => new_ctx
+        _ =>
+          // 状态变化时更新
+          if new_ctx.state != ctx.state {
+            { ..new_ctx, state: transition.to }
+          } else {
+            new_ctx
+          }
       }
       Some((action, final_ctx))
     }
@@ -2703,7 +2675,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                 )
                 return Some((ctx.position, Ok(LocatedToken(token, range))))
               }
-              Err(_err) => {
+              Err(err) => {
                 let range = Range::Range(
                   location_pos.offset,
                   location_pos.offset + ctx.position + 1,
@@ -2711,13 +2683,17 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
                 return Some(
                   (
                     ctx.position,
-                    Err(TokenRecognizerError::InvalidToken(data_buffer, range)),
+                    Err(
+                      TokenRecognizerError::InvalidToken(
+                        err, data_buffer, range,
+                      ),
+                    ),
                   ),
                 )
               }
             }
           }
-          LexAction::EmitError(_msg) => {
+          LexAction::EmitError(err) => {
             let range = Range::Range(
               location_pos.offset,
               location_pos.offset + ctx.position + 1,
@@ -2725,7 +2701,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
             return Some(
               (
                 ctx.position,
-                Err(TokenRecognizerError::InvalidToken(data_buffer, range)),
+                Err(TokenRecognizerError::InvalidToken(err, data_buffer, range)),
               ),
             )
           }
@@ -2759,7 +2735,14 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               "Unclosed token: state=\{ctx.state}, content=\{ctx.get_capture()}",
             )
             return Some(
-              (pos, Err(TokenRecognizerError::InvalidToken(data_buffer, range))),
+              (
+                pos,
+                Err(
+                  TokenRecognizerError::InvalidToken(
+                    "Unclosed token:", data_buffer, range,
+                  ),
+                ),
+              ),
             )
           }
           // 正常结束
@@ -2778,7 +2761,7 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               )
               return Some((ctx.capture_current, Ok(LocatedToken(token, range))))
             }
-            Err(_err) => {
+            Err(err) => {
               let range = Range::Range(
                 location_pos.offset,
                 location_pos.offset + ctx.position + 1,
@@ -2786,7 +2769,9 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               return Some(
                 (
                   ctx.position + 1,
-                  Err(TokenRecognizerError::InvalidToken(data_buffer, range)),
+                  Err(
+                    TokenRecognizerError::InvalidToken(err, data_buffer, range),
+                  ),
                 ),
               )
             }
@@ -2800,7 +2785,11 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
         return Some(
           (
             ctx.position + 1,
-            Err(TokenRecognizerError::InvalidToken(data_buffer, range)),
+            Err(
+              TokenRecognizerError::InvalidToken(
+                "Something Err", data_buffer, range,
+              ),
+            ),
           ),
         )
       }
