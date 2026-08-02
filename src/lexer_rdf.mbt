@@ -135,6 +135,65 @@ pub(all) enum CharClass {
 } derive(Debug, Eq, Hash)
 
 ///|
+fn CharClass::to_index(self : Self) -> Int {
+  match self {
+    CharClass::Other => 0
+    CharClass::Space => 1
+    CharClass::Newline => 2
+    CharClass::LAngle => 3
+    CharClass::RAngle => 4
+    CharClass::Colon => 5
+    CharClass::Semicolon => 6
+    CharClass::Period => 7
+    CharClass::Comma => 8
+    CharClass::LParen => 9
+    CharClass::RParen => 10
+    CharClass::LBracket => 11
+    CharClass::RBracket => 12
+    CharClass::LBrace => 13
+    CharClass::RBrace => 14
+    CharClass::Quote => 15
+    CharClass::TripleQuote => 16
+    CharClass::At => 17
+    CharClass::QuestionMark => 18
+    CharClass::Plus => 19
+    CharClass::Minus => 20
+    CharClass::Underscore => 21
+    CharClass::Percent => 22
+    CharClass::Hash => 23
+    CharClass::Slash => 24
+    CharClass::Backslash => 25
+    CharClass::Star => 26
+    CharClass::Eq => 27
+    CharClass::Less => 28
+    CharClass::Greater => 29
+    CharClass::Caret => 30
+    CharClass::Pipe => 31
+    CharClass::Tilde => 32
+    CharClass::Exclamation => 33
+    CharClass::Dollar => 34
+    CharClass::Ampersand => 35
+    CharClass::Apostrophe => 36
+    CharClass::LtLt => 37
+    CharClass::GtGt => 38
+    CharClass::CaretCaret => 39
+    CharClass::LBracePipe => 40
+    CharClass::PipeRBrace => 41
+    CharClass::LtLtLParen => 42
+    CharClass::RParenGtGt => 43
+    CharClass::LtMinus => 44
+    CharClass::EqGt => 45
+    CharClass::LtEq => 46
+    CharClass::LtLtRParen => 47
+    CharClass::ColonColon => 48
+    CharClass::ColonSlash => 49
+    CharClass::Digit => 50
+    CharClass::LowerU => 51
+    CharClass::UpperU => 52
+  }
+}
+
+///|
 pub impl Show for CharClass with fn output(self : CharClass, logger : &Logger) -> Unit {
   match self {
     CharClass::Other => logger.write("Other")
@@ -245,6 +304,46 @@ pub(all) enum LexStateMachine {
   // ----- Done -----
   Done
 } derive(Debug, Eq, Hash)
+
+///|
+fn LexStateMachine::to_index(self : Self) -> Int {
+  match self {
+    LexStateMachine::Start => 0
+    LexStateMachine::InIri => 1
+    LexStateMachine::InEsc => 2
+    LexStateMachine::InStringEscHex4 => 3
+    LexStateMachine::InStringEscHex8 => 4
+    LexStateMachine::InBlank => 5
+    LexStateMachine::InBlankLabel => 6
+    LexStateMachine::InString => 7
+    LexStateMachine::InStringEsc => 8
+    LexStateMachine::InLongStringQuoteContent => 9
+    LexStateMachine::InLongStringQuoteEnd => 10
+    LexStateMachine::InLongStringEsc => 11
+    LexStateMachine::InLongStringQuote => 12
+    LexStateMachine::InLongStringSingleQuoteContent => 13
+    LexStateMachine::InLongStringSingleQuoteEnd => 14
+    LexStateMachine::InLongStringSingleQuote => 15
+    LexStateMachine::InNumber => 16
+    LexStateMachine::InInteger => 17
+    LexStateMachine::InDecimal => 18
+    LexStateMachine::InDecimalStart => 19
+    LexStateMachine::InDouble => 20
+    LexStateMachine::InExponent => 21
+    LexStateMachine::InLangTag => 22
+    LexStateMachine::InLangTagExt => 23
+    LexStateMachine::InVariable => 24
+    LexStateMachine::InPnamePrefix => 25
+    LexStateMachine::InPnameLocalStart => 26
+    LexStateMachine::InPnameLocal => 27
+    LexStateMachine::InKeyword => 28
+    LexStateMachine::InPunct => 29
+    LexStateMachine::SkipLineComment => 30
+    LexStateMachine::SkipBlockComment(_level) => 31
+    LexStateMachine::Error => 32
+    LexStateMachine::Done => 33
+  }
+}
 
 ///|
 pub impl Show for LexStateMachine with fn output(
@@ -580,28 +679,6 @@ pub let initialize_transitions : FixedArray[Transition] = [
     LexAction::AppendCapture,
   ),
 
-  // InIri 转义开始
-  // Transition::Transition(
-  //   LexStateMachine::InIri,
-  //   CharClass::Backslash,
-  //   LexStateMachine::InEsc,
-  //   LexAction::AppendCapture,
-  // ),
-
-  // InEsc - 检测 u 或 U
-  // Transition::Transition(
-  //   LexStateMachine::InEsc,
-  //   CharClass::LowerU,
-  //   LexStateMachine::InEscHex4,
-  //   LexAction::AppendCapture,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::InEsc,
-  //   CharClass::UpperU,
-  //   LexStateMachine::InEscHex8Start,
-  //   LexAction::AppendCapture,
-  // ),
-
   // IRI 结束: >
   Transition::Transition(
     LexStateMachine::InIri,
@@ -649,12 +726,6 @@ pub let initialize_transitions : FixedArray[Transition] = [
     LexStateMachine::InString,
     LexAction::AppendCapture, // 空格保留在字符串中
   ),
-  // Transition::Transition(
-  //   LexStateMachine::InString,
-  //   CharClass::Period,
-  //   LexStateMachine::InString,
-  //   LexAction::AppendCapture,
-  // ),
 
   // 字符串结束: "
   Transition::Transition(
@@ -700,25 +771,7 @@ pub let initialize_transitions : FixedArray[Transition] = [
   // ============================================================
 
   // 转义字符处理
-  // Transition::Transition(
-  //   LexStateMachine::InStringEsc,
-  //   CharClass::Backslash,
-  //   LexStateMachine::InStringEsc,
-  //   LexAction::AppendCapture,
-  //   priority=100,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::InStringEsc,
-  //   CharClass::Other,
-  //   LexStateMachine::InStringEsc,
-  //   LexAction::AppendCapture,
-  // ), // u/U
-  // Transition::Transition(
-  //   LexStateMachine::InStringEsc,
-  //   CharClass::Digit,
-  //   LexStateMachine::InStringEsc,
-  //   LexAction::AppendCapture,
-  // ), // 十六进制
+
   Transition::Transition(
     LexStateMachine::InStringEsc,
     CharClass::Quote,
@@ -786,31 +839,6 @@ pub let initialize_transitions : FixedArray[Transition] = [
   // 三双引号长字符串状态
   // ============================================================
 
-  // 开始引号匹配: 递减匹配 3 个 "
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuote,
-  //   CharClass::Quote,
-  //   LexStateMachine::InLongStringQuote,
-  //   LexAction::InLongStringQuoteCapture,
-  //   priority=90,
-  // ),
-
-  // 完成，进入内容
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuote,
-  //   CharClass::Other,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::Continue,
-  // ),
-
-  // 空格 -> 进入内容状态
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuote,
-  //   CharClass::Space,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::Continue,
-  //   priority=90,
-  // ),
   // 内容状态
   Transition::Transition(
     LexStateMachine::InLongStringQuoteContent,
@@ -831,178 +859,6 @@ pub let initialize_transitions : FixedArray[Transition] = [
     LexStateMachine::Start,
     LexAction::EndLongStringCapture,
   ),
-
-  // InLongStringQuoteContent 中遇到 '''
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Apostrophe,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::StartNestedCapture,
-  //   priority=90,
-  // ),
-
-  // // 其他字符继续
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Other,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::AppendCapture,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Space,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::AppendCapture,
-  // ),
-
-  // 遇到 """ 结束
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Quote,
-  //   LexStateMachine::Start,
-  //   LexAction::EndLongStringCapture,
-  // ),
-
-  // 遇到 """ 开始结束
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Quote,
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   LexAction::Continue,
-  // ),
-
-  // 内容状态：等待结束引号
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Quote,
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   LexAction::InLongStringQuoteEndCapture,
-  //   priority=100,
-  // ),
-
-  // 遇到 ''' 开始嵌套
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Apostrophe,
-  //   LexStateMachine::InLongStringSingleQuoteContent, // 直接进入嵌套
-  //   LexAction::InLongStringSingleQuoteCapture,
-  // ),
-
-  // 其他字符
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Other,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::AppendCapture,
-  // ),
-
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Other,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::Continue,
-  // ),
-
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Quote,
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   LexAction::InLongStringQuoteEndCapture,
-  //   priority=100,
-  // ),
-  // // 结束引号匹配
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   CharClass::Quote,
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   LexAction::InLongStringQuoteEndCapture,
-  //   priority=100,
-  // ),
-
-  // 结束完成，发射
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   CharClass::Other,
-  //   LexStateMachine::Start,
-  //   LexAction::EndCapture,
-  // ),
-
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   CharClass::Period,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::Continue,
-  //   priority=50,
-  // ),
-
-  // 空格继续（确保存在）
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Space,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::Continue,
-  //   priority=50,
-  // ),
-
-  // 空格不改变状态，继续等待引号
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   CharClass::Space,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::Continue,
-  //   // priority=50,
-  // ),
-
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   CharClass::Period,
-  //   LexStateMachine::Start,
-  //   LexAction::EmitToken,
-  // ),
-
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   CharClass::Period,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::Continue,
-  //   // priority=50,
-  // ),
-  // 结束引号后遇到内容 -> 继续等待
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   CharClass::Other,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::Continue,
-  // ),
-  // 引号未闭合就结束 -> 错误
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringQuoteEnd,
-  //   CharClass::Period,
-  //   LexStateMachine::Error,
-  //   LexAction::EmitError("Unclosed long string: missing quotes"),
-  //   priority=100,
-  // ),
-
-  // ============================================================
-  // 三单引号长字符串状态 (N3)
-  // ============================================================
-
-  // 开始引号匹配: 匹配 3 个 '
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuote,
-  //   CharClass::Apostrophe,
-  //   LexStateMachine::InLongStringSingleQuote,
-  //   LexAction::InLongStringSingleQuoteCapture,
-  //   priority=90,
-  // ),
-
-  // Start → ' → InLongStringSingleQuote
-  // Transition::Transition(
-  //   LexStateMachine::Start,
-  //   CharClass::Apostrophe,
-  //   LexStateMachine::InLongStringSingleQuote,
-  //   LexAction::StartCapture,
-  // ),
 
   // Start → 直接进入内容状态
   Transition::Transition(
@@ -1034,161 +890,6 @@ pub let initialize_transitions : FixedArray[Transition] = [
     LexAction::EndLongStringCapture,
   ),
 
-  // // InLongStringSingleQuoteContent 中遇到 """
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Quote,
-  //   LexStateMachine::InLongStringQuoteContent,
-  //   LexAction::StartNestedCapture,
-  // ),
-
-  // // 其他字符继续
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Other,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::AppendCapture,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Space,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::AppendCapture,
-  // ),
-
-  // InLongStringSingleQuote - 递减匹配 '''
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuote,
-  //   CharClass::Apostrophe,
-  //   LexStateMachine::InLongStringSingleQuote,
-  //   LexAction::InLongStringSingleQuoteCapture,
-  // ),
-
-  // 开始引号结束后，进入内容状态
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuote,
-  //   CharClass::Other,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::Continue,
-  // ),
-
-  // 遇到 ''' 开始结束
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Apostrophe,
-  //   LexStateMachine::InLongStringSingleQuoteEnd,
-  //   LexAction::Continue,
-  // ),
-
-  // 遇到 """ 开始嵌套
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Quote,
-  //   LexStateMachine::InLongStringQuoteContent, // 直接进入嵌套
-  //   LexAction::InLongStringQuoteCapture,
-  // ),
-
-  // 其他字符
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Other,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::AppendCapture,
-  // ),
-
-  // 空格 -> 进入内容状态
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuote,
-  //   CharClass::Space,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::Continue,
-  //   priority=90,
-  // ),
-  // 内容状态：等待结束引号
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Apostrophe,
-  //   LexStateMachine::InLongStringSingleQuoteEnd,
-  //   LexAction::InLongStringSingleQuoteEndCapture,
-  //   priority=100,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Other,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::Continue,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Apostrophe,
-  //   LexStateMachine::InLongStringSingleQuoteEnd,
-  //   LexAction::InLongStringSingleQuoteEndCapture,
-  //   priority=100,
-  // ),
-
-  // 结束引号匹配
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteEnd,
-  //   CharClass::Apostrophe,
-  //   LexStateMachine::InLongStringSingleQuoteEnd,
-  //   LexAction::InLongStringSingleQuoteEndCapture,
-  //   priority=100,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteEnd,
-  //   CharClass::Other,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::Continue,
-  //   priority=50,
-  // ),
-
-  //  空格继续（确保存在）
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Space,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::Continue,
-  //   priority=50,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteEnd,
-  //   CharClass::Space,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::Continue,
-  //   priority=50,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Period,
-  //   LexStateMachine::Start,
-  //   LexAction::EmitToken,
-  //   // priority=50,
-  // ),
-
-  // 结束完成，发射
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteEnd,
-  //   CharClass::Other,
-  //   LexStateMachine::Start,
-  //   LexAction::EndCapture,
-  // ),
-
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteEnd,
-  //   CharClass::Period,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::Continue,
-  //   // priority=50,
-  // ),
-
-  // Transition::Transition(
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   CharClass::Period,
-  //   LexStateMachine::InLongStringSingleQuoteContent,
-  //   LexAction::Continue,
-  //   priority=50,
-  // ),
-
   // ============================================================
   // Blank Node 状态
   // ============================================================
@@ -1199,25 +900,12 @@ pub let initialize_transitions : FixedArray[Transition] = [
     LexStateMachine::InBlankLabel,
     LexAction::Continue,
   ),
-  // InBlank → 其他 → 报错（_ 后面必须是 :）
-  // Transition::Transition(
-  //   LexStateMachine::InBlank,
-  //   CharClass::Other,
-  //   LexStateMachine::Start,
-  //   LexAction::Continue,
-  // ),
   Transition::Transition(
     LexStateMachine::InBlank,
     CharClass::Space,
     LexStateMachine::Start,
     LexAction::EndCapture,
   ),
-  // Transition::Transition(
-  //   LexStateMachine::InBlank,
-  //   CharClass::Other,
-  //   LexStateMachine::InBlankLabel,
-  //   LexAction::AppendCapture,
-  // ),
   Transition::Transition(
     LexStateMachine::InBlankLabel,
     CharClass::Other,
@@ -1343,37 +1031,6 @@ pub let initialize_transitions : FixedArray[Transition] = [
   // 跳过状态
   // ============================================================
 
-  // 跳过空白
-  // Transition::Transition(
-  //   LexStateMachine::SkipWhitespace,
-  //   CharClass::Space,
-  //   LexStateMachine::SkipWhitespace,
-  //   LexAction::Skip,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::SkipWhitespace,
-  //   CharClass::Newline,
-  //   LexStateMachine::SkipWhitespace,
-  //   LexAction::Skip,
-  // ),
-  // Transition::Transition(
-  //   LexStateMachine::SkipWhitespace,
-  //   CharClass::Other,
-  //   LexStateMachine::Start,
-  //   LexAction::Continue,
-  // ),
-  // SkipWhitespace + _ → 直接开始，不经过 Start
-  //
-
-  // SkipWhitespace + : → 直接开始
-  // Transition::Transition(
-  //   LexStateMachine::SkipWhitespace,
-  //   CharClass::Colon,
-  //   LexStateMachine::InBlankLabel,
-  //   LexAction::StartCapture,
-  //   priority=50,
-  // ),
-
   // 跳过行注释
   Transition::Transition(
     LexStateMachine::SkipLineComment,
@@ -1435,29 +1092,48 @@ pub let initialize_char_class_table : FixedArray[CharClass] = {
   table[b'\''.to_int()] = CharClass::Apostrophe // 单引号 '
   table[b'"'.to_int()] = CharClass::Quote // 双引号 "
 
-  // 多字符标点（单字符部分）
-  // 注意：多字符标点需要在状态机中特殊处理
-  // 这里只分类首字符
+  table
+}
+
+///|
+/// 二维转换索引表
+let transition_index : Array[Array[Transition?]] = {
+  let state_count = LexStateMachine::Done.to_index() + 1
+  let class_count = CharClass::UpperU.to_index() + 1
+
+  // ★ 使用 make 明确类型
+  let table : Array[Array[Transition?]] = Array::make(state_count, [])
+  for i in 0..<state_count {
+    table[i] = Array::make(class_count, None)
+  }
+
+  let sorted = initialize_transitions
+  sorted.sort_by(fn(a, b) { Int::compare(b.priority, a.priority) })
+
+  for t in sorted {
+    let si = t.from.to_index()
+    let ci = t.char_class.to_index()
+    table[si][ci] = Some(t)
+  }
 
   table
 }
 
 ///|
-// fn init {
-let transitions_by_state : @hashmap.HashMap[LexStateMachine, Array[Transition]] = {
-  let map : @hashmap.HashMap[LexStateMachine, Array[Transition]] = HashMap(
-    [],
-    capacity=64,
-  )
-  for t in initialize_transitions {
-    match map.get(t.from) {
-      Some(arr) => arr.push(t)
-      None => map.set(t.from, [t])
-    }
+pub fn RdfLexer::find_transition(
+  _self : RdfLexer,
+  ctx : LexContext,
+  char_class : CharClass,
+) -> Transition? {
+  let si = ctx.state.to_index()
+  let ci = char_class.to_index()
+
+  // 精确匹配
+  match transition_index[si][ci] {
+    Some(t) => Some(t)
+    None => transition_index[si][CharClass::Other.to_index()]
   }
-  map
 }
-// }
 
 ///|
 /// 快速字符分类 - O(1)
@@ -1468,14 +1144,6 @@ pub fn classify_byte(b : Byte) -> CharClass {
     CharClass::Other
   }
 }
-
-// 编译时常量表
-
-///|
-// pub let char_class_table : FixedArray[CharClass] = {
-//   let t = initialize_char_class_table()
-//   t
-// }
 
 ///|
 /// 追踪长字符串引号匹配状态
@@ -1576,20 +1244,9 @@ pub impl Show for LexContext with fn output(self : LexContext, logger : &Logger)
   logger.write("capture_current: ")
   logger.write(self.capture_current)
   logger.write(", ")
-  // logger.write("state_stack: ")
-  // logger.write(self.state_stack)
-  // logger.write(", ")
   logger.write("captured: ")
   logger.write(@debug.to_string(self.captured))
   logger.write(", ")
-  // logger.write("lookahead_buffer: ")
-  // logger.write(self.lookahead_buffer)
-  // logger.write(", ")
-  // logger.write("lookahead_pos: ")
-  // logger.write(self.lookahead_pos)
-  // logger.write(", ")
-  // logger.write("emit_state: ")
-  // logger.write(self.emit_state)
   logger.write(", ")
   logger.write("escape_quote: ")
   logger.write(self.escape_quote)
@@ -1660,14 +1317,6 @@ pub fn LexContext::advance(self : LexContext) -> Unit {
 }
 
 ///|
-// pub fn LexContext::get_capture(self : LexContext) -> String {
-//   let s = StringBuilder::new()
-//   for i in self.capture_start..<self.capture_current {
-//     s.write_char(self.data_buffer[i].to_int().unsafe_to_char())
-//     // s = s + self.data_buffer[i].to_int().unsafe_to_char().to_string().to_string()
-//   }
-//   s.to_string()
-// }
 pub fn LexContext::get_capture(self : LexContext) -> String {
   let result = StringBuilder::new()
   let mut i = self.capture_start
@@ -1688,9 +1337,6 @@ pub fn LexContext::get_capture(self : LexContext) -> String {
     } else if match_seq(remaining, [b'\\', b'r']) {
       result.write_char('\r')
       i += 2
-      // } else if match_seq(remaining, [b'\\', b'\\']) {
-      //   result.write_char('\\')
-      //   i += 2
     } else if match_seq(remaining, [b'\\', b'"']) {
       result.write_char('"')
       i += 2
@@ -1775,72 +1421,6 @@ fn Byte::is_blank_label_char(b : Byte) -> Bool {
 }
 
 ///|
-/// 空白字符
-// fn Byte::is_whitespace(b : Byte) -> Bool {
-//   b == b' ' || b == b'\t' || b == b'\r' || b == b'\n'
-// }
-
-///|
-/// ===== 查找转换 =====
-pub fn RdfLexer::find_transition(
-  self : RdfLexer,
-  ctx : LexContext,
-  char_class : CharClass,
-) -> Transition? {
-  self.debug_logger.info(
-    "find_transition: ctx.state=\{ctx.state}, char_class=\{char_class}",
-  )
-  match transitions_by_state.get(ctx.state) {
-    Some(transitions) => {
-      let mut best : Transition? = None
-      let mut best_priority = -1
-
-      for t in transitions {
-        if t.char_class == char_class {
-          // 选择优先级最高的
-          if t.priority > best_priority {
-            best = Some(t)
-            best_priority = t.priority
-          }
-        }
-      }
-
-      match best {
-        Some(t) => {
-          self.debug_logger.info("found: to=\{t.to}, action=\{t.action}")
-          Some(t)
-        }
-        None => {
-          // ★ 通配符回退：精确匹配失败，尝试匹配 Other
-          let mut wildcard : Transition? = None
-          let mut best_priority = -1
-          for t in transitions {
-            if t.char_class == CharClass::Other && t.priority > best_priority {
-              wildcard = Some(t)
-              best_priority = t.priority
-            }
-          }
-          match wildcard {
-            Some(t) => {
-              self.debug_logger.info("fallback to Other: to=\{t.to}")
-              Some(t)
-            }
-            None => {
-              self.debug_logger.info("NOT FOUND TRANSITION")
-              None
-            }
-          }
-        }
-      }
-    }
-    None => {
-      self.debug_logger.info("NO TRANSITIONS FOR STATE: \{ctx.state}")
-      None
-    }
-  }
-}
-
-///|
 /// ===== 状态机执行器 =====
 pub fn RdfLexer::execute_action(
   self : RdfLexer,
@@ -1882,15 +1462,9 @@ pub fn RdfLexer::execute_action(
         }
 
         // 长字符串检查
-        // LexStateMachine::InLongStringQuoteEnd
         LexStateMachine::InLongStringQuoteContent
-        // | LexStateMachine::InLongStringSingleQuoteEnd
         | LexStateMachine::InLongStringSingleQuoteContent => {
-          // let s = s.trim_end(chars=".")
-          // let s = s.replace(old="\"", new="").replace(old="'", new="").trim()
-          // self.debug_logger.info("LONG STRING: '\{s}'")
           ctx.captured = Some(s)
-          // ctx.emit_state = Some(ctx.state)
           ctx.advance()
           (LexAction::EmitToken, ctx)
         }
@@ -1901,13 +1475,11 @@ pub fn RdfLexer::execute_action(
             s
           }
           ctx.captured = Some(s.to_owned())
-          // ctx.emit_state = Some(ctx.state)
           ctx.advance()
           (LexAction::EmitToken, ctx)
         }
         _ => {
           ctx.captured = Some(s)
-          // ctx.emit_state = Some(ctx.state)
           ctx.advance()
           (LexAction::EmitToken, ctx)
         } // 其他状态正常发射
@@ -2019,9 +1591,59 @@ pub fn RdfLexer::execute_action(
             ctx.has_error = true
             return (LexAction::EmitError("Relative IRI not allowed"), ctx)
           }
+          // ★ 快速扫描到 >
+          let mut has_escape = false
+          let mut has_space = false
 
-          ctx.state = LexStateMachine::InIri
-          ctx.advance()
+          let mut end = p
+          while end < ctx.data_buffer.length() &&
+                ctx.data_buffer.get(end) != Some(b'>') {
+            let b = ctx.data_buffer.get(end)
+            if b == Some(b'\\') {
+              has_escape = true
+            } else if b == Some(b' ') || b == Some(b'\t') {
+              has_space = true
+            }
+            end += 1
+          }
+          // 检查非法字符
+          if has_escape {
+            ctx.has_error = true
+            ctx.error_message = Some(
+              "Invalid IRI: escape sequences not allowed in N-Triples",
+            )
+            return (LexAction::EmitError("Invalid IRI: escape sequences"), ctx)
+          }
+
+          if has_space {
+            ctx.has_error = true
+            ctx.error_message = Some("Invalid IRI: unencoded space")
+            return (LexAction::EmitError("Invalid IRI: unencoded space"), ctx)
+          }
+
+          end = if end < ctx.data_buffer.length() { end + 1 } else { end }
+
+          // ★ 直接设置 captured
+          let s = ctx.data_buffer[ctx.position:end]
+
+          let iri_bytes = if s.length() >= 2 &&
+            s[0] == b'<' &&
+            s[s.length() - 1] == b'>' {
+            s[1:s.length() - 1]
+          } else {
+            s
+          }
+          let iri_str = @utf8.decode_lossy(array_to_view(iri_bytes))
+
+          ctx.captured = Some(iri_str)
+
+          // 移动位置
+          ctx.position = end
+          ctx.state = LexStateMachine::InIri // 恢复状态
+
+          return (LexAction::EmitToken, ctx)
+          // ctx.state = LexStateMachine::InIri
+          // ctx.advance()
         }
         // ========== Blank Node ==========
 
@@ -2047,7 +1669,6 @@ pub fn RdfLexer::execute_action(
           ctx.capture_start = ctx.position
           ctx.capture_current = ctx.position + 1
           ctx.advance() // 消费 :
-          debug("StartCapture: Blank node, state=InBlank")
         }
         b':' =>
           match ctx.prev_char {
@@ -2299,13 +1920,6 @@ pub fn RdfLexer::execute_action(
                 )
                 break
               }
-              // Some(b'\\') => {
-              //   let next1 = ctx.data_buffer.get(ctx.position)
-              //   match next1 {
-              //     Some(b'u') | Some(b'U') => ctx.advance()
-              //     _ => break
-              //   }
-              // }
               _ => break
             }
           }
@@ -2366,7 +1980,7 @@ pub fn make_token(
   content : String,
 ) -> Result[N3Token, String] {
   let (state, has_error) = (ctx.state, ctx.has_error)
-  debug("make_token: state=\{state}, content=\{content}")
+  // debug("make_token: state=\{state}, content=\{content}")
   match state {
     LexStateMachine::InIri =>
       if has_error {
@@ -2374,60 +1988,13 @@ pub fn make_token(
       } else {
         Ok(N3Token::Iri(content))
       }
-    // let iri = content.trim(chars="<>")     
-    // if iri.contains(" ") {
-    //   Err("Invalid IRI: unencoded space at \{content}")
-    // } else if !iri.contains("/") {
-    //   return Err(
-    //     "Invalid IRI: <\{content}> (N-Triples requires absolute IRI)",
-    //   )
-    // } else {
-    //   Ok(N3Token::Iri(iri.to_owned()))
-    // }
     LexStateMachine::InBlankLabel => Ok(N3Token::BlankNodeLabel(content))
-    // LexStateMachine::InBlank => Ok(N3Token::BlankNodeLabel(content))
     LexStateMachine::InString | LexStateMachine::InStringEsc =>
-      // let has_start_quote = content.length() > 0 && content[0] == '"'
-      // let has_end_quote = content.length() > 0 &&
-      //   content[content.length() - 1] == '"'
-
-      // if !(has_start_quote && has_end_quote) {
-      //   return Err("Unclosed string")
-      // }
-
-      // let s = content.trim_start(chars="\"").trim_end(chars="\"")
-      // debug("make_token -> String: \{content}")
       Ok(N3Token::String(content))
     LexStateMachine::InLongStringQuoteContent
     | LexStateMachine::InLongStringSingleQuoteContent =>
-      // let quote_count = {
-      //   let mut count = 0
-      //   for c in content {
-      //     if c == '"' || c == '\'' {
-      //       count += 1
-      //     }
-      //   }
-      //   count
-      // }
-
-      // debug("  quote_count=\{quote_count}, escape_quote=\{ctx.escape_quote}")
-
-      // ★ 更严格的检查
-      // if ctx.escape_count > 1 {
-      //   return Err(
-      //     "Unclosed long string: missing \{ctx.escape_count} quotes (got \{quote_count})",
-      //   )
-      // }
-
-      // if quote_count < 6 {
-      //   return Err(
-      //     "Unclosed long string: expected 6 quotes, got \{quote_count}",
-      //   )
-      // }
-      // let s = content.trim_end() // ★ 去掉尾部空格
       Ok(N3Token::LongString(content))
     LexStateMachine::InLangTag => {
-      // 直接使用 content，-bidi 决定方向
       let direction = if content.has_suffix("-bidi") {
         Some(BaseDirection::Rtl)
       } else {
@@ -2436,20 +2003,7 @@ pub fn make_token(
       Ok(N3Token::LangTag(language=content, direction~))
     }
     LexStateMachine::InVariable => Ok(N3Token::Variable(content))
-    LexStateMachine::InKeyword =>
-      // let has_start_quote = content.length() > 0 && content[0] == '"'
-      // let has_end_quote = content.length() > 0 &&
-      //   content[content.length() - 1] == '"'
-
-      // if !(has_start_quote && has_end_quote) {
-      //   return Err("Unclosed string")
-      // }
-
-      // if content == "." {
-      //   Ok(N3Token::Punctuation(".")) // 单独 "." 是标点
-      // } else {
-      Ok(N3Token::PlainKeyword(content))
-    // }
+    LexStateMachine::InKeyword => Ok(N3Token::PlainKeyword(content))
     LexStateMachine::InInteger => Ok(N3Token::Integer(content))
     LexStateMachine::InDecimal => Ok(N3Token::Decimal(content))
     LexStateMachine::InDouble => Ok(N3Token::Double(content))
@@ -2495,17 +2049,10 @@ pub fn make_token(
 
         // 关键字
         "a" => Ok(N3Token::PlainKeyword("a"))
-        // _ if content.starts_with("<") && content.ends_with(">") =>
-        //   Ok(N3Token::Iri(content))
-        // _ if content.starts_with("_:") || content.starts_with(":") =>
-        //   Ok(N3Token::BlankNodeLabel(content))
         _ => Ok(N3Token::PlainKeyword(content))
       }
     }
-    _ => {
-      debug("make_token -> PlainKeyword: '\{content}'")
-      Ok(N3Token::PlainKeyword(content))
-    }
+    _ => Ok(N3Token::PlainKeyword(content))
   }
 }
 
@@ -2630,29 +2177,6 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
   _options : LexerOptions?,
   location_pos : SourcePos,
 ) -> (Int, Result[LocatedToken, TokenRecognizerError])? {
-  // let iri = IriR::default()
-
-  // let base_iri_opt = match options {
-  //   Some(options) =>
-  //     match options.base_iri {
-  //       Some(irir) => {
-  //         let irir = irir.into_string()
-  //         if self.lenient {
-  //           // 宽松模式：使用 unchecked 解析，即使格式不完美也尝试使用
-  //           Some(iri.parse_unchecked(irir))
-  //         } else {
-  //           // 严格模式：必须通过标准解析验证
-  //           match iri.parse(irir) {
-  //             Ok(parsed_iri) => Some(parsed_iri)
-  //             Err(_) => None
-  //           }
-  //         }
-  //       }
-  //       None => None
-  //     }
-  //   None => None
-  // }
-  // let options = LexerOptions::default(base_iri_opt)
   let mut ctx = LexContext::new(data_buffer, is_ending~)
 
   for ;; {
@@ -2731,9 +2255,9 @@ pub impl TokenRecognizer for RdfLexer with fn recognize_next_token(
               location_pos.offset,
               location_pos.offset + pos,
             )
-            debug(
-              "Unclosed token: state=\{ctx.state}, content=\{ctx.get_capture()}",
-            )
+            // debug(
+            //   "Unclosed token: state=\{ctx.state}, content=\{ctx.get_capture()}",
+            // )
             return Some(
               (
                 pos,

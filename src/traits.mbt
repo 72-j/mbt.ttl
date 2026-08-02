@@ -1,13 +1,13 @@
 ///|
-pub trait StateMachine {
+pub trait GenMachine {
   fn initial_state(Self) -> RdfState
   fn transition(Self, state : RdfState, event : Event, context : RdfContext) -> TransitionResult[
     Self,
     RdfState,
     DataAction,
-  ]
+  ] = _
   fn current_state(Self) -> RdfState
-  fn step(Self, event : Event) -> Self
+  fn step(Self, event : Event) -> Self = _
   fn reset(Self) -> Self
   fn is_accepting(Self) -> Bool
   fn context(Self) -> RdfContext
@@ -16,6 +16,21 @@ pub trait StateMachine {
   fn error_recovery_statemachine(Self) -> Self
   fn accumulate(Self, dw : DataWorld, action : DataAction) -> (Self, DataWorld)
   fn get_and_clear_output(Self, dw : DataWorld) -> (Self, O?)
+}
+
+///|
+impl GenMachine with fn transition(
+  _self : Self,
+  _state : RdfState,
+  _event : Event,
+  _context : RdfContext,
+) {
+  Err(RuleRecognizerError::BlankNodeOrIriError)
+}
+
+///|
+impl GenMachine with fn step(self : Self, _event : Event) {
+  self
 }
 
 ///|

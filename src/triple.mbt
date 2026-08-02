@@ -7,8 +7,6 @@ pub struct Triple {
 
 ///|
 pub impl Show for Triple with fn output(self : Triple, logger : &Logger) -> Unit {
-  // logger.write_fmt(format!("Triple {{ subject: {}, predicate: {}, object: {} }}",
-  // self.subject, self.predicate, self.object));
   logger.write("Triple")
   logger.write(" {")
   logger.write(" subject: ")
@@ -78,8 +76,6 @@ pub struct TripleRef {
 
 ///|
 impl Show for TripleRef with fn output(self : TripleRef, logger : &Logger) -> Unit {
-  // logger.write_fmt(format!("Triple {{ subject: {}, predicate: {}, object: {} }}",
-  //   self.subject, self.predicate, self.object));
   logger.write("Triple")
   logger.write(" {")
   logger.write(" subject: ")

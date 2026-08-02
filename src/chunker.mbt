@@ -3,7 +3,7 @@ const CHUNK_SIZE : Int = 64 * 1024
 
 ///|
 pub fn get_ntriples_slice_chunks(
-  bytes : BytesView,
+  bytes : Array[Byte],
   n_chunks : Int,
 ) -> Array[(Int, Int)] {
   if n_chunks <= 0 {
@@ -18,7 +18,7 @@ pub fn get_ntriples_slice_chunks(
   // 收集所有换行符的位置（换行符之后的位置）
   let line_ends = []
   let mut pos = 0
-  while memchr(b'\n', bytes[pos:]) is Some(p) {
+  while array_view_memchr(b'\n', bytes[pos:]) is Some(p) {
     pos += p + 1
     line_ends.push(pos)
   }
@@ -69,8 +69,6 @@ pub fn find_newline_in_range(bytes : BytesView, start : Int, end : Int) -> Int? 
   }
   None
 }
-
-///|
 
 ///|
 pub async fn get_ntriples_file_chunks(
@@ -147,7 +145,7 @@ pub async fn get_ntriples_file_chunks(
 
 ///|
 pub fn get_turtle_slice_chunks(
-  bytes : BytesView,
+  bytes : Array[Byte],
   n_chunks : Int,
 ) -> Array[(Int, Int)] {
   // 按换行符分割，简单高效

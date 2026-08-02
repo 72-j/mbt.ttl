@@ -53,7 +53,7 @@ pub fn NQuadsParser::split_slice_for_parallel_parsing(
     min=1,
     max=target_parallelism,
   )
-  get_ntriples_slice_chunks(slice, n_chunks).map(fn(chunk) {
+  get_ntriples_slice_chunks(slice.to_array(), n_chunks).map(fn(chunk) {
     let start = chunk.0
     let end = chunk.1
     self.for_slice(slice[start:end])
@@ -213,7 +213,6 @@ pub fn NQuadsSerializer::to_string(self : NQuadsSerializer, q : Quad) -> String 
     Ok(s) => s
     Err(_) =>
       // 在极少数失败情况下，返回一个空字符串或触发更明确的调试错误
-      // 或者使用 panic! 携带更多信息，而不是静默 unwrap
       abort("Failed to serialize quad: \{q}")
   }
 }
@@ -241,7 +240,6 @@ pub fn[W] WriterNQuadsSerializer::finish(self : WriterNQuadsSerializer[W]) -> W 
 pub struct AsyncWriterNQuadsSerializer[W] {
   buffer_writer : BufferedWriter[W]
   low_level_writer : LowLevelNQuadsSerializer
-  // buffer : Array[Byte]
 }
 
 ///|

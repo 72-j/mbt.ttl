@@ -22,10 +22,8 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
   // 3. 没有空白需要处理，调用识别器
   let start_offset = self.position.buffer_offset
   let view = self.data[start_offset:]
-  // let start_pos = self.position_from_position(self.position)
   let start_pos = SourcePos::default()
   self.current_token_start = start_offset // ★ 添加这行
-  debug("parse_next: pos: \{self.position_from_position(self.position)}")
   match
     self.parser.recognize_next_token(view, self.is_ending, options, start_pos) {
     Some((consumed, result)) => {
@@ -50,7 +48,7 @@ pub fn[RL : TokenRecognizer] Lexer::parse_next(
       match result {
         Ok(token) => {
           let range = Range::Range(start_offset, start_offset + actual_consumed)
-          debug("parse_next: token: \{token.into_token()}")
+          // debug("parse_next: token: \{token.into_token()}")
           Some(Ok(LocatedToken(token.into_token(), range)))
         }
         Err(e) => {

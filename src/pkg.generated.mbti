@@ -299,7 +299,7 @@ pub struct AsyncReaderIterator[TR, RR] {
   reader : &@io.Reader
   parser : Parser[TR, RR]
 }
-pub async fn[TR : TokenRecognizer, RR : StateMachine] AsyncReaderIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
+pub async fn[TR : TokenRecognizer, RR : GenMachine] AsyncReaderIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
 
 pub struct AsyncReaderN3Parser[RL] {
   inner : AsyncReaderIterator[RL, N3Recognizer]
@@ -430,9 +430,9 @@ pub(all) struct GenericStateMachine[M] {
 }
 pub fn[M] GenericStateMachine::GenericStateMachine(M, RdfContext, debug_logger? : &DebugLogger) -> Self[M]
 pub fn[M] GenericStateMachine::remove_first_output(Self[M]) -> Self[M]
-pub fn[M : StateMachine] GenericStateMachine::run(Self[M], Array[LocatedToken]) -> Result[Array[RdfOut], RuleRecognizerError]?
+pub fn[M : GenMachine] GenericStateMachine::run(Self[M], Array[LocatedToken]) -> Result[Array[RdfOut], RuleRecognizerError]?
 pub fn[M] GenericStateMachine::set_context(Self[M], RdfContext) -> Self[M]
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M]
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M]
 
 pub(all) enum GraphName {
   DefaultGraph
@@ -724,7 +724,7 @@ pub(all) struct N3Recognizer {
 pub fn N3Recognizer::add_error(Self, RuleRecognizerError) -> Self
 pub fn N3Recognizer::new_parser(Array[Byte], Bool, Iri?, Map[String, Iri], debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
 pub impl RuleRecognizer for N3Recognizer
-pub impl StateMachine for N3Recognizer
+pub impl GenMachine for N3Recognizer
 
 type N3RecognizerContext
 pub fn N3RecognizerContext::as_ctx(Self) -> RdfContext
@@ -833,7 +833,7 @@ pub(all) struct NQuadsRecognizer {
 pub fn NQuadsRecognizer::emit_current_quad(Self, graph_name? : GraphName) -> RdfOut?
 pub fn NQuadsRecognizer::new_parser(Array[Byte], Bool, Bool, debug_logger? : &DebugLogger) -> Parser[RdfLexer, Self]
 pub impl RuleRecognizer for NQuadsRecognizer
-pub impl StateMachine for NQuadsRecognizer
+pub impl GenMachine for NQuadsRecognizer
 
 pub(all) struct NQuadsRecognizerContext {
   with_graph_name : Bool
@@ -938,10 +938,10 @@ pub fn[TR, M] Parser::end(Self[TR, M]) -> Unit
 pub fn[TR, RR] Parser::extend_from_slice(Self[TR, RR], Array[Byte]) -> Unit
 pub fn[TR, RR] Parser::for_async_reader(Self[TR, RR], &@io.Reader) -> AsyncReaderIterator[TR, RR]
 pub fn[TR, RR] Parser::for_reader(Self[TR, RR], &@io.Reader) -> ReaderIterator[TR, RR]
-pub fn[TR, M : StateMachine] Parser::is_end(Self[TR, M]) -> Bool
+pub fn[TR, M : GenMachine] Parser::is_end(Self[TR, M]) -> Bool
 pub fn[TR, RR] Parser::lexer_options(Self[TR, RR]) -> LexerOptions?
-pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(Self[TR, M]) -> Result[RdfOut, TurtleError]?
-pub fn[TR, M : StateMachine] Parser::try_finish(Self[TR, M]) -> Result[RdfOut, TurtleError]?
+pub fn[TR : TokenRecognizer, M : GenMachine] Parser::parse_next(Self[TR, M]) -> Result[RdfOut, TurtleError]?
+pub fn[TR, M : GenMachine] Parser::try_finish(Self[TR, M]) -> Result[RdfOut, TurtleError]?
 pub fn[TR, M] Parser::try_output(Self[TR, M]) -> Result[RdfOut, TurtleError]?
 
 pub(all) struct Position {
@@ -1027,7 +1027,7 @@ pub struct ReaderIterator[TR, RR] {
   reader : &@io.Reader
   parser : Parser[TR, RR]
 }
-pub async fn[RR : StateMachine] ReaderIterator::next(Self[RdfLexer, RR]) -> Result[RdfOut, LexerError]?
+pub async fn[RR : GenMachine] ReaderIterator::next(Self[RdfLexer, RR]) -> Result[RdfOut, LexerError]?
 
 pub struct ReaderN3Parser[RL] {
   inner : ReaderIterator[RL, N3Recognizer]
@@ -1073,7 +1073,7 @@ pub impl Show for SerializationError
 pub(all) struct SliceIterator[TR, RR] {
   parser : Parser[TR, RR]
 }
-pub fn[TR : TokenRecognizer, RR : StateMachine] SliceIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
+pub fn[TR : TokenRecognizer, RR : GenMachine] SliceIterator::next(Self[TR, RR]) -> Result[RdfOut, LexerError]?
 
 pub struct SliceN3Parser[RL] {
   inner : SliceIterator[RdfLexer, RL]
@@ -1187,7 +1187,7 @@ pub fn TriGRecognizer::replace_top(Array[TriGState], TriGState) -> Array[TriGSta
 pub fn TriGRecognizer::set_state(Self, TriGState) -> Self
 pub impl Show for TriGRecognizer
 pub impl RuleRecognizer for TriGRecognizer
-pub impl StateMachine for TriGRecognizer
+pub impl GenMachine for TriGRecognizer
 
 pub(all) struct TriGRecognizerContext {
   lexer_options : LexerOptions
@@ -1394,7 +1394,7 @@ pub trait RuleRecognizer {
   fn[DL : DebugLogger] debug_logger(Self, DL) -> Unit
 }
 
-pub trait StateMachine {
+pub trait GenMachine {
   fn initial_state(Self) -> RdfState
   fn transition(Self, RdfState, LocatedToken, RdfContext) -> Result[(Self, RdfState, RdfOut?), RuleRecognizerError]
   fn current_state(Self) -> RdfState

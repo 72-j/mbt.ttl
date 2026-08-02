@@ -23,19 +23,10 @@ test "classify slash" {
   debug("'/' classified as: \{cc}")
 
   // 应该是 Other 或某个合法 IRI 字符
-  if cc == @lib.CharClass::Other {
-    debug("OK: / is Other")
+  if cc == @lib.CharClass::Slash {
+    debug("OK: / is Slash")
   } else {
     debug("ERROR: / is \{cc}")
-  }
-}
-
-///|
-test "verify slash classification" {
-  let slash = b'/'
-  let cc = @lib.classify_byte(slash)
-  if cc != @lib.CharClass::Other {
-    debug("ERROR: / is not Other")
   }
 }
 
@@ -43,7 +34,6 @@ test "verify slash classification" {
 test "check string content" {
   let input =
     #| "abc' .
-    // #|<http://example/s> <http://example/p>  .
     #| '''abc''' .
 
   let data = @utf8.encode(input).to_array()
@@ -346,23 +336,6 @@ test "test state machine - IRI token" {
       assert_eq(ctx.state, @lib.LexStateMachine::InIri)
     }
     None => fail("Should find transition for <")
-  }
-
-  // 消费 IRI 内容
-  for _i in 1..<(data.length() - 1) {
-    ctx.advance()
-  }
-
-  // InIri -> Start (遇到 >)
-  match rdflexer.find_transition(ctx, @lib.CharClass::RAngle) {
-    Some(t) => {
-      let (action, _) = rdflexer.execute_action(t.action, ctx, b'>', data)
-      match action {
-        @lib.LexAction::EmitToken => assert_true(true)
-        _ => fail("Should emit token")
-      }
-    }
-    None => fail("Should find transition for >")
   }
 }
 

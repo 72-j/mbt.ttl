@@ -19,14 +19,6 @@ pub fn NTriplesParser::for_reader(
   self : NTriplesParser,
   reader : &Reader,
 ) -> ReaderNTriplesParser[RdfLexer] {
-  //   let parser = NQuadsRecognizer::new_parser(
-  //   [],        // 空初始缓冲区
-  //   true,      // skip_whitespace: true
-  //   true,      // allow_comments/lenient_features: true
-  //   self.lenient,
-  // )
-  // 调用 parser.mbt 中的 Parser::for_reader
-  // { inner: parser.for_reader(reader) }
   { inner: self.low_level().parser.for_reader(reader) }
 }
 
@@ -35,13 +27,6 @@ pub fn NTriplesParser::for_async_reader(
   self : NTriplesParser,
   reader : &Reader,
 ) -> AsyncReaderNTriplesParser[RdfLexer] {
-  //   let parser = NQuadsRecognizer::new_parser(
-  //   [],
-  //   true,
-  //   true,
-  //   self.lenient,
-  // )
-  // { inner: parser.for_async_reader(reader) }
   { inner: self.low_level().parser.for_async_reader(reader) }
 }
 
@@ -68,7 +53,7 @@ pub fn NTriplesParser::split_slice_for_parallel_parsing(
     min=1,
     max=target_parallelism,
   )
-  get_ntriples_slice_chunks(slice, n_chunks).map(fn(chunk) {
+  get_ntriples_slice_chunks(slice.to_array(), n_chunks).map(fn(chunk) {
     let start = chunk.0
     let end = chunk.1
     self.for_slice(slice[start:end])

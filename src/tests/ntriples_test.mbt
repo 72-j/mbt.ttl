@@ -203,7 +203,7 @@ test "safe parse all punctuation" {
 
 ///|
 async test "run official n-triples test suite" {
-  let test_dir = "src/tests/src/rdf/rdf11/n-triples"
+  let test_dir = "src/tests/src/rdf/rdf11/rdf-n-triples"
 
   let dir = @fs.opendir(test_dir)
   defer dir.close()
@@ -266,7 +266,7 @@ async test "run official n-triples test suite" {
 
 ///|
 async test "test bad n-triples files" {
-  let test_dir = "src/tests/src/rdf/rdf11/n-triples"
+  let test_dir = "src/tests/src/rdf/rdf11/rdf-n-triples"
 
   let dir = @fs.opendir(test_dir)
   defer dir.close()
@@ -327,7 +327,7 @@ async test "test bad n-triples files" {
 
 ///|
 async test "test bad file" {
-  let path = "src/tests/src/rdf/rdf11/n-triples/nt-syntax-bad-uri-01"
+  let path = "src/tests/src/rdf/rdf11/rdf-n-triples/nt-syntax-bad-uri-01"
 
   debug("Testing: \{path}")
 

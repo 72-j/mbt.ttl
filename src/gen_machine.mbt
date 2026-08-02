@@ -27,21 +27,21 @@ pub fn[M] GenericStateMachine::GenericStateMachine(
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn initial_state(
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M] with fn initial_state(
   self : GenericStateMachine[M],
 ) -> RdfState {
   self.machine.initial_state()
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn error_recovery_statemachine(
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M] with fn error_recovery_statemachine(
   self : GenericStateMachine[M],
 ) -> GenericStateMachine[M] {
   self.error_recovery_statemachine()
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn current_state(
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M] with fn current_state(
   self,
 ) -> RdfState {
   // 从栈中获取当前状态
@@ -49,7 +49,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn curre
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M] with fn step(
   self,
   event : Event,
 ) -> GenericStateMachine[M] {
@@ -99,7 +99,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn step(
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn reset(
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M] with fn reset(
   self,
 ) -> GenericStateMachine[M] {
   let new_machine = self.machine.error_recovery_statemachine()
@@ -122,42 +122,14 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn reset
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn transition(
-  self : GenericStateMachine[M],
-  state : RdfState,
-  event : Event,
-  context : Ctx,
-) -> TransitionResult[GenericStateMachine[M], RdfState, DataAction] {
-  // ✅ 1. 调用 machine.transition，返回 Result
-  match self.machine.transition(state, event, context) {
-    // ✅ 2. 成功：解构元组
-    Ok((new_machine, new_state, output)) => {
-      // 3. 构造新的 GenericStateMachine
-      let new_gsm = GenericStateMachine::{
-        machine: new_machine,
-        context: self.context,
-        outputs: self.outputs,
-        data_world: self.data_world,
-        debug_logger: self.debug_logger,
-        lexer_errors: self.lexer_errors,
-      }
-      // 4. 返回 Ok
-      Ok((new_gsm, new_state, output))
-    }
-    // ✅ 5. 错误：向上传播
-    Err(e) => Err(e)
-  }
-}
-
-///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn is_accepting(
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M] with fn is_accepting(
   self : GenericStateMachine[M],
 ) -> Bool {
   self.machine.is_accepting()
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M] with fn[
   ST : StateWrapper,
 ] set_current_state(self : GenericStateMachine[M], state : ST) -> GenericStateMachine[
   M,
@@ -174,7 +146,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn[
 }
 
 ///|
-pub fn[M : StateMachine] GenericStateMachine::run(
+pub fn[M : GenMachine] GenericStateMachine::run(
   self : GenericStateMachine[M],
   events : Array[Event],
 ) -> Result[Array[DataAction], RuleRecognizerError]? {
@@ -208,14 +180,14 @@ pub fn[M : StateMachine] GenericStateMachine::run(
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn context(
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M] with fn context(
   self : GenericStateMachine[M],
 ) -> Ctx {
   self.context
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn accumulate(
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M] with fn accumulate(
   self : GenericStateMachine[M],
   dw : DataWorld,
   da : DataAction,
@@ -225,7 +197,7 @@ pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn accum
 }
 
 ///|
-pub impl[M : StateMachine] StateMachine for GenericStateMachine[M] with fn get_and_clear_output(
+pub impl[M : GenMachine] GenMachine for GenericStateMachine[M] with fn get_and_clear_output(
   self : GenericStateMachine[M],
   data_world : DataWorld,
 ) -> (GenericStateMachine[M], RdfOut?) {
@@ -268,15 +240,3 @@ pub fn[M] GenericStateMachine::remove_first_output(
     lexer_errors: self.lexer_errors,
   }
 }
-
-// pub fn[M] GenericStateMachine::accumulate(self: GenericStateMachine[M], data_world: DataWorld) -> GenericStateMachine[M] {
-// ...
-// }
-
-// pub fn[M] GenericStateMachine::get_output(self: GenericStateMachine[M]) -> O? {
-//   ...
-// }
-
-// pub fn[M] GenericStateMachine::clear_output(self: GenericStateMachine[M]) -> GenericStateMachine[M] {
-//   ...
-// }

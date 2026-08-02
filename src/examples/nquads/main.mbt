@@ -41,8 +41,6 @@ async fn main {
       current_state: @lib.NQuadsState::ExpectSubject,
       stack: [@lib.NQuadsState::ExpectSubject],
       emit_quad: false,
-      // finalize_literal: None,
-      // last_output: None,
       temp_literal: None,
       lenient: false,
       debug_logger: logger,

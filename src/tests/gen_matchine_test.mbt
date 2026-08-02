@@ -1,6 +1,5 @@
 ///|
 async test "Parser_basic_single_line for NQuads" {
-  // #|"""abc""" .
   let input =
     #| <http://example/> <http://example/p> "\u0053" .
 
@@ -191,8 +190,6 @@ async test "Parser_basic_single_line for NQuads GraphName" {
     current_state: @lib.NQuadsState::ExpectSubject,
     stack: [@lib.NQuadsState::ExpectSubject],
     emit_quad: false,
-    // finalize_literal: None,
-    // last_output: None,
     temp_literal: None,
     lenient: false,
     debug_logger: logger,
@@ -343,7 +340,7 @@ async test "Parser_NQuads_complete_dataset" {
 
 ///|
 async test "run official n-triples test file" {
-  let test_dir = "src/tests/src/rdf/rdf11/n-triples"
+  let test_dir = "src/tests/src/rdf/rdf11/rdf-n-triples"
 
   let file = "nt-syntax-bad-uri-02"
 
@@ -354,9 +351,6 @@ async test "run official n-triples test file" {
   let is_bad_test = file.contains("bad") || file.contains("error")
 
   // 4. 安全读取文件内容
-  // 关键修复：添加 await，因为 read_file 是 async 函数
-  // 如果文件不存在或不可读，await read_file 会 panic。
-  // 若需更健壮的处理，可先用 @fs.exists 检查，或在 try-catch 块中运行（如果支持）
   let data = @fs.read_file(path).binary().to_array()
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
@@ -419,7 +413,7 @@ async test "run official n-triples test file" {
 
 ///|
 async test "run official n-triples test suite" {
-  let test_dir = "src/tests/src/rdf/rdf11/n-triples"
+  let test_dir = "src/tests/src/rdf/rdf11/rdf-n-triples"
   // let test_dir = "src/tests/src/bak/c14n"
 
   // 1. 打开目录并确保护理
@@ -451,9 +445,7 @@ async test "run official n-triples test suite" {
     let is_bad_test = file.contains("bad") || file.contains("error")
 
     // 4. 安全读取文件内容
-    // 关键修复：添加 await，因为 read_file 是 async 函数
-    // 如果文件不存在或不可读，await read_file 会 panic。
-    // 若需更健壮的处理，可先用 @fs.exists 检查，或在 try-catch 块中运行（如果支持）
+
     let data = @fs.read_file(path).binary().to_array()
 
     let lexer = @lib.Lexer::Lexer(
@@ -499,7 +491,6 @@ async test "run official n-triples test suite" {
     }
 
     let result = parser.parse_next()
-    // @async.sleep(0)
     // 7. 判定成功与否
     let success = match result {
       Some(Ok(_)) => !is_bad_test
@@ -507,7 +498,7 @@ async test "run official n-triples test suite" {
         debug(e.to_string())
         is_bad_test
       }
-      None => false
+      None => is_bad_test
     }
 
     if success {
@@ -517,7 +508,7 @@ async test "run official n-triples test suite" {
       let status = if is_bad_test {
         "Should have failed but passed"
       } else {
-        "Should have failed!"
+        "Should have None"
       }
       errors.push("\{file}: \{status}")
     }

@@ -23,7 +23,7 @@ pub fn RdfOut::new(quad : Quad) -> RdfOut {
 }
 
 ///|
-pub fn[TR : TokenRecognizer, RR : StateMachine] SliceIterator::next(
+pub fn[TR : TokenRecognizer, RR : GenMachine] SliceIterator::next(
   self : SliceIterator[TR, RR],
 ) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
@@ -60,7 +60,7 @@ pub fn[TR, M] Parser::Parser(
 }
 
 ///|
-pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(
+pub fn[TR : TokenRecognizer, M : GenMachine] Parser::parse_next(
   self : Parser[TR, M],
 ) -> Result[RdfOut, TokenRecognizerError]? {
   for ;; {
@@ -174,7 +174,7 @@ pub fn[TR : TokenRecognizer, M : StateMachine] Parser::parse_next(
 // ===== Parser 辅助方法 =====
 
 ///|
-pub fn[TR, M : StateMachine] Parser::is_end(self : Parser[TR, M]) -> Bool {
+pub fn[TR, M : GenMachine] Parser::is_end(self : Parser[TR, M]) -> Bool {
   self.lexer.is_end() &&
   self.engine.is_accepting() &&
   self.engine.outputs.is_empty() &&
@@ -204,17 +204,17 @@ pub fn[TR, M] Parser::try_output(
   }
 
   // 没有输出了，检查词法错误
-  // if self.engine.lexer_errors.length() > 0 {
-  //   let (msg, bytes, range) = self.engine.lexer_errors.pop().unwrap()
-  //   return Some(Err(TokenRecognizerError::InvalidToken(msg, bytes, range)))
-  // }
+  if self.engine.lexer_errors.length() > 0 {
+    let (msg, bytes, range) = self.engine.lexer_errors.pop().unwrap()
+    return Some(Err(TokenRecognizerError::InvalidToken(msg, bytes, range)))
+  }
 
   None
 }
 
 ///|
 /// 检查并处理完成状态
-pub fn[TR, M : StateMachine] Parser::try_finish(
+pub fn[TR, M : GenMachine] Parser::try_finish(
   self : Parser[TR, M],
 ) -> Result[RdfOut, TokenRecognizerError]? {
   if self.engine.is_accepting() {
@@ -229,9 +229,6 @@ pub fn[TR, M : StateMachine] Parser::try_finish(
     // 已接受但无输出，可能是一个空的成功状态，继续解析
     return None
   } else {
-    // self.engine.debug_logger.warn(
-    //   "Parser: Engine is accepting but no output generated yet.",
-    // )
 
     // 尚未接受，属于中间状态，继续获取下一个 Token
     return None
@@ -276,7 +273,7 @@ pub struct ReaderIterator[TR, RR] {
 }
 
 ///|
-pub async fn[RR : StateMachine] ReaderIterator::next(
+pub async fn[RR : GenMachine] ReaderIterator::next(
   self : ReaderIterator[RdfLexer, RR],
 ) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {
@@ -298,6 +295,7 @@ pub async fn[RR : StateMachine] ReaderIterator::next(
           // 如果此时 parser 还没有结束，下一轮循环会处理结束逻辑或报错
         } else {
           // 成功读取数据，继续循环让 parse_next 尝试解析
+
         }
       Err(e) =>
         return Some(
@@ -315,7 +313,7 @@ pub struct AsyncReaderIterator[TR, RR] {
 }
 
 ///|
-pub async fn[TR : TokenRecognizer, RR : StateMachine] AsyncReaderIterator::next(
+pub async fn[TR : TokenRecognizer, RR : GenMachine] AsyncReaderIterator::next(
   self : AsyncReaderIterator[TR, RR],
 ) -> Result[RdfOut, LexerError]? {
   while !self.parser.is_end() {

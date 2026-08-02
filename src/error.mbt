@@ -202,6 +202,7 @@ pub(all) suberror RuleRecognizerError {
   TripleMissingDot
   InvalidLanguageTag
   BlankNodePropertyListMissingEndBracket
+  NOCARE
 } derive(Debug)
 
 ///|
@@ -272,13 +273,7 @@ pub impl Show for SourceRange with fn output(self, logger : &Logger) -> Unit {
 pub fn RuleRecognizerError::text_range(self : RuleRecognizerError) -> Range {
   match self {
     RuleRecognizerError::SyntaxError(_, pos) => pos
-    RuleRecognizerError::BlankNodeOrIriError => Range::default()
-    RuleRecognizerError::PredicateNotAnIRI => Range::default()
-    RuleRecognizerError::TripleMissingDot => Range::default()
-    RuleRecognizerError::LiteralDatatypeError => Range::default()
-    RuleRecognizerError::InvalidLanguageTag => Range::default()
-    RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
-      Range::default()
+    _ => Range::default()
   }
 }
 
@@ -298,6 +293,7 @@ pub impl ErrOut for RuleRecognizerError with fn message(
     RuleRecognizerError::InvalidLanguageTag => "Invalid language tag"
     RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
       "blank node property lists should end with a ']'"
+    RuleRecognizerError::NOCARE => "NOCARE"
   }
 }
 
@@ -314,6 +310,7 @@ pub impl ErrOut for RuleRecognizerError with fn err_kind(
     RuleRecognizerError::InvalidLanguageTag => "InvalidLanguageTag"
     RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
       "BlankNodePropertyListMissingEndBracket"
+    RuleRecognizerError::NOCARE => "NOCARE"
   }
 }
 

@@ -1,6 +1,6 @@
 name = "thy1016/moonttl"
 
-version = "0.1.4"
+version = "0.1.6"
 
 import {
   "moonbitlang/async@0.19.1",
@@ -13,14 +13,13 @@ readme = "README.mbt.md"
 
 repository = "https://www.gitlink.org.cn/thy7/mbt.ttl"
 
-license = "MIT"
+license = "Apache-2.0"
 
-keywords = [ "n3", "turtle", "rdf" ]
+keywords = [ "nquads", "rdf" ]
 
-description = "MoonTTL is a high-performance RDF parsing and serialization library for MoonBit, supporting Turtle, TriG, N-Triples, N-Quads and N3 formats."
+description = "MoonTTL is a high-performance RDF parsing and serialization library for MoonBit."
 
 preferred_target = "native"
-// supported_targets = "+wasm+wasm-gc"
 
 source = "src"
 

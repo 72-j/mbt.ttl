@@ -4,39 +4,31 @@ pub fn NQuadsState::to_str(self : NQuadsState) -> String {
 }
 
 ///|
-pub impl StateMachine for NQuadsRecognizer with fn initial_state(
+pub impl GenMachine for NQuadsRecognizer with fn initial_state(
   _self : NQuadsRecognizer,
 ) -> RdfState {
   RdfState::NQuadsState(NQuadsState::ExpectSubject)
 }
 
 ///|
-pub impl StateMachine for NQuadsRecognizer with fn error_recovery_statemachine(
+pub impl GenMachine for NQuadsRecognizer with fn error_recovery_statemachine(
   self,
 ) -> NQuadsRecognizer {
   self.error_recovery_state()
 }
 
 ///|
-pub impl StateMachine for NQuadsRecognizer with fn current_state(self) -> RdfState {
+pub impl GenMachine for NQuadsRecognizer with fn current_state(self) -> RdfState {
   StateWrapper::as_state_enum(self.current_state)
 }
 
 ///|
-pub impl StateMachine for NQuadsRecognizer with fn step(
-  self : NQuadsRecognizer,
-  event : Event,
-) -> NQuadsRecognizer {
-  StateMachine::step(self, event)
-}
-
-///|
-pub impl StateMachine for NQuadsRecognizer with fn reset(self) -> NQuadsRecognizer {
+pub impl GenMachine for NQuadsRecognizer with fn reset(self) -> NQuadsRecognizer {
   self.error_recovery_state()
 }
 
 ///|
-pub impl StateMachine for NQuadsRecognizer with fn transition(
+pub impl GenMachine for NQuadsRecognizer with fn transition(
   self : NQuadsRecognizer,
   state : RdfState,
   event : Event,
@@ -176,15 +168,12 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
     }
 
     // ── ExpectDotOrGraphName ───────────────────────────────────
-    // (
-    //   ExpectDotOrGraphName,
-    //   LocatedToken(N3Token::Punctuation("."), _)
-    //   // | LocatedToken(N3Token::PlainKeyword("."), _),
-    // ) => {
-    //   (ExpectLineJump, DataAction::EmitQuad)
-    // }
 
-    (ExpectDotOrGraphName, LocatedToken(N3Token::Punctuation("."), _)) =>
+    (
+      ExpectDotOrGraphName,
+      LocatedToken(N3Token::Punctuation("."), _)
+      | LocatedToken(N3Token::PlainKeyword("."), _),
+    ) =>
       match self.temp_literal {
         Some(_) => (ExpectLiteralSuffix, DataAction::NoOp)
         None => (ExpectLineJump, DataAction::EmitQuad)
@@ -255,7 +244,7 @@ pub impl StateMachine for NQuadsRecognizer with fn transition(
 }
 
 ///|
-pub impl StateMachine for NQuadsRecognizer with fn is_accepting(
+pub impl GenMachine for NQuadsRecognizer with fn is_accepting(
   self : NQuadsRecognizer,
 ) -> Bool {
   match self.current_state() {
@@ -266,7 +255,7 @@ pub impl StateMachine for NQuadsRecognizer with fn is_accepting(
 }
 
 ///|
-pub impl StateMachine for NQuadsRecognizer with fn context(
+pub impl GenMachine for NQuadsRecognizer with fn context(
   _self : NQuadsRecognizer,
 ) -> RdfContext {
   RdfContext::NQuadsRecognizerContext({
@@ -276,7 +265,7 @@ pub impl StateMachine for NQuadsRecognizer with fn context(
 }
 
 ///|
-pub impl StateMachine for NQuadsRecognizer with fn[ST : StateWrapper] set_current_state(
+pub impl GenMachine for NQuadsRecognizer with fn[ST : StateWrapper] set_current_state(
   self : NQuadsRecognizer,
   state : ST,
 ) -> NQuadsRecognizer {
@@ -287,7 +276,7 @@ pub impl StateMachine for NQuadsRecognizer with fn[ST : StateWrapper] set_curren
 }
 
 ///|
-pub impl StateMachine for NQuadsRecognizer with fn accumulate(
+pub impl GenMachine for NQuadsRecognizer with fn accumulate(
   self : NQuadsRecognizer,
   data_world : DataWorld,
   action : DataAction,
@@ -370,13 +359,12 @@ pub impl StateMachine for NQuadsRecognizer with fn accumulate(
 }
 
 ///|
-pub impl StateMachine for NQuadsRecognizer with fn get_and_clear_output(
+pub impl GenMachine for NQuadsRecognizer with fn get_and_clear_output(
   self : NQuadsRecognizer,
   data_world : DataWorld,
 ) -> (NQuadsRecognizer, RdfOut?) {
   let m = self
   let dw = data_world
-  // self.debug_logger.info("[get_and_clear_output] \{dw.objects}")
   let output = if m.emit_quad {
     self.pop_quad_from_data_world(dw)
   } else {
