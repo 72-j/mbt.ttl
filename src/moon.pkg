@@ -12,6 +12,7 @@ import {
   "moonbit-community/quickcheck_statemachine" @qs,
   "brickfrog/tempo",
   "thy1016/moonttl/parserc",
+  "moonbitlang/core/bench",
 }
 
 import {
@@ -25,4 +26,5 @@ import {
 
 options(
   "is-main": false,
+  "native-stub": [ "lexer_ffi.c" ],
 )
