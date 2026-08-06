@@ -3,79 +3,75 @@
 // ============================================================
 
 ///|
+type Span = (Int, Int) // (offset, length)
+
+///|
 pub(all) enum Token {
-  Error(Int, Int, Int) // (line, start, end)
-  IRI(Int, Int, Int) // (line, start, end)
-  Blank(Int, Int, Int) // (line, start, end)
-  Literal(Int, Int, Int) // (line, start, end)
-  Symbol(Byte, Int, Int, Int) // (char, line, start, end)
-  LineJump(Int, Int, Int) // (line, start, end)
-  EOF(Int) // position
+  // 结构标点
+  Dot(Span) // .
+  Semicolon(Span) // ;
+  Comma(Span) // ,
+
+  // 标识符
+  Iri(Span) // <...> 或 _:name 或 :name
+
+  // 字符串
+  Literal(Span) // "..."
+
+  // 容错
+  Unknown(Span) // 其他字符
+
+  // 结束
+  EOF(Int) // 文件结束
 } derive(Debug)
 
 ///|
 pub impl Show for Token with fn output(self : Token, logger : &Logger) -> Unit {
   match self {
-    Token::IRI(line, start, end) => {
-      logger.write_string("IRI")
-      logger.write_string("(\{line}:\{start}:\{end})")
+    Token::Dot(span) => {
+      let (offset, length) = span
+      logger.write_string("Dot(\{offset},\{length})")
     }
-    Token::Blank(line, start, end) => {
-      logger.write_string("Blank")
-      logger.write_string("(\{line}:\{start}:\{end})")
+    Token::Semicolon(span) => {
+      let (offset, length) = span
+      logger.write_string("Semicolon(\{offset},\{length})")
     }
-    Token::Literal(line, start, end) => {
-      logger.write_string("Literal")
-      logger.write_string("(\{line}:\{start}:\{end})")
+    Token::Comma(span) => {
+      let (offset, length) = span
+      logger.write_string("Comma(\{offset},\{length})")
     }
-    Token::Symbol(b, line, start, end) => {
-      logger.write_string("Symbol")
-      logger.write_string("(\{b}:\{line}:\{start}:\{end})")
+    Token::Iri(span) => {
+      let (offset, length) = span
+      logger.write_string("Iri(\{offset},\{length})")
     }
-    Token::LineJump(line, start, end) => {
-      logger.write_string("LineJump")
-      logger.write_string("(\{line}:\{start}:\{end})")
+    Token::Literal(span) => {
+      let (offset, length) = span
+      logger.write_string("Literal(\{offset},\{length})")
     }
-    Token::EOF(start) => {
-      logger.write_string("EOF")
-      logger.write_string("(\{start})")
+    Token::Unknown(span) => {
+      let (offset, length) = span
+      logger.write_string("Unknown(\{offset},\{length})")
     }
-    Token::Error(line, start, end) => {
-      logger.write_string("Error")
-      logger.write_string("(\{line}:\{start}:\{end})")
-    }
+    Token::EOF(offset) => logger.write_string("EOF(\{offset})")
   }
 }
 
 ///|
 type Void
 
-///|
-/// Token 类型枚举
-pub(all) enum TokenType {
-  Error
-  IRI
-  Blank
-  Literal
-  Symbol
-  LineJump
-  End
-} derive(Debug)
-
 // ============================================================
-// C 端结构体布局（16 字节，4 字节对齐）
+// C 端结构体布局（12 字节，4 字节对齐）
 // ============================================================
 
 /// C 端 Token 结构布局：
 /// - int32_t  type   (4 bytes, offset 0)
-/// - int32_t  sym    (4 bytes, offset 4)
-/// - int32_t  start  (4 bytes, offset 8)
-/// - int32_t  end    (4 bytes, offset 12)
-/// 总大小: 16 bytes
+/// - int32_t  start  (4 bytes, offset 4)
+/// - int32_t  end    (4 bytes, offset 8)
+/// 总大小: 12 bytes
 
 ///|
 /// CToken 占用字节数
-const SIZEOF_CTOKEN : Int = 16
+const SIZEOF_CTOKEN : Int = 12
 
 // ============================================================
 // 核心 FFI 声明
@@ -83,22 +79,22 @@ const SIZEOF_CTOKEN : Int = 16
 
 ///|
 /// 创建词法分析器
-#owned(data)
+#borrow(data)
 pub extern "C" fn lexer_create(data : FixedArray[Byte], len : Int) -> Ref[Void] = "lexer_create"
 
 ///|
 /// 销毁词法分析器
-#owned(lexer)
+#borrow(lexer)
 pub extern "C" fn lexer_destroy(lexer : Ref[Void]) -> Unit = "lexer_destroy"
 
 ///|
 /// 重置词法分析器
-#owned(lexer)
+#borrow(lexer)
 extern "C" fn lexer_reset(lexer : Ref[Void]) -> Unit = "lexer_reset"
 
 ///|
 /// 获取下一个 Token（写入 Bytes 缓冲区）
-#owned(lexer, token_buf)
+#borrow(lexer, token_buf)
 pub extern "C" fn lexer_next(
   lexer : Ref[Void],
   token_buf : FixedArray[Byte],
@@ -106,26 +102,26 @@ pub extern "C" fn lexer_next(
 
 ///|
 /// 批量获取 Token
-#owned(lexer, token_bufs)
-extern "C" fn lexer_next_batch(
-  lexer : Ref[Void],
-  token_bufs : FixedArray[Byte],
-  max_count : Int,
-) -> Int = "lexer_next_batch"
+// #borrow(lexer, token_bufs)
+// extern "C" fn lexer_next_batch(
+//   lexer : Ref[Void],
+//   token_bufs : FixedArray[Byte],
+//   max_count : Int,
+// ) -> Int = "lexer_next_batch"
 
 ///|
 /// 获取当前位置
-#owned(lexer)
+#borrow(lexer)
 extern "C" fn lexer_pos(lexer : Ref[Void]) -> Int = "lexer_pos"
 
 ///|
 /// 获取剩余字节数
-#owned(lexer)
+#borrow(lexer)
 extern "C" fn lexer_remaining(lexer : Ref[Void]) -> Int = "lexer_remaining"
 
 ///|
 /// 检查是否到达末尾
-#owned(lexer)
+#borrow(lexer)
 extern "C" fn lexer_is_end(lexer : Ref[Void]) -> Bool = "lexer_is_end"
 
 // ============================================================
@@ -145,13 +141,12 @@ fn read_int32(buf : FixedArray[Byte], offset : Int) -> Int {
 ///|
 /// 从 Bytes 缓冲区读取 CToken
 ///
-/// 解析 C 端写入的 16 字节 Token 数据
-fn parse_ctoken(buf : FixedArray[Byte]) -> (Int, Int, Int, Int) {
+/// 解析 C 端写入的 12 字节 Token 数据
+fn parse_ctoken(buf : FixedArray[Byte]) -> (Int, Int, Int) {
   let ctype = read_int32(buf, 0)
-  let sym = read_int32(buf, 4)
-  let start = read_int32(buf, 8)
-  let end = read_int32(buf, 12)
-  (ctype, sym, start, end)
+  let offset = read_int32(buf, 4)
+  let length = read_int32(buf, 8)
+  (ctype, offset, length)
 }
 
 // ============================================================
@@ -173,15 +168,11 @@ pub(all) struct Lexerc {
 
 ///|
 /// 创建词法分析器
-pub fn Lexerc::new(data : FixedArray[Byte]) -> Lexerc {
-  let ptr = lexer_create(data, data.length())
-  Lexerc::{
-    ptr,
-    data,
-    offset: 0,
-    token_buf: FixedArray::make(SIZEOF_CTOKEN, 0),
+  pub fn Lexerc::new(data: FixedArray[Byte]) -> Lexerc {
+    let ptr = lexer_create(data, data.length())
+    Lexerc::{ ptr, data, offset: 0, token_buf: FixedArray::make(12, 0) }
   }
-}
+
 
 ///|
 /// 销毁词法分析器
@@ -208,104 +199,119 @@ pub fn Lexerc::next(self : Lexerc) -> Token? {
     return None
   }
 
-  let (ctype, sym, start, end) = parse_ctoken(self.token_buf)
+  let (ctype, offset, length) = parse_ctoken(self.token_buf)
+  let global_offset = self.offset + offset
+  let span = (global_offset, length)
 
-  // 转换为全局偏移量
-  let global_start = self.offset + start
-  let global_end = self.offset + end
-  let line = sym // sym 存储行号
   match ctype {
-    1 => Some(Token::IRI(line, global_start, global_end))
-    2 => Some(Token::Blank(line, global_start, global_end))
-    3 => Some(Token::Literal(line, global_start, global_end))
-    4 => Some(Token::Symbol(sym.to_byte(), line, global_start, global_end))
-    5 => Some(Token::LineJump(line, global_start, global_end))
-    6 => Some(Token::EOF(global_end))
-    _ => Some(Token::Error(line, global_start, global_end))
+    0 => Some(Token::Dot(span))
+    1 => Some(Token::Semicolon(span))
+    2 => Some(Token::Comma(span))
+    3 => Some(Token::Iri(span))
+    4 => Some(Token::Literal(span))
+    5 => Some(Token::Unknown(span))
+    6 => Some(Token::EOF(global_offset))
+    _ => Some(Token::Unknown(span))
   }
 }
 
 ///|
 /// 批量获取 Token
-pub fn Lexerc::next_batch(self : Lexerc, max_count : Int) -> Array[Token] {
-  // 分配连续内存: max_count * 16 字节
-  let total_size = max_count * SIZEOF_CTOKEN
-  let buf : FixedArray[Byte] = FixedArray::make(total_size, 0)
+// pub fn Lexerc::next_batch(self : Lexerc, max_count : Int) -> Array[Token] {
+//   // 分配连续内存: max_count * 16 字节
+//   let total_size = max_count * SIZEOF_CTOKEN
+//   let buf : FixedArray[Byte] = FixedArray::make(total_size, 0)
 
-  let count = lexer_next_batch(self.ptr, buf, max_count)
+//   let count = lexer_next_batch(self.ptr, buf, max_count)
 
-  let result : Array[Token] = []
-  for i in 0..<count {
-    let offset = i * SIZEOF_CTOKEN
-    let (ctype, sym, start, end) = parse_ctoken_at(buf, offset)
-    let global_start = self.offset + start
-    let global_end = self.offset + end
-    let line = sym // sym 存储行号
-    let token = match ctype {
-      1 => Token::IRI(line, global_start, global_end)
-      2 => Token::Blank(line, global_start, global_end)
-      3 => Token::Literal(line, global_start, global_end)
-      4 => Token::Symbol(sym.to_byte(), line, global_start, global_end)
-      5 => Token::LineJump(line, global_start, global_end)
-      6 => Token::EOF(global_end)
-      _ => Token::Error(line, global_start, global_end) // 错误 token   
-    }
-    result.push(token)
-  }
+//   let result : Array[Token] = []
+//   for i in 0..<count {
+//     let offset = i * SIZEOF_CTOKEN
+//     let (ctype, sym, start, end) = parse_ctoken_at(buf, offset)
+//     let global_start = self.offset + start
+//     let global_end = self.offset + end
+//     let line = sym // sym 存储行号
+//     let token = match ctype {
+//       1 => Token::IRI(line, global_start, global_end)
+//       2 => Token::Blank(line, global_start, global_end)
+//       3 => Token::Literal(line, global_start, global_end)
+//       4 => Token::Symbol(sym.to_byte(), line, global_start, global_end)
+//       5 => Token::LineJump(line, global_start, global_end)
+//       6 => Token::EOF(global_end)
+//       _ => Token::Error(line, global_start, global_end) // 错误 token   
+//     }
+//     result.push(token)
+//   }
 
-  result
-}
+//   result
+// }
 
 ///|
 /// 从连续缓冲区中读取指定偏移的 Token
-fn parse_ctoken_at(
-  buf : FixedArray[Byte],
-  offset : Int,
-) -> (Int, Int, Int, Int) {
-  let ctype = read_int32(buf, offset + 0)
-  let sym = read_int32(buf, offset + 4)
-  let start = read_int32(buf, offset + 8)
-  let end = read_int32(buf, offset + 12)
-  (ctype, sym, start, end)
-}
+// fn parse_ctoken_at(
+//   buf : FixedArray[Byte],
+//   offset : Int,
+// ) -> (Int, Int, Int, Int) {
+//   let ctype = read_int32(buf, offset + 0)
+//   let sym = read_int32(buf, offset + 4)
+//   let start = read_int32(buf, offset + 8)
+//   let end = read_int32(buf, offset + 12)
+//   (ctype, sym, start, end)
+// }
 
 // ============================================================
 // 工具方法
 // ============================================================
 
+// 提取 IRI（去掉 <> 包裹）
+pub fn Lexerc::extract_iri(self : Lexerc, token : Token) -> ArrayView[Byte] {
+  match token {
+    Token::Iri(span) => {
+      let (offset, length) = span
+      let end = offset + length
+      if length > 2 && self.data[offset] == b'<' && self.data[end - 1] == b'>' {
+        self.data[offset + 1:end - 1]
+      } else {
+        self.data[offset:end]
+      }
+    }
+    _ => []
+  }
+}
+
+// 提取字面量（去掉引号）
+
 ///|
-/// 从原始数据提取字符串
-pub fn Lexerc::extract(self : Lexerc, start : Int, end : Int) -> String {
-  if start < 0 || end > self.data.length() || start >= end {
+pub fn Lexerc::extract_literal(self : Lexerc, token : Token) -> ArrayView[Byte] {
+  match token {
+    Token::Literal(span) => {
+      let (offset, length) = span
+      let end = offset + length
+      if length >= 2 && self.data[offset] == b'"' && self.data[end - 1] == b'"' {
+        self.data[offset + 1:end - 1]
+      } else {
+        self.data[offset:end]
+      }
+    }
+    _ => []
+  }
+}
+
+// 通用提取
+
+///|
+pub fn Lexerc::extract(self : Lexerc, span : Span) -> String {
+  let (offset, length) = span
+  let end = offset + length
+  if offset < 0 || end > self.data.length() || offset >= end {
     return ""
   }
 
   let buf = StringBuilder::new()
-  for i in start..<end {
+  for i in offset..<end {
     buf.write_char(self.data[i].to_char())
   }
   buf.to_string()
-}
-
-///|
-/// 提取 IRI（去掉 <> 包裹）
-pub fn Lexerc::extract_iri(
-  self : Lexerc,
-  data : FixedArray[Byte],
-  token : Token,
-) -> ArrayView[Byte] {
-  match token {
-    Token::IRI(_, start, end) =>
-      if end > start + 1 &&
-        self.data[start] == b'<' &&
-        self.data[end - 1] == b'>' {
-        data[start + 1:end - 1]
-      } else {
-        data[start:end]
-      }
-    Token::Literal(_, start, end) => data[start:end]
-    _ => []
-  }
 }
 
 ///|
