@@ -125,14 +125,10 @@ test "debug token buf - single call" {
 
 ///|
 test "clean lexer test" {
-  let data : FixedArray[Byte] = [
-    b'a', b'b', b'c', b' ', b'd', b'e', b'f',
-  ]
-let data : FixedArray[Byte] =FixedArray::from_array([
-    b'a', b'b', b'c', b' ', b'd', b'e', b'f',
-  ])
+  let data : FixedArray[Byte] = [b'a', b'b', b'c', b' ', b'd', b'e', b'f']
+
   // 确保 data.length() 被使用
-  // debug("data length: \{data.length()}")
+  debug("data length: \{data.length()}")
 
   let lexer = @lib.Lexerc::new(data)
 
@@ -151,7 +147,6 @@ let data : FixedArray[Byte] =FixedArray::from_array([
 
   lexer.destroy()
 }
-
 
 ///|
 test "newline in middle" {
@@ -212,22 +207,24 @@ test "tabs and spaces skip" {
 
 ///|
 test "debug parsing" {
-  let input =
-    #|:asd _:asd  
-    #|ex:Alice :greeting "Hello"@en .
-    #|ex:Alice :birthDate "1990-01-01"^^xsd:date .  
-    #|ex:Book :description """sad"""@zh .
-    #|ex:Config :json """
-    #|{
-    #|    "host": "localhost",
-    #|    "port": 8080
-    #|}
-    #|"""^^ex:JSON .
-    #|ex:Alice :age 30 .
-    #|ex:Measurement :value 1.23e-4 .
-    #|ex:User :active a .
-    #|ex:Alice :speaks @en .
-    #|@prefix  BASE  PREFIX [ ] { }
+  let input = "true"
+  // #| asd
+  // #| hello 
+  // #|:asd _:asd  
+  // #|ex:Alice :greeting "Hello"@en .
+  // #|ex:Alice :birthDate "1990-01-01"^^xsd:date .  
+  // #|ex:Book :description """sad"""@zh .
+  // #|ex:Config :json """
+  // #|{
+  // #|    "host": "localhost",
+  // #|    "port": 8080
+  // #|}
+  // #|"""^^ex:JSON .
+  // #|ex:Alice :age 30 .
+  // #|ex:Measurement :value 1.23e-4 .
+  // #|ex:User :active a .
+  // #|ex:Alice :speaks @en .
+  // #|@prefix  BASE  PREFIX [ ] { }
 
   let data = @utf8.encode(input).to_fixedarray()
   debug("input: '\{input}'")
@@ -307,7 +304,7 @@ test "literal token" {
 
   let tok = lexer.next()
   match tok {
-    Some(@lib.Token::Literal(span)) => {
+    Some(@lib.Token::Literal(_span)) => {
       // 提取去掉引号的字面量
       let literal = lexer.extract_literal(tok.unwrap())
       // 或手动提取
@@ -418,11 +415,6 @@ async test "performance: lexer" {
   let content = @fs.read_file(filepath).binary()
   let bytes = content.to_fixedarray()
   let data = bytes
-
-  // 估算 token 数：每行约 5 个 token
-  let token_per_line = 5
-  let line_count = content.to_array().length() / 50 // 估算
-  let token_count = line_count * token_per_line
 
   let start = @bench.monotonic_clock_start()
 

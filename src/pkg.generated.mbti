@@ -993,15 +993,15 @@ pub(all) enum RdfContext {
 }
 
 pub(all) struct RdfLexer {
-  mode : RdfLexerMode
+  mode : RdfMode
   lenient : Bool
 }
-pub fn RdfLexer::RdfLexer(RdfLexerMode, Bool) -> Self
+pub fn RdfLexer::RdfLexer(RdfMode, Bool) -> Self
 pub fn RdfLexer::is_possible_pn_chars(Char) -> Bool
 pub fn RdfLexer::is_possible_pn_chars_u(Char) -> Bool
 pub impl TokenRecognizer for RdfLexer
 
-pub(all) enum RdfLexerMode {
+pub(all) enum RdfMode {
   NTriples
   N3
 } derive(Eq)

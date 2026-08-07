@@ -40,7 +40,7 @@ test "check string content" {
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(
-      @lib.RdfLexerMode::NTriples,
+      @lib.RdfMode::NTriples,
       false,
       [],
       debug_logger=@lib.make_console_logger(),

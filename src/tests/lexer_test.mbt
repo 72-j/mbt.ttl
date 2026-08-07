@@ -4,7 +4,7 @@ async test "debug_lexer_only" {
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+    @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -57,7 +57,7 @@ async test "Lexer tokenization test" {
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+    @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
     data,
     true, // is_ending
     @lib.MIN_BUFFER_SIZE,

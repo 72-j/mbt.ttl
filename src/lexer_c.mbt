@@ -71,7 +71,7 @@ type Void
 
 ///|
 /// CToken 占用字节数
-const SIZEOF_CTOKEN : Int = 12
+// const SIZEOF_CTOKEN : Int = 12
 
 // ============================================================
 // 核心 FFI 声明
@@ -168,11 +168,10 @@ pub(all) struct Lexerc {
 
 ///|
 /// 创建词法分析器
-  pub fn Lexerc::new(data: FixedArray[Byte]) -> Lexerc {
-    let ptr = lexer_create(data, data.length())
-    Lexerc::{ ptr, data, offset: 0, token_buf: FixedArray::make(12, 0) }
-  }
-
+pub fn Lexerc::new(data : FixedArray[Byte]) -> Lexerc {
+  let ptr = lexer_create(data, data.length())
+  Lexerc::{ ptr, data, offset: 0, token_buf: FixedArray::make(12, 0) }
+}
 
 ///|
 /// 销毁词法分析器
@@ -215,55 +214,13 @@ pub fn Lexerc::next(self : Lexerc) -> Token? {
   }
 }
 
-///|
-/// 批量获取 Token
-// pub fn Lexerc::next_batch(self : Lexerc, max_count : Int) -> Array[Token] {
-//   // 分配连续内存: max_count * 16 字节
-//   let total_size = max_count * SIZEOF_CTOKEN
-//   let buf : FixedArray[Byte] = FixedArray::make(total_size, 0)
-
-//   let count = lexer_next_batch(self.ptr, buf, max_count)
-
-//   let result : Array[Token] = []
-//   for i in 0..<count {
-//     let offset = i * SIZEOF_CTOKEN
-//     let (ctype, sym, start, end) = parse_ctoken_at(buf, offset)
-//     let global_start = self.offset + start
-//     let global_end = self.offset + end
-//     let line = sym // sym 存储行号
-//     let token = match ctype {
-//       1 => Token::IRI(line, global_start, global_end)
-//       2 => Token::Blank(line, global_start, global_end)
-//       3 => Token::Literal(line, global_start, global_end)
-//       4 => Token::Symbol(sym.to_byte(), line, global_start, global_end)
-//       5 => Token::LineJump(line, global_start, global_end)
-//       6 => Token::EOF(global_end)
-//       _ => Token::Error(line, global_start, global_end) // 错误 token   
-//     }
-//     result.push(token)
-//   }
-
-//   result
-// }
-
-///|
-/// 从连续缓冲区中读取指定偏移的 Token
-// fn parse_ctoken_at(
-//   buf : FixedArray[Byte],
-//   offset : Int,
-// ) -> (Int, Int, Int, Int) {
-//   let ctype = read_int32(buf, offset + 0)
-//   let sym = read_int32(buf, offset + 4)
-//   let start = read_int32(buf, offset + 8)
-//   let end = read_int32(buf, offset + 12)
-//   (ctype, sym, start, end)
-// }
-
 // ============================================================
 // 工具方法
 // ============================================================
 
 // 提取 IRI（去掉 <> 包裹）
+
+///|
 pub fn Lexerc::extract_iri(self : Lexerc, token : Token) -> ArrayView[Byte] {
   match token {
     Token::Iri(span) => {
@@ -313,22 +270,6 @@ pub fn Lexerc::extract(self : Lexerc, span : Span) -> String {
   }
   buf.to_string()
 }
-
-///|
-/// 提取字面量（去掉 "" 包裹）
-// pub fn Lexerc::extract_literal(self : Lexerc, token : Token) -> String {
-//   match token {
-//     Token::Literal(start, end) =>
-//       if end > start + 1 &&
-//         self.data[start] == b'"' &&
-//         self.data[end - 1] == b'"' {
-//         self.extract(start + 1, end - 1)
-//       } else {
-//         self.extract(start, end)
-//       }
-//     _ => ""
-//   }
-// }
 
 ///|
 /// 获取当前位置

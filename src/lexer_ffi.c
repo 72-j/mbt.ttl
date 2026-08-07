@@ -155,26 +155,27 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
     }
 
     // 3. 普通字符串
-    if (c == '"') {
-      l->pos++;
-      while (l->pos < l->len && l->data[l->pos] != '"') {
-        if (l->data[l->pos] == '\\' && l->pos + 1 < l->len) {
-          l->pos += 2;
-        } else {
-          l->pos++;
-        }
-      }
-      if (l->pos < l->len)
-        l->pos++; // 跳过结尾 "
-      // 继续扫描 ^^ 或 @ 直到空白符或分隔符
-      while (l->pos < l->len && !is_whitespace(l->data[l->pos]) &&
-             l->data[l->pos] != '.' && l->data[l->pos] != ';' &&
-             l->data[l->pos] != ',') {
+  if (c == '"' || c == '\'') {
+    uint8_t quote = c;
+    l->pos++;
+    while (l->pos < l->len && l->data[l->pos] != quote) {
+      if (l->data[l->pos] == '\\' && l->pos + 1 < l->len) {
+        l->pos += 2;
+      } else {
         l->pos++;
       }
-      write_token(token_buf, TOKEN_LITERAL, start, l->pos - start);
-      return true;
     }
+    if (l->pos < l->len)
+      l->pos++; // 跳过结尾引号
+    // 继续扫描 ^^ 或 @ 直到空白符或分隔符
+    while (l->pos < l->len && !is_whitespace(l->data[l->pos]) &&
+           l->data[l->pos] != '.' && l->data[l->pos] != ';' &&
+           l->data[l->pos] != ',') {
+      l->pos++;
+    }
+    write_token(token_buf, TOKEN_LITERAL, start, l->pos - start);
+    return true;
+  }
 
     // 4. IRI
     if (c == '<') {
@@ -203,8 +204,8 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
     if (is_alpha(c) || c == ':' || c == '_') {
       l->pos++;
       while (l->pos < l->len) {
-        fprintf(stderr, "DEBUG: alpha token, start=%d, end=%d, length=%d\n",
-                start, l->pos, l->pos - start);
+        // fprintf(stderr, "DEBUG: alpha token, start=%d, end=%d, length=%d\n",
+                // start, l->pos, l->pos - start);
         uint8_t ch = l->data[l->pos];
         if (is_separator(ch))
           break;
@@ -214,7 +215,7 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
           break;
         }
       }
-      write_token(token_buf, TOKEN_UNKNOWN, start, l->pos - start);
+      write_token(token_buf, TOKEN_IRI, start, l->pos - start);
       return true;
     }
     // 7 数字开头 -> UNKNOWN（整型、浮点型、科学计数）

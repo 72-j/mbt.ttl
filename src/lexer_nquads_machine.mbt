@@ -54,12 +54,12 @@ pub impl GenMachine for NQuadsRecognizer with fn transition(
     (Start, LocatedToken(N3Token::Iri(iri), _)) => {
       self.debug_logger.info("[Start] IRI: \{iri}")
       let node = NamedNodeRef::new_unchecked(iri).as_enum()
-      (ExpectPredicate, DataAction::AddSubject(node))
+      (NQuadsState::ExpectPredicate, DataAction::AddSubject(node))
     }
     (Start, LocatedToken(N3Token::BlankNodeLabel(l), _)) => {
       self.debug_logger.info("[Start] Blank: _:\{l}")
       let node = BlankNodeRef::new_unchecked(l).as_enum()
-      (ExpectPredicate, DataAction::AddSubject(node))
+      (NQuadsState::ExpectPredicate, DataAction::AddSubject(node))
     }
     (Start, LocatedToken(N3Token::LineJump | N3Token::End, _)) => {
       self.debug_logger.info("[Start] LineJump/End")
@@ -70,12 +70,12 @@ pub impl GenMachine for NQuadsRecognizer with fn transition(
     (ExpectSubject, LocatedToken(N3Token::Iri(iri), _)) => {
       self.debug_logger.info("[ExpectSubject] IRI: \{iri}")
       let node = NamedNodeRef::new_unchecked(iri).as_enum()
-      (ExpectPredicate, DataAction::AddSubject(node))
+      (NQuadsState::ExpectPredicate, DataAction::AddSubject(node))
     }
     (ExpectSubject, LocatedToken(N3Token::BlankNodeLabel(l), _)) => {
       self.debug_logger.info("[ExpectSubject] Blank: \{l}")
       let node = BlankNodeRef::new_unchecked(l).as_enum()
-      (ExpectPredicate, DataAction::AddSubject(node))
+      (NQuadsState::ExpectPredicate, DataAction::AddSubject(node))
     }
     (ExpectSubject, LocatedToken(N3Token::LineJump | N3Token::End, _)) =>
       (ExpectSubject, DataAction::NoOp)

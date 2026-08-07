@@ -73,7 +73,7 @@ let content = "<http://example.org/s> <http://example.org/p> <http://example.org
 let data = @utf8.encode(content).to_array()
 
 let lexer = @lib.Lexer::Lexer(
-  @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+  @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
   data,
   true,
   @lib.MIN_BUFFER_SIZE,

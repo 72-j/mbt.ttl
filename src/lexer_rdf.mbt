@@ -24,19 +24,17 @@ pub(all) enum RdfFeature {
 }
 
 ///|
-fn allows_feature(mode : RdfLexerMode, feature : RdfFeature) -> Bool {
+fn allows_feature(mode : RdfMode, feature : RdfFeature) -> Bool {
   match feature {
-    RdfFeature::RelativeIri => mode != RdfLexerMode::NTriples
-    RdfFeature::Numbers => mode != RdfLexerMode::NTriples
-    RdfFeature::Prefixes =>
-      mode == RdfLexerMode::Turtle || mode == RdfLexerMode::N3
-    RdfFeature::Variables => mode == RdfLexerMode::N3
-    RdfFeature::NonAsciiIri =>
-      mode == RdfLexerMode::Turtle || mode == RdfLexerMode::N3
+    RdfFeature::RelativeIri => mode != RdfMode::NTriples
+    RdfFeature::Numbers => mode != RdfMode::NTriples
+    RdfFeature::Prefixes => mode == RdfMode::Turtle || mode == RdfMode::N3
+    RdfFeature::Variables => mode == RdfMode::N3
+    RdfFeature::NonAsciiIri => mode == RdfMode::Turtle || mode == RdfMode::N3
     RdfFeature::StringEscapes => true
-    RdfFeature::LangTags => mode != RdfLexerMode::NTriples
-    RdfFeature::LongStrings => mode != RdfLexerMode::NTriples //  NTriples 不允许
-    RdfFeature::PunctuationList => mode != RdfLexerMode::NTriples // 
+    RdfFeature::LangTags => mode != RdfMode::NTriples
+    RdfFeature::LongStrings => mode != RdfMode::NTriples //  NTriples 不允许
+    RdfFeature::PunctuationList => mode != RdfMode::NTriples // 
   }
 }
 
@@ -46,27 +44,28 @@ pub impl StateWrapper for RdfState with fn as_state_enum(self) -> RdfState {
 }
 
 ///|
-pub(all) enum RdfLexerMode {
+pub(all) enum RdfMode {
   NTriples
+  NQuads
   Turtle
   N3
 } derive(Eq)
 
 ///|
 pub(all) struct RdfLexer {
-  mode : RdfLexerMode
+  mode : RdfMode
   lenient : Bool
   debug_logger : &DebugLogger
 }
 
 ///|
 pub fn RdfLexer::default() -> RdfLexer {
-  RdfLexer::RdfLexer(RdfLexerMode::NTriples, true, [])
+  RdfLexer::RdfLexer(RdfMode::NTriples, true, [])
 }
 
 ///|
 pub fn RdfLexer::RdfLexer(
-  mode : RdfLexerMode,
+  mode : RdfMode,
   lenient : Bool,
   _data_buffer : ArrayView[Byte],
   debug_logger? : &DebugLogger = make_mute_logger(),

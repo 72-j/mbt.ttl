@@ -9,7 +9,7 @@ test "parse simple IRI" {
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(
-      @lib.RdfLexerMode::NTriples,
+      @lib.RdfMode::NTriples,
       false,
       [],
       debug_logger=@lib.make_console_logger(),
@@ -36,7 +36,7 @@ test "full parse with string" {
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(
-      @lib.RdfLexerMode::NTriples,
+      @lib.RdfMode::NTriples,
       false,
       [],
       debug_logger=@lib.make_console_logger(),

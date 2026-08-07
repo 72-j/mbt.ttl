@@ -10,7 +10,7 @@ async test "Parser_basic_single_line for NQuads" {
 
   let lexer = @lib.Lexer::Lexer(
     @lib.RdfLexer::RdfLexer(
-      @lib.RdfLexerMode::NTriples,
+      @lib.RdfMode::NTriples,
       false,
       debug_logger=logger,
       [],
@@ -95,7 +95,7 @@ async test "multi-line  for NQuads" {
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+    @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -174,7 +174,7 @@ async test "Parser_basic_single_line for NQuads GraphName" {
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+    @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -266,7 +266,7 @@ async test "Parser_NQuads_complete_dataset" {
   let data = @utf8.encode(input).to_array()
 
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+    @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -353,7 +353,7 @@ async test "run official n-triples test file" {
   // 4. 安全读取文件内容
   let data = @fs.read_file(path).binary().to_array()
   let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+    @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
     data,
     true,
     @lib.MIN_BUFFER_SIZE,
@@ -449,7 +449,7 @@ async test "run official n-triples test suite" {
     let data = @fs.read_file(path).binary().to_array()
 
     let lexer = @lib.Lexer::Lexer(
-      @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+      @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
       data,
       true,
       @lib.MIN_BUFFER_SIZE,

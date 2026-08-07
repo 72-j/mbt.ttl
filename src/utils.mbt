@@ -486,3 +486,42 @@ pub fn is_valid_hex_string(hex : String) -> Bool {
   }
   true
 }
+
+///|
+/// 非法字符查表：索引为字节值 (0-255)，值为 1 表示非法
+pub let iri_illegal_table : FixedArray[Int] = {
+  let table = FixedArray::make(256, 0)
+
+  // 设置非法字符
+  table[b'"'.to_int()] = 1 // 双引号
+  table[b'{'.to_int()] = 1 // 左花括号
+  table[b'}'.to_int()] = 1 // 右花括号
+  table[b'|'.to_int()] = 1 // 竖线
+  table[b'\\'.to_int()] = 1 // 反斜杠
+  table[b'^'.to_int()] = 1 // 脱字符
+  table[b'`'.to_int()] = 1 // 反引号
+  table[b' '.to_int()] = 1 // 空格
+  table[b'\t'.to_int()] = 1 // 制表符
+  table[b'\n'.to_int()] = 1 // 换行符
+  table[b'\r'.to_int()] = 1 // 回车符
+
+  table
+}
+
+///|
+fn is_illegal_iri_char(c : Byte) -> Bool {
+  iri_illegal_table[c.to_int()] == 1
+}
+
+///|
+fn is_pn_chars_u(c : Byte) -> Bool {
+  (c >= b'a' && c <= b'z') ||
+  (c >= b'A' && c <= b'Z') ||
+  (c >= b'0' && c <= b'9') ||
+  c == b'_'
+}
+
+///|
+fn is_pn_chars(c : Byte) -> Bool {
+  is_pn_chars_u(c) || c == b'-' || c == b'.'
+}

@@ -14,7 +14,7 @@ async test "multi-line NQuads from file" {
     let data = @fs.read_file(path).binary()
 
     let lexer = @lib.Lexer::Lexer(
-      @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+      @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
       data.to_array(),
       true,
       @lib.MIN_BUFFER_SIZE,
@@ -104,7 +104,7 @@ async test "single quad from file" {
     let data = @fs.read_file(path).binary()
 
     let lexer = @lib.Lexer::Lexer(
-      @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::NTriples, false, []),
+      @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
       data.to_array(),
       true,
       @lib.MIN_BUFFER_SIZE,
@@ -260,7 +260,7 @@ async test "single quad from file" {
 //     let data = @fs.read_file(path).binary().to_array()
 
 //     let lexer = @lib.Lexer::Lexer(
-//       @lib.RdfLexer::RdfLexer(@lib.RdfLexerMode::Turtle, false),
+//       @lib.RdfLexer::RdfLexer(@lib.RdfMode::Turtle, false),
 //       data,
 //       true,
 //       @lib.MIN_BUFFER_SIZE,
