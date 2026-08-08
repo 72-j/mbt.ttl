@@ -177,11 +177,13 @@ pub fn[RL : TokenRecognizer] LowLevelNQuadsParser::parse_next(
 }
 
 ///|
-pub struct NQuadsSerializer {} derive(Default)
+pub struct NQuadsSerializer {
+  data : ArrayView[Byte]
+}
 
 ///|
-pub fn NQuadsSerializer::new() -> NQuadsSerializer {
-  NQuadsSerializer::default()
+pub fn NQuadsSerializer::new(data : ArrayView[Byte]) -> NQuadsSerializer {
+  NQuadsSerializer::{ data, }
 }
 
 ///|

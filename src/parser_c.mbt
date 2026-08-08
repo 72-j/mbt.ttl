@@ -9,7 +9,14 @@ pub struct ParseError {
 /// 从 token 创建错误
 pub fn ParseError::from_token(message : String, token : Token) -> ParseError {
   let span = match token {
-    Iri(s) | Literal(s) | Dot(s) | Unknown(s) | Comma(s) | Semicolon(s) => s
+    Iri(s)
+    | Literal(s)
+    | BlankNode(s)
+    | PrefName(s)
+    | Dot(s)
+    | Unknown(s)
+    | Comma(s)
+    | Semicolon(s) => s
     EOF(int) => (0, int)
   }
   { message, span }
@@ -34,6 +41,7 @@ pub struct PendingQuad {
   mut pred : Span?
   mut obj : Span?
   mut graph : Span? // 图名（可选）
+  // mut term_type : TermType?
   mut has_dot : Bool
   mut state : PendingState
   mut line : Int
@@ -56,6 +64,7 @@ pub fn PendingQuad::default() -> PendingQuad {
     pred: None,
     obj: None,
     graph: None,
+    // term_type: None,
     has_dot: false,
     state: ExpectSubject,
     line: 0,
@@ -169,11 +178,19 @@ pub impl ParserEngine for NQuadsEngine with fn step(
     // =====================
     // 期望主语
     // =====================
-    (ExpectSubject, Iri(span)) => {
+    (ExpectSubject, Iri(span) | BlankNode(span)) => {
       pending.subj = Some(span)
       pending.state = ExpectPredicate
+      //  pending.term_type = Some(TermType::Iri)
       Continue
     }
+    (ExpectSubject, PrefName(_)) =>
+      // N-Quads 不支持前缀名作为主语
+      Error(
+        ParseError::from_token(
+          "N-Quads does not support prefixed names.", token,
+        ),
+      )
     (ExpectSubject, Unknown(_)) => Continue
 
     // =====================
@@ -182,19 +199,30 @@ pub impl ParserEngine for NQuadsEngine with fn step(
     (ExpectPredicate, Iri(span)) => {
       pending.pred = Some(span)
       pending.state = ExpectObject
+      //  pending.term_type = Some(TermType::Iri)
+
       Continue
     }
+    (ExpectPredicate, PrefName(_)) =>
+      Error(ParseError::from_token("Predicate must be an IRI", token))
     (ExpectPredicate, token) =>
       Error(ParseError::from_token("Expected predicate (IRI)", token))
 
     // =====================
     // 期望宾语
     // =====================
-    (ExpectObject, Iri(span) | Literal(span) | Unknown(span)) => {
+    (ExpectObject, Iri(span) | Literal(span) | BlankNode(span)) => {
       pending.obj = Some(span)
       pending.state = ExpectDotOrGraph
       Continue
     }
+    (ExpectObject, PrefName(_)) =>
+      // N-Quads 中前缀名当作 IRI
+      Error(
+        ParseError::from_token(
+          "N-Quads does not support prefixed names.", token,
+        ),
+      )
     (ExpectObject, token) =>
       Error(ParseError::from_token("Expected object (IRI or Literal)", token))
 
@@ -213,6 +241,9 @@ pub impl ParserEngine for NQuadsEngine with fn step(
       pending.state = ExpectDot
       Continue
     }
+    (ExpectDotOrGraph, PrefName(_)) =>
+      // 图名必须是完整 IRI
+      Error(ParseError::from_token("Graph must be an IRI", token))
     (ExpectDotOrGraph, Unknown(_)) => {
       // . 可选
       pending.has_dot = true
@@ -284,6 +315,7 @@ pub fn NQuadsEngine::from_bytes(data : FixedArray[Byte]) -> NQuadsEngine {
       pred: None,
       obj: None,
       graph: None,
+      // term_type: None,
       has_dot: false,
       state: PendingState::ExpectSubject,
       line: 0,
@@ -307,6 +339,7 @@ pub fn NQuadsEngine::new() -> NQuadsEngine {
       pred: None,
       obj: None,
       graph: None,
+      // term_type: None,
       has_dot: false,
       state: PendingState::ExpectSubject,
       line: 1,

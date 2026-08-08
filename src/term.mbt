@@ -440,7 +440,7 @@ pub struct Quad {
 } derive(Debug, Hash, Eq, ToJson)
 
 ///|
-impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
+pub impl Show for Quad with fn output(self : Quad, logger : &Logger) -> Unit {
   // logger.write(@debug.to_string(self))
   logger.write("Quad")
   logger.write(" {")

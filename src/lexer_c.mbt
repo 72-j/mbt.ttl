@@ -17,7 +17,8 @@ pub(all) enum Token {
 
   // 字符串
   Literal(Span) // "..."
-
+  BlankNode(Span) // 新增
+  PrefName(Span) // 字母或:开头（可能是前缀名）
   // 容错
   Unknown(Span) // 其他字符
 
@@ -47,6 +48,14 @@ pub impl Show for Token with fn output(self : Token, logger : &Logger) -> Unit {
     Token::Literal(span) => {
       let (offset, length) = span
       logger.write_string("Literal(\{offset},\{length})")
+    }
+    Token::BlankNode(span) => {
+      let (offset, length) = span
+      logger.write_string("BlankNode(\{offset},\{length})")
+    }
+    Token::PrefName(span) => {
+      let (offset, length) = span
+      logger.write_string("PrefName(\{offset},\{length})")
     }
     Token::Unknown(span) => {
       let (offset, length) = span
@@ -208,8 +217,10 @@ pub fn Lexerc::next(self : Lexerc) -> Token? {
     2 => Some(Token::Comma(span))
     3 => Some(Token::Iri(span))
     4 => Some(Token::Literal(span))
-    5 => Some(Token::Unknown(span))
-    6 => Some(Token::EOF(global_offset))
+    5 => Some(Token::BlankNode(span)) // 新增
+    6 => Some(Token::PrefName(span))
+    7 => Some(Token::Unknown(span))
+    8 => Some(Token::EOF(global_offset))
     _ => Some(Token::Unknown(span))
   }
 }

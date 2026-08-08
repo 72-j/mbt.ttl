@@ -17,8 +17,10 @@ typedef enum {
   TOKEN_COMMA = 2,
   TOKEN_IRI = 3,
   TOKEN_LITERAL = 4,
-  TOKEN_UNKNOWN = 5,
-  TOKEN_EOF = 6
+  TOKEN_BLANK_NODE = 5,
+  TOKEN_PREF_NAME = 6,
+  TOKEN_UNKNOWN = 7,
+  TOKEN_EOF = 8
 } TokenType;
 
 // Lexer 结构
@@ -155,29 +157,37 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
     }
 
     // 3. 普通字符串
-  if (c == '"' || c == '\'') {
-    uint8_t quote = c;
-    l->pos++;
-    while (l->pos < l->len && l->data[l->pos] != quote) {
-      if (l->data[l->pos] == '\\' && l->pos + 1 < l->len) {
-        l->pos += 2;
-      } else {
+    if (c == '"' || c == '\'') {
+      uint8_t quote = c;
+      l->pos++;
+      while (l->pos < l->len && l->data[l->pos] != quote) {
+        if (l->data[l->pos] == '\\' && l->pos + 1 < l->len) {
+          l->pos += 2;
+        } else {
+          l->pos++;
+        }
+      }
+      if (l->pos < l->len)
+        l->pos++; // 跳过结尾引号
+      // 继续扫描 ^^ 或 @ 直到空白符或分隔符
+      while (l->pos < l->len && !is_whitespace(l->data[l->pos]) &&
+             l->data[l->pos] != '.' && l->data[l->pos] != ';' &&
+             l->data[l->pos] != ',') {
         l->pos++;
       }
+      write_token(token_buf, TOKEN_LITERAL, start, l->pos - start);
+      return true;
     }
-    if (l->pos < l->len)
-      l->pos++; // 跳过结尾引号
-    // 继续扫描 ^^ 或 @ 直到空白符或分隔符
-    while (l->pos < l->len && !is_whitespace(l->data[l->pos]) &&
-           l->data[l->pos] != '.' && l->data[l->pos] != ';' &&
-           l->data[l->pos] != ',') {
-      l->pos++;
+    // 4. Blank Node _:xxx
+    if (c == '_' && l->pos + 1 < l->len && l->data[l->pos + 1] == ':') {
+      l->pos += 2; // 跳过 _:
+      while (l->pos < l->len && is_name_char(l->data[l->pos])) {
+        l->pos++;
+      }
+      write_token(token_buf, TOKEN_BLANK_NODE, start, l->pos - start);
+      return true;
     }
-    write_token(token_buf, TOKEN_LITERAL, start, l->pos - start);
-    return true;
-  }
-
-    // 4. IRI
+    // 5. IRI
     if (c == '<') {
       if (l->pos + 1 < l->len && l->data[l->pos + 1] == '<') {
         write_token(token_buf, TOKEN_UNKNOWN, l->pos, 1);
@@ -193,19 +203,17 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
       return true;
     }
 
-    // 5. >>
+    // 6. >>
     if (c == '>') {
       write_token(token_buf, TOKEN_UNKNOWN, l->pos, 1);
       l->pos++;
       return true;
     }
 
-    // 6. 字母、冒号或下划线开头 -> UNKNOWN（无脑扫）
-    if (is_alpha(c) || c == ':' || c == '_') {
+    // 7. 字母、冒号或下划线开头 -> TOKEN_PREF_NAME（无脑扫）
+    if (is_alpha(c) || c == ':') {
       l->pos++;
       while (l->pos < l->len) {
-        // fprintf(stderr, "DEBUG: alpha token, start=%d, end=%d, length=%d\n",
-                // start, l->pos, l->pos - start);
         uint8_t ch = l->data[l->pos];
         if (is_separator(ch))
           break;
@@ -215,10 +223,11 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
           break;
         }
       }
-      write_token(token_buf, TOKEN_IRI, start, l->pos - start);
+      write_token(token_buf, TOKEN_PREF_NAME, start, l->pos - start);
       return true;
     }
-    // 7 数字开头 -> UNKNOWN（整型、浮点型、科学计数）
+
+    // 8 数字开头 -> UNKNOWN（整型、浮点型、科学计数）
     if (c >= '0' && c <= '9') {
       l->pos++;
       while (l->pos < l->len &&
@@ -250,7 +259,7 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
       return true;
     }
 
-    // 8. 结构标点
+    // 9. 结构标点
     if (c == '.') {
       write_token(token_buf, TOKEN_DOT, l->pos, 1);
       l->pos++;
@@ -267,15 +276,15 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
       return true;
     }
 
-    // 9. 其他字符 -> UNKNOWN
+    // 10. 其他字符 -> UNKNOWN
     write_token(token_buf, TOKEN_UNKNOWN, l->pos, 1);
     l->pos++;
     return true;
   }
 
-  // 10. EOF
+  // 11. EOF
   write_token(token_buf, TOKEN_EOF, l->len, 0);
-  return true;
+  return false;
 }
 
 // ============================================================
