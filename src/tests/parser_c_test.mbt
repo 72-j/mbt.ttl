@@ -100,21 +100,3 @@ test "nquads: empty input" {
     None => debug("EOF ok")
   }
 }
-
-// ///|
-// test "nquads: parse_all with errors" {
-//   let data =
-//     #|<http://ex.org/s1> <http://ex.org/p1> <http://ex.org/o1> .
-//     #|<http://ex.org/s2> <http://ex.org/p2> <http://ex.org/o2> <http://ex.org/g> .
-//     #|<http://ex.org/s3> <http://ex.org/p3> <http://ex.org/o3> .
-//   let data = @utf8.encode(data).to_fixedarray()
-//   // let engine = @lib.NQuadsEngine::new()
-//   let parser = @lib.NQuadsEngine::from_bytes(data)
-
-//   let (results, errors) = parser.parse_all()
-
-//   // 第二个 quad 有额外 token，应该被跳过，保留第一个和第三个
-//   assert_eq(results.length(), 2)
-//   debug("errors: \{errors.length()}")
-//   debug("parse_all with errors ok")
-// }

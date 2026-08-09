@@ -3,7 +3,7 @@
 // ============================================================
 
 ///|
-type Span = (Int, Int) // (offset, length)
+// type Span = (Int, Int) // (offset, length)
 
 ///|
 pub(all) enum Token {
@@ -88,22 +88,22 @@ type Void
 
 ///|
 /// 创建词法分析器
-#borrow(data)
+#owned(data)
 pub extern "C" fn lexer_create(data : FixedArray[Byte], len : Int) -> Ref[Void] = "lexer_create"
 
 ///|
 /// 销毁词法分析器
-#borrow(lexer)
+#owned(lexer)
 pub extern "C" fn lexer_destroy(lexer : Ref[Void]) -> Unit = "lexer_destroy"
 
 ///|
 /// 重置词法分析器
-#borrow(lexer)
+#owned(lexer)
 extern "C" fn lexer_reset(lexer : Ref[Void]) -> Unit = "lexer_reset"
 
 ///|
 /// 获取下一个 Token（写入 Bytes 缓冲区）
-#borrow(lexer, token_buf)
+#owned(lexer, token_buf)
 pub extern "C" fn lexer_next(
   lexer : Ref[Void],
   token_buf : FixedArray[Byte],
@@ -111,7 +111,7 @@ pub extern "C" fn lexer_next(
 
 ///|
 /// 批量获取 Token
-// #borrow(lexer, token_bufs)
+// #owned(lexer, token_bufs)
 // extern "C" fn lexer_next_batch(
 //   lexer : Ref[Void],
 //   token_bufs : FixedArray[Byte],
@@ -120,17 +120,17 @@ pub extern "C" fn lexer_next(
 
 ///|
 /// 获取当前位置
-#borrow(lexer)
+#owned(lexer)
 extern "C" fn lexer_pos(lexer : Ref[Void]) -> Int = "lexer_pos"
 
 ///|
 /// 获取剩余字节数
-#borrow(lexer)
+#owned(lexer)
 extern "C" fn lexer_remaining(lexer : Ref[Void]) -> Int = "lexer_remaining"
 
 ///|
 /// 检查是否到达末尾
-#borrow(lexer)
+#owned(lexer)
 extern "C" fn lexer_is_end(lexer : Ref[Void]) -> Bool = "lexer_is_end"
 
 // ============================================================
@@ -179,7 +179,7 @@ pub(all) struct Lexerc {
 /// 创建词法分析器
 pub fn Lexerc::new(data : FixedArray[Byte]) -> Lexerc {
   let ptr = lexer_create(data, data.length())
-  Lexerc::{ ptr, data, offset: 0, token_buf: FixedArray::make(12, 0) }
+  Lexerc::{ ptr, data, offset: 0, token_buf: FixedArray::make(12, b'0') }
 }
 
 ///|
@@ -202,6 +202,9 @@ pub fn Lexerc::reset(self : Lexerc) -> Unit {
 ///|
 /// 获取下一个 Token
 pub fn Lexerc::next(self : Lexerc) -> Token? {
+  for i = 0; i < 12; i = i + 1 {
+    self.token_buf[i] = 0
+  }
   let ok = lexer_next(self.ptr, self.token_buf)
   if !ok {
     return None

@@ -291,11 +291,6 @@ pub impl ParserEngine for NQuadsEngine with fn recognize_end(
 }
 
 ///|
-pub impl ParserEngine for NQuadsEngine with fn lexer_options() -> RdfMode {
-  RdfMode::NQuads
-}
-
-///|
 /// NQuadsEngine - 直接对接 Lexerc，管理 PendingQuad 组装和错误收集
 pub(all) struct NQuadsEngine {
   lexer : Lexerc

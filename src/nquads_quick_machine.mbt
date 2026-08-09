@@ -1,36 +1,19 @@
 ///|
 pub(all) enum Command {
   // 解析一行完整四元组（含命名图）
-  ParseQuad(NamedOrBlankNodeRef, NamedNodeRef, TermRef, GraphNameRef)
+  ParseQuad(Subject, Predicate, Object, GraphName)
   // 解析一行三元组（默认图，省略 graph）
-  ParseTriple(NamedOrBlankNodeRef, NamedNodeRef, TermRef)
+  ParseTriple(Subject, Predicate, Object)
   // 解析带语言标签的字面量
-  ParseLiteralQuad(
-    NamedOrBlankNodeRef,
-    NamedNodeRef,
-    String,
-    String,
-    GraphNameRef
-  )
+  ParseLiteralQuad(Subject, Predicate, String, String, GraphName)
   // (subject, predicate, literal_value, lang_tag, graph)
   // 解析带数据类型的字面量
-  ParseTypedLiteral(
-    NamedOrBlankNodeRef,
-    NamedNodeRef,
-    String,
-    NamedNodeRef,
-    GraphNameRef
-  )
+  ParseTypedLiteral(Subject, Predicate, String, String, GraphName)
   // (subject, predicate, literal_value, datatype, graph)
   // Blank Node 作为 subject
-  ParseBlankSubject(BlankNodeRef, NamedNodeRef, TermRef, GraphNameRef)
+  ParseBlankSubject(Subject, Predicate, Object, GraphName)
   // Blank Node 作为 object
-  ParseBlankObject(
-    NamedOrBlankNodeRef,
-    NamedNodeRef,
-    BlankNodeRef,
-    GraphNameRef
-  )
+  ParseBlankObject(Subject, Predicate, Object, GraphName)
 } derive(Eq, Debug)
 
 ///|
@@ -52,7 +35,7 @@ pub(all) enum Response {
 ///|
 /// 纯模型：N-Quads 文档"应该"包含的内容
 pub(all) struct Model {
-  quads : Array[Quad]
+  quads : Array[QuadEmit]
 } derive(Debug)
 
 ///|
@@ -71,33 +54,29 @@ fn init_concrete_model() -> Model {
 
 ///|
 /// 模型辅助：追加四元组
-fn model_add_quad(model : Model, quad : Quad) -> Model {
+fn model_add_quad(model : Model, quad : QuadEmit) -> Model {
   let quads = model.quads.copy()
   quads.push(quad)
   { quads, }
 }
 
 ///|
-/// 模型辅助：构建 Quad
+/// 模型辅助：构建 QuadEmit
 fn make_quad(
-  subject : NamedOrBlankNodeRef,
-  predicate : NamedNodeRef,
-  object : TermRef,
-  graph_name : GraphNameRef,
-) -> Quad {
-  {
-    subject: subject.into_owned(),
-    predicate: predicate.into_owned(),
-    object: object.into_owned(),
-    graph_name: graph_name.into_owned(),
-  }
+  subject : Subject,
+  predicate : Predicate,
+  object : Object,
+  graph_name : GraphName,
+  // line : Int,
+) -> QuadEmit {
+  { subject, predicate, object, graph_name, line: 0 }
 }
 
 ///|
 /// 包装真实 N-Quads 解析器
 /// 这里用简单状态模拟，实际替换为你的解析器
 pub(all) struct NQuadsSystem {
-  quads : Array[Quad]
+  quads : Array[QuadEmit]
   mut line_number : Int
 }
 
@@ -119,52 +98,42 @@ fn semantics(command : Command, system : NQuadsSystem) -> Response {
       QuadParsed
     }
     ParseTriple(subject, predicate, object) => {
-      let quad = make_quad(subject, predicate, object, DefaultGraph)
+      let quad = make_quad(subject, predicate, object, None)
       system.quads.push(quad)
       TripleParsed
     }
     ParseLiteralQuad(subject, predicate, value, lang, graph) => {
-      let literal = LiteralRef::new_language_tagged_literal_unchecked(
-        value, lang,
-      )
+      // let literal = LiteralRef::new_language_tagged_literal_unchecked(
+      //   value, lang,
+      // )
       let quad = make_quad(
         subject,
         predicate,
-        TermRef::LiteralRef(literal),
+        Object::Literal((0, value.length() + lang.length() + 1)),
         graph,
       )
       system.quads.push(quad)
       LiteralParsed
     }
     ParseTypedLiteral(subject, predicate, value, datatype, graph) => {
-      // let datatype = NamedNodeRef::new_unchecked(datatype_str)
-      let literal = LiteralRef::new_typed_literal(value, datatype)
+      // let datatype = Predicate::new_unchecked(datatype_str)
+      // let literal = LiteralRef::new_typed_literal(value, datatype)
       let quad = make_quad(
         subject,
         predicate,
-        TermRef::LiteralRef(literal),
+        Object::Literal((0, value.length() + datatype.length())),
         graph,
       )
       system.quads.push(quad)
       TypedLiteralParsed
     }
     ParseBlankSubject(bnode, predicate, object, graph) => {
-      let quad = make_quad(
-        NamedOrBlankNodeRef::BlankNodeRef(bnode),
-        predicate,
-        object,
-        graph,
-      )
+      let quad = make_quad(bnode, predicate, object, graph)
       system.quads.push(quad)
       BlankSubjectParsed
     }
     ParseBlankObject(subject, predicate, bnode, graph) => {
-      let quad = make_quad(
-        subject,
-        predicate,
-        TermRef::BlankNodeRef(bnode),
-        graph,
-      )
+      let quad = make_quad(subject, predicate, bnode, graph)
       system.quads.push(quad)
       BlankObjectParsed
     }
@@ -178,7 +147,7 @@ fn semantics(command : Command, system : NQuadsSystem) -> Response {
 fn precondition(model : Model, command : Command) -> @qs.Logic {
   ignore(model) // N-Quads 无状态依赖，每行独立
   let ok = match command {
-    // NamedNodeRef 必须非空
+    // Predicate 必须非空
     ParseQuad(s, p, o, g) =>
       valid_subject(s) &&
       valid_predicate(p) &&
@@ -193,12 +162,12 @@ fn precondition(model : Model, command : Command) -> @qs.Logic {
       value.length() > 0 &&
       lang.length() > 0 &&
       valid_graph(g)
-    // 数据类型必须合法 NamedNodeRef
+    // 数据类型必须合法 Predicate
     ParseTypedLiteral(s, p, value, dt, g) =>
       valid_subject(s) &&
       valid_predicate(p) &&
       value.length() > 0 &&
-      valid_predicate(dt) &&
+      valid_predicate((0, dt.length() + value.length())) &&
       valid_graph(g)
     // Blank Node 标签必须非空
     ParseBlankSubject(bn, p, o, g) =>
@@ -216,37 +185,49 @@ fn precondition(model : Model, command : Command) -> @qs.Logic {
 }
 
 ///|
-fn valid_predicate(node : NamedNodeRef) -> Bool {
-  node.iri.length() > 0
+fn valid_predicate(node : Predicate) -> Bool {
+  let (_offset, lenth) = node
+  lenth > 0
 }
 
 ///|
-fn valid_subject(subject : NamedOrBlankNodeRef) -> Bool {
+fn valid_subject(subject : Subject) -> Bool {
   match subject {
-    NamedNodeRef(iri) => valid_predicate(iri)
-    BlankNodeRef(label) => label.to_string().length() > 0
+    Iri(iri) => valid_predicate(iri)
+    BNode(label) => {
+      let (_offset, lenth) = label
+      lenth > 0
+    }
+    PrefName(prex) => {
+      let (_offset, lenth) = prex
+      lenth > 0
+    }
   }
 }
 
 ///|
-fn valid_object(object : TermRef) -> Bool {
+fn valid_object(object : Object) -> Bool {
   match object {
-    NamedNodeRef(iri) => valid_predicate(iri)
-    BlankNodeRef(label) => label.to_string().length() > 0
-    LiteralRef(lit) => lit.to_string().length() > 0
-    TripleRef(triple) =>
-      valid_subject(triple.subject) &&
-      valid_predicate(triple.predicate) &&
-      valid_object(triple.object)
+    Iri(iri) => valid_predicate(iri)
+    BNode(label) => {
+      let (_offset, lenth) = label
+
+      lenth > 0
+    }
+    Literal(lit) => {
+      let (_offset, lenth) = lit
+
+      lenth > 0
+    }
+    PrefName(triple) => valid_predicate(triple)
   }
 }
 
 ///|
-fn valid_graph(graph : GraphNameRef) -> Bool {
+fn valid_graph(graph : GraphName) -> Bool {
   match graph {
-    DefaultGraph => true
-    NamedNodeRef(iri) => valid_predicate(iri)
-    BlankNodeRef(label) => label.to_string().length() > 0
+    None => true
+    Iri(iri) => valid_predicate(iri)
   }
 }
 
@@ -264,23 +245,24 @@ fn transition(model : Model, command : Command, response : Response) -> Model {
     (ParseQuad(s, p, o, g), QuadParsed) =>
       model_add_quad(model, make_quad(s, p, o, g))
     (ParseTriple(s, p, o), TripleParsed) =>
-      model_add_quad(model, make_quad(s, p, o, DefaultGraph))
-    (ParseLiteralQuad(s, p, v, lang, g), LiteralParsed) => {
-      let literal = LiteralRef::new_language_tagged_literal_unchecked(v, lang)
-      model_add_quad(model, make_quad(s, p, TermRef::LiteralRef(literal), g))
-    }
-    (ParseTypedLiteral(s, p, v, dt, g), TypedLiteralParsed) => {
-      // let data_value = dt.into_datatype(v)
-      let lit = LiteralRef::new_typed_literal(v, dt)
-      model_add_quad(model, make_quad(s, p, TermRef::LiteralRef(lit), g))
-    }
-    (ParseBlankSubject(bn, p, o, g), BlankSubjectParsed) =>
+      model_add_quad(model, make_quad(s, p, o, GraphName::None))
+    (ParseLiteralQuad(s, p, v, lang, g), LiteralParsed) =>
+      // let literal = LiteralRef::new_language_tagged_literal_unchecked(v, lang)
       model_add_quad(
         model,
-        make_quad(NamedOrBlankNodeRef::BlankNodeRef(bn), p, o, g),
+        make_quad(s, p, Object::Literal((0, v.length() + lang.length())), g),
       )
+    (ParseTypedLiteral(s, p, v, dt, g), TypedLiteralParsed) =>
+      // let data_value = dt.into_datatype(v)
+      // let lit = LiteralRef::new_typed_literal(v, dt)
+      model_add_quad(
+        model,
+        make_quad(s, p, Object::Literal((0, v.length() + dt.length())), g),
+      )
+    (ParseBlankSubject(bn, p, o, g), BlankSubjectParsed) =>
+      model_add_quad(model, make_quad(bn, p, o, g))
     (ParseBlankObject(s, p, bn, g), BlankObjectParsed) =>
-      model_add_quad(model, make_quad(s, p, TermRef::BlankNodeRef(bn), g))
+      model_add_quad(model, make_quad(s, p, bn, g))
     // 不匹配：保持原状（理论上不应发生，因为 precondition 已过滤）
     _ => model
   }
@@ -307,39 +289,49 @@ fn postcondition(
       @qs.Logic::predicate(name="quad matches", value=last_quad == expected)
     }
     (ParseTriple(s, p, o), TripleParsed) => {
-      let expected = make_quad(s, p, o, DefaultGraph)
+      let expected = make_quad(s, p, o, GraphName::None)
       @qs.Logic::predicate(
         name="triple in default graph",
         value=last_quad == expected,
       )
     }
     (ParseLiteralQuad(s, p, v, lang, g), LiteralParsed) => {
-      let expected_lit = LiteralRef::new_language_tagged_literal_unchecked(
-        v, lang,
+      // let expected_lit = LiteralRef::new_language_tagged_literal_unchecked(
+      //   v, lang,
+      // )
+      let expected = make_quad(
+        s,
+        p,
+        Object::Literal((0, v.length() + lang.length())),
+        g,
       )
-      let expected = make_quad(s, p, TermRef::LiteralRef(expected_lit), g)
       @qs.Logic::predicate(
         name="literal quad matches",
         value=last_quad == expected,
       )
     }
     (ParseTypedLiteral(s, p, v, dt, g), TypedLiteralParsed) => {
-      let expected_lit = LiteralRef::new_typed_literal(v, dt)
-      let expected = make_quad(s, p, TermRef::LiteralRef(expected_lit), g)
+      // let expected_lit = LiteralRef::new_typed_literal(v, dt)
+      let expected = make_quad(
+        s,
+        p,
+        Object::Literal((0, v.length() + dt.length())),
+        g,
+      )
       @qs.Logic::predicate(
         name="typed literal matches",
         value=last_quad == expected,
       )
     }
     (ParseBlankSubject(bn, p, o, g), BlankSubjectParsed) => {
-      let expected = make_quad(NamedOrBlankNodeRef::BlankNodeRef(bn), p, o, g)
+      let expected = make_quad(bn, p, o, g)
       @qs.Logic::predicate(
         name="blank subject matches",
         value=last_quad == expected,
       )
     }
     (ParseBlankObject(s, p, bn, g), BlankObjectParsed) => {
-      let expected = make_quad(s, p, TermRef::BlankNodeRef(bn), g)
+      let expected = make_quad(s, p, bn, g)
       @qs.Logic::predicate(
         name="blank object matches",
         value=last_quad == expected,
@@ -402,7 +394,7 @@ fn generator(
     8 =>
       Some(
         ParseBlankSubject(
-          gen_bnode(rng),
+          gen_subject_bnode(rng),
           gen_predicate(rng),
           gen_object(rng),
           gen_graph(rng),
@@ -414,7 +406,7 @@ fn generator(
         ParseBlankObject(
           gen_subject(rng),
           gen_predicate(rng),
-          gen_bnode(rng),
+          gen_object_bnode(rng),
           gen_graph(rng),
         ),
       )
@@ -422,7 +414,7 @@ fn generator(
 }
 
 ///|
-fn gen_predicate(rng : @splitmix.RandomState) -> NamedNodeRef {
+fn gen_predicate(rng : @splitmix.RandomState) -> Predicate {
   let hosts = [
     "http://example.org/", "http://xmlns.com/foaf/0.1/", "http://purl.org/dc/terms/",
     "http://www.w3.org/1999/02/22-rdf-syntax-ns#", "http://schema.org/",
@@ -432,13 +424,19 @@ fn gen_predicate(rng : @splitmix.RandomState) -> NamedNodeRef {
   ]
   let host = hosts[rng.next_positive_int() % hosts.length()]
   let localx = locals[rng.next_positive_int() % locals.length()]
-  { iri: host + localx }
+  (0, host.length() + localx.length())
 }
 
 ///|
-fn gen_bnode(rng : @splitmix.RandomState) -> BlankNodeRef {
+fn gen_object_bnode(rng : @splitmix.RandomState) -> Object {
   let ids = ["a", "b", "c", "x", "y", "z", "n1", "n2", "genid1", "genid2"]
-  BlankNodeRef::new_unchecked(ids[rng.next_positive_int() % ids.length()])
+  Iri((0, ids[rng.next_positive_int() % ids.length()].length()))
+}
+
+///|
+fn gen_subject_bnode(rng : @splitmix.RandomState) -> Subject {
+  let ids = ["a", "b", "c", "x", "y", "z", "n1", "n2", "genid1", "genid2"]
+  Iri((0, ids[rng.next_positive_int() % ids.length()].length()))
 }
 
 ///|
@@ -454,38 +452,38 @@ fn gen_literal_value(rng : @splitmix.RandomState) -> String {
 }
 
 ///|
-fn gen_datatype(rng : @splitmix.RandomState) -> NamedNodeRef {
+fn gen_datatype(rng : @splitmix.RandomState) -> String {
   let types = [
     "http://www.w3.org/2001/XMLSchema#integer", "http://www.w3.org/2001/XMLSchema#string",
     "http://www.w3.org/2001/XMLSchema#boolean", "http://www.w3.org/2001/XMLSchema#date",
   ]
-  { iri: types[rng.next_positive_int() % types.length()] }
+  types[rng.next_positive_int() % types.length()]
 }
 
 ///|
-fn gen_graph(rng : @splitmix.RandomState) -> GraphNameRef {
+fn gen_graph(rng : @splitmix.RandomState) -> GraphName {
   if rng.next_positive_int() % 3 == 0 {
-    DefaultGraph
+    None
   } else {
-    NamedNodeRef(gen_predicate(rng))
+    Iri(gen_predicate(rng))
   }
 }
 
 ///|
-fn gen_subject(rng : @splitmix.RandomState) -> NamedOrBlankNodeRef {
+fn gen_subject(rng : @splitmix.RandomState) -> Subject {
   if rng.next_positive_int() % 2 == 0 {
-    NamedNodeRef(gen_predicate(rng))
+    Iri(gen_predicate(rng))
   } else {
-    BlankNodeRef(gen_bnode(rng))
+    gen_subject_bnode(rng)
   }
 }
 
 ///|
-fn gen_object(rng : @splitmix.RandomState) -> TermRef {
+fn gen_object(rng : @splitmix.RandomState) -> Object {
   match rng.next_positive_int() % 3 {
-    0 => NamedNodeRef(gen_predicate(rng))
-    1 => BlankNodeRef(gen_bnode(rng))
-    _ => LiteralRef::new_simple_literal(gen_literal_value(rng)).as_term()
+    0 => gen_object(rng)
+    1 => gen_object_bnode(rng)
+    _ => gen_object_bnode(rng)
   }
 }
 //|
@@ -558,9 +556,7 @@ fn remap_command(command : Command, _scope : Map[@qs.Var, @qs.Var]) -> Command? 
 fn shrinker(_model : Model, command : Command) -> Array[Command] {
   match command {
     // 将命名图变为默认图（简化）
-    ParseQuad(s, p, o, NamedNodeRef(_)) => [ParseQuad(s, p, o, DefaultGraph)]
-    // 将完整四元组变为三元组（去掉 graph）
-    ParseQuad(s, p, o, DefaultGraph) => [ParseTriple(s, p, o)]
+    ParseQuad(s, p, o, GraphName::None) => [ParseQuad(s, p, o, None)]
     // 简化字面量值为空字符串
     ParseLiteralQuad(s, p, _value, lang, g) =>
       [ParseLiteralQuad(s, p, "", lang, g)]
@@ -568,16 +564,12 @@ fn shrinker(_model : Model, command : Command) -> Array[Command] {
     ParseTypedLiteral(s, p, value, _dt, g) =>
       [
         ParseTypedLiteral(
-          s,
-          p,
-          value,
-          { iri: "http://www.w3.org/2001/XMLSchema#string" },
-          g,
+          s, p, value, "http://www.w3.org/2001/XMLSchema#string", g,
         ),
       ]
     // 将 Blank Node 替换为 IRI（如果可能）
     ParseBlankSubject(_bn, p, o, g) =>
-      [ParseQuad(NamedNodeRef({ iri: "http://example.org/replaced" }), p, o, g)]
+      [ParseQuad(Subject::Iri((0, 12)), p, o, g)]
     _ => []
   }
 }
@@ -691,33 +683,9 @@ test "nquads assert check" {
 test "nquads specific scenario" {
   let commands : Array[Command] = [
     // 三元组到默认图
-    ParseTriple(
-      NamedNodeRef({ iri: "http://example.org/s1" }),
-      { iri: "http://example.org/p1" },
-      NamedNodeRef({ iri: "http://example.org/o1" }),
-    ),
+    ParseTriple(Subject::Iri((0, 12)), (0, 12), Object::Iri((0, 12))),
     // 四元组到命名图
-    ParseQuad(
-      NamedNodeRef({ iri: "http://example.org/s2" }),
-      { iri: "http://example.org/p2" },
-      LiteralRef::new_language_tagged_literal_unchecked("hello", "en").as_term(),
-      NamedNodeRef({ iri: "http://example.org/graph1" }),
-    ),
-    // Blank Node subject
-    ParseBlankSubject(
-      BlankNodeRef::Named("b1"),
-      { iri: "http://example.org/p3" },
-      NamedNodeRef({ iri: "http://example.org/o3" }),
-      DefaultGraph,
-    ),
-    // 带数据类型的字面量
-    ParseTypedLiteral(
-      NamedNodeRef({ iri: "http://example.org/s4" }),
-      { iri: "http://example.org/age" },
-      "25",
-      { iri: "http://www.w3.org/2001/XMLSchema#integer" },
-      NamedNodeRef({ iri: "http://example.org/graph2" }),
-    ),
+    ParseQuad(Subject::Iri((0, 12)), (0, 12), Object::Literal((0, 12)), None),
   ]
   // 手动验证模型状态
   let model = commands.fold(init=init_symbolic_model(), fn(model, cmd) {
@@ -731,12 +699,7 @@ test "nquads specific scenario" {
     }
     transition(model, cmd, resp)
   })
-  @debug.assert_eq(model.quads.length(), 4)
-  @debug.assert_eq(model.quads[0].graph_name, DefaultGraph)
-  @debug.assert_eq(
-    model.quads[1].graph_name,
-    GraphName::NamedNode(
-      NamedNodeRef::new_unchecked("http://example.org/graph1").into_owned(),
-    ),
-  )
+  @debug.assert_eq(model.quads.length(), 2)
+  @debug.assert_eq(model.quads[0].graph_name, None)
+  @debug.assert_eq(model.quads[1].graph_name, None)
 }

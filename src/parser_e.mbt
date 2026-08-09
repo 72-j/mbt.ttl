@@ -76,7 +76,7 @@ pub trait ParserEngine {
   fn recognize_end(Self, pending : PendingQuad, results : Array[Span]) -> Unit
 
   ///| 获取引擎特定的 LexerOptions（可选）
-  fn lexer_options() -> RdfMode
+  // fn lexer_options() -> RdfMode
 }
 
 ///|

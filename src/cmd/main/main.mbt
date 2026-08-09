@@ -52,7 +52,7 @@ async fn cmd_parser() -> Unit {
 
       match (file_path, input) {
         (Some(path), _) => parse_file(path, verbose)
-        (None, Some(text)) => parse_content(text, verbose)
+        (None, Some(text)) => parse_content(@utf8.encode(text), verbose)
         (None, None) => {
           println("Error: Please provide input via -f <file> or <string>")
           println("Usage: moon run src/cmd/main -- -f <file>")
@@ -68,7 +68,7 @@ async fn cmd_parser() -> Unit {
 
 ///|
 async fn parse_file(path : String, verbose : Bool) -> Unit {
-  let content = @fs.read_file(path).text()
+  let content = @fs.read_file(path).binary()
   if verbose {
     println("Read file: \{path}")
     println("Content length: \{content.length()} bytes")
@@ -77,97 +77,52 @@ async fn parse_file(path : String, verbose : Bool) -> Unit {
 }
 
 ///|
-fn parse_content(content : String, verbose : Bool) -> Unit {
-  let data = @utf8.encode(content)
+fn parse_content(content : Bytes, verbose : Bool) -> Unit {
+  let data = content.to_fixedarray()
+  // Read file content as binary
+  // println("Data length: \{data.length()} bytes")
 
-  let lexer = @lib.Lexer::Lexer(
-    @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
-    data.to_array(),
-    true,
-    @lib.MIN_BUFFER_SIZE,
-    @lib.MAX_BUFFER_SIZE,
-    Some(b"#"),
-    0,
-    0,
-  )
+  // Create parser
+  let engine = @lib.NQuadsEngine::new()
+  let parser = @lib.ParserE::from_bytes(data, engine)
+  let slice = @lib.SliceParser::new(parser, data)
 
-  let machine = if verbose {
-    @lib.NQuadsRecognizer::{
-      current_state: @lib.NQuadsState::ExpectSubject,
-      stack: [@lib.NQuadsState::ExpectSubject],
-      emit_quad: false,
-      // finalize_literal: None,
-      // last_output: None,
-      temp_literal: None,
-      lenient: false,
-      debug_logger: @lib.make_console_logger(),
-      last_range: @lib.Range::default(),
-      errors: [],
-    }
-  } else {
-    @lib.NQuadsRecognizer::{
-      current_state: @lib.NQuadsState::ExpectSubject,
-      stack: [@lib.NQuadsState::ExpectSubject],
-      emit_quad: false,
-      // finalize_literal: None,
-      // last_output: None,
-      temp_literal: None,
-      lenient: false,
-      debug_logger: @lib.make_mute_logger(),
-      last_range: @lib.Range::default(),
-      errors: [],
-    }
-  }
-
-  let context = @lib.RdfContext::NQuadsRecognizerContext(@lib.NQuadsRecognizerContext::{
-    with_graph_name: false,
-    lexer_options: { base_iri: None },
-  })
-
-  let generic_machine = @lib.GenericStateMachine::GenericStateMachine(
-    machine, context,
-  )
-
-  let parser = @lib.Parser::{
-    lexer,
-    engine: generic_machine,
-    context,
-    errors: [],
-  }
-
-  let quads = []
-  let mut count = 0
-
-  for ;; {
-    if count >= 100 {
-      break
-    }
-    match parser.parse_next() {
-      Some(Ok(quad)) => {
-        count += 1
-        quads.push(quad)
-        if verbose {
-          println("[\{count}] \{quad}")
-        }
-      }
-      Some(Err(e)) => {
-        count += 1
-        println("[\{count}] Error: \{e}")
-        break
-      }
-      None =>
-        // if !verbose {
-        //   println("End of file")
-        // }
-        break
-    }
-  }
-
-  if !verbose {
-    for q in quads {
-      println("\{q}")
-    }
-  }
+  // Parse all quads
   println("")
-  println("Parsed \{quads.length()} quads")
+  println("=== Parsing N-Quads ===")
+
+  let (quad_spans, parse_errors) = slice.parse_all()
+
+  // Print parse errors
+  for err in parse_errors {
+    println("Parse Error: \{err}")
+  }
+
+  println("Parsed \{quad_spans.length()} quads")
+
+  // Materialize
+  println("")
+  println("=== Materializing ===")
+
+  let (quads, mat_errors) = @lib.materialize_all(quad_spans, data)
+
+  println("Materialized \{quads.length()} quads")
+  // Print materialize errors
+
+  for err in mat_errors {
+    println("Materialize Error: \{err}")
+  }
+  if !verbose {
+
+    // Serialize and print
+    println("")
+    println("=== Serialized Output ===")
+
+    let serializer = @lib.Serializer::new(data)
+    let output = serializer.serialize_all(quads)
+    println(output)
+  }
+
+  println("")
+  println("Serialized \{quads.length()} quads")
 }

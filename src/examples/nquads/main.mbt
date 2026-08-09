@@ -11,95 +11,62 @@ async fn main {
 
     // Sample N-Quads content
     let content =
-      #| <http://example.org/s1> <http://example.org/p1> <http://example.org/o1> .
-      #| <http://example.org/s2> <http://example.org/p2> <http://example.org/o2> .
-      #| <http://example.org/s3> <http://example.org/p3> <http://example.org/o3> .
+      #|<http://ex.org/s1> <http://ex.org/p1> <http://ex.org/o1> .
+      #|<http://ex.org/s2> <http://ex.org/p2> <http://ex.org/o2> .
+      #|<http://ex.org/s3> <http://ex.org/p3> <http://ex.org/o3> <http://ex.org/g3> .
 
     // Write content to file
     @fs.write_file(path, content, create_mode=CreateOrTruncate)
     println("Written N-Quads content to: \{path}")
 
     // Read file content as binary
-    let data = @fs.read_file(path).binary()
-
-    // Create lexer for N-Triples mode
-    let lexer = @lib.Lexer::Lexer(
-      @lib.RdfLexer::RdfLexer(@lib.RdfMode::NTriples, false, []),
-      data.to_array(),
-      true, // resize enabled
-      @lib.MIN_BUFFER_SIZE,
-      @lib.MAX_BUFFER_SIZE,
-      Some(b"#"), // comment character
-      0, // initial line
-      0, // initial column
-    )
-
-    // Create NQuads recognizer state machine
-    let logger = @lib.make_mute_logger()
-
-    let machine = @lib.NQuadsRecognizer::{
-      current_state: @lib.NQuadsState::ExpectSubject,
-      stack: [@lib.NQuadsState::ExpectSubject],
-      emit_quad: false,
-      temp_literal: None,
-      lenient: false,
-      debug_logger: logger,
-      last_range: @lib.Range::default(),
-      errors: [],
-    }
-
-    // Context configuration
-    let context = @lib.RdfContext::NQuadsRecognizerContext(@lib.NQuadsRecognizerContext::{
-      with_graph_name: false, // N-Quads without graph names
-      lexer_options: { base_iri: None },
-    })
-
-    // Wrap in generic state machine
-    let generic_machine = @lib.GenericStateMachine::GenericStateMachine(
-      machine,
-      context,
-      debug_logger=logger,
-    )
+    let data = @fs.read_file(path).binary().to_fixedarray()
+    println("Data length: \{data.length()} bytes")
 
     // Create parser
-    let parser = @lib.Parser::{
-      lexer,
-      engine: generic_machine,
-      context,
-      errors: [],
-    }
+    let engine = @lib.NQuadsEngine::new()
+    let parser = @lib.ParserE::from_bytes(data, engine)
+    let slice = @lib.SliceParser::new(parser, data)
 
-    parser.end()
     // Parse all quads
-    println("Parsing N-Quads file...")
-    let quads = []
-    let mut count = 0
+    println("")
+    println("=== Parsing N-Quads ===")
 
-    for ;; {
-      if count >= 100 {
-        break
-      } // Safety limit
-      match parser.parse_next() {
-        Some(Err(e)) => {
-          count += 1
-          println("[\{count}] Error: \{e}")
-          break
-        }
-        Some(Ok(quad)) => {
-          count += 1
-          println("[\{count}] \{quad}")
-          quads.push(quad)
-        }
-        None => {
-          println("End of file")
-          break
-        }
-      }
+    let (quad_spans, parse_errors) = slice.parse_all()
+
+    // Print parse errors
+    for err in parse_errors {
+      println("Parse Error: \{err}")
     }
 
-    // Print summary
+    println("Parsed \{quad_spans.length()} quads")
+
+    // Materialize
+    println("")
+    println("=== Materializing ===")
+
+    let (quads, mat_errors) = @lib.materialize_all(quad_spans, data)
+
+    // Print materialize errors
+    for err in mat_errors {
+      println("Materialize Error: \{err}")
+    }
+
+    println("Materialized \{quads.length()} quads")
+
+    // Serialize and print
+    println("")
+    println("=== Serialized Output ===")
+
+    let serializer = @lib.Serializer::new(data)
+    let output = serializer.serialize_all(quads)
+    println(output)
+
+    // Summary
     println("")
     println("=== Summary ===")
-    println("Total quads parsed: \{quads.length()}")
+    println("Total quads: \{quads.length()}")
+    println("Parse errors: \{parse_errors.length()}")
+    println("Materialize errors: \{mat_errors.length()}")
   }
 }

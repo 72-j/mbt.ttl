@@ -113,8 +113,9 @@ static void write_token(uint8_t *buf, int32_t type, int32_t offset,
 
 bool lexer_next(Lexer *l, uint8_t *token_buf) {
   // 清零（必要）
-  for (int i = 0; i < 12; i++)
-    token_buf[i] = 0;
+  // for (int i = 0; i < 12; i++)
+  //   token_buf[i] = 0;
+  memset(token_buf, 0, 12);
 
   // NULL 检查（生产环境可保留，安全）
   if (l == NULL || l->data == NULL || token_buf == NULL) {
@@ -195,10 +196,20 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
         return true;
       }
       l->pos++;
-      while (l->pos < l->len && l->data[l->pos] != '>')
+      // 找到 > 或 EOF
+      while (l->pos < l->len && l->data[l->pos] != '>') {
+        // 如果遇到空白符，说明 IRI 不完整
+        if (is_whitespace(l->data[l->pos])) {
+          break;
+        }
         l->pos++;
-      if (l->pos < l->len)
+      }
+
+      // 检查是否有结束 >
+      if (l->pos < l->len && l->data[l->pos] == '>') {
         l->pos++; // 跳过 '>'
+      }
+
       write_token(token_buf, TOKEN_IRI, start, l->pos - start);
       return true;
     }

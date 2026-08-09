@@ -3,6 +3,9 @@
 // ============================================================
 
 ///|
+pub type Span = (Int, Int)
+
+///|
 pub struct QuadSpan {
   subj : Span
   pred : Span
@@ -43,40 +46,6 @@ pub impl Show for QuadSpan with fn output(self : QuadSpan, logger : &Logger) -> 
 }
 
 ///|
-// 主语类型
-// pub(all) enum SubjType {
-//   Iri
-//   BNode
-//   Prefix
-// } derive(Debug)
-
-///|
-// pub impl Show for SubjType with fn output(self : SubjType, logger : &Logger) -> Unit {
-//   match self {
-//     Iri => logger.write("Iri")
-//     BNode => logger.write("BNode")
-//     Prefix => logger.write("Prefix")
-//   }
-// }
-// // 宾语类型
-
-// ///|
-// pub(all) enum ObjType {
-//   Iri
-//   BNode
-//   Prefix
-//   Literal
-// } derive(Debug)
-
-// ///|
-// pub impl Show for ObjType with fn output(self : ObjType, logger : &Logger) -> Unit {
-//   match self {
-//     Iri => logger.write("Iri")
-//     BNode => logger.write("BNode")
-//     Prefix => logger.write("Prefix")
-//     Literal => logger.write("Literal")
-//   }
-// }
 pub(all) enum TermType {
   Unknown
   Iri
@@ -130,18 +99,30 @@ pub fn[E] SliceParser::new(
 }
 
 ///|
+/// 链式调用设置宽松模式
+pub fn[E] SliceParser::lenient(self : SliceParser[E]) -> SliceParser[E] {
+  { ..self, lenient: true }
+}
+
+///|
 /// 实现 Iter trait
 pub fn[E : ParserEngine] SliceParser::next(
   self : SliceParser[E],
 ) -> Result[QuadSpan, ParseError]? {
-  match self.inner.next() {
+  let result = self.inner.next()
+  match result {
     None => None
-    Some(Err(err)) => Some(Err(err))
-    Some(Ok(pending)) =>
-      match self.validate(pending) {
-        Ok(quad) => Some(Ok(quad))
+    Some(Err(e)) => Some(Err(e))
+    Some(Ok(pending)) => {
+      let validated = self.validate(pending)
+      // 这里 validated 如果是 Err，应该返回 Some(Err(...))
+      // 如果是 Ok，应该返回 Some(Ok(...))
+      // 但不能返回 None
+      match validated {
+        Ok(q) => Some(Ok(q))
         Err(e) => Some(Err(e))
       }
+    }
   }
 }
 
@@ -154,26 +135,27 @@ pub fn[E : ParserEngine] SliceParser::parse_all(
   let errors = []
 
   for ;; {
-    match self.inner.next() {
-      Some(Ok(pending)) =>
-        match self.validate(pending) {
-          Ok(q) => quads.push(q)
-          Err(e) => errors.push(e)
-        }
+    match self.next() {
+      Some(Ok(q)) => quads.push(q)
       Some(Err(e)) => errors.push(e)
       None => break
     }
   }
+  // let (valid_quads, seq_errors) = validate_quad_span_sequential(quads)
+
+  // for e in seq_errors {
+  //   errors.push(e)
+  // }
 
   (quads, errors)
 }
 
 ///|
-/// 物化 Quad
+/// 物化 Quad（批量优化）
 pub fn materialize_quad(
   quad : QuadSpan,
   data : ArrayView[Byte],
-) -> Result[Quad, ParseError] {
+) -> Result[QuadEmit, ParseError] {
   let subject = match materialize_subject(quad.subj, quad.subj_type, data) {
     Ok(s) => s
     Err(e) => return Err(e)
@@ -191,15 +173,15 @@ pub fn materialize_quad(
     Err(e) => return Err(e)
   }
 
-  Ok({ subject, predicate, object, graph_name })
+  Ok({ subject, predicate, object, graph_name, line: quad.line })
 }
 
 ///|
-/// 批量物化
+/// 批量物化（优化：减少函数调用开销）
 pub fn materialize_all(
   quads : Array[QuadSpan],
   data : ArrayView[Byte],
-) -> (Array[Quad], Array[ParseError]) {
+) -> (Array[QuadEmit], Array[ParseError]) {
   let results = []
   let errors = []
 
@@ -219,44 +201,32 @@ fn materialize_subject(
   span : Span,
   t : TermType,
   data : ArrayView[Byte],
-) -> Result[NamedOrBlankNode, ParseError] {
+) -> Result[Subject, ParseError] {
+  let (offset, length) = span
+  let end = offset + length
+
+  // 边界检查
+  if offset < 0 || end > data.length() || offset >= end {
+    return Err(ParseError::from_span("Invalid span bounds", span))
+  }
   match t {
     TermType::Iri =>
       match validate_iri(data, span) {
-        Ok(_) =>
-          Ok(NamedOrBlankNode::NamedNode({ iri: extract_iri(span, data) }))
+        Ok(_) => Ok(Subject::Iri(span))
         Err(e) => Err(e)
       }
     TermType::BNode =>
       match validate_bnode(data, span) {
-        Ok(_) =>
-          Ok(
-            NamedOrBlankNode::BlankNode(
-              BlankNode::Named(extract_label(span, data)),
-            ),
-          )
+        Ok(_) => Ok(Subject::BNode(span))
         Err(e) => Err(e)
       }
     TermType::PrefName =>
-      // N-Quads 不支持前缀名
       Err(
-        ParseError::from_span("N-Quads does not support prefixed names.", span),
+        ParseError::from_span("N-Quads does not support prefixed names", span),
       )
     TermType::Literal =>
-      Err(ParseError::from_span("Subject cannot be a literal", span))
+      Err(ParseError::from_span("Subject cannot be literal", span))
     TermType::Unknown => Err(ParseError::from_span("Invalid subject", span))
-  }
-}
-
-///|
-/// 物化谓语（必须是 IRI）
-fn materialize_predicate(
-  span : Span,
-  data : ArrayView[Byte],
-) -> Result[NamedNode, ParseError] {
-  match validate_iri(data, span) {
-    Ok(_) => Ok({ iri: extract_iri(span, data) })
-    Err(e) => Err(e)
   }
 }
 
@@ -266,28 +236,57 @@ fn materialize_object(
   span : Span,
   t : TermType,
   data : ArrayView[Byte],
-) -> Result[Term, ParseError] {
+) -> Result[Object, ParseError] {
+  // 边界检查
+  let (offset, length) = span
+  let end = offset + length
+
+  // 边界检查
+  if offset < 0 || end > data.length() || offset >= end {
+    return Err(ParseError::from_span("Invalid span bounds", span))
+  }
   match t {
     TermType::Iri =>
       match validate_iri(data, span) {
-        Ok(_) => Ok(Term::NamedNode({ iri: extract_iri(span, data) }))
+        Ok(_) => Ok(Object::Iri(span))
         Err(e) => Err(e)
       }
     TermType::BNode =>
       match validate_bnode(data, span) {
-        Ok(_) =>
-          Ok(Term::BlankNode(BlankNode::Named(extract_label(span, data))))
+        Ok(_) => Ok(Object::BNode(span))
         Err(e) => Err(e)
       }
-    TermType::Literal => Ok(Term::Literal(parse_literal(span, data)))
+    TermType::Literal => Ok(Object::Literal(span))
     TermType::PrefName =>
-      // N-Quads 中前缀名当作字面量或错误（根据需求）
       Err(
         ParseError::from_span("N-Quads does not support prefixed names", span),
       )
-    TermType::Unknown =>
-      // 可能是不支持的字符，尝试当作 Literal
-      Err(ParseError::from_span("Invalid object", span))
+    TermType::Unknown => Err(ParseError::from_span("Invalid object", span))
+  }
+}
+
+///|
+/// 物化谓语（只能是 IRI）
+fn materialize_predicate(
+  span : Span,
+  data : ArrayView[Byte],
+) -> Result[Predicate, ParseError] {
+  let (offset, length) = span
+  let end = offset + length
+  // println("predicate span: offset=\{offset}, length=\{length}, end=\{end}")
+  // if offset >= 0 && end <= data.length() && offset < end {
+  //   let first_char = data[offset]
+  //   println(
+  //     "  first char: '\{first_char.to_char()}' (0x\{first_char.to_hex()})",
+  //   )
+  // }
+  // 边界检查
+  if offset < 0 || end > data.length() || offset >= end {
+    return Err(ParseError::from_span("Invalid span bounds", span))
+  }
+  match validate_iri(data, span) {
+    Ok(_) => Ok(span)
+    Err(e) => Err(e)
   }
 }
 
@@ -300,124 +299,36 @@ fn materialize_graph_name(
   match span {
     Some(g) =>
       match validate_iri(data, g) {
-        Ok(_) => Ok(GraphName::NamedNode({ iri: extract_iri(g, data) }))
+        Ok(_) => Ok(GraphName::Iri(g))
         Err(e) => Err(e)
       }
-    None => Ok(GraphName::DefaultGraph)
-  }
-}
-// ============================================================
-// 辅助提取函数
-// ============================================================
-
-///|
-/// 提取 IRI（去掉 <>）
-fn extract_iri(span : Span, data : ArrayView[Byte]) -> String {
-  let (offset, length) = span
-  let end = offset + length
-  if length > 2 && data[offset] == b'<' && data[end - 1] == b'>' {
-    bytes_to_string(data[offset + 1:end - 1])
-  } else {
-    bytes_to_string(data[offset:end])
+    None => Ok(GraphName::None)
   }
 }
 
-///|
-/// 提取 Blank Node 标签（去掉 _: 前缀）
-fn extract_label(span : Span, data : ArrayView[Byte]) -> String {
-  let (offset, length) = span
-  // _:b1 → b1
-  if length >= 2 && data[offset] == b'_' && data[offset + 1] == b':' {
-    bytes_to_string(data[offset + 2:offset + length])
-  } else {
-    bytes_to_string(data[offset:offset + length])
-  }
-}
-
-///|
-/// 字面量转 Term
-
-///|
-/// 解析字面量
-fn parse_literal(span : Span, data : ArrayView[Byte]) -> Literal {
-  let (offset, length) = span
-  let end = offset + length
-
-  // 找到引号范围
-  if length < 2 {
-    return Literal::new_simple_literal(bytes_to_string(data[offset:end]))
-  }
-
-  let quote = data[offset]
-  if quote != b'"' && quote != b'\'' {
-    return Literal::new_simple_literal(bytes_to_string(data[offset:end]))
-  }
-
-  // 从后往前找结束引号
-  let mut close_quote = end - 1
-  while close_quote > offset && data[close_quote] != quote {
-    close_quote -= 1
-  }
-
-  // 提取内容（去掉引号）
-  let content = data[offset + 1:close_quote]
-  let suffix = data[close_quote + 1:end]
-
-  // 检查是否有 @lang 或 ^^datatype
-  let suffix_str = bytes_to_string(suffix).trim()
-
-  if suffix_str.has_prefix("^^") {
-    // 数据类型：^^<datatype> 或 ^^prefix:local
-    let dt_str = suffix_str[2:]
-    if dt_str.has_prefix("<") && dt_str.has_suffix(">") {
-      // IRI 格式
-      let iri = dt_str[1:dt_str.length() - 1]
-      LiteralRef::new_typed_literal(
-        bytes_to_string(content),
-        NamedNodeRef::NamedNodeRef(iri),
-      ).into_owned()
-    } else {
-      // 前缀格式（简化处理，假设 xsd:）
-      LiteralRef::new_typed_literal(
-        bytes_to_string(content),
-        NamedNodeRef::NamedNodeRef(
-          "http://www.w3.org/2001/XMLSchema\\#" + dt_str.to_owned(),
-        ),
-      ).into_owned()
-    }
-  } else if suffix_str.has_prefix("@") {
-    // 语言标签
-    let lang = suffix_str[1:]
-    match
-      Literal::new_language_tagged_literal(
-        bytes_to_string(content),
-        lang.to_owned(),
-      ) {
-      Ok(lit) => lit
-      Err(_) => Literal::new_simple_literal(bytes_to_string(content))
-    }
-  } else {
-    // 简单字面量
-    Literal::new_simple_literal(bytes_to_string(content))
-  }
-}
-
-///|
-/// 字节数组转字符串
-fn bytes_to_string(bytes : ArrayView[Byte]) -> String {
-  let buf = StringBuilder::new()
-  for b in bytes {
-    buf.write_char(b.to_char())
-  }
-  buf.to_string()
-}
-
-// fn NQuadsSerializer::extract_iri(self : NQuadsSerializer, span : Span) -> String {
-//   extract_iri(span, self.data)
-// }
-
-///|
 /// 验证 PendingQuad
+// fn validate_quad_span_sequential(
+//   quads : Array[QuadSpan],
+// ) -> (Array[QuadSpan], Array[ParseError]) {
+//   let valid = []
+//   let errors = []
+//   let mut last_offset = -1
+
+//   for q in quads {
+//     // 检查 offset 是否递增
+//     if q.subj.0 <= last_offset {
+//       errors.push(ParseError::from_span(
+//         "Quad spans not sequential, possible lexer corruption",
+//         q.subj,
+//       ))
+//       continue
+//     }
+//     last_offset = q.subj.0 + q.subj.1
+//     valid.push(q)
+//   }
+
+//   (valid, errors)
+// }
 
 ///|
 fn[E] SliceParser::validate(
@@ -451,6 +362,36 @@ fn[E] SliceParser::validate(
   let subj_type = detect_term_type(subj, self.data)
   let obj_type = detect_term_type(obj, self.data)
 
+  // 严格模式：验证 IRI 格式
+  if !self.lenient {
+    // 验证 IRI
+    if subj_type == TermType::Iri {
+      match validate_iri(self.data, subj) {
+        Ok(_) => ()
+        Err(e) => return Err(e)
+      }
+    }
+    if obj_type == TermType::Iri {
+      match validate_iri(self.data, obj) {
+        Ok(_) => ()
+        Err(e) => return Err(e)
+      }
+    }
+    // 验证 BlankNode
+    if subj_type == TermType::BNode {
+      match validate_bnode(self.data, subj) {
+        Ok(_) => ()
+        Err(e) => return Err(e)
+      }
+    }
+    if obj_type == TermType::BNode {
+      match validate_bnode(self.data, obj) {
+        Ok(_) => ()
+        Err(e) => return Err(e)
+      }
+    }
+  }
+
   Ok({
     subj,
     pred,
@@ -462,47 +403,19 @@ fn[E] SliceParser::validate(
   })
 }
 
-// ============================================================
-// 类型判断辅助函数
-// ============================================================
-
-// ///|
-// fn[E] SliceParser::is_iri_start(self : SliceParser[E], span : Span) -> Bool {
-//   let (offset, _) = span
-//   self.data[offset] == b'<'
-// }
-
-// ///|
-// fn[E] SliceParser::is_bnode_start(self : SliceParser[E], span : Span) -> Bool {
-//   let (offset, _) = span
-//   self.data[offset] == b'_' &&
-//   offset + 1 < self.data.length() &&
-//   self.data[offset + 1] == b':'
-// }
-
-// ///|
-// fn[E] SliceParser::is_literal_start(self : SliceParser[E], span : Span) -> Bool {
-//   let (offset, _) = span
-//   let c = self.data[offset]
-//   c == b'"' || c == b'\''
-// }
-
-// ///|
-// fn[E] SliceParser::is_prefix_start(self : SliceParser[E], span : Span) -> Bool {
-//   let (offset, _) = span
-//   let c = self.data[offset]
-//   // 不是 <, 不是 _: , 不是 " 或 '
-//   (c >= b'a' && c <= b'z') || (c >= b'A' && c <= b'Z') || c == b':'
-// }
-
 ///|
-/// 优化的 IRI 验证
+/// IRI 验证
 pub fn validate_iri(
   data : ArrayView[Byte],
   span : Span,
 ) -> Result[Span, ParseError] {
   let (offset, length) = span
   let end = offset + length
+
+  // 边界检查
+  if offset < 0 || end > data.length() || offset >= end {
+    return Err(ParseError::from_span("Invalid span", span))
+  }
 
   // 格式检查：<> 包裹
   if length < 2 || data[offset] != b'<' || data[end - 1] != b'>' {
@@ -518,37 +431,37 @@ pub fn validate_iri(
     return Err(ParseError::from_span("IRI cannot be empty", span))
   }
 
-  // 协议检查
-  if content_len >= 8 {
-    let c0 = data[content_start]
-    let is_http = c0 == b'h' &&
-      data[content_start + 1] == b't' &&
-      data[content_start + 2] == b't' &&
-      data[content_start + 3] == b'p' &&
-      data[content_start + 4] == b':' &&
-      data[content_start + 5] == b'/' &&
-      data[content_start + 6] == b'/'
-    let is_https = c0 == b'h' &&
-      data[content_start + 1] == b't' &&
-      data[content_start + 2] == b't' &&
-      data[content_start + 3] == b'p' &&
-      data[content_start + 4] == b's' &&
-      data[content_start + 5] == b':' &&
-      data[content_start + 6] == b'/' &&
-      data[content_start + 7] == b'/'
+  // 协议检查 - 问题可能在这里！
+  // http:// 需要 8 个字符
+  // ftp:// 也需要 8 个字符，但协议不是 http/https
+  let c0 = data[content_start]
 
-    if !(is_http || is_https) {
-      return Err(
-        ParseError::from_span("IRI must start with http:// or https://", span),
-      )
-    }
-  } else {
+  let is_http = content_len >= 8 &&
+    c0 == b'h' &&
+    data[content_start + 1] == b't' &&
+    data[content_start + 2] == b't' &&
+    data[content_start + 3] == b'p' &&
+    data[content_start + 4] == b':' &&
+    data[content_start + 5] == b'/' &&
+    data[content_start + 6] == b'/'
+
+  let is_https = content_len >= 9 &&
+    c0 == b'h' &&
+    data[content_start + 1] == b't' &&
+    data[content_start + 2] == b't' &&
+    data[content_start + 3] == b'p' &&
+    data[content_start + 4] == b's' &&
+    data[content_start + 5] == b':' &&
+    data[content_start + 6] == b'/' &&
+    data[content_start + 7] == b'/'
+
+  if !(is_http || is_https) {
     return Err(
       ParseError::from_span("IRI must start with http:// or https://", span),
     )
   }
 
-  // 字符检查（O(1) 查表）
+  // 字符检查
   for i = content_start; i < content_end; i = i + 1 {
     if is_illegal_iri_char(data[i]) {
       return Err(ParseError::from_span("IRI contains illegal character", span))
@@ -557,13 +470,6 @@ pub fn validate_iri(
 
   Ok(span)
 }
-
-// ============================================================
-// 前缀 :本地名（用于简化前缀，如 :name）
-// ============================================================
-// ============================================================
-// 空白节点 _:xxx
-// ============================================================
 
 ///|
 fn validate_bnode(
@@ -620,8 +526,9 @@ fn detect_term_type(span : Span, data : ArrayView[Byte]) -> TermType {
   if length == 0 {
     return TermType::Unknown
   }
-
   let first = data[offset]
+  // debug("detect_term_type: first='\{first.to_char()}', length=\{length}")
+
   let t = first_byte_type[first.to_int()]
   match t {
     TermType::Iri =>

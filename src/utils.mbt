@@ -360,7 +360,7 @@ fn extract_number(s : StringView, unit : String) -> Int64 {
 }
 
 ///|
-fn parse_xsd_date(s : String) -> Result[String, String] {
+pub fn parse_xsd_date(s : String) -> Result[String, String] {
   // 支持格式：YYYY-MM-DDThh:mm:ss[Z|±hh:mm]
   let re = try
     @string.Regex("^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})$") |> Ok
@@ -437,43 +437,43 @@ fn parse_xsd_date(s : String) -> Result[String, String] {
 }
 
 ///|
-fn UInt::to_hex_string(self : UInt) -> String {
-  if self == 0 {
-    return "0"
-  }
-  let chars : Array[Char] = []
-  let mut n = self
-  while n > 0 {
-    let digit = n % 16
-    chars.push(digit_to_hex_char(digit))
-    n = n / 16
-  }
-  let sb = StringBuilder::new()
-  let rev_chars = chars.rev()
-  for c in rev_chars {
-    sb.write_char(c)
-  }
-  sb.to_string()
-}
+// fn UInt::to_hex_string(self : UInt) -> String {
+//   if self == 0 {
+//     return "0"
+//   }
+//   let chars : Array[Char] = []
+//   let mut n = self
+//   while n > 0 {
+//     let digit = n % 16
+//     chars.push(digit_to_hex_char(digit))
+//     n = n / 16
+//   }
+//   let sb = StringBuilder::new()
+//   let rev_chars = chars.rev()
+//   for c in rev_chars {
+//     sb.write_char(c)
+//   }
+//   sb.to_string()
+// }
 
 ///|
-fn digit_to_hex_char(d : UInt) -> Char {
-  if d < 10 {
-    (d + 48).to_uint16().to_char().unwrap() // '0' = 48
-  } else {
-    (d - 10 + 65).to_uint16().to_char().unwrap()
-  } // 'A' = 65
-}
+// fn digit_to_hex_char(d : UInt) -> Char {
+//   if d < 10 {
+//     (d + 48).to_uint16().to_char().unwrap() // '0' = 48
+//   } else {
+//     (d - 10 + 65).to_uint16().to_char().unwrap()
+//   } // 'A' = 65
+// }
 
 ///|
-fn UInt::lpad(self : UInt, width : Int, char : Char) -> String {
-  let s = self.to_hex_string()
-  let pad_count = width - s.length()
-  if pad_count <= 0 {
-    return s
-  }
-  String::make(pad_count, char) + s
-}
+// fn UInt::lpad(self : UInt, width : Int, char : Char) -> String {
+//   let s = self.to_hex_string()
+//   let pad_count = width - s.length()
+//   if pad_count <= 0 {
+//     return s
+//   }
+//   String::make(pad_count, char) + s
+// }
 
 ///|
 pub fn is_valid_hex_string(hex : String) -> Bool {

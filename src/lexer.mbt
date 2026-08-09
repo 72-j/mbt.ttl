@@ -38,9 +38,9 @@ pub struct SourcePos {
 } derive(Debug)
 
 ///|
-fn SourcePos::default() -> SourcePos {
-  SourcePos(0, 0, 0)
-}
+// fn SourcePos::default() -> SourcePos {
+//   SourcePos(0, 0, 0)
+// }
 
 ///|
 /// SourcePos 转换为 Range（字节偏移范围）
