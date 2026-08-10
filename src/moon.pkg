@@ -6,10 +6,9 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/hashmap",
-  "moonbitlang/async/io",
   "moonbitlang/async/fs",
   "moonbitlang/core/quickcheck/splitmix",
-  "moonbit-community/quickcheck_statemachine" @qs,
+  // "moonbit-community/quickcheck_statemachine" @qs,
   "brickfrog/tempo",
   "thy1016/moonttl/parserc",
   "moonbitlang/core/bench",
@@ -26,5 +25,5 @@ import {
 
 options(
   "is-main": false,
-  "native-stub": [ "lexer_ffi.c" ],
+  "native-stub": [ "lexerc_ffi.c" ],
 )

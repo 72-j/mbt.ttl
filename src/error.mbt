@@ -1,4 +1,61 @@
 ///|
+/// NQuadsEngine 错误类型（包含位置信息）
+pub(all) suberror ParseError {
+  InvalidErrMessage(String)
+  InvalidToken(String, Span)
+} derive(Debug)
+
+///|
+fn ParseError::span(token : Token) -> Span {
+  match token {
+    Iri(s)
+    | Literal(s)
+    | BlankNode(s)
+    | PrefName(s)
+    | Dot(s)
+    | Unknown(s)
+    | Comma(s)
+    | Semicolon(s) => s
+    EOF(int) => (0, int)
+  }
+}
+
+///|
+pub impl ErrOut for ParseError with fn message(self : ParseError) -> String {
+  match self {
+    ParseError::InvalidErrMessage(message) => message
+    ParseError::InvalidToken(message, _) => message
+  }
+}
+
+///|
+pub impl ErrOut for ParseError with fn err_kind(self : ParseError) -> String {
+  match self {
+    InvalidErrMessage(_) => "InvalidErrMessage"
+    ParseError::InvalidToken(_, _) => "InvalidToken"
+  }
+}
+
+///|
+/// 从 span 创建错误
+// pub fn ParseError::from_span(message : String, span : Span) -> ParseError {
+//   { message, span }
+// }
+
+///|
+pub impl Show for ParseError with fn output(self : ParseError, logger : &Logger) -> Unit {
+  match self {
+    ParseError::InvalidErrMessage(message) => logger.write_string(message)
+    ParseError::InvalidToken(message, span) => {
+      let (offset, length) = span
+      logger.write_string(message)
+      logger.write_string(" at position ")
+      logger.write_string("(\{offset}, \{length})")
+    }
+  }
+}
+
+///|
 pub(all) suberror IriError {
   /// 没有 scheme
   NoScheme(Int)
@@ -81,335 +138,6 @@ pub impl Show for IriError with fn output(self : IriError, logger : &Logger) -> 
 }
 
 ///|
-pub(all) suberror TokenRecognizerError {
-  Invalid
-  InvalidFormat(ArrayView[Byte], Range)
-  InvalidToken(String, ArrayView[Byte], Range)
-  InvalidCharacter(ArrayView[Byte], Range)
-  IncompleteEscapeSequence(ArrayView[Byte], Range)
-  InvalidEscapeSequence(ArrayView[Byte], Range)
-  UnsupportedFeature(ArrayView[Byte], Range)
-  IriTruncated(ArrayView[Byte], Range)
-  IriParsingError(String, Range)
-  UnexpectedEndOfInput(ArrayView[Byte], Range)
-  InvalidErrMessage(ArrayView[Byte], Range, String)
-} derive(Debug)
-
-///|
-
-///|
-pub fn TokenRecognizerError::range(self : TokenRecognizerError) -> Range {
-  match self {
-    TokenRecognizerError::Invalid => Range::{ start: -1, end: -1 }
-    TokenRecognizerError::InvalidFormat(_, range) => range
-    TokenRecognizerError::InvalidToken(_, _, range) => range
-    TokenRecognizerError::InvalidCharacter(_, range) => range
-    TokenRecognizerError::IncompleteEscapeSequence(_, range) => range
-    TokenRecognizerError::InvalidEscapeSequence(_, range) => range
-    TokenRecognizerError::UnsupportedFeature(_, range) => range
-    TokenRecognizerError::IriTruncated(_, range) => range
-    TokenRecognizerError::IriParsingError(_msg, range) => range
-    TokenRecognizerError::UnexpectedEndOfInput(_, range) => range
-    TokenRecognizerError::InvalidErrMessage(_, range, _) => range
-  }
-}
-
-///|
-pub impl ErrOut for TokenRecognizerError with fn message(
-  self : TokenRecognizerError,
-) -> String {
-  match self {
-    TokenRecognizerError::Invalid => "Invalid token was provided"
-    TokenRecognizerError::InvalidFormat(msg, range) => range.utf8_range(msg)
-    TokenRecognizerError::InvalidToken(str, msg, range) =>
-      str + range.utf8_range(msg)
-    TokenRecognizerError::InvalidCharacter(msg, range) => range.utf8_range(msg)
-    TokenRecognizerError::IncompleteEscapeSequence(msg, range) =>
-      range.utf8_range(msg)
-    TokenRecognizerError::InvalidEscapeSequence(msg, range) =>
-      range.utf8_range(msg)
-    TokenRecognizerError::UnsupportedFeature(msg, range) =>
-      range.utf8_range(msg)
-    TokenRecognizerError::IriTruncated(msg, range) => range.utf8_range(msg)
-    TokenRecognizerError::IriParsingError(msg, _) => msg
-    TokenRecognizerError::UnexpectedEndOfInput(msg, range) =>
-      range.utf8_range(msg)
-    TokenRecognizerError::InvalidErrMessage(msg, range, msg_string) =>
-      range.utf8_range(msg) + " - " + msg_string
-  }
-}
-
-///|
-pub impl ErrOut for TokenRecognizerError with fn err_kind(
-  self : TokenRecognizerError,
-) -> String {
-  match self {
-    TokenRecognizerError::Invalid => "Invalid"
-    TokenRecognizerError::InvalidFormat(_, _) => "InvalidFormat"
-    TokenRecognizerError::InvalidToken(_, _, _) => "InvalidRecognizerToken"
-    TokenRecognizerError::InvalidCharacter(_, _) => "InvalidCharacter"
-    TokenRecognizerError::IncompleteEscapeSequence(_, _) =>
-      "IncompleteEscapeSequence"
-    TokenRecognizerError::InvalidEscapeSequence(_, _) => "InvalidEscapeSequence"
-    TokenRecognizerError::UnsupportedFeature(_, _) => "UnsupportedFeature"
-    TokenRecognizerError::IriTruncated(_, _) => "IriTruncated"
-    TokenRecognizerError::IriParsingError(_, _pos) => "IriParsingError"
-    TokenRecognizerError::UnexpectedEndOfInput(_, _) => "UnexpectedEndOfInput"
-    TokenRecognizerError::InvalidErrMessage(_, _, msg) =>
-      "InvalidErrMessage" + " - " + msg
-  }
-}
-
-///|
-pub impl Show for TokenRecognizerError with fn output(
-  self : TokenRecognizerError,
-  logger : &Logger,
-) -> Unit {
-  // 使用 trait 方法获取信息
-  let msg = self.message()
-  let pos = self.range()
-  let err_kind = self.err_kind()
-  if pos.start >= 0 {
-    logger.write_string(err_kind)
-    logger.write_string(" - ")
-    logger.write_string(pos.to_string())
-    logger.write_string(": ")
-    logger.write_string(msg)
-  } else {
-    logger.write_string(err_kind)
-    logger.write_string(" - ")
-    logger.write_string(msg)
-  }
-}
-
-///|
-pub impl Show for Range with fn output(self, logger : &Logger) -> Unit {
-  logger.write_string("[")
-  logger.write_string(self.start.to_string())
-  logger.write_string(":")
-  logger.write_string(self.end.to_string())
-  logger.write_string("]")
-}
-
-///|
-
-///|
-pub(all) suberror RuleRecognizerError {
-  SyntaxError(String, Range)
-  BlankNodeOrIriError
-  PredicateNotAnIRI
-  LiteralDatatypeError
-  TripleMissingDot
-  InvalidLanguageTag
-  BlankNodePropertyListMissingEndBracket
-  NOCARE
-} derive(Debug)
-
-///|
-pub(all) struct Range {
-  start : Int
-  end : Int
-} derive(Debug, Default, Eq)
-
-///|
-pub fn Range::Range(start : Int, end : Int) -> Range {
-  { start, end }
-}
-
-///|
-pub fn Range::single(pos : Int) -> Range {
-  { start: pos, end: pos }
-}
-
-///|
-pub fn Range::length(self : Self) -> Int {
-  self.end - self.start
-}
-
-///|
-pub fn Range::contains(self : Self, pos : Int) -> Bool {
-  pos >= self.start && pos < self.end
-}
-
-///|
-pub fn Range::utf8_range(self : Range, data : ArrayView[Byte]) -> String {
-  let start = self.start
-  let end = Int::min(self.end, data.length())
-
-  if start < 0 || start >= end {
-    return ""
-  }
-
-  let view = data[start:end]
-  @utf8.decode_lossy(array_to_view(view))
-}
-
-///|
-pub(all) struct SourceRange {
-  start : SourcePos
-  end : SourcePos
-} derive(Debug)
-
-///|
-fn SourceRange::SourceRange(start : SourcePos, end : SourcePos) -> SourceRange {
-  { start, end }
-}
-
-///|
-pub fn SourceRange::to_range(self : Self) -> Range {
-  Range::{ start: self.start.offset, end: self.end.offset }
-}
-
-///|
-pub impl Show for SourceRange with fn output(self, logger : &Logger) -> Unit {
-  logger.write_string("[")
-  logger.write_string(self.start.to_string())
-  logger.write_string(":")
-  logger.write_string(self.end.to_string())
-  logger.write_string("]")
-}
-
-///|
-pub fn RuleRecognizerError::text_range(self : RuleRecognizerError) -> Range {
-  match self {
-    RuleRecognizerError::SyntaxError(_, pos) => pos
-    _ => Range::default()
-  }
-}
-
-///|
-pub impl ErrOut for RuleRecognizerError with fn message(
-  self : RuleRecognizerError,
-) -> String {
-  match self {
-    RuleRecognizerError::SyntaxError(msg, _) => msg
-    RuleRecognizerError::BlankNodeOrIriError =>
-      "The subject of a triple must be an IRI or a blank node"
-    RuleRecognizerError::PredicateNotAnIRI =>
-      "The predicate of a triple must be an IRI"
-    RuleRecognizerError::LiteralDatatypeError =>
-      "The datatype of a literal must be an IRI"
-    RuleRecognizerError::TripleMissingDot => "Triples must be followed by a dot"
-    RuleRecognizerError::InvalidLanguageTag => "Invalid language tag"
-    RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
-      "blank node property lists should end with a ']'"
-    RuleRecognizerError::NOCARE => "NOCARE"
-  }
-}
-
-///|
-pub impl ErrOut for RuleRecognizerError with fn err_kind(
-  self : RuleRecognizerError,
-) -> String {
-  match self {
-    RuleRecognizerError::SyntaxError(_, _) => "SyntaxError"
-    RuleRecognizerError::BlankNodeOrIriError => "BlankNodeOrIriError"
-    RuleRecognizerError::PredicateNotAnIRI => "PredicateNotAnIRI"
-    RuleRecognizerError::LiteralDatatypeError => "LiteralDatatypeError"
-    RuleRecognizerError::TripleMissingDot => "TripleMissingDot"
-    RuleRecognizerError::InvalidLanguageTag => "InvalidLanguageTag"
-    RuleRecognizerError::BlankNodePropertyListMissingEndBracket =>
-      "BlankNodePropertyListMissingEndBracket"
-    RuleRecognizerError::NOCARE => "NOCARE"
-  }
-}
-
-///|
-pub impl Show for RuleRecognizerError with fn output(
-  self : RuleRecognizerError,
-  logger : &Logger,
-) -> Unit {
-  let msg = self.message()
-  let pos = self.text_range()
-  let err_kind = self.err_kind()
-  // if pos.start >= 0 {
-  logger.write_string(err_kind)
-  logger.write_string(" - ")
-  logger.write_string(msg)
-  logger.write_string(" at ")
-  logger.write_string(pos.to_string())
-  // }
-}
-
-///|
-pub(all) suberror TurtleError {
-  TurtleParseError(String, Range)
-  TurtleSyntaxError(String, Range)
-  InvalidEscapeSequence
-  InvalidCharacter(String)
-  InvalidTurtleToken(SourcePos, String)
-  UnexpectedEndOfInput(SourcePos, String)
-} derive(Debug)
-
-///|
-pub impl ErrOut for TurtleError with fn message(self : TurtleError) -> String {
-  match self {
-    TurtleError::TurtleParseError(msg, _) => msg
-    TurtleError::TurtleSyntaxError(msg, _) => msg
-    TurtleError::InvalidEscapeSequence => "Invalid escape sequence"
-    TurtleError::InvalidCharacter(c) => "Invalid character: " + c
-    TurtleError::InvalidTurtleToken(_, token) => token
-    TurtleError::UnexpectedEndOfInput(_, str) => str
-  }
-}
-
-///|
-pub impl ErrOut for TurtleError with fn err_kind(self : TurtleError) -> String {
-  match self {
-    TurtleError::TurtleParseError(_, _) => "TurtleParseError"
-    TurtleError::TurtleSyntaxError(_, _) => "TurtleSyntaxError"
-    TurtleError::InvalidEscapeSequence => "InvalidEscapeSequence"
-    TurtleError::InvalidCharacter(_) => "InvalidCharacter"
-    TurtleError::InvalidTurtleToken(_, _) => "InvalidTurtleToken"
-    TurtleError::UnexpectedEndOfInput(_, _) => "UnexpectedEndOfInput"
-  }
-}
-
-///|
-pub impl Show for TurtleError with fn output(self, logger : &Logger) -> Unit {
-  let msg = self.message()
-  let err_kind = self.err_kind()
-  logger.write_string(err_kind)
-  logger.write_string(" - ")
-  logger.write_string(msg)
-}
-
-///|
-pub(all) suberror LexerError {
-  OutOfMemory(String)
-  IoReadError(String)
-  SyntaxError(String)
-}
-
-///|
-pub impl ErrOut for LexerError with fn message(self : LexerError) -> String {
-  match self {
-    LexerError::OutOfMemory(msg) => msg
-    LexerError::IoReadError(msg) => msg
-    LexerError::SyntaxError(msg) => msg
-  }
-}
-
-///|
-pub impl ErrOut for LexerError with fn err_kind(self : LexerError) -> String {
-  match self {
-    LexerError::OutOfMemory(_) => "OutOfMemory"
-    LexerError::IoReadError(_) => "IoReadError"
-    LexerError::SyntaxError(_) => "SyntaxError"
-  }
-}
-
-///|
-pub impl Show for LexerError with fn output(self, logger : &Logger) -> Unit {
-  let msg = self.message()
-  let err_kind = self.err_kind()
-  logger.write_string("Error: ")
-  logger.write_string(err_kind)
-  logger.write_string(" - ")
-  logger.write_string(msg)
-}
-
-///|
 pub(all) suberror LanguageTagParseError {
   // LanguageTagParseError
   TagParseErr(TagParseErr)
@@ -458,21 +186,4 @@ pub impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
 }
 
 ///|
-pub(all) enum SerializationError {
-  FormatError(String)
-  IoError(String)
-}
-
-///|
-pub impl Show for SerializationError with fn output(self, logger : &Logger) -> Unit {
-  match self {
-    SerializationError::FormatError(msg) => {
-      logger.write_string("Serialization Error: ")
-      logger.write_string(msg)
-    }
-    SerializationError::IoError(msg) => {
-      logger.write_string("Serialization Error: ")
-      logger.write_string(msg)
-    }
-  }
-}
+//

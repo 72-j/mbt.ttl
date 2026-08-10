@@ -1,0 +1,12 @@
+[package]
+name = "oxigraph-benchmark"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+oxigraph = "0.4.0"
+time = "0.3"
+
+[[bin]]
+name = "benchmark"
+path = "src/main.rs"

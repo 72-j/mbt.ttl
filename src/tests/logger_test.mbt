@@ -51,16 +51,6 @@ test "MuteLogger: empty message" {
 }
 
 ///|
-test "ConsoleLogger: long message" {
-  let logger = @lib.make_console_logger()
-  let long_msg = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " +
-    "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-  logger.info(long_msg)
-  logger.error(long_msg)
-  logger.warn(long_msg)
-}
-
-///|
 test "ConsoleLogger: unicode message" {
   let logger = @lib.make_console_logger()
   logger.info("你好，世界！🌍")

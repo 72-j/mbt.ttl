@@ -11,3 +11,4 @@ testnook/
 skills/
 *.log
 *.nq
+src/benchmark/*/target/

@@ -25,7 +25,7 @@ async fn main {
 
     // Create parser
     let engine = @lib.NQuadsEngine::new()
-    let parser = @lib.ParserE::from_bytes(data, engine)
+    let parser = @lib.Parser::from_bytes(data, engine)
     let slice = @lib.SliceParser::new(parser, data)
 
     // Parse all quads

@@ -1,29 +1,29 @@
 ///|
 /// 主语类型
 pub(all) enum Subject {
-  Iri(Span) // <http://...>
-  BNode(Span) // _:label
-  PrefName(Span) // ex:name 或 :name
+  Iri(ArrayView[Byte]) // <http://...>
+  BNode(ArrayView[Byte]) // _:label
+  PrefName(ArrayView[Byte]) // ex:name 或 :name
 } derive(Debug, Eq)
 
 ///|
 /// 宾语类型
 pub(all) enum Object {
-  Iri(Span)
-  BNode(Span)
-  Literal(Span)
-  PrefName(Span)
+  Iri(ArrayView[Byte])
+  BNode(ArrayView[Byte])
+  Literal(ArrayView[Byte])
+  PrefName(ArrayView[Byte])
 } derive(Debug, Eq)
 
 ///|
 /// Predicate = BytesView（只能是 IRI）
-pub type Predicate = Span
+pub type Predicate = ArrayView[Byte]
 
 ///|
 /// 图名
 pub(all) enum GraphName {
   None // DefaultGraph
-  Iri(Span)
+  Iri(ArrayView[Byte])
 } derive(Debug, Eq)
 
 ///|
@@ -44,20 +44,20 @@ pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> 
   match self.subject {
     Subject::Iri(span) => {
       logger.write_char('<')
-      logger.write_string("(\{span.0}, \{span.1})")
+      logger.write_string("(\{span.length()})")
       logger.write_char('>')
     }
     Subject::BNode(span) => {
       logger.write_string("_:")
-      logger.write_string("(\{span.0}, \{span.1})")
+      logger.write_string("(\{span.length()})")
     }
-    Subject::PrefName(span) => logger.write_string("(\{span.0}, \{span.1})")
+    Subject::PrefName(span) => logger.write_string("(\{span.length()})")
   }
 
   logger.write_string(", ")
 
   // 谓语
-  logger.write_string("(\{self.predicate.0}, \{self.predicate.1})")
+  logger.write_string("(\{self.predicate.length()})")
 
   logger.write_string(", ")
 
@@ -65,15 +65,15 @@ pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> 
   match self.object {
     Object::Iri(span) => {
       logger.write_char('<')
-      logger.write_string("(\{span.0}, \{span.1})")
+      logger.write_string("(\{span.length()})")
       logger.write_char('>')
     }
     Object::BNode(span) => {
       logger.write_string("_:")
-      logger.write_string("(\{span.0}, \{span.1})")
+      logger.write_string("(\{span.length()})")
     }
     Object::Literal(span) | Object::PrefName(span) =>
-      logger.write_string("(\{span.0}, \{span.1})")
+      logger.write_string("(\{span.length()})")
   }
 
   // 图名 ← 这里可能没有输出
@@ -81,7 +81,7 @@ pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> 
     GraphName::None => logger.write_string(", graph: None")
     GraphName::Iri(span) => {
       logger.write_string(", graph: <")
-      logger.write_string("(\{span.0}, \{span.1})")
+      logger.write_string("(\{span.length()})")
       logger.write_char('>')
     }
   }
@@ -94,14 +94,14 @@ pub impl Show for Subject with fn output(self : Subject, logger : &Logger) -> Un
   match self {
     Subject::Iri(span) => {
       logger.write_char('<')
-      logger.write_string("(\{span.0}, \{span.1})")
+      logger.write_string("(\{span.length()})")
       logger.write_char('>')
     }
     Subject::BNode(span) => {
       logger.write_string("_:")
-      logger.write_string("(\{span.0}, \{span.1})")
+      logger.write_string("(\{span.length()})")
     }
-    Subject::PrefName(span) => logger.write_string("(\{span.0}, \{span.1})")
+    Subject::PrefName(span) => logger.write_string("(\{span.length()})")
   }
 }
 
@@ -110,15 +110,15 @@ pub impl Show for Object with fn output(self : Object, logger : &Logger) -> Unit
   match self {
     Object::Iri(span) => {
       logger.write_char('<')
-      logger.write_string("(\{span.0}, \{span.1})")
+      logger.write_string("(\{span.length()})")
       logger.write_char('>')
     }
     Object::BNode(span) => {
       logger.write_string("_:")
-      logger.write_string("(\{span.0}, \{span.1})")
+      logger.write_string("(\{span.length()})")
     }
-    Object::Literal(span) => logger.write_string("(\{span.0}, \{span.1})")
-    Object::PrefName(span) => logger.write_string("(\{span.0}, \{span.1})")
+    Object::Literal(span) => logger.write_string("(\{span.length()})")
+    Object::PrefName(span) => logger.write_string("(\{span.length()})")
   }
 }
 
@@ -146,30 +146,11 @@ pub fn Serializer::serialize(self : Serializer, quad : QuadEmit) -> String {
 
 ///|
 fn Serializer::append_span(
-  self : Serializer,
-  span : Span,
+  _self : Serializer,
+  view : ArrayView[Byte],
   buf : StringBuilder,
 ) -> Unit {
-  let (offset, length) = span
-  // let view = self.data[offset:offset + length]
-  // buf.write_string(view.to_string())
-  for i = offset; i < offset + length; i = i + 1 {
-    buf.write_char(self.data[i].to_char())
-  }
-}
-
-///|
-fn Serializer::append_bnode_label(
-  self : Serializer,
-  span : Span,
-  buf : StringBuilder,
-) -> Unit {
-  let (offset, length) = span
-  let view = self.data[offset:offset + length]
-  // 跳过前两个字符 _:
-  let label = view[2:]
-  // 直接写入整个标签
-  for b in label {
+  for b in view {
     buf.write_char(b.to_char())
   }
 }
@@ -182,12 +163,14 @@ fn Serializer::append_subject(
   buf : StringBuilder,
 ) -> Unit {
   match subject {
-    Subject::Iri(span) => self.append_span(span, buf)
-    Subject::BNode(span) => {
+    Subject::Iri(view) => self.append_span(view, buf)
+    Subject::BNode(view) => {
       buf.write_string("_:")
-      self.append_bnode_label(span, buf)
+      // 跳过前两个字符 _:，直接写 label
+      let label = view[2:]
+      self.append_span(label, buf)
     }
-    Subject::PrefName(span) => self.append_span(span, buf)
+    Subject::PrefName(view) => self.append_span(view, buf)
   }
 }
 
@@ -199,13 +182,14 @@ fn Serializer::append_object(
   buf : StringBuilder,
 ) -> Unit {
   match object {
-    Object::Iri(span) => self.append_span(span, buf)
-    Object::BNode(span) => {
+    Object::Iri(view) => self.append_span(view, buf)
+    Object::BNode(view) => {
       buf.write_string("_:")
-      self.append_bnode_label(span, buf)
+      let label = view[2:]
+      self.append_span(label, buf)
     }
-    Object::Literal(span) | Object::PrefName(span) =>
-      self.append_span(span, buf)
+    Object::Literal(view) => self.append_span(view, buf)
+    Object::PrefName(view) => self.append_span(view, buf)
   }
 }
 
@@ -229,11 +213,12 @@ fn Serializer::append_quad(
 
   // 图名
   match quad.graph_name {
-    GraphName::Iri(span) => {
+    GraphName::Iri(view) => {
       buf.write_char(' ')
-      self.append_span(span, buf)
+
+      self.append_span(view, buf)
     }
-    GraphName::None => buf.write_string("")
+    GraphName::None => ()
   }
 
   buf.write_string(" .\n")

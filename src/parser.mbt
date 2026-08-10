@@ -1,5 +1,5 @@
 ///|
-pub struct ParserE[E] {
+pub struct Parser[E] {
   lexer : Lexerc
   engine : E
   pending : PendingQuad
@@ -9,25 +9,31 @@ pub struct ParserE[E] {
 }
 
 ///|
-pub fn[E : ParserEngine] ParserE::new(
+pub fn[E : ParserEngine] Parser::new(
   lexer : Lexerc,
   engine : E,
   data : ArrayView[Byte],
   // line : Int,
-) -> ParserE[E] {
+) -> Parser[E] {
   { lexer, engine, pending: engine.create_pending(), errors: [], data }
 }
 
 ///|
-pub fn[E : ParserEngine] ParserE::from_bytes(
+pub fn[E : ParserEngine] Parser::from_bytes(
   data : FixedArray[Byte],
   engine : E,
-) -> ParserE[E] {
-  ParserE::new(Lexerc::new(data), engine, data)
+) -> Parser[E] {
+  Parser::new(Lexerc::new(data), engine, data)
 }
 
 ///|
-pub fn[E] ParserE::data(self : ParserE[E]) -> ArrayView[Byte] {
+pub fn nquads_parser(data : FixedArray[Byte]) -> Parser[NQuadsEngine] {
+  let engine = NQuadsEngine::new()
+  Parser::from_bytes(data, engine)
+}
+
+///|
+pub fn[E] Parser::data(self : Parser[E]) -> ArrayView[Byte] {
   self.data
 }
 
@@ -54,24 +60,16 @@ pub trait ParserEngine {
   fn error_recovery_state(Self) -> Self
 
   ///| 创建初始的 PendingQuad
-  ///
   /// 返回 None 表示当前不需要开始一个新的 Quad（如遇到空行或注释）
   fn create_pending(Self) -> PendingQuad
 
   ///| 消费一个 token，返回解析结果
-  ///
-  /// - `token`: 词法器输出的 token（带 span）
-  /// - 返回 Continue 表示继续消费 token
-  /// - 返回 Emit 表示 pending 已完成，等待行结束确认
-  /// - 返回 SkipLine 表示遇到错误，跳过整行
-  /// - 返回 Error 表示严重错误
   fn step(Self, pending : PendingQuad, token : Token) -> StepResult
 
   ///| 检查 pending 是否完整（可用于最终验证）
   fn is_complete(Self, pending : PendingQuad) -> Bool
 
   ///| 处理结束
-  ///
   /// 当输入结束时调用，用于处理最后一个未完成的 pending
   fn recognize_end(Self, pending : PendingQuad, results : Array[Span]) -> Unit
 
@@ -80,13 +78,13 @@ pub trait ParserEngine {
 }
 
 ///|
-pub fn[E] ParserE::get_errors(self : ParserE[E]) -> Array[ParseError] {
+pub fn[E] Parser::get_errors(self : Parser[E]) -> Array[ParseError] {
   self.errors
 }
 
 ///|
-pub fn[E : ParserEngine] ParserE::next(
-  self : ParserE[E],
+pub fn[E : ParserEngine] Parser::next(
+  self : Parser[E],
 ) -> Result[PendingQuad, ParseError]? {
   self.pending.reset()
 
@@ -100,7 +98,7 @@ pub fn[E : ParserEngine] ParserE::next(
             self.pending.obj is Some(_)
           ) {
           self.errors.push(
-            ParseError::from_span(
+            ParseError::InvalidToken(
               "Incomplete triple at end of input",
               self.pending.compute_span(),
             ),
@@ -117,7 +115,7 @@ pub fn[E : ParserEngine] ParserE::next(
               self.pending.obj is Some(_)
             ) {
             self.errors.push(
-              ParseError::from_span(
+              ParseError::InvalidToken(
                 "Incomplete triple at end of input",
                 self.pending.compute_span(),
               ),

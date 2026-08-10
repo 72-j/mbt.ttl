@@ -77,52 +77,54 @@ async fn parse_file(path : String, verbose : Bool) -> Unit {
 }
 
 ///|
-fn parse_content(content : Bytes, verbose : Bool) -> Unit {
-  let data = content.to_fixedarray()
-  // Read file content as binary
-  // println("Data length: \{data.length()} bytes")
+async fn parse_content(content : Bytes, verbose : Bool) -> Unit {
+  @async.with_task_group() <| _root => {
+    let data = content.to_fixedarray()
+    // Read file content as binary
+    // println("Data length: \{data.length()} bytes")
 
-  // Create parser
-  let engine = @lib.NQuadsEngine::new()
-  let parser = @lib.ParserE::from_bytes(data, engine)
-  let slice = @lib.SliceParser::new(parser, data)
+    // Create parser
+    let engine = @lib.NQuadsEngine::new()
+    let parser = @lib.Parser::from_bytes(data, engine)
+    let slice = @lib.SliceParser::new(parser, data)
 
-  // Parse all quads
-  println("")
-  println("=== Parsing N-Quads ===")
-
-  let (quad_spans, parse_errors) = slice.parse_all()
-
-  // Print parse errors
-  for err in parse_errors {
-    println("Parse Error: \{err}")
-  }
-
-  println("Parsed \{quad_spans.length()} quads")
-
-  // Materialize
-  println("")
-  println("=== Materializing ===")
-
-  let (quads, mat_errors) = @lib.materialize_all(quad_spans, data)
-
-  println("Materialized \{quads.length()} quads")
-  // Print materialize errors
-
-  for err in mat_errors {
-    println("Materialize Error: \{err}")
-  }
-  if !verbose {
-
-    // Serialize and print
+    // Parse all quads
     println("")
-    println("=== Serialized Output ===")
+    println("=== Parsing N-Quads ===")
 
-    let serializer = @lib.Serializer::new(data)
-    let output = serializer.serialize_all(quads)
-    println(output)
+    let (quad_spans, parse_errors) = slice.parse_all()
+
+    // Print parse errors
+    for err in parse_errors {
+      println("Parse Error: \{err}")
+    }
+
+    println("Parsed \{quad_spans.length()} quads")
+
+    // Materialize
+    println("")
+    println("=== Materializing ===")
+
+    let (quads, mat_errors) = @lib.materialize_all(quad_spans, data)
+
+    println("Materialized \{quads.length()} quads")
+    // Print materialize errors
+
+    for err in mat_errors {
+      println("Materialize Error: \{err}")
+    }
+    if !verbose {
+
+      // Serialize and print
+      println("")
+      println("=== Serialized Output ===")
+
+      let serializer = @lib.Serializer::new(data)
+      let output = serializer.serialize_all(quads)
+      println(output)
+    }
+
+    println("")
+    println("Serialized \{quads.length()} quads")
   }
-
-  println("")
-  println("Serialized \{quads.length()} quads")
 }

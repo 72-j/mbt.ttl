@@ -88,49 +88,40 @@ type Void
 
 ///|
 /// 创建词法分析器
-#owned(data)
+#borrow(data)
 pub extern "C" fn lexer_create(data : FixedArray[Byte], len : Int) -> Ref[Void] = "lexer_create"
 
 ///|
 /// 销毁词法分析器
-#owned(lexer)
+#borrow(lexer)
 pub extern "C" fn lexer_destroy(lexer : Ref[Void]) -> Unit = "lexer_destroy"
 
 ///|
 /// 重置词法分析器
-#owned(lexer)
+#borrow(lexer)
 extern "C" fn lexer_reset(lexer : Ref[Void]) -> Unit = "lexer_reset"
 
 ///|
 /// 获取下一个 Token（写入 Bytes 缓冲区）
-#owned(lexer, token_buf)
+#borrow(lexer, token_buf)
 pub extern "C" fn lexer_next(
   lexer : Ref[Void],
   token_buf : FixedArray[Byte],
 ) -> Bool = "lexer_next"
 
 ///|
-/// 批量获取 Token
-// #owned(lexer, token_bufs)
-// extern "C" fn lexer_next_batch(
-//   lexer : Ref[Void],
-//   token_bufs : FixedArray[Byte],
-//   max_count : Int,
-// ) -> Int = "lexer_next_batch"
-
-///|
 /// 获取当前位置
-#owned(lexer)
+#borrow(lexer)
 extern "C" fn lexer_pos(lexer : Ref[Void]) -> Int = "lexer_pos"
 
 ///|
 /// 获取剩余字节数
-#owned(lexer)
+#borrow(lexer)
 extern "C" fn lexer_remaining(lexer : Ref[Void]) -> Int = "lexer_remaining"
 
 ///|
 /// 检查是否到达末尾
-#owned(lexer)
+#borrow(lexer)
 extern "C" fn lexer_is_end(lexer : Ref[Void]) -> Bool = "lexer_is_end"
 
 // ============================================================
@@ -250,9 +241,8 @@ pub fn Lexerc::extract_iri(self : Lexerc, token : Token) -> ArrayView[Byte] {
   }
 }
 
-// 提取字面量（去掉引号）
-
 ///|
+// 提取字面量（去掉引号）
 pub fn Lexerc::extract_literal(self : Lexerc, token : Token) -> ArrayView[Byte] {
   match token {
     Token::Literal(span) => {
@@ -268,9 +258,8 @@ pub fn Lexerc::extract_literal(self : Lexerc, token : Token) -> ArrayView[Byte] 
   }
 }
 
-// 通用提取
-
 ///|
+// 通用提取
 pub fn Lexerc::extract(self : Lexerc, span : Span) -> String {
   let (offset, length) = span
   let end = offset + length

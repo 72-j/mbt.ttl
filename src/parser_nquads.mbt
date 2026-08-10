@@ -1,41 +1,4 @@
 ///|
-/// NQuadsEngine 错误类型（包含位置信息）
-pub struct ParseError {
-  message : String
-  span : Span
-} derive(Debug)
-
-///|
-/// 从 token 创建错误
-pub fn ParseError::from_token(message : String, token : Token) -> ParseError {
-  let span = match token {
-    Iri(s)
-    | Literal(s)
-    | BlankNode(s)
-    | PrefName(s)
-    | Dot(s)
-    | Unknown(s)
-    | Comma(s)
-    | Semicolon(s) => s
-    EOF(int) => (0, int)
-  }
-  { message, span }
-}
-
-///|
-/// 从 span 创建错误
-pub fn ParseError::from_span(message : String, span : Span) -> ParseError {
-  { message, span }
-}
-
-///|
-pub impl Show for ParseError with fn output(self : ParseError, logger : &Logger) -> Unit {
-  let (offset, length) = self.span
-  logger.write_string(" \{offset}:\{length}: \{self.message}")
-}
-
-///|
-/// PendingQuad - 存放四元组的各个部分的 Span，在组装过程中进行结构检查
 pub struct PendingQuad {
   mut subj : Span?
   mut pred : Span?
@@ -64,7 +27,6 @@ pub fn PendingQuad::default() -> PendingQuad {
     pred: None,
     obj: None,
     graph: None,
-    // term_type: None,
     has_dot: false,
     state: ExpectSubject,
     line: 0,
@@ -187,8 +149,9 @@ pub impl ParserEngine for NQuadsEngine with fn step(
     (ExpectSubject, PrefName(_)) =>
       // N-Quads 不支持前缀名作为主语
       Error(
-        ParseError::from_token(
-          "N-Quads does not support prefixed names.", token,
+        ParseError::InvalidToken(
+          "N-Quads does not support prefixed names.",
+          ParseError::span(token),
         ),
       )
     (ExpectSubject, Unknown(_)) => Continue
@@ -204,9 +167,19 @@ pub impl ParserEngine for NQuadsEngine with fn step(
       Continue
     }
     (ExpectPredicate, PrefName(_)) =>
-      Error(ParseError::from_token("Predicate must be an IRI", token))
+      Error(
+        ParseError::InvalidToken(
+          "Predicate must be an IRI",
+          ParseError::span(token),
+        ),
+      )
     (ExpectPredicate, token) =>
-      Error(ParseError::from_token("Expected predicate (IRI)", token))
+      Error(
+        ParseError::InvalidToken(
+          "Expected predicate (IRI)",
+          ParseError::span(token),
+        ),
+      )
 
     // =====================
     // 期望宾语
@@ -219,12 +192,18 @@ pub impl ParserEngine for NQuadsEngine with fn step(
     (ExpectObject, PrefName(_)) =>
       // N-Quads 中前缀名当作 IRI
       Error(
-        ParseError::from_token(
-          "N-Quads does not support prefixed names.", token,
+        ParseError::InvalidToken(
+          "N-Quads does not support prefixed names.",
+          ParseError::span(token),
         ),
       )
     (ExpectObject, token) =>
-      Error(ParseError::from_token("Expected object (IRI or Literal)", token))
+      Error(
+        ParseError::InvalidToken(
+          "Expected object (IRI or Literal)",
+          ParseError::span(token),
+        ),
+      )
 
     // =====================
     // 期望 . 或 图名
@@ -243,7 +222,12 @@ pub impl ParserEngine for NQuadsEngine with fn step(
     }
     (ExpectDotOrGraph, PrefName(_)) =>
       // 图名必须是完整 IRI
-      Error(ParseError::from_token("Graph must be an IRI", token))
+      Error(
+        ParseError::InvalidToken(
+          "Graph must be an IRI",
+          ParseError::span(token),
+        ),
+      )
     (ExpectDotOrGraph, Unknown(_)) => {
       // . 可选
       pending.has_dot = true
@@ -260,14 +244,18 @@ pub impl ParserEngine for NQuadsEngine with fn step(
       pending.line += 1
       Emit
     }
-    (ExpectDot, token) => Error(ParseError::from_token("Expected '.'", token))
+    (ExpectDot, token) =>
+      Error(ParseError::InvalidToken("Expected '.'", ParseError::span(token)))
 
     // =====================
     // 已完成
     // =====================
     (Complete, token) =>
       Error(
-        ParseError::from_token("Unexpected token after complete triple", token),
+        ParseError::InvalidToken(
+          "Unexpected token after complete triple",
+          ParseError::span(token),
+        ),
       )
 
     // =====================
@@ -295,9 +283,6 @@ pub impl ParserEngine for NQuadsEngine with fn recognize_end(
 pub(all) struct NQuadsEngine {
   lexer : Lexerc
   mut pending : PendingQuad
-  // mut errors : Array[ParseError]
-  // mut line : Int // 当前行号
-
 }
 
 ///|
@@ -310,7 +295,6 @@ pub fn NQuadsEngine::from_bytes(data : FixedArray[Byte]) -> NQuadsEngine {
       pred: None,
       obj: None,
       graph: None,
-      // term_type: None,
       has_dot: false,
       state: PendingState::ExpectSubject,
       line: 0,

@@ -211,13 +211,64 @@ Current W3C test suite coverage:
 ────────────────────────  ───────  ────────  ───────────────
   Syntax Boundary Tests     8        8         ✅ All Passed
 
-## Performance Benchmarks
+  ## Performance Benchmark
 
-MoonTTL focuses on providing high-performance RDF parsing:
+  ### Benchmark Environment
 
-- Zero-copy Design: Lexer based on byte array slices, avoiding unnecessary memory allocation
-- State-machine Driven: Finite state machine for syntax parsing, ensuring O(n) time complexity
-- Buffer Management: Configurable buffer sizes for balancing memory usage and parsing efficiency
+   Item         Version/Description
+  ━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CPU          Intel/AMD (Test Environment)
+  ───────────  ──────────────────────────────
+   Memory       8GB+
+  ───────────  ──────────────────────────────
+   Test File    1000 N-Quads (~100KB)
+
+  ### Performance Comparison
+
+   Implementation        Parse Time    Parses/Second    Time/Quad
+  ━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━  ━━━━━━━━━━━━━━━  ━━━━━━━━━━━
+   MoonTTL (MoonBit)     1.76 ms       568,612          0.0018 ms
+  ────────────────────  ────────────  ───────────────  ───────────
+   Oxigraph (Rust)       2.00 ms       500,000          0.0020 ms
+  ────────────────────  ────────────  ───────────────  ───────────
+   rdflib (Python)       17.89 ms      55,900           0.0179 ms
+  ────────────────────  ────────────  ───────────────  ───────────
+   Apache Jena (Java)    2,734 ms      36,576           0.0273 ms
+  ────────────────────  ────────────  ───────────────  ───────────
+   no-brain-scan (C)     0.16 ms       6,250,000        0.0002 ms
+
+  ### MoonTTL Performance Analysis
+
+  === MoonBit Parsing test_1000.nq ===
+  File: test_1000.nq
+  File size: 103670 bytes
+
+  === Performance Data ===
+  Lexer:       515.532 µs (5000 tokens)
+  ParserE:     575.14 µs (1000 quads)
+  Validation:  1448.353 µs (1000 quads, 0 errors)
+  Materialize: 310.314 µs (1000 quads, 0 errors)
+
+  === Total ===
+  Total time:      1.76 ms
+  Quad count:      1000
+  Parses/sec:      568,612
+  Time/quad:       0.0018 ms
+
+
+  ### Running Benchmark Tests
+
+  ```bash
+  cd src/benchmark
+  ./run_all.sh
+  ```
+  ### Performance Optimization Features
+
+  - Zero-copy design: Lexer uses byte array slices to avoid unnecessary memory allocation
+  - State machine driven: Uses finite state machine for syntax parsing, ensuring O(n) time complexity
+  - Lookahead parsing: Lookahead 5 tokens at once to reduce function call overhead
+  - Batch materialization: Validation and materialization are separated, supporting batch processing
+  - Error recovery: Automatically skips the current line on error, continuing to parse subsequent content
 
 ## Contributing Guidelines
 

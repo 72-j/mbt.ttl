@@ -6,13 +6,11 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/test",
   "moonbitlang/core/encoding/utf8",
-  // "moonbitlang/async",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/bench",
   "moonbitlang/core/quickcheck/splitmix",
   "thy1016/moonttl" @lib,
-  "thy1016/moonttl/parserc",
-  "moonbitlang/core/bench",
-} for "test"
+}
 
-options(
-  "is-main": false,
-)
+pkgtype(kind: "executable")
