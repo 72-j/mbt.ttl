@@ -4,7 +4,6 @@ pub struct PendingQuad {
   mut pred : Span?
   mut obj : Span?
   mut graph : Span? // 图名（可选）
-  // mut term_type : TermType?
   mut has_dot : Bool
   mut state : PendingState
   mut line : Int
@@ -281,44 +280,18 @@ pub impl ParserEngine for NQuadsEngine with fn recognize_end(
 ///|
 /// NQuadsEngine - 直接对接 Lexerc，管理 PendingQuad 组装和错误收集
 pub(all) struct NQuadsEngine {
-  lexer : Lexerc
   mut pending : PendingQuad
-}
-
-///|
-/// 从字节数组创建 NQuadsEngine
-pub fn NQuadsEngine::from_bytes(data : FixedArray[Byte]) -> NQuadsEngine {
-  NQuadsEngine::{
-    lexer: Lexerc::new(data),
-    pending: PendingQuad::{
-      subj: None,
-      pred: None,
-      obj: None,
-      graph: None,
-      has_dot: false,
-      state: PendingState::ExpectSubject,
-      line: 0,
-    },
-  }
-}
-
-///|
-/// 从字符串创建 NQuadsEngine
-pub fn NQuadsEngine::from_string(s : String) -> NQuadsEngine {
-  NQuadsEngine::from_bytes(@utf8.encode(s).to_fixedarray())
 }
 
 ///|
 /// 创建空 NQuadsEngine
 pub fn NQuadsEngine::new() -> NQuadsEngine {
   NQuadsEngine::{
-    lexer: Lexerc::new(FixedArray::make(0, 0)),
     pending: PendingQuad::{
       subj: None,
       pred: None,
       obj: None,
       graph: None,
-      // term_type: None,
       has_dot: false,
       state: PendingState::ExpectSubject,
       line: 1,

@@ -246,7 +246,7 @@ pub fn Serializer::serialize_all(
 ) -> String {
   let buf = StringBuilder::new()
   for quad in quads {
-    lexscan self.mode with longest {
+    lexmatch self.mode with longest {
       // 三元组模式
       re"^(?i:triple)$" => self.append_triple(quad, buf)
 

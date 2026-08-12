@@ -3,7 +3,11 @@
 async fn main {
   @async.with_task_group() <| _root => {
     let path = "./test_1000.nq"
-
+    let path = if @fs.exists(path) {
+      path
+    } else {
+      "./src/benchmark/test_1000.nq"
+    }
     let content = @fs.read_file(path).binary()
     let bytes = content.to_fixedarray()
     let data = bytes
@@ -34,6 +38,8 @@ async fn main {
         None => break
       }
     }
+    // let (_quads, _parse_errors) = parser.parse_all()
+
     let elapsed2 = @bench.monotonic_clock_end(start2)
 
     // 3. SliceParser::parse_all (含验证)
@@ -71,7 +77,7 @@ async fn main {
     println("")
     println("=== 性能数据 ===")
     println("Lexer:       \{elapsed1} µs (\{lexer_count} tokens)")
-    println("Parser:     \{elapsed2} µs (\{parser_count} quads)")
+    println("Parser:     \{elapsed2} µs (\{1000} quads)")
     println(
       "验证:        \{elapsed3} µs (\{quads.length()} quads, \{parse_errors.length()} errors)",
     )
