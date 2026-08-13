@@ -56,6 +56,20 @@ static bool is_alpha(uint8_t c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
+static void skip_whitespace_and_comment(Lexer *l) {
+  while (l->pos < l->len) {
+    uint8_t c = l->data[l->pos];
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+      l->pos++;
+    } else if (c == '#') {
+      l->pos++;
+      while (l->pos < l->len && l->data[l->pos] != '\n')
+        l->pos++;
+    } else {
+      break;
+    }
+  }
+}
 
 // ============================================================
 // 创建/销毁函数
