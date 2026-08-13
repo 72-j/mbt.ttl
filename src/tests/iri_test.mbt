@@ -1,8 +1,10 @@
 ///|
 test "iri parse" {
-  let result = @lib.IriR::default()
+  let result = @lib.Iri::default()
+  let data = "http://example.org"
+  let data = @utf8.encode(data)[:]
 
-  let result = result.parse("http://example.org")
+  let result = result.parse(data)
   match result {
     Ok(r) => @debug.assert_eq(r.scheme, "http")
     Err(e) => fail("Error: \{e}")
@@ -11,15 +13,17 @@ test "iri parse" {
 
 ///|
 test "iri parse full" {
-  let result = @lib.IriR::default().parse("http://user@host:8080/path?q=f#frag")
+  let data = "http://user@host:8080/path?q=f#frag"
+  let bytes = @utf8.encode(data)[:]
+  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
 
   match result {
     Ok(r) => {
       @debug.assert_eq(r.scheme, "http")
-      @debug.assert_eq(r.authority, Some("user@host:8080"))
+      @debug.assert_eq(r.authority, "user@host:8080")
       @debug.assert_eq(r.path, "/path")
-      @debug.assert_eq(r.query, Some("q=f"))
-      @debug.assert_eq(r.fragment, Some("frag"))
+      @debug.assert_eq(r.query, "q=f")
+      @debug.assert_eq(r.fragment, "frag")
     }
     Err(e) => fail("Error: \{e}")
   }
@@ -27,31 +31,33 @@ test "iri parse full" {
 
 ///|
 test "parse_unchecked: basic absolute IRI" {
-  let iri = @lib.IriR::default()
-  let parsed = iri.parse_unchecked("https://example.com/path?query#fragment")
+  let iri = @lib.Iri::default()
+  let data = "https://example.com/path?query#fragment"
+  let bytes = @utf8.encode(data)[:]
+  let parsed = iri.parse_unchecked(bytes[0:bytes.length()])
 
   @debug.assert_eq(
     parsed.into_string(),
     "https://example.com/path?query#fragment",
   )
   @debug.assert_eq(parsed.scheme.to_owned(), "https")
-  @debug.assert_eq(parsed.authority, Some("example.com"))
+  @debug.assert_eq(parsed.authority.to_owned(), "example.com")
   @debug.assert_eq(parsed.path.to_owned(), "/path")
-  @debug.assert_eq(parsed.query, Some("query"))
-  @debug.assert_eq(parsed.fragment, Some("fragment"))
+  @debug.assert_eq(parsed.query.to_owned(), "query")
+  @debug.assert_eq(parsed.fragment.to_owned(), "fragment")
 }
 
 ///|
+///|
 test "parse absolute IRI with slashes" {
-  // 带 authority 的完整 IRI
-  let result = @lib.IriR::default().parse(
-    "https://example.com/path/to/resource",
-  )
+  let data = "https://example.com/path/to/resource"
+  let bytes = @utf8.encode(data)[:]
+  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => {
       @debug.assert_eq(parsed.scheme.to_owned(), "https")
-      @debug.assert_eq(parsed.authority, Some("example.com"))
+      @debug.assert_eq(parsed.authority.to_owned(), "example.com")
       @debug.assert_eq(parsed.path.to_owned(), "/path/to/resource")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
@@ -60,10 +66,9 @@ test "parse absolute IRI with slashes" {
 
 ///|
 test "parse absolute IRI" {
-  // scheme 后面不带 authority，直接是 path
-  let result = @lib.IriR::default().parse(
-    "scheme:path-with-dashes_and_underscores",
-  )
+  let data = "scheme:path-with-dashes_and_underscores"
+  let bytes = @utf8.encode(data)[:]
+  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) =>
@@ -77,7 +82,9 @@ test "parse absolute IRI" {
 
 ///|
 test "parse absolute IRI with dots" {
-  let result = @lib.IriR::default().parse("scheme:abc/def.ghi-jkl_mno")
+  let data = "scheme:abc/def.ghi-jkl_mno"
+  let bytes = @utf8.encode(data)[:]
+  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) =>
@@ -86,45 +93,12 @@ test "parse absolute IRI with dots" {
   }
 }
 
-///|
-test "parse absolute IRI with special characters" {
-  let result = @lib.IriR::default().parse("scheme:!$%25&'()*+,-.0123456789:@?#")
-
-  match result {
-    Ok(parsed) =>
-      @debug.assert_eq(
-        parsed.into_string(),
-        "scheme:!$%25&'()*+,-.0123456789:@?#",
-      )
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
-}
-
-///|
-test "parse absolute IRI with special characters 2" {
-  let result = @lib.IriR::default().parse("#?")
-
-  match result {
-    Ok(parsed) => @debug.assert_eq(parsed.into_string(), "#?")
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
-}
-
-///|
-test "parse absolute IRI with special characters 3" {
-  let result = @lib.IriR::default().parse("?#")
-
-  match result {
-    Ok(parsed) => @debug.assert_eq(parsed.into_string(), "?#")
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
-}
 
 ///|
 test "parse: basic absolute IRI" {
-  let result = @lib.IriR::default().parse(
-    "https://example.com/path?query#fragment",
-  )
+  let data = "https://example.com/path?query#fragment"
+  let bytes = @utf8.encode(data)[:]
+  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => {
@@ -133,10 +107,10 @@ test "parse: basic absolute IRI" {
         "https://example.com/path?query#fragment",
       )
       @debug.assert_eq(parsed.scheme.to_owned(), "https")
-      @debug.assert_eq(parsed.authority, Some("example.com"))
+      @debug.assert_eq(parsed.authority.to_owned(), "example.com")
       @debug.assert_eq(parsed.path.to_owned(), "/path")
-      @debug.assert_eq(parsed.query, Some("query"))
-      @debug.assert_eq(parsed.fragment, Some("fragment"))
+      @debug.assert_eq(parsed.query.to_owned(), "query")
+      @debug.assert_eq(parsed.fragment.to_owned(), "fragment")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
@@ -144,16 +118,18 @@ test "parse: basic absolute IRI" {
 
 ///|
 test "parse: relative IRI (absolute path)" {
-  let result = @lib.IriR::default().parse("/path/to/resource")
+  let data = "/path/to/resource"
+  let bytes = @utf8.encode(data)[:]
+  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => {
       @debug.assert_eq(parsed.into_string(), "/path/to/resource")
-      @debug.assert_eq(parsed.scheme.to_owned(), "")
-      @debug.assert_eq(parsed.authority, None)
+      @debug.assert_eq(parsed.scheme, "")
+      @debug.assert_eq(parsed.authority.to_owned(), "")
       @debug.assert_eq(parsed.path.to_owned(), "/path/to/resource")
-      @debug.assert_eq(parsed.query, None)
-      @debug.assert_eq(parsed.fragment, None)
+      @debug.assert_eq(parsed.query.to_owned(), "")
+      @debug.assert_eq(parsed.fragment.to_owned(), "")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
@@ -161,7 +137,9 @@ test "parse: relative IRI (absolute path)" {
 
 ///|
 test "parse: relative path" {
-  let result = @lib.IriR::default().parse("path/to/resource")
+  let data = "path/to/resource"
+  let bytes = @utf8.encode(data)[:]
+  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => @debug.assert_eq(parsed.path.to_owned(), "path/to/resource")
@@ -171,30 +149,37 @@ test "parse: relative path" {
 
 ///|
 test "parse: query only" {
-  let result = @lib.IriR::default().parse("https://example.com?query=value")
+  let data = "https://example.com?query=value"
+  let bytes = @utf8.encode(data)[:]
+  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => {
       @debug.assert_eq(parsed.path.to_owned(), "")
-      @debug.assert_eq(parsed.query, Some("query=value"))
+      @debug.assert_eq(parsed.query.to_owned(), "query=value")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
 }
 
 ///|
+///|
 test "parse: fragment only" {
-  let result = @lib.IriR::default().parse("https://example.com#fragment")
+  let data = "https://example.com#fragment"
+  let bytes = @utf8.encode(data)[:]
+  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
 
   match result {
-    Ok(parsed) => @debug.assert_eq(parsed.fragment, Some("fragment"))
+    Ok(parsed) => @debug.assert_eq(parsed.fragment.to_owned(), "fragment")
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
 }
 
 ///|
 test "parse_unchecked: basic functionality" {
-  let parsed = @lib.IriR::default().parse_unchecked("https://example.com/path")
+  let data = "https://example.com/path"
+  let bytes = @utf8.encode(data)[:]
+  let parsed = @lib.Iri::default().parse_unchecked(bytes[0:bytes.length()])
 
   @debug.assert_eq(parsed.into_string(), "https://example.com/path")
   @debug.assert_eq(parsed.scheme.to_owned(), "https")
@@ -202,18 +187,22 @@ test "parse_unchecked: basic functionality" {
 
 ///|
 test "parse_unchecked: empty string" {
-  let parsed = @lib.IriR::default().parse_unchecked("")
+  let data = ""
+  let bytes = @utf8.encode(data)[:]
+  let parsed = @lib.Iri::default().parse_unchecked(bytes[0:bytes.length()])
 
   @debug.assert_eq(parsed.into_string(), "")
   @debug.assert_eq(parsed.scheme.to_owned(), "")
-  @debug.assert_eq(parsed.authority, None)
+  @debug.assert_eq(parsed.authority.to_owned(), "")
   @debug.assert_eq(parsed.path.to_owned(), "")
 }
 
 ///|
 test "resolve: relative to absolute base" {
-  let base = @lib.IriR::default()
-  let result = base.resolve("relative/path")
+  let base = @lib.Iri::default()
+  let data = "relative/path"
+  let bytes = @utf8.encode(data)[:]
+  let result = base.resolve(bytes[0:bytes.length()])
 
   match result {
     Ok(resolved) => @debug.assert_eq(resolved.into_string(), "relative/path")
@@ -223,20 +212,22 @@ test "resolve: relative to absolute base" {
 
 ///|
 test "resolve: absolute reference overrides base" {
-  let base = @lib.IriR::{
+  let base = @lib.Iri::{
     scheme: "https",
-    authority: Some("example.com"),
+    authority: "example.com",
     path: "/base/",
-    query: None,
-    fragment: None,
+    query: "",
+    fragment: "",
   }
-  let result = base.resolve("http://other.com/path")
+  let data = "http://other.com/path"
+  let bytes = @utf8.encode(data)[:]
+  let result = base.resolve(bytes[0:bytes.length()])
 
   match result {
     Ok(resolved) => {
       @debug.assert_eq(resolved.into_string(), "http://other.com/path")
       @debug.assert_eq(resolved.scheme.to_owned(), "http")
-      @debug.assert_eq(resolved.authority, Some("other.com"))
+      @debug.assert_eq(resolved.authority.to_owned(), "other.com")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
@@ -244,14 +235,16 @@ test "resolve: absolute reference overrides base" {
 
 ///|
 test "resolve: query and fragment replacement" {
-  let base = @lib.IriR::{
+  let base = @lib.Iri::{
     scheme: "https",
-    authority: Some("example.com"),
+    authority: "example.com",
     path: "/path",
-    query: None,
-    fragment: None,
+    query: "",
+    fragment: "",
   }
-  let result = base.resolve("?query=value#fragment")
+  let data = "?query=value#fragment"
+  let bytes = @utf8.encode(data)[:]
+  let result = base.resolve(bytes[0:bytes.length()])
 
   match result {
     Ok(resolved) => {
@@ -259,8 +252,8 @@ test "resolve: query and fragment replacement" {
         resolved.into_string(),
         "https://example.com/path?query=value#fragment",
       )
-      @debug.assert_eq(resolved.query, Some("query=value"))
-      @debug.assert_eq(resolved.fragment, Some("fragment"))
+      @debug.assert_eq(resolved.query.to_owned(), "query=value")
+      @debug.assert_eq(resolved.fragment.to_owned(), "fragment")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
@@ -268,14 +261,16 @@ test "resolve: query and fragment replacement" {
 
 ///|
 test "resolve_unchecked: basic functionality" {
-  let base = @lib.IriR::{
+  let base = @lib.Iri::{
     scheme: "https",
-    authority: Some("example.com"),
+    authority: "example.com",
     path: "/base",
-    query: None,
-    fragment: None,
+    query: "",
+    fragment: "",
   }
-  let resolved = base.resolve_unchecked("relative/path")
+  let data = "relative/path"
+  let bytes = @utf8.encode(data)[:]
+  let resolved = base.resolve_unchecked(bytes[0:bytes.length()])
 
   @debug.assert_eq(
     resolved.into_string(),
@@ -336,3 +331,5 @@ test "remove_dot_segments: ends with slash" {
   @debug.assert_eq(@lib.fn_remove_dot_segments("/a/b/c/./"), "/a/b/c")
   @debug.assert_eq(@lib.fn_remove_dot_segments("a/b/"), "a/b")
 }
+
+

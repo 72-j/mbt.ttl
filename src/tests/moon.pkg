@@ -10,7 +10,6 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/core/quickcheck/splitmix",
   "thy1016/moonttl" @lib,
-  "thy1016/moonttl/parserc",
   "moonbitlang/core/bench",
 } for "test"
 

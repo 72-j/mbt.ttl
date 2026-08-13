@@ -3,6 +3,7 @@
 pub(all) suberror ParserError {
   SyntaxErr(String, Span) // 结构错误（语法层）
   ValidationErr(String) // 语义错误（验证层）
+  IriErr(String) // IRI 解析错误
 } derive(Debug)
 
 ///|
@@ -25,6 +26,7 @@ pub fn ParserError::to_span(err : ParserError) -> Span {
   match err {
     ValidationErr(_) => (0, 0)
     SyntaxErr(_, span) => span
+    IriErr(_) => (0, 0)
   }
 }
 
@@ -33,6 +35,7 @@ pub impl ErrOut for ParserError with fn message(self : ParserError) -> String {
   match self {
     ParserError::ValidationErr(message) => message
     ParserError::SyntaxErr(message, _) => message
+    ParserError::IriErr(message) => message
   }
 }
 
@@ -41,6 +44,7 @@ pub impl ErrOut for ParserError with fn err_kind(self : ParserError) -> String {
   match self {
     ValidationErr(_) => "ValidationErr"
     ParserError::SyntaxErr(_, _) => "SyntaxErr"
+    ParserError::IriErr(_) => "IriErr"
   }
 }
 
@@ -63,6 +67,7 @@ pub impl Show for ParserError with fn output(
       logger.write_string(" at position ")
       logger.write_string("(\{offset}, \{length})")
     }
+    ParserError::IriErr(message) => logger.write_string(message)
   }
 }
 

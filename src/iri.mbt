@@ -1,65 +1,68 @@
 ///|
-pub(all) struct IriR {
+pub(all) struct Iri {
   scheme : StringView
-  authority : StringView?
+  authority : StringView
   path : StringView
-  query : StringView?
-  fragment : StringView?
+  query : StringView
+  fragment : StringView
 } derive(Debug, Eq, Default)
 
 ///|
-pub fn IriR::IriR(
+pub fn Iri::Iri(
   scheme : StringView,
-  authority : StringView?,
+  authority : StringView,
   path : StringView,
-  query : StringView?,
-  fragment : StringView?,
-) -> IriR {
-  IriR::{ scheme, authority, path, query, fragment }
+  query : StringView,
+  fragment : StringView,
+) -> Iri {
+  Iri::{ scheme, authority, path, query, fragment }
 }
 
 ///|
-pub fn IriR::parse(_self : IriR, s : String) -> Result[IriR, IriError] {
-  match parse_iri.run(@parserc.Seq::from_string(s)) {
-    Some((Ok(iri), _)) => Ok(iri)
-    Some((Err(e), _)) => Err(e)
-    None => Err(IriError::UnexpectedEnd(0))
+pub(all) struct IriSpan {
+  mut scheme : Span
+  mut authority : Span
+  mut path : Span
+  mut query : Span
+  mut fragment : Span
+  mut pos : Int
+} derive(Eq, Default)
+
+///|
+pub fn Iri::parse(
+  _self : Iri,
+  view : BytesView,
+) -> Result[Iri, ParserError] {
+  // let data = @utf8.encode(s)
+  // let view = data[0:data.length()].to_array()
+  match parse_iri(view, 0) {
+    Ok(span) => Ok(span.build(view))
+    Err(e) => Err(ParserError::IriErr(e.message()))
   }
 }
 
 ///|
-pub fn IriR::parse_unchecked(_self : IriR, s : String) -> IriR {
-  match parse_iri.run(@parserc.Seq::from_string(s)) {
-    Some((Ok(iri), _)) => iri
-    Some((Err(_), _)) =>
-      // 尝试返回尽可能多的信息
-      IriR::{
-        scheme: "",
-        authority: None,
-        path: s,
-        query: None,
-        fragment: None,
-      }
-    None =>
-      IriR::{
-        scheme: "",
-        authority: None,
-        path: s,
-        query: None,
-        fragment: None,
-      }
-  }
+pub fn Iri::parse_unchecked(_self : Iri, view : BytesView) -> Iri {
+  let span = IriSpan::default()
+  span.pos = 0
+  // 尝试解析，即使失败也继续
+  span.parse_scheme(view)
+  span.parse_authority(view)
+  span.parse_path(view)
+  span.parse_query(view)
+  span.parse_fragment(view)
+  span.build(view)
 }
 
 ///|
 /// 合并 IRI
-pub fn IriR::resolve(
-  self : IriR,
-  ref_iri : String,
+pub fn Iri::resolve(
+  self : Iri,
+  ref_iri : BytesView,
   remove_dot_segments? : Bool = true,
-) -> Result[IriR, IriError] {
+) -> Result[Iri, ParserError] {
   let ref_parsed = match
-    IriR::{ scheme: "", authority: None, path: "", query: None, fragment: None }.parse(
+    Iri::default().parse(
       ref_iri,
     ) {
     Ok(r) => r
@@ -73,7 +76,7 @@ pub fn IriR::resolve(
 
   // 合并各个组件
   let scheme = self.scheme
-  let authority = if ref_parsed.authority is Some(_) {
+  let authority = if ref_parsed.authority.length() > 0 {
     ref_parsed.authority
   } else {
     self.authority
@@ -103,22 +106,22 @@ pub fn IriR::resolve(
   } else {
     path
   }
-  let query = if ref_parsed.query.unwrap_or_default().length() > 0 {
+  let query = if ref_parsed.query.length() > 0 {
     ref_parsed.query
   } else {
     self.query
   }
-  let fragment = if ref_parsed.fragment.unwrap_or_default().length() > 0 {
+  let fragment = if ref_parsed.fragment.length() > 0 {
     ref_parsed.fragment
   } else {
     self.fragment
   }
 
-  Ok(IriR::{ scheme, authority, path, query, fragment })
+  Ok(Iri::{ scheme, authority, path, query, fragment })
 }
 
 ///|
-pub fn IriR::relativize(self : IriR, target : IriR) -> Result[IriR, IriError] {
+pub fn Iri::relativize(self : Iri, target : Iri) -> Result[Iri, ParserError] {
   // 如果 scheme 或 authority 不同，无法相对化
   if self.scheme != target.scheme || self.authority != target.authority {
     return Ok(target)
@@ -138,9 +141,9 @@ pub fn IriR::relativize(self : IriR, target : IriR) -> Result[IriR, IriError] {
     target.path.to_owned()
   }
 
-  Ok(IriR::{
+  Ok(Iri::{
     scheme: "",
-    authority: None,
+    authority: "",
     path,
     query: target.query,
     fragment: target.fragment,
@@ -148,19 +151,13 @@ pub fn IriR::relativize(self : IriR, target : IriR) -> Result[IriR, IriError] {
 }
 
 ///|
-pub fn IriR::resolve_unchecked(
-  self : IriR,
-  ref_iri : String,
+pub fn Iri::resolve_unchecked(
+  self : Iri,
+  ref_iri : BytesView,
   remove_dot_segments? : Bool = true,
-) -> IriR {
+) -> Iri {
   // 尝试解析参考 IRI（忽略错误）
-  let ref_parsed = IriR::{
-    scheme: "",
-    authority: None,
-    path: "",
-    query: None,
-    fragment: None,
-  }.parse_unchecked(ref_iri)
+  let ref_parsed = Iri::default().parse_unchecked(ref_iri)
 
   // 如果参考 IRI 是绝对的，直接返回
   if ref_parsed.scheme.length() > 0 {
@@ -169,7 +166,7 @@ pub fn IriR::resolve_unchecked(
 
   // 合并各个组件
   let scheme = self.scheme
-  let authority = if ref_parsed.authority is Some(_) {
+  let authority = if ref_parsed.authority.length() > 0 {
     ref_parsed.authority
   } else {
     self.authority
@@ -203,7 +200,7 @@ pub fn IriR::resolve_unchecked(
     path
   }
 
-  let query = if ref_parsed.query is Some(_) {
+  let query = if ref_parsed.query.length() > 0 {
     ref_parsed.query
   } else {
     self.query
@@ -211,11 +208,11 @@ pub fn IriR::resolve_unchecked(
 
   let fragment = ref_parsed.fragment
 
-  IriR::{ scheme, authority, path, query, fragment }
+  Iri::{ scheme, authority, path, query, fragment }
 }
 
 ///|
-pub fn IriR::into_string(self : IriR) -> String {
+pub fn Iri::into_string(self : Iri) -> String {
   let s = StringBuilder::new()
 
   // scheme
@@ -225,35 +222,24 @@ pub fn IriR::into_string(self : IriR) -> String {
   }
 
   // authority
-  match self.authority {
-    Some(auth) => {
-      s.write_string("//")
-      if auth.length() > 0 {
-        // 添加 authority
-        s.write_view(auth)
-      }
-    }
-    None => ()
+  if self.authority.length() > 0 {
+    s.write_string("//")
+    s.write_view(self.authority)
   }
 
   // path
   s.write_view(self.path)
+
   // query
-  match self.query {
-    Some(q) => {
-      s.write_char('?')
-      s.write_view(q)
-    }
-    None => ()
+  if self.query.length() > 0 {
+    s.write_char('?')
+    s.write_view(self.query)
   }
 
   // fragment
-  match self.fragment {
-    Some(f) => {
-      s.write_char('#')
-      s.write_view(f)
-    }
-    None => ()
+  if self.fragment.length() > 0 {
+    s.write_char('#')
+    s.write_view(self.fragment)
   }
 
   s.to_string()
@@ -307,213 +293,223 @@ pub fn fn_remove_dot_segments(path : StringView) -> StringView {
 }
 
 ///|
-/// 解析 scheme（遇到 : 停止）
-fn parse_scheme(
-  input : @parserc.Seq[Char],
-) -> (StringView, @parserc.Seq[Char])? {
-  let chars : Array[Char] = []
-  let mut input = input
-  for ;; {
-    match input.uncons() {
-      Some((c, rest)) =>
-        if is_ascii_alphanumeric(c) {
-          chars.push(c)
-          input = rest
-        } else {
-          break
-        }
-      None => break
-    }
+/// 字符类型查表
+let is_scheme_char : FixedArray[Bool] = {
+  let arr = FixedArray::make(256, false)
+  for c in b'0'.to_int()..<=b'9'.to_int() {
+    arr[c] = true
   }
-  if chars.is_empty() {
-    None
+  for c in b'A'.to_int()..<=b'Z'.to_int() {
+    arr[c] = true
+  }
+  for c in b'a'.to_int()..<=b'z'.to_int() {
+    arr[c] = true
+  }
+  arr[b'+'.to_int()] = true
+  arr[b'-'.to_int()] = true
+  arr[b'.'.to_int()] = true
+  arr
+}
+
+///|
+let is_auth_char : FixedArray[Bool] = {
+  let arr = FixedArray::make(256, false)
+  // 可见 ASCII（排除空格、#、?）
+  for c in b'!'.to_int()..<=b'~'.to_int() {
+    arr[c] = true
+  }
+  arr[b' '.to_int()] = false // 空格
+  arr[b'#'.to_int()] = false
+  arr[b'?'.to_int()] = false
+  arr[b'/'.to_int()] = false // ← 添加，authority 结束标志
+  arr[b'\n'.to_int()] = true
+  arr
+}
+
+///|
+let is_path_char : FixedArray[Bool] = {
+  let arr = FixedArray::make(256, false)
+  for c in b'!'.to_int()..<=b'~'.to_int() {
+    arr[c] = true
+  }
+  arr[b' '.to_int()] = false
+  arr[b'#'.to_int()] = false
+  arr[b'?'.to_int()] = false
+  arr[b'\n'.to_int()] = false
+  arr[b'\t'.to_int()] = false
+  arr
+}
+
+///|
+// fn peek(data : BytesView, pos : Int) -> Byte? {
+//   if pos < data.length() {
+//     Some(data[pos])
+//   } else {
+//     None
+//   }
+// }
+
+///|
+// fn IriSpan::advance(self : IriSpan) -> Unit {
+//   self.pos += 1
+// }
+
+///|
+/// 解析 scheme
+fn IriSpan::parse_scheme(self : IriSpan, data : BytesView) -> Unit {
+  let start = self.pos
+  let len = data.length()
+  while self.pos < len && is_scheme_char[data[self.pos].to_int()] {
+    self.pos += 1
+  }
+  if self.pos > start && self.pos < len && data[self.pos] == b':' {
+    self.scheme = (start, self.pos - start)
+    self.pos += 1 // 消费 :
   } else {
-    let scheme = chars.fold(init="", fn(a, b) { a + b.to_string() })
-    match input.uncons() {
-      Some((':', rest)) => Some((scheme, rest))
-      _ => None
+    self.pos = start // 回退
+  }
+}
+
+///|
+/// 解析 authority
+/// 解析 authority
+fn IriSpan::parse_authority(self : IriSpan, data : BytesView) -> Unit {
+  let len = data.length()
+  // 检查 //（必须有两个 / 才算 authority）
+  if self.pos + 1 < len && data[self.pos] == b'/' && data[self.pos + 1] == b'/' {
+    self.pos += 2 // 消费 //
+    let start = self.pos
+    // authority 在 / ? # 或字符串结束时结束
+    while self.pos < len && is_auth_char[data[self.pos].to_int()]{
+      self.pos += 1
+    }
+    if self.pos > start {
+      self.authority = (start, self.pos - start)
     }
   }
 }
 
 ///|
-/// 解析 authority（遇到 // 开始，遇到 / ? # 空格 停止）
-fn parse_authority(
-  input : @parserc.Seq[Char],
-) -> (StringView?, @parserc.Seq[Char])? {
-  match input.uncons() {
-    Some(('/', rest1)) =>
-      match rest1.uncons() {
-        Some(('/', rest2)) => {
-          let chars : Array[Char] = []
-          let mut input = rest2
-          for ;; {
-            match input.uncons() {
-              Some((c, r)) =>
-                if c != '/' && c != '?' && c != '#' && c != ' ' {
-                  chars.push(c)
-                  input = r
-                } else {
-                  break
-                }
-              None => break
-            }
-          }
-          if chars.is_empty() {
-            Some((None, rest2))
-          } else {
-            let auth = chars.fold(init="", fn(a, b) { a + b.to_string() })
-            Some((Some(auth), input))
-          }
-        }
-        _ => Some((None, input))
-      }
-    _ => Some((None, input))
+/// 解析 path（遇到 ? # 空格 换行 停止，但包含 :）
+fn IriSpan::parse_path(self : IriSpan, data : BytesView) -> Unit {
+  let start = self.pos
+  let len = data.length()
+  while self.pos < len &&is_path_char[data[self.pos].to_int()] {
+    self.pos += 1
+  }
+  if self.pos > start {
+    self.path = (start, self.pos - start)
   }
 }
 
 ///|
-/// 解析 path（遇到 ? # 空格 换行 停止）
-fn parse_path(input : @parserc.Seq[Char]) -> (StringView, @parserc.Seq[Char])? {
-  let chars : Array[Char] = []
-  let mut input = input
-  for ;; {
-    match input.uncons() {
-      Some((c, rest)) =>
-        if c != '?' && c != '#' && c != ' ' && c != '\n' {
-          chars.push(c)
-          input = rest
-        } else {
-          break // ← 这里 break，但 input 是原始输入，没有消费任何字符
-        }
-      None => break
+/// 解析 query
+fn IriSpan::parse_query(self : IriSpan, data : BytesView) -> Unit {
+  let len = data.length()
+  if self.pos < len && data[self.pos] == b'?' {
+    self.pos += 1
+    let start = self.pos
+    while self.pos < len &&
+          data[self.pos] != b'#' &&
+          data[self.pos] != b' ' &&
+          data[self.pos] != b'\n' {
+      self.pos += 1
+    }
+    if self.pos > start {
+      self.query = (start, self.pos - start)
     }
   }
-  if chars.is_empty() {
-    // 没有消费任何字符，返回空 path 和原始输入
-    Some(("", input))
+}
+
+///|
+/// 解析 fragment
+fn IriSpan::parse_fragment(self : IriSpan, data : BytesView) -> Unit {
+  let len = data.length()
+  if self.pos < len && data[self.pos] == b'#' {
+    self.pos += 1
+    let start = self.pos
+    while self.pos < len &&
+          data[self.pos] != b' ' &&
+          data[self.pos] != b'\n' &&
+          data[self.pos] != b'\t' {
+      self.pos += 1
+    }
+    if self.pos > start {
+      self.fragment = (start, self.pos - start)
+    }
+  }
+}
+
+// ============================================================
+// 主解析函数
+// ============================================================
+
+///|
+  /// 解析 IRI，返回 IriSpan
+  pub fn parse_iri(data : BytesView, start : Int) -> Result[IriSpan, ParserError] {
+    let span = IriSpan::default()
+    span.pos = start
+    let len = data.length()
+
+    // 1. 尝试解析 scheme（可选）
+    span.parse_scheme(data)
+
+    // 2. 解析 authority（可选）
+    span.parse_authority(data)
+
+    // 3. 解析 path
+    span.parse_path(data)
+
+    // 4. 解析 query
+    span.parse_query(data)
+
+    // 5. 解析 fragment
+    span.parse_fragment(data)
+
+    // 6. query/fragment 都为空时，剩余输入追加到 path
+    if span.query.1 == 0 && span.fragment.1 == 0 && span.pos < len {
+      span.path = (span.path.0, len - span.path.0)
+      span.pos = len
+    }
+
+    Ok(span)
+  }
+///|
+/// 从 IriSpan 构建 Iri
+
+///|
+ fn IriSpan::build(self : IriSpan, data : BytesView) -> Iri {
+  let scheme = if self.scheme.1 > 0 {
+    data[self.scheme.0:self.scheme.0 + self.scheme.1]
   } else {
-    let path = chars.fold(init="", fn(a, b) { a + b.to_string() })
-    Some((path, input))
+    []
   }
-}
-
-///|
-/// 解析 query（遇到 ? 开始，遇到 # 或空白停止）
-fn parse_query(
-  input : @parserc.Seq[Char],
-) -> (StringView?, @parserc.Seq[Char])? {
-  let (first, rest) = match input.uncons() {
-    Some((c, rest)) => (c, rest)
-    None => return Some((None, input))
-  }
-
-  if first != '?' {
-    return Some((None, input))
-  }
-
-  let chars : Array[Char] = []
-  let mut rest_view = rest
-  for ;; {
-    match rest_view.uncons() {
-      Some((c, r)) =>
-        if c != '#' && c != ' ' && c != '\n' {
-          chars.push(c)
-          rest_view = r
-        } else {
-          break
-        }
-      None => break
-    }
-  }
-
-  if chars.is_empty() {
-    Some((None, input)) // 关键：回退到原始 input
+  let authority = if self.authority.1 > 0 {
+    data[self.authority.0:self.authority.0 + self.authority.1]
   } else {
-    let query = chars.fold(init="", fn(a, b) { a + b.to_string() })
-    Some((Some(query), rest_view))
+    []
   }
-}
-
-///|
-/// 解析 fragment（遇到 # 开始，遇到空白停止）
-fn parse_fragment(
-  input : @parserc.Seq[Char],
-) -> (StringView?, @parserc.Seq[Char])? {
-  match input.uncons() {
-    Some(('#', rest)) => {
-      let chars : Array[Char] = []
-      let mut rest_view = rest
-      for ;; {
-        match rest_view.uncons() {
-          Some((c, r)) =>
-            if c != ' ' && c != '\n' {
-              chars.push(c)
-              rest_view = r
-            } else {
-              break
-            }
-          None => break
-        }
-      }
-      if chars.is_empty() {
-        // fragment 为空，不消费 #
-        Some((None, input)) // ← 保持 input 不变
-      } else {
-        let fragment = chars.fold(init="", fn(a, b) { a + b.to_string() })
-        Some((Some(fragment), rest_view))
-      }
-    }
-    _ => Some((None, input))
-  }
-}
-
-///|
-/// 完整的 IRI 解析器
-pub let parse_iri : IriParser[IriR] = @parserc.Parser::new(fn(input) {
-  // 1. 解析 scheme
-  let (scheme, rest1) = parse_scheme(input).unwrap_or((""[:], input))
-
-  // 2. 尝试 query 和 fragment（快速路径）
-  let (query, rest2) = parse_query(rest1).unwrap_or((None, rest1))
-  let (fragment, rest3) = parse_fragment(rest2).unwrap_or((None, rest2))
-
-  // 3. 如果有 query 或 fragment，直接返回
-  if query is Some(_) || fragment is Some(_) {
-    return Some(
-      (
-        Ok(IriR::{ scheme, authority: None, path: ""[:], query, fragment }),
-        rest3,
-      ),
-    )
-  }
-
-  // 4. 否则解析 authority、path、query、fragment
-  let (auth, rest4) = parse_authority(rest3).unwrap_or((None, rest3))
-  let (path, rest5) = parse_path(rest4).unwrap_or((""[:], rest4))
-  let (query2, rest6) = parse_query(rest5).unwrap_or((None, rest5))
-  let (fragment2, rest7) = parse_fragment(rest6).unwrap_or((None, rest6))
-
-  // 5. query/fragment 都为空时，剩余输入追加到 path
-  let final_path = if query2 is None(_) &&
-    fragment2 is None(_) &&
-    rest7.length() > 0 {
-    path + rest7.to_string()
+  let path = if self.path.1 > 0 {
+    data[self.path.0:self.path.0 + self.path.1]
   } else {
-    path
+    []
   }
+  let query = if self.query.1 > 0 {
+    data[self.query.0:self.query.0 + self.query.1]
+  } else {
+    []
+  }
+  let fragment = if self.fragment.1 > 0 {
+    data[self.fragment.0:self.fragment.0 + self.fragment.1]
+  } else {
+    []
+  }
+  Iri::{
+    scheme: @utf8.decode_lossy(scheme),
+    authority: @utf8.decode_lossy(authority),
+    path: @utf8.decode_lossy(path),
+    query: @utf8.decode_lossy(query),
+    fragment: @utf8.decode_lossy(fragment),
+  }
+}
 
-  // 6. 返回结果
-  Some(
-    (
-      Ok(IriR::{
-        scheme,
-        authority: auth,
-        path: final_path,
-        query: query2,
-        fragment: fragment2,
-      }),
-      rest7,
-    ),
-  )
-})

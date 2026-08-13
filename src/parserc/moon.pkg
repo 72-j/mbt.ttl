@@ -1,7 +1,0 @@
-import {
-  "moonbitlang/core/list",
-}
-
-import {
-  "moonbitlang/core/builtin",
-} for "test"

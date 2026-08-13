@@ -1,7 +1,4 @@
 ///|
-/// 创建 N-Quads Parser
-
-///|
 test "nquads: basic triple with dot" {
   let data =
     #| <http://a.example/s> <http://a.example/p> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> .
