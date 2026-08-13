@@ -214,7 +214,7 @@ pub(all) suberror IriError {
   InvalidPortCharacter(Char, Int)
   PathStartingWithTwoSlashes(Int)
   RelativePathSegment(Char, Int)
-  InvalidErrMessage(String)
+  ValidationErr(String)
 }
 pub fn IriError::position(Self) -> Int
 pub impl Show for IriError
@@ -228,13 +228,13 @@ pub impl Show for LanguageTagParseError
 pub(all) suberror LexerError {
   OutOfMemory(String)
   IoReadError(String)
-  SyntaxError(String)
+  SyntaxErr(String)
 }
 pub impl Show for LexerError
 pub impl ErrOut for LexerError
 
 pub(all) suberror RuleRecognizerError {
-  SyntaxError(String, Range)
+  SyntaxErr(String, Range)
   BlankNodeOrIriError
   PredicateNotAnIRI
   LiteralDatatypeError
@@ -262,7 +262,7 @@ pub impl Show for TagParseErr
 pub(all) suberror TokenRecognizerError {
   Invalid
   InvalidFormat(ArrayView[Byte], Range)
-  InvalidToken(ArrayView[Byte], Range)
+  SyntaxErr(ArrayView[Byte], Range)
   InvalidCharacter(ArrayView[Byte], Range)
   IncompleteEscapeSequence(ArrayView[Byte], Range)
   InvalidEscapeSequence(ArrayView[Byte], Range)
@@ -270,7 +270,7 @@ pub(all) suberror TokenRecognizerError {
   IriTruncated(ArrayView[Byte], Range)
   IriParsingError(String, Range)
   UnexpectedEndOfInput(ArrayView[Byte], Range)
-  InvalidErrMessage(ArrayView[Byte], Range, String)
+  ValidationErr(ArrayView[Byte], Range, String)
 }
 pub fn TokenRecognizerError::range(Self) -> Range
 pub impl Show for TokenRecognizerError
@@ -281,7 +281,7 @@ pub(all) suberror TurtleError {
   TurtleSyntaxError(String, Range)
   InvalidEscapeSequence
   InvalidCharacter(String)
-  InvalidToken(SourcePos, String)
+  SyntaxErr(SourcePos, String)
   UnexpectedEndOfInput(SourcePos, String)
 } derive(@debug.Debug)
 pub impl Show for TurtleError

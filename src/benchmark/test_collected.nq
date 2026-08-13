@@ -1,0 +1,235 @@
+<http://a.example/s> <http://a.example/p> "x" .
+
+<http://a.example/s> <http://a.example/p> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> .
+
+<http://a.example/s> <http://a.example/p> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> .
+
+<http://example/s> <http://example/p> <http://example/o> .
+
+# x53 is capital S
+<http://example/\u0053> <http://example/p> <http://example/o> .
+
+# x53 is capital S
+<http://example/\U00000053> <http://example/p> <http://example/o> .
+
+# IRI with all chars in it.
+<http://example/s> <http://example/p> <scheme:!$%25&'()*+,-./0123456789:/@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~?#> .
+
+<http://a.example/s> <http://a.example/p> "chat"@en .
+
+
+#Empty file.
+
+#One comment, one empty line.
+
+
+#
+# Copyright World Wide Web Consortium, (Massachusetts Institute of
+# Technology, Institut National de Recherche en Informatique et en
+# Automatique, Keio University).
+#
+# All Rights Reserved.
+#
+# Please see the full Copyright clause at
+# <http://www.w3.org/Consortium/Legal/copyright-software.html>
+#
+# Test file with a variety of legal N-Triples
+#
+# Dave Beckett - http://purl.org/net/dajobe/
+# 
+# $Id: test.nt,v 1.7 2003/10/06 15:52:19 dbeckett2 Exp $
+# 
+#####################################################################
+
+# comment lines
+# comment line after whitespace
+# empty blank line, then one with spaces and tabs
+
+         	
+<http://example.org/resource1> <http://example.org/property> <http://example.org/resource2> .
+_:anon <http://example.org/property> <http://example.org/resource2> .
+<http://example.org/resource2> <http://example.org/property> _:anon .
+# spaces and tabs throughout:
+<http://example.org/resource3> <http://example.org/property> <http://example.org/resource2>  .	 
+
+# line ending with CR NL (ASCII 13, ASCII 10)
+<http://example.org/resource4> <http://example.org/property> <http://example.org/resource2> .
+
+# 2 statement lines separated by single CR (ASCII 10)
+<http://example.org/resource5> <http://example.org/property> <http://example.org/resource2> .
+<http://example.org/resource6> <http://example.org/property> <http://example.org/resource2> .
+
+
+# All literal escapes
+<http://example.org/resource7> <http://example.org/property> "simple literal" .
+<http://example.org/resource8> <http://example.org/property> "backslash:\\" .
+<http://example.org/resource9> <http://example.org/property> "dquote:\"" .
+<http://example.org/resource10> <http://example.org/property> "newline:\n" .
+<http://example.org/resource11> <http://example.org/property> "return\r" .
+<http://example.org/resource12> <http://example.org/property> "tab:\t" .
+
+# Space is optional before final .
+<http://example.org/resource13> <http://example.org/property> <http://example.org/resource2>.
+<http://example.org/resource14> <http://example.org/property> "x".
+<http://example.org/resource15> <http://example.org/property> _:anon.
+
+# \u and \U escapes
+# latin small letter e with acute symbol \u00E9 - 3 UTF-8 bytes #xC3 #A9
+<http://example.org/resource16> <http://example.org/property> "\u00E9" .
+# Euro symbol \u20ac  - 3 UTF-8 bytes #xE2 #x82 #xAC
+<http://example.org/resource17> <http://example.org/property> "\u20AC" .
+# resource18 test removed
+# resource19 test removed
+# resource20 test removed
+
+# XML Literals as Datatyped Literals
+<http://example.org/resource21> <http://example.org/property> ""^^<http://www.w3.org/2000/01/rdf-schema#XMLLiteral> .
+<http://example.org/resource22> <http://example.org/property> " "^^<http://www.w3.org/2000/01/rdf-schema#XMLLiteral> .
+<http://example.org/resource23> <http://example.org/property> "x"^^<http://www.w3.org/2000/01/rdf-schema#XMLLiteral> .
+<http://example.org/resource23> <http://example.org/property> "\""^^<http://www.w3.org/2000/01/rdf-schema#XMLLiteral> .
+<http://example.org/resource24> <http://example.org/property> "<a></a>"^^<http://www.w3.org/2000/01/rdf-schema#XMLLiteral> .
+<http://example.org/resource25> <http://example.org/property> "a <b></b>"^^<http://www.w3.org/2000/01/rdf-schema#XMLLiteral> .
+<http://example.org/resource26> <http://example.org/property> "a <b></b> c"^^<http://www.w3.org/2000/01/rdf-schema#XMLLiteral> .
+<http://example.org/resource26> <http://example.org/property> "a\n<b></b>\nc"^^<http://www.w3.org/2000/01/rdf-schema#XMLLiteral> .
+<http://example.org/resource27> <http://example.org/property> "chat"^^<http://www.w3.org/2000/01/rdf-schema#XMLLiteral> .
+# resource28 test removed 2003-08-03
+# resource29 test removed 2003-08-03
+
+# Plain literals with languages
+<http://example.org/resource30> <http://example.org/property> "chat"@fr .
+<http://example.org/resource31> <http://example.org/property> "chat"@en .
+
+# Typed Literals
+<http://example.org/resource32> <http://example.org/property> "abc"^^<http://example.org/datatype1> .
+# resource33 test removed 2003-08-03
+
+<http://example.org/ex#a> <http://example.org/ex#b> "Cheers"@en-UK .
+
+<http://example/s> <http://example/p> <http://example/o>.
+<http://example/s> <http://example/p> "Alice".
+<http://example/s> <http://example/p> _:o .
+_:s <http://example/p> <http://example/o> .
+_:s <http://example/p> "Alice" .
+_:s <http://example/p> _:bnode1 .
+
+_:a  <http://example/p> <http://example/o> .
+
+<http://example/s> <http://example/p> _:a .
+_:a  <http://example/p> <http://example/o> .
+
+<http://example/s> <http://example/p> _:1a .
+_:1a  <http://example/p> <http://example/o> .
+
+<http://a.example/s> <http://a.example/p> "x\"y" .
+
+<http://a.example/s> <http://a.example/p> "x'y" .
+
+<http://example/s> <http://example/p> "string" .
+
+<http://example/s> <http://example/p> "string"@en .
+
+<http://example/s> <http://example/p> "string"@en-uk .
+
+<http://a.example/s> <http://a.example/p> "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\t\u000B\u000C\u000E\u000F\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001A\u001B\u001C\u001D\u001E\u001F" .
+
+<http://example/s> <http://example/p> 1 .
+
+<http://example/s> <http://example/p> 1.0 .
+
+<http://example/s> <http://example/p> 1.0e0 .
+
+# Bad IRI : space.
+<http://example/ space> <http://example/p> <http://example/o> .
+
+# Bad IRI : bad escape
+<http://example/\u00ZZ11> <http://example/p> <http://example/o> .
+
+# Bad IRI : bad escape
+<http://example/\U00ZZ1111> <http://example/p> <http://example/o> .
+
+# Bad IRI : character escapes not allowed.
+<http://example/\n> <http://example/p> <http://example/o> .
+
+# Bad IRI : character escapes not allowed.
+<http://example/\/> <http://example/p> <http://example/o> .
+
+# No relative IRIs in N-Triples
+<s> <http://example/p> <http://example/o> .
+
+# No relative IRIs in N-Triples
+<http://example/s> <p> <http://example/o> .
+
+# No relative IRIs in N-Triples
+<http://example/s> <http://example/p> <o> .
+
+# No relative IRIs in N-Triples
+<http://example/s> <http://example/p> "foo"^^<dt> .
+
+<http://example/s> <http://example/p> "a\n" .
+
+<http://example/s> <http://example/p> "a\u0020b" .
+
+<http://example/s> <http://example/p> "a\U00000020b" .
+
+@base <http://example/> .
+
+<http://a.example/s> <http://a.example/p> "x\"\"y" .
+
+<http://a.example/s> <http://a.example/p> "x''y" .
+
+<http://a.example/s> <http://a.example/p> "\b" .
+
+<http://a.example/s> <http://a.example/p> "\f" .
+
+<http://a.example/s> <http://a.example/p> "\n" .
+
+_::a <http://example/p> <http://example/o> .
+
+<http://example/s> <http://example/p> "123"^^<http://www.w3.org/2001/XMLSchema#byte> .
+
+<http://example/s> <http://example/p> "123"^^<http://www.w3.org/2001/XMLSchema#string> .
+
+<http://a.example/s> <http://a.example/p> " !\"#$%&():;<=>?@[]^_`{|}~" .
+
+@prefix : <http://example/> .
+
+<http://example/s> <http://example/p> "abc' .
+
+<http://example/s> <http://example/p> 1.0 .
+
+<http://example/s> <http://example/p> 1.0e1 .
+
+<http://example/s> <http://example/p> '''abc''' .
+
+<http://example/s> <http://example/p> """abc""" .
+
+<http://example/s> <http://example/p> "abc .
+
+<http://example/s> <http://example/p> abc" .
+
+<http://example/s> <http://example/p> <http://example/o>, <http://example/o2> .
+
+<http://example/s> <http://example/p> <http://example/o>; <http://example/p2>, <http://example/o2> .
+
+<http://example/s> <http://example/p> <http://example/o> . # comment
+<http://example/s> <http://example/p> _:o . # comment
+<http://example/s> <http://example/p> "o" . # comment
+<http://example/s> <http://example/p> "o"^^<http://example/dt> . # comment
+<http://example/s> <http://example/p> "o"@en . # comment
+
+<http://a.example/s> <http://a.example/p> " 	&([]" .
+
+<http://a.example/s> <http://a.example/p> "\r" .
+
+<http://a.example/s> <http://a.example/p> "\\" .
+
+<http://a.example/s> <http://a.example/p> "߿ࠀ࿿က쿿퀀퟿�𐀀𿿽񀀀󿿽􀀀􏿽" .
+
+<http://a.example/s> <http://a.example/p> "\u006F" .
+
+<http://a.example/s> <http://a.example/p> "\U0000006F" .
+
+<http://example.org/ns#s> <http://example.org/ns#p1> "test-\\" .
+
+<http://a.example/s> <http://a.example/p> "\t" .
+

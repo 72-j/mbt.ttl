@@ -105,7 +105,7 @@ async fn parse_content(content : Bytes, verbose : Bool) -> Unit {
     println("")
     println("=== Materializing ===")
 
-    let (quads, mat_errors) = @lib.materialize_all(quad_spans, data)
+    let (quads, mat_errors) = @lib.materialize_all(quad_spans)
 
     println("Materialized \{quads.length()} quads")
     // Print materialize errors

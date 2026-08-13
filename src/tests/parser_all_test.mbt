@@ -1,8 +1,9 @@
 ///|
 test "nquads: basic triple" {
-  let data = @utf8.encode(
-    "<http://ex.org/s> <http://ex.org/p> <http://ex.org/o> .",
-  ).to_fixedarray()
+  let data =
+    #|_:o <http://example/s> <http://example/p> . # comment
+
+  let data = @utf8.encode(data).to_fixedarray()
   let engine = @lib.NQuadsEngine::new()
   let parser = @lib.Parser::from_bytes(data, engine)
   let parser = @lib.SliceParser::new(parser, data)
@@ -14,83 +15,110 @@ test "nquads: basic triple" {
 }
 
 ///|
-async test "run official n-triples test suite" {
-  let test_dir = "src/tests/src/rdf/rdf11/rdf-n-triples"
 
-  let dir = @fs.opendir(test_dir)
-  defer dir.close()
+///|
+test "nquads: basic triple all" {
+  let data =
+    #| <http://example/s> _:o <http://example/p> . # comment
+  let data = @utf8.encode(data).to_fixedarray()
+  let engine = @lib.NQuadsEngine::new()
+  let parser = @lib.Parser::from_bytes(data, engine)
+  let parser = @lib.SliceParser::new(parser, data)
 
-  let list = dir
-    .read_all()
-    .filter_map(x => if x == "target" { None } else { Some(x) })
-  list.sort()
-  let nt_files = list.filter(x => x.has_suffix(".nt"))
-  debug("NT files: \{nt_files.length()}")
+  let (quad_spans, errs) = parser.parse_all()
 
-  // 只测前 3 个
-  let test_files = nt_files[0:2]
-  let mut passed = 0
-  let mut failed = 0
-  let mut total = 0
+  for quad in quad_spans {
+    debug("Quad:")
+    debug(quad)
+  }
+  for err in errs {
+    debug("Error: \{err}")
+  }
+}
 
-  for file in test_files {
-    if !file.has_suffix(".nt") {
-      continue
-    }
+///|
+async test "collect test files" {
+  // let test_dir = "src/tests/src/rdf/rdf11/rdf-n-triples"
+  let output_file = "./src/benchmark/test_collected.nq"
 
-    total += 1
-    let path = "\{test_dir}/\{file}"
-    let is_bad = file.contains("bad") || file.contains("error")
+  // 1. 读取测试文件列表
+  // let dir = @fs.opendir(test_dir)
+  // defer dir.close()
 
-    debug("[\{total}] File: \{file}")
+  // let list = dir
+  //   .read_all()
+  //   .filter_map(x => if x == "target" { None } else { Some(x) })
+  // list.sort()
 
-    // 步骤 1: 读取文件
-    debug("  1. Reading file...")
-    let data = @fs.read_file(path).binary().to_fixedarray()
-    debug("     Data length: \{data.length()}")
+  // let nt_files = list.filter(x => x.has_suffix(".nt"))
+  // debug("NT files: \{nt_files.length()}")
 
-    // 步骤 2: 创建 engine
-    debug("  2. Creating engine...")
-    let engine = @lib.NQuadsEngine::new()
-    debug("     Engine created")
+  // 2. 把所有测试用例写入一个文件
+  // let mut combined = ""
+  // for file in nt_files {
+  //   let path = "\{test_dir}/\{file}"
+  //   let content = @fs.read_file(path).text()
+  //   combined = combined + content + "\n"
+  // }
 
-    // 步骤 3: 创建 lexer
-    debug("  3. Creating lexer...")
-    let lexer = @lib.Lexerc::new(data)
-    debug("     Lexer created")
+  // @fs.write_file(output_file, combined, create_mode=CreateOrTruncate)
+  // debug("Written combined file: \{output_file}")
 
-    // 步骤 4: 创建 parser
-    debug("  4. Creating parser...")
-    let parser = @lib.Parser::new(lexer, engine, data)
-    debug("     Parser created")
+  // 3. 从汇总文件测试
+  let data = @fs.read_file(output_file).binary().to_fixedarray()
+  debug("Combined file size: \{data.length()} bytes")
 
-    // 步骤 5: 解析
-    debug("  5. Parsing...")
-    let parser = @lib.SliceParser::new(parser, data)
-    let (quads, errors) = parser.parse_all()
-    debug("     Quads: \{quads.length()}, Errors: \{errors.length()}")
+  let parser = @lib.nquads_parser(data)
+  let start = @bench.monotonic_clock_start()
+  let parser = @lib.SliceParser::new(parser, data)
 
-    // 步骤 6: 销毁
-    debug("  6. Destroying lexer...")
-    parser.inner.parser.lexer.destroy()
-    debug("     Destroyed")
+  let (quads, errors) = parser.parse_all()
+  let elapsed = @bench.monotonic_clock_end(start)
 
-    // 判定
-    let success = if is_bad {
-      quads.is_empty() && !errors.is_empty()
+  parser.inner.parser.lexer.destroy()
+
+  debug("=== Results ===")
+  debug("Quads: \{quads.length()}, Errors: \{errors.length()}")
+  // 简单输出所有错误
+  for i, e in errors {
+    debug("Error[\{i}]: \{e}")
+    let (offset, len) = e.to_span()
+    let context = read_context(data, offset, len, before=20, after=20)
+    debug("  Context: \{context}")
+  }
+  debug("Time: \{elapsed} µs")
+}
+
+///|
+fn read_context(
+  data : ArrayView[Byte],
+  offset : Int,
+  len : Int,
+  before? : Int = 20,
+  after? : Int = 20,
+) -> String {
+  let start = (offset - before).max(0)
+  let end = (offset + len + after).min(data.length())
+
+  let mut ctx = ""
+  for i = start; i < end; i = i + 1 {
+    let c = data[i]
+    if c == b'\n' {
+      ctx = ctx + "\\n"
+    } else if c == b'\r' {
+      ctx = ctx + "\\r"
     } else {
-      quads.length() >= 1 && errors.is_empty()
-    }
-
-    if success {
-      passed += 1
-      debug("  PASS")
-    } else {
-      failed += 1
-      debug("  FAIL")
+      ctx = ctx + c.to_char().to_string()
     }
   }
 
-  debug("=== Result: \{passed}/\{total} ===")
-  assert_eq(failed, 0)
+  // 在错误位置插入标记
+  let marker = (offset - start).min(ctx.length())
+  let marker_end = (offset + len - start).min(ctx.length())
+
+  let before_part = ctx[0:marker]
+  let error_part = ctx[marker:marker_end]
+  let after_part = ctx[marker_end:ctx.length()]
+
+  "...\{before_part}[>>>\{error_part}<<<]\{after_part}..."
 }

@@ -509,19 +509,19 @@ pub let iri_illegal_table : FixedArray[Int] = {
 }
 
 ///|
-fn is_illegal_iri_char(c : Byte) -> Bool {
-  iri_illegal_table[c.to_int()] == 1
-}
+// fn is_illegal_iri_char(c : Byte) -> Bool {
+//   iri_illegal_table[c.to_int()] == 1
+// }
 
 ///|
-fn is_pn_chars_u(c : Byte) -> Bool {
-  (c >= b'a' && c <= b'z') ||
-  (c >= b'A' && c <= b'Z') ||
-  (c >= b'0' && c <= b'9') ||
-  c == b'_'
-}
+// fn is_pn_chars_u(c : Byte) -> Bool {
+//   (c >= b'a' && c <= b'z') ||
+//   (c >= b'A' && c <= b'Z') ||
+//   (c >= b'0' && c <= b'9') ||
+//   c == b'_'
+// }
 
 ///|
-fn is_pn_chars(c : Byte) -> Bool {
-  is_pn_chars_u(c) || c == b'-' || c == b'.'
-}
+// fn is_pn_chars(c : Byte) -> Bool {
+//   is_pn_chars_u(c) || c == b'-' || c == b'.'
+// }

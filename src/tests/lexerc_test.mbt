@@ -1,6 +1,8 @@
 ///|
 test "basic token parsing" {
-  let input = "<subject> <predicate> <object>"
+  let input =
+    #| <scheme:!$%25&'()*+,-./0123456789:/@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~?#>
+
   let data = @utf8.encode(input).to_fixedarray()
 
   debug("input: '\{input}'")

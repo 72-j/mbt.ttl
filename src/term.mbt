@@ -1,4 +1,73 @@
 ///|
+pub type Span = (Int, Int)
+
+///|
+pub struct QuadSpan {
+  subj : ArrayView[Byte]
+  pred : ArrayView[Byte]
+  obj : ArrayView[Byte]
+  graph : ArrayView[Byte]?
+  line : Int
+  subj_type : TermType // 主语类型
+  obj_type : TermType // 宾语类型  
+  has_err : Bool // 是否有结构错误
+} derive(Debug)
+
+///|
+pub impl Show for QuadSpan with fn output(self : QuadSpan, logger : &Logger) -> Unit {
+  logger.write("QuadSpan")
+  logger.write("{ ")
+  logger.write("subj: ")
+  logger.write(@debug.to_string(self.subj))
+  logger.write(", ")
+  logger.write("pred: ")
+  logger.write(@debug.to_string(self.pred))
+  logger.write(", ")
+  logger.write("obj: ")
+  logger.write(@debug.to_string(self.obj))
+  logger.write(", ")
+  logger.write("graph: ")
+  if self.graph is Some(graph) {
+    logger.write(@debug.to_string(graph))
+  }
+  logger.write(", ")
+  logger.write("line: ")
+  logger.write(self.line)
+  logger.write(", ")
+  logger.write("subj_type: ")
+  logger.write(@debug.to_string(self.subj_type))
+  logger.write(", ")
+  logger.write("obj_type: ")
+  logger.write(@debug.to_string(self.obj_type))
+  logger.write("}")
+}
+
+///|
+pub(all) enum TermType {
+  Iri
+  BNode
+  Literal
+  PrefName
+  Unknown
+} derive(Debug, Eq)
+
+///|
+// fn TermType::default() -> TermType {
+//   Iri
+// }
+
+///|
+pub impl Show for TermType with fn output(self : TermType, logger : &Logger) -> Unit {
+  match self {
+    Iri => logger.write("Iri")
+    BNode => logger.write("BNode")
+    PrefName => logger.write("PrefName")
+    Literal => logger.write("Literal")
+    Unknown => logger.write("Unknown")
+  }
+}
+
+///|
 /// 主语类型
 pub(all) enum Subject {
   Iri(ArrayView[Byte]) // <http://...>
@@ -32,7 +101,7 @@ pub(all) struct QuadEmit {
   subject : Subject
   predicate : Predicate
   object : Object
-  graph_name : GraphName
+  graph : GraphName
   line : Int
 } derive(Debug, Eq)
 
@@ -77,7 +146,7 @@ pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> 
   }
 
   // 图名 ← 这里可能没有输出
-  match self.graph_name {
+  match self.graph {
     GraphName::None => logger.write_string(", graph: None")
     GraphName::Iri(span) => {
       logger.write_string(", graph: <")
@@ -120,150 +189,4 @@ pub impl Show for Object with fn output(self : Object, logger : &Logger) -> Unit
     Object::Literal(span) => logger.write_string("(\{span.length()})")
     Object::PrefName(span) => logger.write_string("(\{span.length()})")
   }
-}
-
-///|
-pub struct Serializer {
-  data : ArrayView[Byte]
-  mode : StringView
-}
-
-///|
-pub fn Serializer::new(
-  data : ArrayView[Byte],
-  mode? : StringView = "triple",
-) -> Serializer {
-  { data, mode }
-}
-
-///|
-/// 序列化单个 Quad
-pub fn Serializer::serialize(self : Serializer, quad : QuadEmit) -> String {
-  let buf = StringBuilder::new()
-  self.append_quad(quad, buf)
-  buf.to_string()
-}
-
-///|
-fn Serializer::append_span(
-  _self : Serializer,
-  view : ArrayView[Byte],
-  buf : StringBuilder,
-) -> Unit {
-  for b in view {
-    buf.write_char(b.to_char())
-  }
-}
-
-///|
-/// 内联优化：主语序列化
-fn Serializer::append_subject(
-  self : Serializer,
-  subject : Subject,
-  buf : StringBuilder,
-) -> Unit {
-  match subject {
-    Subject::Iri(view) => self.append_span(view, buf)
-    Subject::BNode(view) => {
-      buf.write_string("_:")
-      // 跳过前两个字符 _:，直接写 label
-      let label = view[2:]
-      self.append_span(label, buf)
-    }
-    Subject::PrefName(view) => self.append_span(view, buf)
-  }
-}
-
-///|
-/// 内联优化：宾语序列化
-fn Serializer::append_object(
-  self : Serializer,
-  object : Object,
-  buf : StringBuilder,
-) -> Unit {
-  match object {
-    Object::Iri(view) => self.append_span(view, buf)
-    Object::BNode(view) => {
-      buf.write_string("_:")
-      let label = view[2:]
-      self.append_span(label, buf)
-    }
-    Object::Literal(view) => self.append_span(view, buf)
-    Object::PrefName(view) => self.append_span(view, buf)
-  }
-}
-
-///|
-/// 优化后的 Quad 序列化
-fn Serializer::append_quad(
-  self : Serializer,
-  quad : QuadEmit,
-  buf : StringBuilder,
-) -> Unit {
-  // 主语
-  self.append_subject(quad.subject, buf)
-  buf.write_char(' ')
-
-  // 谓语
-  self.append_span(quad.predicate, buf)
-  buf.write_char(' ')
-
-  // 宾语
-  self.append_object(quad.object, buf)
-
-  // 图名
-  match quad.graph_name {
-    GraphName::Iri(view) => {
-      buf.write_char(' ')
-
-      self.append_span(view, buf)
-    }
-    GraphName::None => ()
-  }
-
-  buf.write_string(" .\n")
-}
-
-///|
-/// 序列化三元组（忽略图名）
-fn Serializer::append_triple(
-  self : Serializer,
-  quad : QuadEmit,
-  buf : StringBuilder,
-) -> Unit {
-  self.append_subject(quad.subject, buf)
-  buf.write_char(' ')
-  self.append_span(quad.predicate, buf)
-  buf.write_char(' ')
-  self.append_object(quad.object, buf)
-  buf.write_string(" .\n")
-}
-
-///|
-pub fn Serializer::serialize_all(
-  self : Serializer,
-  quads : Array[QuadEmit],
-) -> String {
-  let buf = StringBuilder::new()
-  for quad in quads {
-    lexmatch self.mode with longest {
-      // 三元组模式
-      re"^(?i:triple)$" => self.append_triple(quad, buf)
-
-      // 四元组模式（包含图名）
-      re"^(?i:quad|quads|all)$" => self.append_quad(quad, buf)
-
-      // 只输出有图名的四元组
-      re"^(?i:quadonly)$" =>
-        match quad.graph_name {
-          GraphName::Iri(_) => self.append_quad(quad, buf)
-          GraphName::None => ()
-        }
-
-      // 默认三元组
-      _ => self.append_triple(quad, buf)
-    }
-  }
-
-  buf.to_string()
 }

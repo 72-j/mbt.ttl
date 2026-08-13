@@ -1,12 +1,12 @@
 ///|
 /// NQuadsEngine 错误类型（包含位置信息）
-pub(all) suberror ParseError {
-  InvalidErrMessage(String)
-  InvalidToken(String, Span)
+pub(all) suberror ParserError {
+  SyntaxErr(String, Span) // 结构错误（语法层）
+  ValidationErr(String) // 语义错误（验证层）
 } derive(Debug)
 
 ///|
-fn ParseError::span(token : Token) -> Span {
+fn ParserError::span(token : Token) -> Span {
   match token {
     Iri(s)
     | Literal(s)
@@ -21,32 +21,43 @@ fn ParseError::span(token : Token) -> Span {
 }
 
 ///|
-pub impl ErrOut for ParseError with fn message(self : ParseError) -> String {
-  match self {
-    ParseError::InvalidErrMessage(message) => message
-    ParseError::InvalidToken(message, _) => message
+pub fn ParserError::to_span(err : ParserError) -> Span {
+  match err {
+    ValidationErr(_) => (0, 0)
+    SyntaxErr(_, span) => span
   }
 }
 
 ///|
-pub impl ErrOut for ParseError with fn err_kind(self : ParseError) -> String {
+pub impl ErrOut for ParserError with fn message(self : ParserError) -> String {
   match self {
-    InvalidErrMessage(_) => "InvalidErrMessage"
-    ParseError::InvalidToken(_, _) => "InvalidToken"
+    ParserError::ValidationErr(message) => message
+    ParserError::SyntaxErr(message, _) => message
+  }
+}
+
+///|
+pub impl ErrOut for ParserError with fn err_kind(self : ParserError) -> String {
+  match self {
+    ValidationErr(_) => "ValidationErr"
+    ParserError::SyntaxErr(_, _) => "SyntaxErr"
   }
 }
 
 ///|
 /// 从 span 创建错误
-// pub fn ParseError::from_span(message : String, span : Span) -> ParseError {
+// pub fn ParserError::from_span(message : String, span : Span) -> ParserError {
 //   { message, span }
 // }
 
 ///|
-pub impl Show for ParseError with fn output(self : ParseError, logger : &Logger) -> Unit {
+pub impl Show for ParserError with fn output(
+  self : ParserError,
+  logger : &Logger,
+) -> Unit {
   match self {
-    ParseError::InvalidErrMessage(message) => logger.write_string(message)
-    ParseError::InvalidToken(message, span) => {
+    ParserError::ValidationErr(message) => logger.write_string(message)
+    ParserError::SyntaxErr(message, span) => {
       let (offset, length) = span
       logger.write_string(message)
       logger.write_string(" at position ")

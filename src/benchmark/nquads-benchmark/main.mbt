@@ -56,7 +56,7 @@ async fn main {
     let slice3 = @lib.SliceParser::new(parser3, data)
     let (quad_spans, _) = slice3.parse_all()
     let start4 = @bench.monotonic_clock_start()
-    let (quad_emits, mat_errors) = @lib.materialize_all(quad_spans, data)
+    let (quad_emits, mat_errors) = @lib.materialize_all(quad_spans)
     let elapsed4 = @bench.monotonic_clock_end(start4)
 
     let total_ms = (elapsed3 + elapsed4) / 1000.0
@@ -77,7 +77,7 @@ async fn main {
     println("")
     println("=== 性能数据 ===")
     println("Lexer:       \{elapsed1} µs (\{lexer_count} tokens)")
-    println("Parser:     \{elapsed2} µs (\{1000} quads)")
+    println("Parser:     \{elapsed2} µs (\{lexer_count} quads)")
     println(
       "验证:        \{elapsed3} µs (\{quads.length()} quads, \{parse_errors.length()} errors)",
     )

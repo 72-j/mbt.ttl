@@ -45,7 +45,7 @@ async fn main {
     println("")
     println("=== Materializing ===")
 
-    let (quads, mat_errors) = @lib.materialize_all(quad_spans, data)
+    let (quads, mat_errors) = @lib.materialize_all(quad_spans)
 
     // Print materialize errors
     for err in mat_errors {

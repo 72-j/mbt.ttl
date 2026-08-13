@@ -10,5 +10,4 @@ testnook/
 *.ntriples
 skills/
 *.log
-*.nq
 src/benchmark/*/target/

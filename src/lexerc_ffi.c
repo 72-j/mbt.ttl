@@ -38,6 +38,10 @@ static bool is_whitespace(uint8_t c) {
   return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
+static bool is_whitespace_and_comment(uint8_t c) {
+  return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '#';
+}
+
 static bool is_separator(uint8_t c) {
   return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '.' ||
          c == ';' || c == ',';
@@ -52,20 +56,6 @@ static bool is_alpha(uint8_t c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-static void skip_whitespace_and_comment(Lexer *l) {
-  while (l->pos < l->len) {
-    uint8_t c = l->data[l->pos];
-    if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
-      l->pos++;
-    } else if (c == '#') {
-      l->pos++;
-      while (l->pos < l->len && l->data[l->pos] != '\n')
-        l->pos++;
-    } else {
-      break;
-    }
-  }
-}
 
 // ============================================================
 // 创建/销毁函数
@@ -157,25 +147,32 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
       return true;
     }
 
-    // 3. 普通字符串
+    // 3. 普通字符串：包含 ^^ 和 @，整体切出
     if (c == '"' || c == '\'') {
       uint8_t quote = c;
+      int32_t start = l->pos;
       l->pos++;
+
+      // 扫描字面量内容
       while (l->pos < l->len && l->data[l->pos] != quote) {
         if (l->data[l->pos] == '\\' && l->pos + 1 < l->len) {
-          l->pos += 2;
+          l->pos += 2; // 跳过转义字符
         } else {
           l->pos++;
         }
       }
-      if (l->pos < l->len)
-        l->pos++; // 跳过结尾引号
-      // 继续扫描 ^^ 或 @ 直到空白符或分隔符
-      while (l->pos < l->len && !is_whitespace(l->data[l->pos]) &&
-             l->data[l->pos] != '.' && l->data[l->pos] != ';' &&
-             l->data[l->pos] != ',') {
+
+      // 跳过结尾引号
+      if (l->pos < l->len) {
         l->pos++;
       }
+
+      // 继续扫描 ^^ 或 @ 直到空白符或分隔符
+      while (l->pos < l->len && !is_whitespace(l->data[l->pos])) {
+        l->pos++;
+      }
+
+      // 整个作为一个 LITERAL token
       write_token(token_buf, TOKEN_LITERAL, start, l->pos - start);
       return true;
     }
@@ -286,7 +283,13 @@ bool lexer_next(Lexer *l, uint8_t *token_buf) {
       l->pos++;
       return true;
     }
-
+    if (c == '#') {
+      l->pos++;
+      while (l->pos < l->len && l->data[l->pos] != '\n') {
+        l->pos++;
+      }
+      continue; // 跳过注释行，继续循环
+    }
     // 10. 其他字符 -> UNKNOWN
     write_token(token_buf, TOKEN_UNKNOWN, l->pos, 1);
     l->pos++;
