@@ -6,8 +6,8 @@ pub struct PendingQuad {
   mut graph : Span // 图名 span，错误时保存错误 span
   mut has_dot : Bool
   mut state : PendingState
-  mut line : Int
-  mut has_err : Bool // 是否有结构错误
+  // mut line : Int
+  // mut error_span : Span // 错误发生的位置
 } derive(Debug, Eq)
 
 ///|
@@ -29,8 +29,9 @@ pub fn PendingQuad::default() -> PendingQuad {
     graph: (0, 0),
     has_dot: false,
     state: ExpectSubject,
-    line: 0,
-    has_err: false,
+    // line: 0,
+    // error_span: (0, 0),
+    // has_err: false,
   }
 }
 
@@ -54,13 +55,13 @@ pub fn PendingQuad::compute_span(self : PendingQuad) -> Span {
 
 ///|
 /// 获取错误 span（如有）
-pub fn PendingQuad::error_span(self : PendingQuad) -> Span? {
-  if self.has_err {
-    Some(self.graph)
-  } else {
-    None
-  }
-}
+// pub fn PendingQuad::error_span(self : PendingQuad) -> Span? {
+//   if self.has_err {
+//     Some(self.graph)
+//   } else {
+//     None
+//   }
+// }
 
 ///|
 /// 重置状态
@@ -71,8 +72,9 @@ pub fn PendingQuad::reset(self : PendingQuad) -> Unit {
   self.graph = (0, 0)
   self.has_dot = false
   self.state = ExpectSubject
-  self.line = 0
-  self.has_err = false
+  // self.line = 0
+  // self.error_span = (0, 0)
+  // self.has_err = false
 }
 
 ///|
@@ -140,109 +142,63 @@ pub impl ParserEngine for NQuadsEngine with fn step(
   token : Token,
 ) -> StepResult {
   match (pending.state, token) {
-    // =====================
     // 期望主语
-    // =====================
     (ExpectSubject, Iri(span) | BlankNode(span)) => {
       pending.subj = span
       pending.state = ExpectPredicate
       Continue
     }
-    (ExpectSubject, PrefName(span)) =>
-      MarkErrorAndSkip(
-        ParserError::SyntaxErr("N-Quads does not support prefixed names.", span),
-      )
+    (ExpectSubject, PrefName(span)) => SkipError(span)
     (ExpectSubject, Unknown(_)) => Continue
 
-    // =====================
     // 期望谓语
-    // =====================
     (ExpectPredicate, Iri(span)) => {
       pending.pred = span
       pending.state = ExpectObject
       Continue
     }
-    (ExpectPredicate, PrefName(span)) =>
-      MarkErrorAndSkip(ParserError::SyntaxErr("Predicate must be an IRI", span))
-    (ExpectPredicate, token) =>
-      MarkErrorAndSkip(
-        ParserError::SyntaxErr(
-          "Expected predicate (IRI)",
-          ParserError::span(token),
-        ),
-      )
+    (ExpectPredicate, token) => SkipError(ParseError::span(token))
 
-    // =====================
     // 期望宾语
-    // =====================
     (ExpectObject, Iri(span) | Literal(span) | BlankNode(span)) => {
       pending.obj = span
       pending.state = ExpectDotOrGraph
       Continue
     }
-    (ExpectObject, PrefName(span)) =>
-      MarkErrorAndSkip(
-        ParserError::SyntaxErr("N-Quads does not support prefixed names.", span),
-      )
-    (ExpectObject, token) =>
-      MarkErrorAndSkip(
-        ParserError::SyntaxErr(
-          "Expected object (IRI or Literal)",
-          ParserError::span(token),
-        ),
-      )
+    (ExpectObject, token) => SkipError(ParseError::span(token))
 
-    // =====================
     // 期望 . 或 图名
-    // =====================
     (ExpectDotOrGraph, Dot(_)) => {
       pending.has_dot = true
       pending.state = Complete
-      pending.line += 1
+      // pending.line += 1
       Emit
     }
     (ExpectDotOrGraph, Iri(span)) => {
-      pending.graph = span // 图名
+      pending.graph = span
       pending.state = ExpectDot
       Continue
     }
-    (ExpectDotOrGraph, PrefName(span)) =>
-      MarkErrorAndSkip(ParserError::SyntaxErr("Graph must be an IRI", span))
+    (ExpectDotOrGraph, PrefName(span)) => SkipError(span)
     (ExpectDotOrGraph, Unknown(_)) => {
-      // . 可选
       pending.has_dot = true
       pending.state = Complete
       Emit
     }
 
-    // =====================
     // 期望 . (在图名之后)
-    // =====================
     (ExpectDot, Dot(_)) => {
       pending.has_dot = true
       pending.state = Complete
-      pending.line += 1
+      // pending.line += 1
       Emit
     }
-    (ExpectDot, token) =>
-      MarkErrorAndSkip(
-        ParserError::SyntaxErr("Expected '.'", ParserError::span(token)),
-      )
+    (ExpectDot, token) => SkipError(ParseError::span(token))
 
-    // =====================
     // 已完成
-    // =====================
-    (Complete, token) =>
-      MarkErrorAndSkip(
-        ParserError::SyntaxErr(
-          "Unexpected token after complete triple",
-          ParserError::span(token),
-        ),
-      )
+    (Complete, token) => SkipError(ParseError::span(token))
 
-    // =====================
     // 默认跳过
-    // =====================
     _ => SkipLine
   }
 }
@@ -273,8 +229,9 @@ pub fn NQuadsEngine::new() -> NQuadsEngine {
       graph: (0, 0),
       has_dot: false,
       state: PendingState::ExpectSubject,
-      line: 1,
-      has_err: false,
+      // line: 0,
+      // error_span: (0, 0),
+      // has_err: false,
     },
   }
 }

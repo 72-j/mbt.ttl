@@ -124,10 +124,10 @@ pub fn Serializer::serialize_all(
   for quad in quads {
     lexmatch self.mode with longest {
       // 三元组模式
-      re"^(?i:triple)$" => self.append_triple(quad, buf)
+      re"^(?i:triple|Triple)$" => self.append_triple(quad, buf)
 
       // 四元组模式（包含图名）
-      re"^(?i:quad|quads|all)$" => self.append_quad(quad, buf)
+      re"^(?i:quad|nquads|Quad|all)$" => self.append_quad(quad, buf)
 
       // 只输出有图名的四元组
       re"^(?i:quadonly)$" =>

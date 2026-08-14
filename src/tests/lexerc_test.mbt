@@ -1,7 +1,7 @@
 ///|
 test "basic token parsing" {
   let input =
-    #| <scheme:!$%25&'()*+,-./0123456789:/@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~?#>
+    #|"\""^^<http://www.w3.org/2000/01/rdf-schema#XMLLiteral> .
 
   let data = @utf8.encode(input).to_fixedarray()
 

@@ -7,10 +7,10 @@ pub struct QuadSpan {
   pred : ArrayView[Byte]
   obj : ArrayView[Byte]
   graph : ArrayView[Byte]?
-  line : Int
+  // line : Int
   subj_type : TermType // 主语类型
   obj_type : TermType // 宾语类型  
-  has_err : Bool // 是否有结构错误
+  // has_err : Bool // 是否有结构错误
 } derive(Debug)
 
 ///|
@@ -30,9 +30,9 @@ pub impl Show for QuadSpan with fn output(self : QuadSpan, logger : &Logger) -> 
   if self.graph is Some(graph) {
     logger.write(@utf8.decode_lossy(array_to_view(graph)))
   }
-  logger.write(", ")
-  logger.write("line: ")
-  logger.write(self.line)
+  // logger.write(", ")
+  // logger.write("line: ")
+  // logger.write(self.line)
   logger.write(", ")
   logger.write("subj_type: ")
   logger.write(@debug.to_string(self.subj_type))
@@ -102,7 +102,7 @@ pub(all) struct QuadEmit {
   predicate : Predicate
   object : Object
   graph : GraphName
-  line : Int
+  // line : Int
 } derive(Debug, Eq)
 
 ///|

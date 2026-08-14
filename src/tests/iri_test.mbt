@@ -48,6 +48,7 @@ test "parse_unchecked: basic absolute IRI" {
 }
 
 ///|
+
 ///|
 test "parse absolute IRI with slashes" {
   let data = "https://example.com/path/to/resource"
@@ -92,7 +93,6 @@ test "parse absolute IRI with dots" {
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
 }
-
 
 ///|
 test "parse: basic absolute IRI" {
@@ -162,7 +162,6 @@ test "parse: query only" {
   }
 }
 
-///|
 ///|
 test "parse: fragment only" {
   let data = "https://example.com#fragment"
@@ -331,5 +330,3 @@ test "remove_dot_segments: ends with slash" {
   @debug.assert_eq(@lib.fn_remove_dot_segments("/a/b/c/./"), "/a/b/c")
   @debug.assert_eq(@lib.fn_remove_dot_segments("a/b/"), "a/b")
 }
-
-

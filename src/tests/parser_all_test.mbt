@@ -1,22 +1,4 @@
 ///|
-test "nquads: basic triple all" {
-  let data =
-    #| <http://example/s> _:o <http://example/p> . # comment
-  let data = @utf8.encode(data).to_fixedarray()
-  let engine = @lib.NQuadsEngine::new()
-  let parser = @lib.Parser::from_bytes(data, engine)
-  let parser = @lib.SliceParser::new(parser, data)
-
-  let (quad_spans, errs) = parser.parse_all()
-
-  for quad in quad_spans {
-    debug("Quad:")
-    debug(quad)
-  }
-  for err in errs {
-    debug("Error: \{err}")
-  }
-}
 
 ///|
 async test "collect test files" {
@@ -63,9 +45,14 @@ async test "collect test files" {
   debug("Quads: \{quads.length()}, Errors: \{errors.length()}")
   // 简单输出所有错误
   for i, e in errors {
-    debug("Error[\{i}]: \{e}")
-    let (offset, len) = e.to_span()
-    let context = read_context(data, offset, len, before=20, after=20)
+    let (offset, len, line) = match e {
+      StructSyntaxErr(_, line, span) => (span.0, span.1, line)
+      SyntaxErr(_, span) => (span.0, span.1, 0)
+      _ => (0, 0, 0)
+      // ...
+    }
+    debug("Error[\{i}] at line \{line}: \{e}")
+    let context = read_context(data, offset, len, before=40, after=40)
     debug("  Context: \{context}")
   }
   debug("Time: \{elapsed} µs")
@@ -82,25 +69,54 @@ fn read_context(
   let start = (offset - before).max(0)
   let end = (offset + len + after).min(data.length())
 
-  let mut ctx = ""
-  for i = start; i < end; i = i + 1 {
-    let c = data[i]
-    if c == b'\n' {
-      ctx = ctx + "\\n"
-    } else if c == b'\r' {
-      ctx = ctx + "\\r"
-    } else {
-      ctx = ctx + c.to_char().to_string()
-    }
+  let mut result = "..."
+
+  // before
+  for i = start; i < offset && i < end; i = i + 1 {
+    result = result + byte_to_display(data[i])
   }
 
-  // 在错误位置插入标记
-  let marker = (offset - start).min(ctx.length())
-  let marker_end = (offset + len - start).min(ctx.length())
+  result = result + "[>>>"
 
-  let before_part = ctx[0:marker]
-  let error_part = ctx[marker:marker_end]
-  let after_part = ctx[marker_end:ctx.length()]
+  // error
+  for i = offset; i < offset + len && i < end; i = i + 1 {
+    result = result + byte_to_display(data[i])
+  }
 
-  "...\{before_part}[>>>\{error_part}<<<]\{after_part}..."
+  result = result + "<<<]"
+
+  // after
+  for i = offset + len; i < end; i = i + 1 {
+    result = result + byte_to_display(data[i])
+  }
+
+  result + "..."
+}
+
+///|
+fn byte_to_display(b : Byte) -> String {
+  if b == b'\n' {
+    "\\n"
+  } else if b == b'\r' {
+    "\\r"
+  } else if b == b'\t' {
+    "\\t"
+  } else {
+    b.to_char().to_string()
+  }
+}
+
+///|
+/// 带图名的三元组
+test "nquads: valid triple with graph" {
+  let data = "<http://example/s> <http://example/p> <http://example/o> <http://example/g> ."
+  let bytes = @utf8.encode(data).to_fixedarray()
+  let engine = @lib.NQuadsEngine::new()
+  let parser = @lib.Parser::from_bytes(bytes, engine)
+  let parser = @lib.SliceParser::new(parser, bytes)
+
+  let (quads, errs) = parser.parse_all()
+
+  @debug.assert_eq(quads.length(), 1)
+  @debug.assert_eq(errs.length(), 0)
 }

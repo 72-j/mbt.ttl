@@ -3,8 +3,9 @@ pub struct Parser[E] {
   lexer : Lexerc
   engine : E
   pending : PendingQuad
-  // errors : Array[ParserError]
   data : ArrayView[Byte]
+  mut last_error : (Span, Int)? // (span, line)  mut line : Int
+  mut line : Int
 }
 
 ///|
@@ -13,7 +14,15 @@ pub fn[E : ParserEngine] Parser::new(
   engine : E,
   data : ArrayView[Byte],
 ) -> Parser[E] {
-  { lexer, engine, pending: engine.create_pending(), data }
+  {
+    lexer,
+    engine,
+    pending: engine.create_pending(),
+    data,
+    last_error: None,
+    line: 0,
+    // err_line: 0,
+  }
 }
 
 ///|
@@ -34,6 +43,11 @@ pub fn nquads_parser(data : FixedArray[Byte]) -> Parser[NQuadsEngine] {
 pub fn[E] Parser::data(self : Parser[E]) -> ArrayView[Byte] {
   self.data
 }
+
+///|
+// pub fn[E] Parser::get_error(self : Parser[E]) -> ParseError? {
+//   self.last_error
+// }
 
 ///|
 fn is_eof_token(token : Token) -> Bool {
@@ -57,8 +71,8 @@ pub(all) enum StepResult {
   Continue // 继续解析下一个 token
   Emit // 触发输出（emit pending）
   SkipLine // 跳过当前行（遇到错误时）
-  MarkErrorAndSkip(ParserError) // 标记错误并跳到行尾
-  Error(ParserError) // 遇到错误
+  SkipError(Span) // 带错误 span 跳过
+  Error(ParseError) // 遇到错误
 }
 
 ///|
@@ -80,14 +94,14 @@ pub trait ParserEngine {
 }
 
 ///|
-// pub fn[E] Parser::get_errors(self : Parser[E]) -> Array[ParserError] {
+// pub fn[E] Parser::get_errors(self : Parser[E]) -> Array[ParseError] {
 //   self.errors
 // }
 
 ///|
 pub fn[E : ParserEngine] Parser::next(
   self : Parser[E],
-) -> Result[PendingQuad, ParserError]? {
+) -> Result[PendingQuad, ParseError]? {
   self.pending.reset()
 
   for ;; {
@@ -96,7 +110,7 @@ pub fn[E : ParserEngine] Parser::next(
         if self.pending.state != ExpectSubject {
           return Some(
             Err(
-              ParserError::SyntaxErr(
+              ParseError::SyntaxErr(
                 "Incomplete triple at end of input",
                 self.pending.compute_span(),
               ),
@@ -110,7 +124,7 @@ pub fn[E : ParserEngine] Parser::next(
           if self.pending.state != ExpectSubject {
             return Some(
               Err(
-                ParserError::SyntaxErr(
+                ParseError::SyntaxErr(
                   "Incomplete triple at end of input",
                   self.pending.compute_span(),
                 ),
@@ -123,23 +137,27 @@ pub fn[E : ParserEngine] Parser::next(
             Continue => continue
             Emit => {
               let result = self.pending
+              self.line += 1 // ← 正常三元组，行号 +1
               return Some(Ok(result))
             }
             SkipLine => {
+              // 正常跳过，reset 后继续
+              self.line += 1
               self.pending.reset()
               continue
             }
-            MarkErrorAndSkip(err) => {
-              // 记录错误 span，继续扫描直到 . 或行尾
-              self.pending.graph = ParserError::to_span(err)
-              self.pending.has_err = true
-              // 跳到行尾
+            SkipError(span) => {
+              // 消费整行，收集错误
+              // debug("skip error line \{self.pending.line}")
+              self.last_error = Some((span, self.line))
+              // self.err_line=self.line
+              // 消费整行直到 . 或 EOF
               for ;; {
                 match self.lexer.next() {
                   None => break
                   Some(t) =>
                     if is_dot_token(t) {
-                      self.pending.line += 1
+                      self.line += 1
                       break
                     } else if is_eof_token(t) {
                       break
@@ -150,6 +168,7 @@ pub fn[E : ParserEngine] Parser::next(
               continue
             }
             Error(err) => {
+              // self.line += 1
               self.pending.reset()
               return Some(Err(err))
             }

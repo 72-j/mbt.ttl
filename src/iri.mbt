@@ -29,15 +29,12 @@ pub(all) struct IriSpan {
 } derive(Eq, Default)
 
 ///|
-pub fn Iri::parse(
-  _self : Iri,
-  view : BytesView,
-) -> Result[Iri, ParserError] {
+pub fn Iri::parse(_self : Iri, view : BytesView) -> Result[Iri, ParseError] {
   // let data = @utf8.encode(s)
   // let view = data[0:data.length()].to_array()
   match parse_iri(view, 0) {
     Ok(span) => Ok(span.build(view))
-    Err(e) => Err(ParserError::IriErr(e.message()))
+    Err(e) => Err(ParseError::IriErr(e.message()))
   }
 }
 
@@ -60,11 +57,8 @@ pub fn Iri::resolve(
   self : Iri,
   ref_iri : BytesView,
   remove_dot_segments? : Bool = true,
-) -> Result[Iri, ParserError] {
-  let ref_parsed = match
-    Iri::default().parse(
-      ref_iri,
-    ) {
+) -> Result[Iri, ParseError] {
+  let ref_parsed = match Iri::default().parse(ref_iri) {
     Ok(r) => r
     Err(e) => return Err(e)
   }
@@ -121,7 +115,7 @@ pub fn Iri::resolve(
 }
 
 ///|
-pub fn Iri::relativize(self : Iri, target : Iri) -> Result[Iri, ParserError] {
+pub fn Iri::relativize(self : Iri, target : Iri) -> Result[Iri, ParseError] {
   // 如果 scheme 或 authority 不同，无法相对化
   if self.scheme != target.scheme || self.authority != target.authority {
     return Ok(target)
@@ -380,7 +374,7 @@ fn IriSpan::parse_authority(self : IriSpan, data : BytesView) -> Unit {
     self.pos += 2 // 消费 //
     let start = self.pos
     // authority 在 / ? # 或字符串结束时结束
-    while self.pos < len && is_auth_char[data[self.pos].to_int()]{
+    while self.pos < len && is_auth_char[data[self.pos].to_int()] {
       self.pos += 1
     }
     if self.pos > start {
@@ -394,7 +388,7 @@ fn IriSpan::parse_authority(self : IriSpan, data : BytesView) -> Unit {
 fn IriSpan::parse_path(self : IriSpan, data : BytesView) -> Unit {
   let start = self.pos
   let len = data.length()
-  while self.pos < len &&is_path_char[data[self.pos].to_int()] {
+  while self.pos < len && is_path_char[data[self.pos].to_int()] {
     self.pos += 1
   }
   if self.pos > start {
@@ -445,40 +439,41 @@ fn IriSpan::parse_fragment(self : IriSpan, data : BytesView) -> Unit {
 // ============================================================
 
 ///|
-  /// 解析 IRI，返回 IriSpan
-  pub fn parse_iri(data : BytesView, start : Int) -> Result[IriSpan, ParserError] {
-    let span = IriSpan::default()
-    span.pos = start
-    let len = data.length()
+/// 解析 IRI，返回 IriSpan
+pub fn parse_iri(data : BytesView, start : Int) -> Result[IriSpan, ParseError] {
+  let span = IriSpan::default()
+  span.pos = start
+  let len = data.length()
 
-    // 1. 尝试解析 scheme（可选）
-    span.parse_scheme(data)
+  // 1. 尝试解析 scheme（可选）
+  span.parse_scheme(data)
 
-    // 2. 解析 authority（可选）
-    span.parse_authority(data)
+  // 2. 解析 authority（可选）
+  span.parse_authority(data)
 
-    // 3. 解析 path
-    span.parse_path(data)
+  // 3. 解析 path
+  span.parse_path(data)
 
-    // 4. 解析 query
-    span.parse_query(data)
+  // 4. 解析 query
+  span.parse_query(data)
 
-    // 5. 解析 fragment
-    span.parse_fragment(data)
+  // 5. 解析 fragment
+  span.parse_fragment(data)
 
-    // 6. query/fragment 都为空时，剩余输入追加到 path
-    if span.query.1 == 0 && span.fragment.1 == 0 && span.pos < len {
-      span.path = (span.path.0, len - span.path.0)
-      span.pos = len
-    }
-
-    Ok(span)
+  // 6. query/fragment 都为空时，剩余输入追加到 path
+  if span.query.1 == 0 && span.fragment.1 == 0 && span.pos < len {
+    span.path = (span.path.0, len - span.path.0)
+    span.pos = len
   }
+
+  Ok(span)
+}
+
 ///|
 /// 从 IriSpan 构建 Iri
 
 ///|
- fn IriSpan::build(self : IriSpan, data : BytesView) -> Iri {
+fn IriSpan::build(self : IriSpan, data : BytesView) -> Iri {
   let scheme = if self.scheme.1 > 0 {
     data[self.scheme.0:self.scheme.0 + self.scheme.1]
   } else {
@@ -512,4 +507,3 @@ fn IriSpan::parse_fragment(self : IriSpan, data : BytesView) -> Unit {
     fragment: @utf8.decode_lossy(fragment),
   }
 }
-
