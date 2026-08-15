@@ -29,7 +29,7 @@ pub(all) struct IriSpan {
 } derive(Eq, Default)
 
 ///|
-pub fn Iri::parse(_self : Iri, view : BytesView) -> Result[Iri, ParseError] {
+pub fn parse(view : BytesView) -> Result[Iri, ParseError] {
   // let data = @utf8.encode(s)
   // let view = data[0:data.length()].to_array()
   match parse_iri(view, 0) {
@@ -39,7 +39,7 @@ pub fn Iri::parse(_self : Iri, view : BytesView) -> Result[Iri, ParseError] {
 }
 
 ///|
-pub fn Iri::parse_unchecked(_self : Iri, view : BytesView) -> Iri {
+pub fn parse_unchecked(view : BytesView) -> Iri {
   let span = IriSpan::default()
   span.pos = 0
   // 尝试解析，即使失败也继续
@@ -58,7 +58,7 @@ pub fn Iri::resolve(
   ref_iri : BytesView,
   remove_dot_segments? : Bool = true,
 ) -> Result[Iri, ParseError] {
-  let ref_parsed = match Iri::default().parse(ref_iri) {
+  let ref_parsed = match parse(ref_iri) {
     Ok(r) => r
     Err(e) => return Err(e)
   }
@@ -151,7 +151,7 @@ pub fn Iri::resolve_unchecked(
   remove_dot_segments? : Bool = true,
 ) -> Iri {
   // 尝试解析参考 IRI（忽略错误）
-  let ref_parsed = Iri::default().parse_unchecked(ref_iri)
+  let ref_parsed = parse_unchecked(ref_iri)
 
   // 如果参考 IRI 是绝对的，直接返回
   if ref_parsed.scheme.length() > 0 {
@@ -365,7 +365,6 @@ fn IriSpan::parse_scheme(self : IriSpan, data : BytesView) -> Unit {
 }
 
 ///|
-/// 解析 authority
 /// 解析 authority
 fn IriSpan::parse_authority(self : IriSpan, data : BytesView) -> Unit {
   let len = data.length()

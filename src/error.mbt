@@ -164,32 +164,33 @@ pub impl Show for IriError with fn output(self : IriError, logger : &Logger) -> 
 }
 
 ///|
-pub(all) suberror LanguageTagParseError {
-  // LanguageTagParseError
-  TagParseErr(TagParseErr)
-} derive(Debug)
+// pub(all) suberror LanguageTagParseError {
+//   // LanguageTagParseError
+//   TagParseErr(TagParseErr)
+// } derive(Debug)
 
-///|
-pub impl Show for LanguageTagParseError with fn output(self, logger : &Logger) -> Unit {
-  match self {
-    LanguageTagParseError::TagParseErr(e) => {
-      logger.write_string("Error: Language Tag Parse Error - ")
-      logger.write_string(e.to_string())
-    }
-  }
-}
+// ///|
+// pub impl Show for LanguageTagParseError with fn output(self, logger : &Logger) -> Unit {
+//   match self {
+//     LanguageTagParseError::TagParseErr(e) => {
+//       logger.write_string("Error: Language Tag Parse Error - ")
+//       logger.write_string(e.to_string())
+//     }
+//   }
+// }
 
 ///|
 pub(all) suberror TagParseErr {
+  EmptyTag
+  EmptySubtag
+  InvalidLanguageLength
+  ForbiddenChar
+  TooManyExtlangs
+  InvalidSubtag(TagSpan, StringView)
   EmptyExtension
   EmptyPrivateUse
-  ForbiddenChar
-  InvalidSubtag(Int, StringView)
-  InvalidLanguage
-  SubtagTooLong
-  EmptySubtag
-  TooManyExtlangs
-  InvalidLanguageLength
+  InvalidVariant
+  InvalidPrivateUsePrefix
 } derive(Debug)
 
 ///|
@@ -197,13 +198,15 @@ pub impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
   match self {
     TagParseErr::EmptyExtension => logger.write_string("EmptyExtension")
     TagParseErr::EmptyPrivateUse => logger.write_string("EmptyPrivateUse")
+    TagParseErr::InvalidVariant => logger.write_string("InvalidVariant")
     TagParseErr::ForbiddenChar => logger.write_string("ForbiddenChar")
     TagParseErr::InvalidSubtag(_, str) => {
       logger.write_string("InvalidSubtag: ")
       logger.write_view(str)
     }
-    TagParseErr::InvalidLanguage => logger.write_string("InvalidLanguage")
-    TagParseErr::SubtagTooLong => logger.write_string("SubtagTooLong")
+    TagParseErr::InvalidPrivateUsePrefix =>
+      logger.write_string("InvalidPrivateUsePrefix")
+    TagParseErr::EmptyTag => logger.write_string("EmptyTag")
     TagParseErr::EmptySubtag => logger.write_string("EmptySubtag")
     TagParseErr::TooManyExtlangs => logger.write_string("TooManyExtlangs")
     TagParseErr::InvalidLanguageLength =>

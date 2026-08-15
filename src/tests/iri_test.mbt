@@ -1,10 +1,9 @@
 ///|
 test "iri parse" {
-  let result = @lib.Iri::default()
   let data = "http://example.org"
   let data = @utf8.encode(data)[:]
 
-  let result = result.parse(data)
+  let result = @lib.parse(data)
   match result {
     Ok(r) => @debug.assert_eq(r.scheme, "http")
     Err(e) => fail("Error: \{e}")
@@ -15,7 +14,7 @@ test "iri parse" {
 test "iri parse full" {
   let data = "http://user@host:8080/path?q=f#frag"
   let bytes = @utf8.encode(data)[:]
-  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
+  let result = @lib.parse(bytes[0:bytes.length()])
 
   match result {
     Ok(r) => {
@@ -31,10 +30,9 @@ test "iri parse full" {
 
 ///|
 test "parse_unchecked: basic absolute IRI" {
-  let iri = @lib.Iri::default()
   let data = "https://example.com/path?query#fragment"
   let bytes = @utf8.encode(data)[:]
-  let parsed = iri.parse_unchecked(bytes[0:bytes.length()])
+  let parsed = @lib.parse_unchecked(bytes[0:bytes.length()])
 
   @debug.assert_eq(
     parsed.into_string(),
@@ -53,7 +51,7 @@ test "parse_unchecked: basic absolute IRI" {
 test "parse absolute IRI with slashes" {
   let data = "https://example.com/path/to/resource"
   let bytes = @utf8.encode(data)[:]
-  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
+  let result = @lib.parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => {
@@ -69,7 +67,7 @@ test "parse absolute IRI with slashes" {
 test "parse absolute IRI" {
   let data = "scheme:path-with-dashes_and_underscores"
   let bytes = @utf8.encode(data)[:]
-  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
+  let result = @lib.parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) =>
@@ -85,7 +83,7 @@ test "parse absolute IRI" {
 test "parse absolute IRI with dots" {
   let data = "scheme:abc/def.ghi-jkl_mno"
   let bytes = @utf8.encode(data)[:]
-  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
+  let result = @lib.parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) =>
@@ -98,7 +96,7 @@ test "parse absolute IRI with dots" {
 test "parse: basic absolute IRI" {
   let data = "https://example.com/path?query#fragment"
   let bytes = @utf8.encode(data)[:]
-  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
+  let result = @lib.parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => {
@@ -120,7 +118,7 @@ test "parse: basic absolute IRI" {
 test "parse: relative IRI (absolute path)" {
   let data = "/path/to/resource"
   let bytes = @utf8.encode(data)[:]
-  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
+  let result = @lib.parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => {
@@ -139,7 +137,7 @@ test "parse: relative IRI (absolute path)" {
 test "parse: relative path" {
   let data = "path/to/resource"
   let bytes = @utf8.encode(data)[:]
-  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
+  let result = @lib.parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => @debug.assert_eq(parsed.path.to_owned(), "path/to/resource")
@@ -151,7 +149,7 @@ test "parse: relative path" {
 test "parse: query only" {
   let data = "https://example.com?query=value"
   let bytes = @utf8.encode(data)[:]
-  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
+  let result = @lib.parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => {
@@ -166,7 +164,7 @@ test "parse: query only" {
 test "parse: fragment only" {
   let data = "https://example.com#fragment"
   let bytes = @utf8.encode(data)[:]
-  let result = @lib.Iri::default().parse(bytes[0:bytes.length()])
+  let result = @lib.parse(bytes[0:bytes.length()])
 
   match result {
     Ok(parsed) => @debug.assert_eq(parsed.fragment.to_owned(), "fragment")
@@ -178,7 +176,7 @@ test "parse: fragment only" {
 test "parse_unchecked: basic functionality" {
   let data = "https://example.com/path"
   let bytes = @utf8.encode(data)[:]
-  let parsed = @lib.Iri::default().parse_unchecked(bytes[0:bytes.length()])
+  let parsed = @lib.parse_unchecked(bytes[0:bytes.length()])
 
   @debug.assert_eq(parsed.into_string(), "https://example.com/path")
   @debug.assert_eq(parsed.scheme.to_owned(), "https")
@@ -188,7 +186,7 @@ test "parse_unchecked: basic functionality" {
 test "parse_unchecked: empty string" {
   let data = ""
   let bytes = @utf8.encode(data)[:]
-  let parsed = @lib.Iri::default().parse_unchecked(bytes[0:bytes.length()])
+  let parsed = @lib.parse_unchecked(bytes[0:bytes.length()])
 
   @debug.assert_eq(parsed.into_string(), "")
   @debug.assert_eq(parsed.scheme.to_owned(), "")

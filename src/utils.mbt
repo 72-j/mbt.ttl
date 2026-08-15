@@ -173,33 +173,33 @@ fn is_alphanumeric(s : StringView) -> Bool {
 }
 
 ///|
-fn is_alphanumeric_or_dash(s : StringView) -> Bool {
-  let chars = StringView::iter(s)
-  let mut result = true
-  for c in chars {
-    if !(is_ascii_alphanumeric(c) || c == '-') {
-      result = false
-      break
-    }
-  }
-  result
-}
+// fn is_alphanumeric_or_dash(s : StringView) -> Bool {
+//   let chars = StringView::iter(s)
+//   let mut result = true
+//   for c in chars {
+//     if !(is_ascii_alphanumeric(c) || c == '-') {
+//       result = false
+//       break
+//     }
+//   }
+//   result
+// }
 
 ///|
-fn to_title_case(s : StringView) -> String {
-  let result = StringBuilder::new()
-  let chars = StringView::iter(s)
-  let mut is_first = true
-  for c in chars {
-    if is_first {
-      result.write_char(c.to_ascii_uppercase())
-      is_first = false
-    } else {
-      result.write_char(c.to_ascii_lowercase())
-    }
-  }
-  result.to_string()
-}
+// fn to_title_case(s : StringView) -> String {
+//   let result = StringBuilder::new()
+//   let chars = StringView::iter(s)
+//   let mut is_first = true
+//   for c in chars {
+//     if is_first {
+//       result.write_char(c.to_ascii_uppercase())
+//       is_first = false
+//     } else {
+//       result.write_char(c.to_ascii_lowercase())
+//     }
+//   }
+//   result.to_string()
+// }
 
 ///|
 pub fn from_str_radix(s : String, radix : Int) -> Result[UInt, String] {
