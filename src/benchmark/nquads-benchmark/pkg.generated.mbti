@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "thy1016/moonttl/examples/nquads"
+package "thy1016/moonttl/benchmark/nquads-benchmark"
 
 // Values
 
@@ -10,4 +10,3 @@ package "thy1016/moonttl/examples/nquads"
 // Type aliases
 
 // Traits
-

@@ -266,7 +266,7 @@ Current W3C test suite coverage:
 
   - Zero-copy design: Lexer uses byte array slices to avoid unnecessary memory allocation
   - State machine driven: Uses finite state machine for syntax parsing, ensuring O(n) time complexity
-  - Lookahead parsing: Lookahead 5 tokens at once to reduce function call overhead
+  - Lookahead parsing: reduce function call overhead
   - Batch materialization: Validation and materialization are separated, supporting batch processing
   - Error recovery: Automatically skips the current line on error, continuing to parse subsequent content
 

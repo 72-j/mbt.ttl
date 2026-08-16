@@ -51,22 +51,6 @@ test "MuteLogger: empty message" {
 }
 
 ///|
-test "ConsoleLogger: unicode message" {
-  let logger = @lib.make_console_logger()
-  logger.info("你好，世界！🌍")
-  logger.error("错误消息：测试中文")
-  logger.warn("警告：日本語テスト")
-}
-
-///|
-test "MuteLogger: unicode message" {
-  let logger = @lib.make_mute_logger()
-  logger.info("你好，世界！🌍")
-  logger.error("错误消息：测试中文")
-  logger.warn("警告：日本語テスト")
-}
-
-///|
 test "ConsoleLogger: special characters" {
   let logger = @lib.make_console_logger()
   logger.info("Line1\nLine2\tTabbed")

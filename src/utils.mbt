@@ -61,49 +61,49 @@ pub fn array_view_has_prefix(data : ArrayView[Byte], prefix : Bytes) -> Bool {
 }
 
 ///|
-fn eq_ignore_ascii_case(s1 : StringView, s2 : StringView) -> Bool {
-  if s1.length() != s2.length() {
-    return false
-  }
+// fn eq_ignore_ascii_case(s1 : StringView, s2 : StringView) -> Bool {
+//   if s1.length() != s2.length() {
+//     return false
+//   }
 
-  for i = 0; i < s1.length(); i = i + 1 {
-    let u1 = s1[i] // UInt16
-    let u2 = s2[i] // UInt16
+//   for i = 0; i < s1.length(); i = i + 1 {
+//     let u1 = s1[i] // UInt16
+//     let u2 = s2[i] // UInt16
 
-    if u1 == u2 {
-      continue
-    }
+//     if u1 == u2 {
+//       continue
+//     }
 
-    let is_alpha1 = (u1 >= 65 && u1 <= 90) || (u1 >= 97 && u1 <= 122)
-    let is_alpha2 = (u2 >= 65 && u2 <= 90) || (u2 >= 97 && u2 <= 122)
+//     let is_alpha1 = (u1 >= 65 && u1 <= 90) || (u1 >= 97 && u1 <= 122)
+//     let is_alpha2 = (u2 >= 65 && u2 <= 90) || (u2 >= 97 && u2 <= 122)
 
-    // 如果其中有一个不是 ASCII 字母，且它们不相等（前面已判断 u1 != u2），则不匹配
-    if !(is_alpha1 && is_alpha2) {
-      return false
-    }
+//     // 如果其中有一个不是 ASCII 字母，且它们不相等（前面已判断 u1 != u2），则不匹配
+//     if !(is_alpha1 && is_alpha2) {
+//       return false
+//     }
 
-    // 都转为小写再比较
-    // 'A'(65)->'a'(97), ..., 'Z'(90)->'z'(122)
-    // 'a'-'z' 保持不变
-    let lower1 = if u1 >= 65 && u1 <= 90 { u1 + 32 } else { u1 }
-    let lower2 = if u2 >= 65 && u2 <= 90 { u2 + 32 } else { u2 }
+//     // 都转为小写再比较
+//     // 'A'(65)->'a'(97), ..., 'Z'(90)->'z'(122)
+//     // 'a'-'z' 保持不变
+//     let lower1 = if u1 >= 65 && u1 <= 90 { u1 + 32 } else { u1 }
+//     let lower2 = if u2 >= 65 && u2 <= 90 { u2 + 32 } else { u2 }
 
-    if lower1 != lower2 {
-      return false
-    }
-  }
+//     if lower1 != lower2 {
+//       return false
+//     }
+//   }
 
-  true
-}
+//   true
+// }
 
 ///|
-fn is_ascii_alphanumeric(c : Char) -> Bool {
-  let code = c.to_int()
-  // '0'=48, '9'=57, 'A'=65, 'Z'=90, 'a'=97, 'z'=122
-  (code >= 48 && code <= 57) ||
-  (code >= 65 && code <= 90) ||
-  (code >= 97 && code <= 122)
-}
+// fn is_ascii_alphanumeric(c : Char) -> Bool {
+//   let code = c.to_int()
+//   // '0'=48, '9'=57, 'A'=65, 'Z'=90, 'a'=97, 'z'=122
+//   (code >= 48 && code <= 57) ||
+//   (code >= 65 && code <= 90) ||
+//   (code >= 97 && code <= 122)
+// }
 
 ///|
 pub fn array_view_memchr(target : Byte, data : ArrayView[Byte]) -> Int? {
@@ -128,49 +128,49 @@ pub fn array_view_memchr2(c1 : Byte, c2 : Byte, data : ArrayView[Byte]) -> Int? 
 }
 
 ///|
-fn is_alphabetic(s : StringView) -> Bool {
-  if s.is_empty() {
-    return false
-  }
+// fn is_alphabetic(s : StringView) -> Bool {
+//   if s.is_empty() {
+//     return false
+//   }
 
-  let mut result = true
-  for c in s {
-    if !c.is_ascii_alphabetic() {
-      result = false
-      break
-    }
-  }
-  result
-}
-
-///|
-fn is_numeric(s : StringView) -> Bool {
-  // let chars = StringView::iter(s)
-  if s.is_empty() {
-    return false
-  }
-
-  let mut result = true
-  for c in s {
-    if !c.is_ascii_digit() {
-      result = false
-      break
-    }
-  }
-  result
-}
+//   let mut result = true
+//   for c in s {
+//     if !c.is_ascii_alphabetic() {
+//       result = false
+//       break
+//     }
+//   }
+//   result
+// }
 
 ///|
-fn is_alphanumeric(s : StringView) -> Bool {
-  let mut result = true
-  for c in s {
-    if !is_ascii_alphanumeric(c) {
-      result = false
-      break
-    }
-  }
-  result
-}
+// fn is_numeric(s : StringView) -> Bool {
+//   // let chars = StringView::iter(s)
+//   if s.is_empty() {
+//     return false
+//   }
+
+//   let mut result = true
+//   for c in s {
+//     if !c.is_ascii_digit() {
+//       result = false
+//       break
+//     }
+//   }
+//   result
+// }
+
+///|
+// fn is_alphanumeric(s : StringView) -> Bool {
+//   let mut result = true
+//   for c in s {
+//     if !is_ascii_alphanumeric(c) {
+//       result = false
+//       break
+//     }
+//   }
+//   result
+// }
 
 ///|
 // fn is_alphanumeric_or_dash(s : StringView) -> Bool {
@@ -437,45 +437,6 @@ pub fn parse_xsd_date(s : String) -> Result[String, String] {
 }
 
 ///|
-// fn UInt::to_hex_string(self : UInt) -> String {
-//   if self == 0 {
-//     return "0"
-//   }
-//   let chars : Array[Char] = []
-//   let mut n = self
-//   while n > 0 {
-//     let digit = n % 16
-//     chars.push(digit_to_hex_char(digit))
-//     n = n / 16
-//   }
-//   let sb = StringBuilder::new()
-//   let rev_chars = chars.rev()
-//   for c in rev_chars {
-//     sb.write_char(c)
-//   }
-//   sb.to_string()
-// }
-
-///|
-// fn digit_to_hex_char(d : UInt) -> Char {
-//   if d < 10 {
-//     (d + 48).to_uint16().to_char().unwrap() // '0' = 48
-//   } else {
-//     (d - 10 + 65).to_uint16().to_char().unwrap()
-//   } // 'A' = 65
-// }
-
-///|
-// fn UInt::lpad(self : UInt, width : Int, char : Char) -> String {
-//   let s = self.to_hex_string()
-//   let pad_count = width - s.length()
-//   if pad_count <= 0 {
-//     return s
-//   }
-//   String::make(pad_count, char) + s
-// }
-
-///|
 pub fn is_valid_hex_string(hex : String) -> Bool {
   for c in hex {
     if !((c >= '0' && c <= '9') ||
@@ -507,21 +468,3 @@ pub let iri_illegal_table : FixedArray[Int] = {
 
   table
 }
-
-///|
-// fn is_illegal_iri_char(c : Byte) -> Bool {
-//   iri_illegal_table[c.to_int()] == 1
-// }
-
-///|
-// fn is_pn_chars_u(c : Byte) -> Bool {
-//   (c >= b'a' && c <= b'z') ||
-//   (c >= b'A' && c <= b'Z') ||
-//   (c >= b'0' && c <= b'9') ||
-//   c == b'_'
-// }
-
-///|
-// fn is_pn_chars(c : Byte) -> Bool {
-//   is_pn_chars_u(c) || c == b'-' || c == b'.'
-// }

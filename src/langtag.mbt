@@ -79,7 +79,7 @@ pub struct TagState {
   script : TagSpan? // 脚本 (4位字母，首字母大写)
   region : TagSpan? // 区域 (2位大写字母 或 3位数字)
 
-  // 可变数量的部分
+  // 可变部分
   variants : Array[TagSpan] // 变体 (多个)
   extensions : Array[Extension] // 扩展 (多个)
   private_use : PrivateUse? // 私有使用
@@ -478,16 +478,16 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
   let mut extlang_end = lang.1
   let mut extlang_count = 0
 
-  println(
-    "extlang check: lang_len=\{lang_len}, i=\{i}, subtags[1]=\{subtags.get(1)}",
-  )
+  //  debug(
+  //   "extlang check: lang_len=\{lang_len}, i=\{i}, subtags[1]=\{subtags.get(1)}",
+  // )
 
   while i < subtags.length() && lang_len <= 3 && extlang_count < 3 {
     let ext = subtags[i]
-    println("extlang loop: ext=\{ext}, ext.0=\{ext.0}, ext.1=\{ext.1}")
+    // debug(("extlang loop: ext=\{ext}, ext.0=\{ext.0}, ext.1=\{ext.1}")
 
     if span_len(ext) != 3 || !is_alphabetic_span(tag, ext) {
-      println("  break: ! alphabetic")
+      // debug(("  break: ! alphabetic")
       break
     }
     let ext_view = sub(tag, ext)
@@ -499,22 +499,22 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
       }
     }
     if is_legacy {
-      println("  break: legacy variant")
+      // debug(("  break: legacy variant")
       break
     }
 
     if extlang_count == 0 {
       extlang_start = ext.0
-      println("  set extlang_start = \{ext.0}")
+      // debug(("  set extlang_start = \{ext.0}")
     }
     extlang_count += 1
     extlang_end = ext.1
     i += 1
   }
 
-  println(
-    "extlang result: start=\{extlang_start}, end=\{extlang_end}, count=\{extlang_count}",
-  )
+  //  debug(
+  //    "extlang result: start=\{extlang_start}, end=\{extlang_end}, count=\{extlang_count}",
+  //  )
   let extlang : TagSpan? = if extlang_count > 0 {
     Some((extlang_start, extlang_end)) // (3, 6)
   } else {
@@ -525,9 +525,9 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
   let mut script : TagSpan? = None
   if i < subtags.length() && span_len(subtags[i]) == 4 {
     let s = subtags[i]
-    let cand = sub(tag, s)
+    // let cand = sub(tag, s)
     let is_s = is_script(tag, s)
-    println("@@script candidate: '\{cand}' is_script: \{is_s}")
+    // debug(("@@script candidate: '\{cand}' is_script: \{is_s}")
     if is_s {
       script = Some(s)
       i += 1
@@ -537,7 +537,7 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
   // 4. 区域（2位大写 或 3位数字）
   let mut region : TagSpan? = None
   if i < subtags.length() {
-    println("@@region check: '\{sub(tag, subtags[i])}' i=\{i}")
+    // debug(("@@region check: '\{sub(tag, subtags[i])}' i=\{i}")
   }
   if i < subtags.length() && is_region(tag, subtags[i]) {
     region = Some(subtags[i])
@@ -547,9 +547,9 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
   let variants : Array[TagSpan] = []
   while i < subtags.length() {
     let s = subtags[i]
-    let cand = sub(tag, s)
+    // let cand = sub(tag, s)
     let is_v = is_variant(tag, s, legacy_3letter_variants)
-    println("@@variant check: '\{cand}' is_variant=\{is_v}")
+    // debug(("@@variant check: '\{cand}' is_variant=\{is_v}")
     if is_v {
       variants.push(s)
       i += 1
@@ -618,11 +618,11 @@ fn scan_subtags(tag : StringView) -> Array[TagSpan] {
   let mut pos = 0
   let subtags : Array[TagSpan] = []
 
-  println("scan_subtags: tag='\{tag}', length=\{tag.length()}")
+  // debug(("scan_subtags: tag='\{tag}', length=\{tag.length()}")
 
   while pos < tag.length() {
     if tag[pos] == '-' {
-      println("  skip '-' at pos \{pos}")
+      // debug(("  skip '-' at pos \{pos}")
       pos += 1
       continue
     }
@@ -631,8 +631,8 @@ fn scan_subtags(tag : StringView) -> Array[TagSpan] {
       pos += 1
     }
     let end = pos
-    let subtag = tag[start:end]
-    println("  subtag '\{subtag}' at (\{start}, \{end})")
+    // let subtag = tag[start:end]
+    // debug(("  subtag '\{subtag}' at (\{start}, \{end})")
     subtags.push((start, end))
     if pos < tag.length() {
       pos += 1
@@ -656,20 +656,20 @@ pub fn LanguageTag::parse_and_normalize(
 ///|
 fn LanguageTag::normalize(self : LanguageTag) -> LanguageTag {
   if self.state.is_grandfathered {
-    debug("normalize: grandfathered")
+    // debug("normalize: grandfathered")
     return self
   }
   // 私有使用标签：整体小写
   if self.state.private_use is Some(_) {
-    debug("normalize: private use")
+    // debug("normalize: private use")
     return { tag: self.tag.to_lower(), state: self.state }
   }
 
   let result = StringBuilder::new()
-  println("normalize input \{self}")
+  // debug(("normalize input \{self}")
   // 1. 主语言 (小写)
   let lang = sub(self.tag, self.state.language).to_lower()
-  debug("normalize: language = '\{lang}'")
+  // debug("normalize: language = '\{lang}'")
   result.write(lang)
 
   // 2. 扩展语言 (小写)
@@ -685,7 +685,7 @@ fn LanguageTag::normalize(self : LanguageTag) -> LanguageTag {
         span.1,
         '-',
       )
-      debug("normalize: extlang parts = \{parts}")
+      // debug("normalize: extlang parts = \{parts}")
       if ext_start < span.1 {
         for part in parts {
           result.write("-")
@@ -697,10 +697,10 @@ fn LanguageTag::normalize(self : LanguageTag) -> LanguageTag {
   }
 
   // 3. 脚本 (Title Case)
-  debug("normalize: checking script = \{self.state.script}")
+  // debug("normalize: checking script = \{self.state.script}")
   match self.state.script {
     Some(span) => {
-      debug("normalize: script span = \{span}")
+      // debug("normalize: script span = \{span}")
       let s = sub(self.tag, span)
       let s_len = span_len(span)
       if s_len > 0 {
@@ -720,38 +720,38 @@ fn LanguageTag::normalize(self : LanguageTag) -> LanguageTag {
   }
 
   // 4. 区域 (大写)
-  debug("normalize: checking region = \{self.state.region}")
+  // debug("normalize: checking region = \{self.state.region}")
   match self.state.region {
     Some(span) => {
-      debug("normalize: region span = \{span}")
+      // debug("normalize: region span = \{span}")
       let r = sub(self.tag, span).to_upper()
-      debug("normalize: region written = '\{r}'")
+      // debug("normalize: region written = '\{r}'")
       result.write("-")
       result.write(r)
     }
-    None => debug("normalize: no region")
+    None => () // debug("normalize: no region")
   }
   // 5. 变体 (小写)
-  debug("normalize: checking variants, count = \{self.state.variants.length()}")
+  // debug("normalize: checking variants, count = \{self.state.variants.length()}")
   for v in self.state.variants {
-    debug("normalize: variant span = \{v}")
+    // debug("normalize: variant span = \{v}")
     let s = sub(self.tag, v).to_lower()
-    debug("normalize: variant written = '\{s}'")
+    // debug("normalize: variant written = '\{s}'")
     result.write("-")
     result.write(s)
   }
 
   // 6. 扩展 (小写)
-  debug(
-    "normalize: checking extensions, count = \{self.state.extensions.length()}",
-  )
+  //  debug(
+  //   "normalize: checking extensions, count = \{self.state.extensions.length()}",
+  // )
   for ext in self.state.extensions {
-    debug("normalize: extension ident = \{ext.ident}")
+    // debug("normalize: extension ident = \{ext.ident}")
     result.write("-")
     result.write(sub(self.tag, ext.ident).to_lower())
     for sub_tag in ext.subtags {
       let s = sub(self.tag, sub_tag).to_lower()
-      debug("normalize: extension subtag = '\{s}'")
+      // debug("normalize: extension subtag = '\{s}'")
       result.write("-")
       result.write(s)
     }
@@ -772,7 +772,7 @@ fn LanguageTag::normalize(self : LanguageTag) -> LanguageTag {
 
   // 重新解析归一化后的标签
   let normalized = result.to_string()
-  println("normalized: \{normalized}") // 添加调试
+  // debug(("normalized: \{normalized}") // 添加调试
   match LanguageTag::parse(normalized) {
     Ok(t) => t
     Err(_) => self
@@ -844,11 +844,10 @@ pub fn LanguageTag::extended_language_subtags(
   self : LanguageTag,
 ) -> Array[StringView] {
   match self.state.extlang {
-    Some(span) => {
-      debug("extended_language_subtags \{span}")
+    Some(span) =>
+      // debug("extended_language_subtags \{span}")
       // span.0 是主语言结束位置（包含 '-'），跳过它
       split_by_span(self.tag, span.0, span.1, '-')
-    }
     None => []
   }
 }
@@ -857,10 +856,9 @@ pub fn LanguageTag::extended_language_subtags(
 /// 主语言 + 扩展语言（完整）
 pub fn LanguageTag::full_language(self : LanguageTag) -> StringView {
   match self.state.extlang {
-    Some(span) => {
-      debug("full_language \{span}")
+    Some(span) =>
+      // debug("full_language \{span}")
       sub(self.tag, (0, span.1))
-    }
     None => sub(self.tag, self.state.language)
   }
 }
@@ -940,15 +938,6 @@ pub struct ExtensionIter {
 }
 
 ///|
-/// 创建迭代器
-// fn ExtensionIter::ExtensionIter(
-//   tag : StringView,
-//   extensions : Array[Extension],
-// ) -> ExtensionIter {
-//   { tag, extensions, index: 0 }
-// }
-
-///|
 /// 获取下一个扩展
 /// 返回 (标识符, 子标签列表, 下一个迭代器)
 fn ExtensionIter::next(
@@ -967,6 +956,11 @@ fn ExtensionIter::next(
       Some((ident, subtags, next))
     }
   }
+}
+
+///|
+pub fn LanguageTag::extension_subtags(self : LanguageTag) -> ExtensionIter {
+  ExtensionIter::{ tag: self.tag, extensions: self.state.extensions, index: 0 }
 }
 
 ///|
@@ -1033,37 +1027,3 @@ fn is_valid_private_use_subtag(tag : StringView, span : TagSpan) -> Bool {
   // 私有使用子标签：1-8位字母数字
   len >= 1 && len <= 8 && is_alphanumeric_span(tag, span)
 }
-
-// /// 检查是否是有效的脚本（Title Case：首字母大写，其余小写）
-// fn is_valid_script(s : StringView, span : TagSpan) -> Bool {
-//   if span_len(span) != 4 { return false }
-//   // 首字母必须大写
-//   let c0 = s[span.0].to_int()
-//   if !(is_upper(c0)) { return false }
-//   // 后3个必须小写
-//   let mut i = span.0 + 1
-//   while i < span.1 {
-//     if !(is_lower(s[i].to_int())) { return false }
-//     i += 1
-//   }
-//   true
-// }
-
-/// 检查是否是有效的区域（2位大写 或 3位数字）
-// fn is_valid_region(s : StringView, span : TagSpan) -> Bool {
-//   let len = span_len(span)
-//   if len == 2 {
-//     let c0 = s[span.0].to_int()
-//     let c1 = s[span.0 + 1].to_int()
-//     return is_upper(c0) && is_upper(c1)
-//   }
-//   if len == 3 {
-//     let mut i = span.0
-//     while i < span.1 {
-//       if !(is_digit(s[i].to_int())) { return false }
-//       i += 1
-//     }
-//     return true
-//   }
-//   false
-// }

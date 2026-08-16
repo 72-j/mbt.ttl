@@ -1,62 +1,71 @@
+// ============================================================
+// RDF 字面量 - RDF 1.1 语义
+// ============================================================
+
 ///|
+/// RDF 字面量
 pub(all) struct Literal(LiteralContent) derive(Eq, Debug, Hash)
 
 ///|
+/// IRI 引用
 pub(all) struct NamedNodeRef {
   iri : StringView
 } derive(Debug, Eq, Hash)
 
 ///|
-pub impl Show for NamedNodeRef with fn output(
-  self : NamedNodeRef,
-  logger : &Logger,
-) -> Unit {
+pub impl Show for NamedNodeRef with fn output(self, logger) {
   logger.write(self.iri)
 }
 
 ///|
+/// IRI 节点 (拥有所有权)
 pub(all) struct NamedNode {
   iri : String
 } derive(Debug, Eq, Hash, Default)
 
 ///|
-pub impl Show for NamedNode with fn output(self : NamedNode, logger : &Logger) -> Unit {
+pub impl Show for NamedNode with fn output(self, logger) {
   logger.write(self.iri)
 }
 
 ///|
-pub fn NamedNodeRef::new_unchecked(iri : StringView) -> NamedNodeRef {
+/// 创建 NamedNodeRef (不验证)
+pub fn NamedNode::new_unchecked(iri : StringView) -> NamedNodeRef {
   NamedNodeRef::{ iri, }
 }
 
 ///|
+/// 转_owned
 pub fn NamedNodeRef::into_owned(self : NamedNodeRef) -> NamedNode {
   NamedNode::{ iri: self.iri.to_owned() }
 }
 
 ///|
+/// as_ref
 pub fn NamedNode::as_ref(self : NamedNode) -> NamedNodeRef {
   NamedNodeRef::{ iri: self.iri }
 }
 
 ///|
-pub impl Show for Literal with fn to_string(self : Literal) -> String {
+pub impl Show for Literal with fn to_string(self) {
   let f = StringBuilder::new()
   match self.0 {
-    LiteralContent::String(value) => print_quoted_str(f, value)
+    LiteralContent::String(value) => {
+      append_escaped_str(f, value)
+      f.to_string()
+    }
     LiteralContent::LanguageTaggedString(value~, language~) => {
-      let _ = print_quoted_str(f, value)
+      append_escaped_str(f, value)
       f.write("@")
       f.write(language)
       f.to_string()
-      // write(f , "@{language}")
     }
     LiteralContent::DirectionalLanguageTaggedString(
       value~,
       language~,
       direction~
     ) => {
-      let _ = print_quoted_str(f, value)
+      append_escaped_str(f, value)
       f.write("@")
       f.write(language)
       f.write("-")
@@ -64,7 +73,7 @@ pub impl Show for Literal with fn to_string(self : Literal) -> String {
       f.to_string()
     }
     LiteralContent::TypedLiteral(value~, datatype~) => {
-      let _ = print_quoted_str(f, value)
+      append_escaped_str(f, value)
       f.write("^^")
       f.write(datatype)
       f.to_string()
@@ -73,23 +82,26 @@ pub impl Show for Literal with fn to_string(self : Literal) -> String {
 }
 
 ///|
+/// 字面量内容
 pub(all) enum LiteralContent {
-  String(String)
-  LanguageTaggedString(value~ : String, language~ : String)
+  String(String) // 简单字符串
+  LanguageTaggedString(value~ : String, language~ : String) // 带语言标签
   DirectionalLanguageTaggedString(
     value~ : StringView,
     language~ : String,
     direction~ : BaseDirection
   )
-  TypedLiteral(value~ : String, datatype~ : NamedNode)
+  TypedLiteral(value~ : String, datatype~ : NamedNode) // 带类型
 } derive(Eq, Debug, Hash)
 
 ///|
+/// 创建简单字面量
 pub fn Literal::new_simple_literal(value : String) -> Literal {
   LiteralContent::String(value)
 }
 
 ///|
+/// 创建语言标签字面量 (验证语言标签)
 pub fn Literal::new_language_tagged_literal(
   value : String,
   language : String,
@@ -108,6 +120,7 @@ pub fn Literal::new_language_tagged_literal(
 }
 
 ///|
+/// 创建语言标签字面量 (不验证)
 pub fn Literal::new_language_tagged_literal_unchecked(
   value : String,
   language : String,
@@ -116,6 +129,7 @@ pub fn Literal::new_language_tagged_literal_unchecked(
 }
 
 ///|
+/// 创建带方向的语言标签字面量 (验证语言标签)
 pub fn Literal::new_directional_language_tagged_literal(
   value : String,
   language : String,
@@ -131,10 +145,10 @@ pub fn Literal::new_directional_language_tagged_literal(
       )
     Err(e) => Err(e)
   }
-  // Ok(Literal::new_directional_language_tagged_literal_unchecked(value, LanguageTag::parse(language), direction))
 }
 
 ///|
+/// 创建带方向的语言标签字面量 (不验证)
 pub fn Literal::new_directional_language_tagged_literal_unchecked(
   value : StringView,
   language : LanguageTag,
@@ -148,6 +162,7 @@ pub fn Literal::new_directional_language_tagged_literal_unchecked(
 }
 
 ///|
+/// 获取字面量值
 pub fn Literal::value(self : Literal) -> String {
   match self.0 {
     LiteralContent::String(value)
@@ -159,64 +174,39 @@ pub fn Literal::value(self : Literal) -> String {
 }
 
 ///|
+/// 获取语言标签
 pub fn Literal::language(self : Literal) -> String? {
   match self.0 {
-    LiteralContent::LanguageTaggedString(language~, ..) =>
-      // self.language()
-      Some(language)
+    LiteralContent::LanguageTaggedString(language~, ..) => Some(language)
     LiteralContent::DirectionalLanguageTaggedString(language~, ..) =>
-      // self.language()
       Some(language)
     _ => None
   }
-  // self.language()
 }
 
 ///|
+/// 获取文本方向
 pub fn Literal::direction(self : Literal) -> BaseDirection? {
   match self.0 {
     LiteralContent::DirectionalLanguageTaggedString(direction~, ..) =>
-      // self.direction()
       Some(direction)
     _ => None
   }
-  // self.direction()
 }
 
 ///|
+/// 获取数据类型
 pub fn Literal::datatype(self : Literal) -> NamedNodeRef {
   match self.0 {
-    LiteralContent::LanguageTaggedString(..) => lwLANG_STRING
-    LiteralContent::DirectionalLanguageTaggedString(..) => lwDIR_LANG_STRING
-    LiteralContent::String(_) => lwSTRING
+    LiteralContent::LanguageTaggedString(..) => rdf_lang_string
+    LiteralContent::DirectionalLanguageTaggedString(..) => rdf_dir_lang_string
+    LiteralContent::String(_) => rdf_string
     LiteralContent::TypedLiteral(datatype~, ..) => datatype.as_ref()
   }
 }
 
 ///|
-pub fn Literal::as_ref(self : Literal) -> LiteralRef {
-  LiteralRef(
-    match self.0 {
-      LiteralContent::String(value) => LiteralRefContent::String(value)
-      LiteralContent::LanguageTaggedString(value~, language~) =>
-        LiteralRefContent::LanguageTaggedString(value~, language~)
-      LiteralContent::DirectionalLanguageTaggedString(
-        value~,
-        language~,
-        direction~
-      ) =>
-        LiteralRefContent::DirectionalLanguageTaggedString(
-          value~,
-          language~,
-          direction~,
-        )
-      LiteralContent::TypedLiteral(value~, datatype~) =>
-        LiteralRefContent::TypedLiteral(value~, datatype=datatype.as_ref())
-    },
-  )
-}
-
-///|
+/// 分解为 (值, 数据类型, 语言, 方向)
 pub fn Literal::destruct(
   self : Literal,
 ) -> (StringView, NamedNode?, String?, BaseDirection?) {
@@ -235,9 +225,11 @@ pub fn Literal::destruct(
 }
 
 ///|
+/// 字面量引用 (无所有权)
 pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Debug, Hash)
 
 ///|
+/// 字面量引用内容
 pub(all) enum LiteralRefContent {
   String(StringView)
   LanguageTaggedString(value~ : String, language~ : StringView)
@@ -250,7 +242,8 @@ pub(all) enum LiteralRefContent {
 } derive(Eq, Debug, Hash)
 
 ///|
-pub fn LiteralRef::into_value(self : LiteralRef) -> StringView {
+/// 获取字面量值
+pub fn LiteralRef::as_value(self : LiteralRef) -> StringView {
   match self.0 {
     LiteralRefContent::String(s) => s
     LiteralRefContent::LanguageTaggedString(value~, ..) => value
@@ -260,22 +253,19 @@ pub fn LiteralRef::into_value(self : LiteralRef) -> StringView {
 }
 
 ///|
-pub fn LiteralRef::new_simple_literal(value : StringView) -> LiteralRef {
-  LiteralRef(LiteralRefContent::String(value))
+/// 创建简单字面量 (不验证)
+pub fn Literal::new_simple_literal_unchecked(value : String) -> Literal {
+  Literal(LiteralContent::String(value))
 }
 
 ///|
-// pub fn LiteralRef::as_term(self : Self) -> TermRef {
-//   TermRef::LiteralRef(self)
-// }
-
-///|
-pub fn LiteralRef::new_typed_literal(
+/// 创建类型字面量 (优化: string 直接用 String 类型)
+pub fn Literal::new_typed_literal_unchecked(
   value : String,
   datatype : NamedNodeRef,
 ) -> LiteralRef {
   LiteralRef(
-    if datatype == lwSTRING {
+    if datatype == rdf_string {
       LiteralRefContent::String(value)
     } else {
       LiteralRefContent::TypedLiteral(value~, datatype~)
@@ -284,59 +274,19 @@ pub fn LiteralRef::new_typed_literal(
 }
 
 ///|
-pub fn LiteralRef::new_language_tagged_literal_unchecked(
-  value : String,
-  language : StringView,
-) -> LiteralRef {
-  LiteralRef(LiteralRefContent::LanguageTaggedString(value~, language~))
-}
-
-///|
-pub fn LiteralRef::new_directional_language_tagged_literal_unchecked(
-  value : String,
-  language : LanguageTag,
-  direction : BaseDirection,
-) -> LiteralRef {
-  LiteralRef(
-    LiteralRefContent::DirectionalLanguageTaggedString(
-      value~,
-      language=language.to_tagstr(),
-      direction~,
-    ),
-  )
-}
-
-///|
-pub fn LiteralRef::language(self : LiteralRef) -> String? {
-  match self.0 {
-    LiteralRefContent::LanguageTaggedString(language~, ..) =>
-      Some(language.to_owned())
-    LiteralRefContent::DirectionalLanguageTaggedString(language~, ..) =>
-      Some(language.to_owned())
-    _ => None
-  }
-}
-
-///|
-pub fn LiteralRef::direction(self : LiteralRef) -> BaseDirection? {
-  match self.0 {
-    LiteralRefContent::DirectionalLanguageTaggedString(direction~, ..) =>
-      Some(direction)
-    _ => None
-  }
-}
-
-///|
+/// 获取数据类型
 pub fn LiteralRef::datatype(self : LiteralRef) -> NamedNodeRef {
   match self.0 {
-    LiteralRefContent::String(_) => lwSTRING
-    LiteralRefContent::LanguageTaggedString(..) => lwLANG_STRING
-    LiteralRefContent::DirectionalLanguageTaggedString(..) => lwDIR_LANG_STRING
+    LiteralRefContent::String(_) => rdf_string
+    LiteralRefContent::LanguageTaggedString(..) => rdf_lang_string
+    LiteralRefContent::DirectionalLanguageTaggedString(..) =>
+      rdf_dir_lang_string
     LiteralRefContent::TypedLiteral(datatype~, ..) => datatype
   }
 }
 
 ///|
+/// 转_owned
 pub fn LiteralRef::into_owned(self : LiteralRef) -> Literal {
   Literal(
     match self.0 {
@@ -364,23 +314,25 @@ pub fn LiteralRef::into_owned(self : LiteralRef) -> Literal {
 }
 
 ///|
-pub impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
+pub impl Show for LiteralRef with fn to_string(self) {
   let f = StringBuilder::new()
   match self.0 {
-    LiteralRefContent::String(value) => print_quoted_str(f, value.to_owned())
+    LiteralRefContent::String(value) => {
+      append_escaped_str(f, value)
+      f.to_string()
+    }
     LiteralRefContent::LanguageTaggedString(value~, language~) => {
-      let _ = print_quoted_str(f, value)
+      append_escaped_str(f, value)
       f.write("@")
       f.write(language)
       f.to_string()
-      // write(f , "@{language}")
     }
     LiteralRefContent::DirectionalLanguageTaggedString(
       value~,
       language~,
       direction~
     ) => {
-      let _ = print_quoted_str(f, value.to_owned())
+      append_escaped_str(f, value.to_owned())
       f.write("@")
       f.write(language)
       f.write("^")
@@ -388,7 +340,7 @@ pub impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
       f.to_string()
     }
     LiteralRefContent::TypedLiteral(value~, datatype~) => {
-      let _ = print_quoted_str(f, value)
+      append_escaped_str(f, value)
       f.write("^^")
       f.write(datatype)
       f.to_string()
@@ -397,8 +349,8 @@ pub impl Show for LiteralRef with fn to_string(self : LiteralRef) -> String {
 }
 
 ///|
-pub fn print_quoted_str(f : StringBuilder, string : StringView) -> String {
-  // f.write('\"')
+/// 转义 N-Triples 特殊字符
+pub fn append_escaped_str(f : StringBuilder, string : StringView) -> Unit {
   for c in string {
     let code = Char::to_uint(c)
     match c {
@@ -407,53 +359,19 @@ pub fn print_quoted_str(f : StringBuilder, string : StringView) -> String {
       '\n' => f.write("\\n")
       '\u{0C}' => f.write("\\f")
       '\r' => f.write("\\r")
-      // '"' => f.write("\"")
-      // '\\' => f.write("\\")
-      _ if code <= 0x1F || code == 0x7F || code == 0xFFFE || code == 0xFFFF =>
-        f.write("\\u\{code.lpad(4, '0')}") // 假设 code 已转为 UInt16
-      _ if code >= 0x10000 => f.write("\\U\{code.lpad(8, '0')}")
+      _ if code <= 0x1F || code >= 0x80 =>
+        f.write("\\u\{code.to_byte().to_hex().lpad(4, '0')}")
       _ => f.write_char(c)
     }
   }
-  // f.write('\"')
-  f.to_string()
 }
 
 ///|
-fn UInt::lpad(self : UInt, width : Int, char : Char) -> String {
-  let s = self.to_hex_string()
-  let pad_count = width - s.length()
+/// 左侧填充
+fn String::lpad(self : String, width : Int, char : Char) -> String {
+  let pad_count = width - self.length()
   if pad_count <= 0 {
-    return s
+    return self
   }
-  String::make(pad_count, char) + s
-}
-
-///|
-fn UInt::to_hex_string(self : UInt) -> String {
-  if self == 0 {
-    return "0"
-  }
-  let chars : Array[Char] = []
-  let mut n = self
-  while n > 0 {
-    let digit = n % 16
-    chars.push(digit_to_hex_char(digit))
-    n = n / 16
-  }
-  let sb = StringBuilder::new()
-  let rev_chars = chars.rev()
-  for c in rev_chars {
-    sb.write_char(c)
-  }
-  sb.to_string()
-}
-
-///|
-fn digit_to_hex_char(d : UInt) -> Char {
-  if d < 10 {
-    (d + 48).to_uint16().to_char().unwrap() // '0' = 48
-  } else {
-    (d - 10 + 65).to_uint16().to_char().unwrap()
-  } // 'A' = 65
+  String::make(pad_count, char) + self
 }

@@ -50,7 +50,13 @@ test "private use tag" {
 
 ///|
 test "primary language" {
-  debug(@lib.LanguageTag::parse_and_normalize("fr"))
+  @debug.assert_eq(
+    "fr",
+    @lib.LanguageTag::parse_and_normalize("fr")
+    .unwrap()
+    .primary_language()
+    .to_owned(),
+  )
   @debug.assert_eq(
     "de",
     @lib.LanguageTag::parse_and_normalize("de")
@@ -304,12 +310,6 @@ test "privateuse" {
 
 ///|
 test "fmt" {
-  // @debug.assert_eq(
-  //   "ar-rb-Latn-DE-nedis-foobar",
-  //   @lib.LanguageTag::parse_and_normalize("ar-rb-Latn-DE-nedis-foobar")
-  //   .unwrap()
-  //   .to_tagstr(),
-  // )
   @debug.assert_eq(
     "ar-arb-Latn-DE-nedis-foobar",
     @lib.LanguageTag::parse_and_normalize("ar-arb-latn-de-nedis-foobar")
@@ -370,10 +370,10 @@ test "wellformed tags" {
     "x-fr-CH", "sr-Latn-CS", "es-419", "sl-nedis", "de-CH-1996", "de-Latg-1996",
     "sl-IT-nedis", "en-a-bbb-x-a-ccc", "de-a-value", "en-Latn-GB-boont-r-extended-sequence-x-private",
     "en-x-US", "az-Arab-x-AZE-derbend", "es-Latn-CO-x-private", "en-US-boont", "ab-x-abc-x-abc",
-    "ab-x-abc-a-a", "i-default", "i-klingon", "abcd-Latn", "AaBbCcDd-x-y-any-x",
-    "en", "de-AT", "es-419", "de-CH-1901", "sr-Cyrl", "sr-Cyrl-CS", "sl-Latn-IT-rozaj",
-    "en-US-x-twain", "zh-cmn", "zh-cmn-Hant", "zh-cmn-Hant-HK", "zh-gan", "zh-yue-Hant-HK",
-    "xr-lxs-qut", "xr-lqt-qu", "xr-p-lze",
+    "ab-x-abc-a-a", "i-default", "i-klingon", "AaBbCcDd-x-y-any-x", "en", "de-AT",
+    "es-419", "de-CH-1901", "sr-Cyrl", "sr-Cyrl-CS", "sl-Latn-IT-rozaj", "en-US-x-twain",
+    "zh-cmn", "zh-cmn-Hant", "zh-cmn-Hant-HK", "zh-gan", "zh-yue-Hant-HK", "xr-lxs-qut",
+    "xr-lqt-qu", "xr-p-lze",
   ]
   for tag in tags {
     let result = @lib.LanguageTag::parse(tag)
@@ -388,89 +388,14 @@ test "wellformed tags" {
 test "invalid language length" {
   // 4 位主语言是无效的
   let result1 = @lib.LanguageTag::parse("abcd-efg")
-  assert_true(result1.is_err())
+  assert_true(result1 is Err(_))
 
   // 有效长度
   let result2 = @lib.LanguageTag::parse("ab-efg")
-  assert_true(result2.is_ok())
+  assert_true(result2 is Ok(_))
 
   let result3 = @lib.LanguageTag::parse("abcde-efg")
-  assert_true(result3.is_ok())
-}
-
-///|
-test "broken tags" {
-  let tags = [
-    "", "f", "f-Latn", "fr-Latn-F", "a-value", "tlh-a-b-foo", "i-notexist", "abcdefghi-012345678",
-    "ab-abc-abc-abc-abc", "ab-abcd-abc", "ab-ab-abc", "ab-123-abc", "a-Hant-ZH",
-    "a1-Hant-ZH", "ab-abcde-abc", "ab-1abc-abc", "ab-ab-abcd", "ab-123-abcd", "ab-abcde-abcd",
-    "ab-1abc-abcd", "ab-a-b", "ab-a-x", "ab--ab", "ab-abc-", "-ab-abc", "abcd-efg",
-    "aabbccddE",
-  ]
-  for tag in tags {
-    let result = @lib.LanguageTag::parse(tag)
-
-    match result {
-      Ok(v) => debug("✗ \{tag} should be rejected but passed: \{v}")
-      Err(_e) => ignore(_e)
-    }
-  }
-}
-
-///|
-test "broken tags with extended_language" {
-  let tags = [
-    "", "f", "fr-Latn-F", "abcdefghi-012345678", "ab-abc-abc-abc-abc", "ab-abcd-abc",
-    "ab-ab-abc", "ab-123-abc", "a1-Hant-ZH", "ab-abcde-abc", "ab-1abc-abc", "ab-ab-abcd",
-    "ab-123-abcd", "ab-abcde-abcd", "ab-1abc-abcd", "ab-a-x", "ab--ab", "ab-abc-",
-    "-ab-abc", "abcd-efg", "aabbccddE",
-  ]
-
-  for tag in tags {
-    let result = @lib.LanguageTag::parse(tag)
-
-    match result {
-      Ok(v) => debug("✗ \{tag} should be rejected but passed: \{v}")
-      Err(e) => ignore(e)
-    }
-  }
-}
-
-///|
-test "random good tags" {
-  let tags = [
-    "zszLDm-sCVS-es-x-gn762vG-83-S-mlL", "IIJdFI-cfZv", "kbAxSgJ-685", "tbutP", "hDL-595",
-    "dUf-iUjq-0hJ4P-5YkF-WD8fk", "FZAABA-FH", "xZ-lh-4QfM5z9J-1eG4-x-K-R6VPr2z",
-    "Fyi", "SeI-DbaG", "ch-xwFn", "OeC-GPVI", "JLzvUSi", "Fxh-hLAs", "pKHzCP-sgaO-554",
-    "eytqeW-hfgH-uQ", "ydn-zeOP-PR", "uoWmBM-yHCf-JE", "xwYem", "zie", "Re-wjSv-Ey-i-XE-E-JjWTEB8-f-DLSH-NVzLH-AtnFGWoH-SIDE",
-    "Ri-063-c-u6v-ZfhkToTB-C-IFfmv-XT-j-rdyYFMhK-h-pY-D5-Oh6FqBhL-hcXt-v-WdpNx71-K-c74m4-eBTT7-JdH7Q1Z",
-    "ji", "IM-487", "EPZ-zwcB", "GauwEcwo", "kDEP", "FwDYt-TNvo", "ottqP-KLES-x-9-i9",
-    "fcflR-grQQ", "TvFwdu-kYhs", "WE-336", "MgxQa-ywEp-8lcW-7bvT-h-dP1Md-0h7-0Z3ir-K-Srkm-kA-7LXM-Z-whb2MiO-2mNsvbLm-W3O-4r-U-KceIxHdI-gvMVgUBV-2uRUni-J0-7C8yTK2",
-    "Hyr-B-evMtVoB1-mtsVZf-vQMV-gM-I-rr-kvLzg-f-lAUK-Qb36Ne-Z-7eFzOD-mv6kKf-l-miZ7U3-k-XDGtNQG",
-    "ybrlCpzy", "PTow-w-cAQ51-8Xd6E-cumicgt-WpkZv3NY-q-ORYPRy-v-A4jL4A-iNEqQZZ-sjKn-W-N1F-pzyc-xP5eWz-LmsCiCcZ",
-    "ih-DlPR-PE", "Krf-362", "WzaD", "EPaOnB-gHHn", "XYta", "NZ-RgOO-tR", "at-FE",
-    "Tpc-693", "YFp", "gRQrQULo", "pVomZ-585", "laSu-ZcAq-338", "gCW", "PydSwHRI-TYfF",
-    "zKmWDD", "X-bCrL5RL", "HK", "YMKGcLY", "GDJ-nHYa-bw-X-ke-rohH5GfS-LdJKsGVe",
-    "tfOxdau-yjge-489-a-oB-I8Csb-1ESaK1v-VFNz-N-FT-ZQyn-On2-I-hu-vaW3-jIQb-vg0U-hUl-h-dO6KuJqB-U-tde2L-P3gHUY-vnl5c-RyO-H-gK1-zDPu-VF1oeh8W-kGzzvBbW-yuAJZ",
-    "LwDux", "Zl-072", "Ri-Ar", "vocMSwo-cJnr-288", "kUWq-gWfQ-794", "YyzqKL-273",
-    "Xrw-ZHwH-841-9ddT-ESSZF-6OqO-0knk-991U-9p3m-b-JhiV-0Kq7Y-h-cxphLb-cDlXUBOQ-X-4Ti-jty94yPp",
-    "en-GB-oed", "LEuZl-so", "HyvBvFi-cCAl-X-irMQA-Pzt-H", "uDbsrAA-304", "wTS",
-    "IWXS", "XvDqNkSn-jRDR", "gX-Ycbb-iLphEks-AQ1aJ5", "FbSBz-VLcR-VL", "JYoVQOP-Iytp",
-    "gDSoDGD-lq-v-7aFec-ag-k-Z4-0kgNxXC-7h", "Bjvoayy-029", "qSDJd", "qpbQov", "fYIll-516",
-    "GfgLyfWE-EHtB", "Wc-ZMtk", "cgh-VEYK", "WRZs-AaFd-yQ", "eSb-CpsZ-788", "YVwFU",
-    "JSsHiQhr-MpjT-381", "LuhtJIQi-JKYt", "vVTvS-RHcP", "SY", "fSf-EgvQfI-ktWoG-8X5z-63PW",
-    "NOKcy", "OjJb-550", "KB", "qzKBv-zDKk-589", "Jr", "Acw-GPXf-088", "WAFSbos",
-    "HkgnmerM-x-e5-zf-VdDjcpz-1V6", "UAfYflJU-uXDc-YV", "x-CHsHx-VDcOUAur-FqagDTx-H-V0e74R",
-    "uZIAZ-Xmbh-pd",
-  ]
-
-  for tag in tags {
-    let result = @lib.LanguageTag::parse(tag)
-    match result {
-      Ok(_v) => ignore(_v)
-      Err(e) => debug("✗ \{tag} should be valid but failed: \{e}")
-    }
-  }
+  assert_true(result3 is Ok(_))
 }
 
 ///|
@@ -533,80 +458,6 @@ test "hash eq" {
 }
 
 ///|
-test "debug_broken" {
-  let tags = [
-    "", "f", "f-Latn", "fr-Latn-F", "a-value", "tlh-a-b-foo", "i-notexist", "abcdefghi-012345678",
-    "ab-abc-abc-abc-abc", "ab-abcd-abc", "ab-ab-abc", "ab-123-abc", "a-Hant-ZH",
-    "a1-Hant-ZH", "ab-abcde-abc", "ab-1abc-abc", "ab-ab-abcd", "ab-123-abcd", "ab-abcde-abcd",
-    "ab-1abc-abcd", "ab-a-b", "ab-a-x", "ab--ab", "ab-abc-", "-ab-abc", "abcd-efg",
-    "aabbccddE",
-  ]
-  for tag in tags {
-    let result = @lib.LanguageTag::parse(tag)
-
-    match result {
-      Ok(v) => debug("✗ \{tag} should be rejected but passed: \{v}")
-      Err(e) => ignore(e)
-    }
-  }
-}
-
-///|
-test "broken tags with extended_language 2" {
-  let tags = [
-    "", "f", "fr-Latn-F", "abcdefghi-012345678", "ab-abc-abc-abc-abc", "ab-abcd-abc",
-    "ab-ab-abc", "ab-123-abc", "a1-Hant-ZH", "ab-abcde-abc", "ab-1abc-abc", "ab-ab-abcd",
-    "ab-123-abcd", "ab-abcde-abcd", "ab-1abc-abcd", "ab-a-x", "ab--ab", "ab-abc-",
-    "-ab-abc", "abcd-efg", "aabbccddE",
-  ]
-
-  for tag in tags {
-    let result = @lib.LanguageTag::parse(tag)
-
-    match result {
-      Ok(v) => debug("✗ \{tag} should be rejected but passed: \{v}")
-      Err(e) => ignore(e)
-    }
-  }
-}
-
-///|
-test "random good tags 2" {
-  let tags = [
-    "IIJdFI-cfZv", "kbAxSgJ-685", "tbutP", "hDL-595", "dUf-iUjq-0hJ4P-5YkF-WD8fk",
-    "FZAABA-FH", "xZ-lh-4QfM5z9J-1eG4-x-K-R6VPr2z", "Fyi", "SeI-DbaG", "ch-xwFn",
-    "OeC-GPVI", "JLzvUSi", "Fxh-hLAs", "pKHzCP-sgaO-554", "eytqeW-hfgH-uQ", "ydn-zeOP-PR",
-    "uoWmBM-yHCf-JE", "xwYem", "zie", "Re-wjSv-Ey-i-XE-E-JjWTEB8-f-DLSH-NVzLH-AtnFGWoH-SIDE",
-    "Ri-063-c-u6v-ZfhkToTB-C-IFfmv-XT-j-rdyYFMhK-h-pY-D5-Oh6FqBhL-hcXt-v-WdpNx71-K-c74m4-eBTT7-JdH7Q1Z",
-    "ji", "IM-487", "EPZ-zwcB", "GauwEcwo", "kDEP", "FwDYt-TNvo", "ottqP-KLES-x-9-i9",
-    "fcflR-grQQ", "TvFwdu-kYhs", "WE-336", "MgxQa-ywEp-8lcW-7bvT-h-dP1Md-0h7-0Z3ir-K-Srkm-kA-7LXM-Z-whb2MiO-2mNsvbLm-W3O-4r-U-KceIxHdI-gvMVgUBV-2uRUni-J0-7C8yTK2",
-    "Hyr-B-evMtVoB1-mtsVZf-vQMV-gM-I-rr-kvLzg-f-lAUK-Qb36Ne-Z-7eFzOD-mv6kKf-l-miZ7U3-k-XDGtNQG",
-    "ybrlCpzy", "PTow-w-cAQ51-8Xd6E-cumicgt-WpkZv3NY-q-ORYPRy-v-A4jL4A-iNEqQZZ-sjKn-W-N1F-pzyc-xP5eWz-LmsCiCcZ",
-    "ih-DlPR-PE", "Krf-362", "WzaD", "EPaOnB-gHHn", "XYta", "NZ-RgOO-tR", "at-FE",
-    "Tpc-693", "YFp", "gRQrQULo", "pVomZ-585", "laSu-ZcAq-338", "gCW", "PydSwHRI-TYfF",
-    "zKmWDD", "X-bCrL5RL", "HK", "YMKGcLY", "GDJ-nHYa-bw-X-ke-rohH5GfS-LdJKsGVe",
-    "tfOxdau-yjge-489-a-oB-I8Csb-1ESaK1v-VFNz-N-FT-ZQyn-On2-I-hu-vaW3-jIQb-vg0U-hUl-h-dO6KuJqB-U-tde2L-P3gHUY-vnl5c-RyO-H-gK1-zDPu-VF1oeh8W-kGzzvBbW-yuAJZ",
-    "LwDux", "Zl-072", "Ri-Ar", "vocMSwo-cJnr-288", "kUWq-gWfQ-794", "YyzqKL-273",
-    "Xrw-ZHwH-841-9ddT-ESSZF-6OqO-0knk-991U-9p3m-b-JhiV-0Kq7Y-h-cxphLb-cDlXUBOQ-X-4Ti-jty94yPp",
-    "en-GB-oed", "LEuZl-so", "HyvBvFi-cCAl-X-irMQA-Pzt-H", "uDbsrAA-304", "wTS",
-    "IWXS", "XvDqNkSn-jRDR", "gX-Ycbb-iLphEks-AQ1aJ5", "FbSBz-VLcR-VL", "JYoVQOP-Iytp",
-    "gDSoDGD-lq-v-7aFec-ag-k-Z4-0kgNxXC-7h", "Bjvoayy-029", "qSDJd", "qpbQov", "fYIll-516",
-    "GfgLyfWE-EHtB", "Wc-ZMtk", "cgh-VEYK", "WRZs-AaFd-yQ", "eSb-CpsZ-788", "YVwFU",
-    "JSsHiQhr-MpjT-381", "LuhtJIQi-JKYt", "vVTvS-RHcP", "SY", "fSf-EgvQfI-ktWoG-8X5z-63PW",
-    "NOKcy", "OjJb-550", "KB", "qzKBv-zDKk-589", "Jr", "Acw-GPXf-088", "WAFSbos",
-    "HkgnmerM-x-e5-zf-VdDjcpz-1V6", "UAfYflJU-uXDc-YV", "x-CHsHx-VDcOUAur-FqagDTx-H-V0e74R",
-    "uZIAZ-Xmbh-pd",
-  ]
-  for tag in tags {
-    let result = @lib.LanguageTag::parse(tag)
-    match result {
-      Ok(v) => debug("\{tag} should be rejected but passed: \{v}")
-      Err(_e) => ignore(_e)
-    }
-  }
-}
-
-///|
 test "random bad tags 2" {
   let tags = [
     "EdY-z_H791Xx6_m_kj", "qWt85_8S0-L_rbBDq0gl_m_O_zsAx_nRS", "VzyL2", "T_VFJq-L-0JWuH_u2_VW-hK-kbE",
@@ -647,54 +498,31 @@ test "str" {
   assert_true(tag.tag.has_prefix("en-"))
 }
 
-// ///|
-// test "extension_subtags iteration" {
-//   let tag_str = "en-US-u-co-phonebk-ca-gregory"
-//   let lang_tag = @lib.LanguageTag::parse(tag_str).unwrap()
+///|
+test "extension_subtags iteration" {
+  let tag_str = "en-US-u-co-phonebk-ca-gregory"
+  let lang_tag = @lib.LanguageTag::parse(tag_str).unwrap()
 
-//   let collected = []
-//   for subtag in lang_tag.extension_subtags().subtags {
-//     collected.push(subtag.to_owned())
-//   }
+  let exts = lang_tag.extension_subtags().to_array()
+  let collected : Array[String] = []
+  for ext in exts {
+    collected.push(ext.0.to_owned())
+    for sub in ext.1 {
+      collected.push(sub.to_owned())
+    }
+  }
 
-//   @debug.assert_eq(collected, ["u", "co", "phonebk", "ca", "gregory"])
-// }
+  @debug.assert_eq(collected[:], ["u", "co", "phonebk", "ca", "gregory"])
+}
 
-// ///|
-// test "extension_subtags empty" {
-//   let tag_str = "en-US"
-//   let lang_tag = @lib.LanguageTag::parse(tag_str).unwrap()
+///|
+test "extension_subtags single extended_language intro" {
+  let tag_str = "en-u-co"
+  let lang_tag = @lib.LanguageTag::parse(tag_str).unwrap()
+  let mut count = 0
+  for _subtag in lang_tag.extension_subtags().extensions {
+    count += 1
+  }
 
-//   let mut count = 0
-//   for _subtag in lang_tag.extension_subtags().subtags {
-//     count += 1
-//   }
-
-//   @debug.assert_eq(count, 0)
-// }
-
-// ///|
-// test "extension_subtags single extended_language intro" {
-//   let tag_str = "en-u-co"
-//   let lang_tag = @lib.LanguageTag::parse(tag_str).unwrap()
-
-//   let collected = []
-//   for subtag in lang_tag.extension_subtags().subtags {
-//     collected.push(subtag.to_owned())
-//   }
-
-//   @debug.assert_eq(collected, ["u", "co"])
-// }
-
-// ///|
-// test "extension_subtags multiple extended_language" {
-//   let tag_str = "en-US-u-co-phonebk-t-it-x-private"
-//   let lang_tag = @lib.LanguageTag::parse(tag_str).unwrap()
-
-//   let collected = []
-//   for subtag in lang_tag.extension_subtags().subtags {
-//     collected.push(subtag.to_owned())
-//   }
-
-//   @debug.assert_eq(collected, ["u", "co", "phonebk", "t", "it"])
-// }
+  @debug.assert_eq(count, 1)
+}

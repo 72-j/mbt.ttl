@@ -1,4 +1,8 @@
+///| // IRI 解析器 - RFC 3987
+
 ///|
+
+// IRI 结构: scheme://authority/path?query#fragment
 pub(all) struct Iri {
   scheme : StringView
   authority : StringView
@@ -19,19 +23,24 @@ pub fn Iri::Iri(
 }
 
 ///|
+
+// 解析中间状态: 存储各组件的 (偏移, 长度)
 pub(all) struct IriSpan {
   mut scheme : Span
   mut authority : Span
   mut path : Span
   mut query : Span
   mut fragment : Span
-  mut pos : Int
+  mut pos : Int // 当前解析位置
 } derive(Eq, Default)
 
+// ============================================================
+// 公共 API
+// ============================================================
+
 ///|
+/// 解析 IRI
 pub fn parse(view : BytesView) -> Result[Iri, ParseError] {
-  // let data = @utf8.encode(s)
-  // let view = data[0:data.length()].to_array()
   match parse_iri(view, 0) {
     Ok(span) => Ok(span.build(view))
     Err(e) => Err(ParseError::IriErr(e.message()))
@@ -39,10 +48,10 @@ pub fn parse(view : BytesView) -> Result[Iri, ParseError] {
 }
 
 ///|
+/// 解析 IRI，忽略错误
 pub fn parse_unchecked(view : BytesView) -> Iri {
   let span = IriSpan::default()
   span.pos = 0
-  // 尝试解析，即使失败也继续
   span.parse_scheme(view)
   span.parse_authority(view)
   span.parse_path(view)
@@ -52,7 +61,7 @@ pub fn parse_unchecked(view : BytesView) -> Iri {
 }
 
 ///|
-/// 合并 IRI
+/// 合并 base IRI 和参考 IRI (RFC 3986 5.2.2)
 pub fn Iri::resolve(
   self : Iri,
   ref_iri : BytesView,
@@ -63,12 +72,10 @@ pub fn Iri::resolve(
     Err(e) => return Err(e)
   }
 
-  // 如果参考 IRI 是绝对的，直接返回
   if ref_parsed.scheme.length() > 0 {
     return Ok(ref_parsed)
   }
 
-  // 合并各个组件
   let scheme = self.scheme
   let authority = if ref_parsed.authority.length() > 0 {
     ref_parsed.authority
@@ -76,7 +83,6 @@ pub fn Iri::resolve(
     self.authority
   }
 
-  // 路径合并：参考路径不以 / 开头时，合并到 base 路径的目录
   let path = if ref_parsed.path.length() > 0 && ref_parsed.path[0] == '/' {
     ref_parsed.path
   } else if ref_parsed.path.length() > 0 {
@@ -86,7 +92,6 @@ pub fn Iri::resolve(
       Some(idx) => base_path[0:idx + 1].to_owned() + ref_parsed.path.to_owned()
       None =>
         if base_path.is_empty() {
-          // base 为空，相对路径保持原样
           ref_parsed.path
         } else {
           "/" + ref_parsed.path.to_owned()
@@ -115,13 +120,12 @@ pub fn Iri::resolve(
 }
 
 ///|
+/// 计算相对 IRI
 pub fn Iri::relativize(self : Iri, target : Iri) -> Result[Iri, ParseError] {
-  // 如果 scheme 或 authority 不同，无法相对化
   if self.scheme != target.scheme || self.authority != target.authority {
     return Ok(target)
   }
 
-  // 计算相对路径
   let path = if self.path == target.path {
     ""
   } else if target.path.has_prefix(self.path) {
@@ -145,20 +149,18 @@ pub fn Iri::relativize(self : Iri, target : Iri) -> Result[Iri, ParseError] {
 }
 
 ///|
+/// 合并 IRI，忽略错误
 pub fn Iri::resolve_unchecked(
   self : Iri,
   ref_iri : BytesView,
   remove_dot_segments? : Bool = true,
 ) -> Iri {
-  // 尝试解析参考 IRI（忽略错误）
   let ref_parsed = parse_unchecked(ref_iri)
 
-  // 如果参考 IRI 是绝对的，直接返回
   if ref_parsed.scheme.length() > 0 {
     return ref_parsed
   }
 
-  // 合并各个组件
   let scheme = self.scheme
   let authority = if ref_parsed.authority.length() > 0 {
     ref_parsed.authority
@@ -166,27 +168,22 @@ pub fn Iri::resolve_unchecked(
     self.authority
   }
 
-  // 合并路径
   let path = if ref_parsed.path.has_prefix("/") {
-    ref_parsed.path // 绝对路径，直接用
+    ref_parsed.path
   } else if ref_parsed.path.length() > 0 {
-    // 相对路径，合并到 base 的目录
     let base_path = self.path
     let last_slash = base_path.rev_find("/")
     match last_slash {
       Some(idx) =>
         if idx == 0 {
-          // base = "/base"，没有中间目录
-          // 直接拼接："/base" + "/" + "relative/path"
           base_path.to_owned() + "/" + ref_parsed.path.to_owned()
         } else {
-          // base = "/dir/base"
           base_path[0:idx + 1].to_owned() + ref_parsed.path.to_owned()
         }
-      None => ref_parsed.path.to_owned() // base 为空，直接用 reference
+      None => ref_parsed.path.to_owned()
     }
   } else {
-    self.path // reference 为空，用 base
+    self.path
   }
   let path = if remove_dot_segments {
     fn_remove_dot_segments(path)
@@ -206,31 +203,27 @@ pub fn Iri::resolve_unchecked(
 }
 
 ///|
+/// 序列化为字符串
 pub fn Iri::into_string(self : Iri) -> String {
   let s = StringBuilder::new()
 
-  // scheme
   if self.scheme.length() > 0 {
     s.write_view(self.scheme)
     s.write_char(':')
   }
 
-  // authority
   if self.authority.length() > 0 {
     s.write_string("//")
     s.write_view(self.authority)
   }
 
-  // path
   s.write_view(self.path)
 
-  // query
   if self.query.length() > 0 {
     s.write_char('?')
     s.write_view(self.query)
   }
 
-  // fragment
   if self.fragment.length() > 0 {
     s.write_char('#')
     s.write_view(self.fragment)
@@ -240,6 +233,7 @@ pub fn Iri::into_string(self : Iri) -> String {
 }
 
 ///|
+/// 规范化路径: 处理 . 和 .. (RFC 3986 5.2.4)
 pub fn fn_remove_dot_segments(path : StringView) -> StringView {
   if path.is_empty() {
     return path
@@ -247,35 +241,26 @@ pub fn fn_remove_dot_segments(path : StringView) -> StringView {
 
   let starts_with_slash = path[0] == '/'
 
-  // 按 / 分割成段
   let parts = path.split("/")
   let result : Array[StringView] = []
 
   for part in parts {
     match part {
-      "" | "." => () // 跳过空段和当前目录
+      "" | "." => ()
       ".." =>
         if starts_with_slash {
-          // 绝对路径：可以移除上一级
           if result.length() > 0 && result[result.length() - 1] != ".." {
             let _ = result.pop()
           }
-          // 相对路径
         } else if result.length() > 0 && result[result.length() - 1] != ".." {
-          let _ = result.pop() // 移除前一普通段
+          let _ = result.pop()
         }
-      // 如果 result 为空或最后一个是 ..，就丢弃这个 ..
       _ => result.push(part)
     }
   }
 
-  // 重建路径
   if result.is_empty() {
-    if starts_with_slash {
-      return "/"
-    } else {
-      return ""
-    }
+    return if starts_with_slash { "/" } else { "" }
   }
 
   let final_path = result.join("/")
@@ -286,8 +271,12 @@ pub fn fn_remove_dot_segments(path : StringView) -> StringView {
   }
 }
 
+// ============================================================
+// 字符集
+// ============================================================
+
 ///|
-/// 字符类型查表
+/// scheme 字符: [0-9A-Za-z+-.]
 let is_scheme_char : FixedArray[Bool] = {
   let arr = FixedArray::make(256, false)
   for c in b'0'.to_int()..<=b'9'.to_int() {
@@ -306,21 +295,22 @@ let is_scheme_char : FixedArray[Bool] = {
 }
 
 ///|
+/// authority 字符 (排除空格、#、?、/)
 let is_auth_char : FixedArray[Bool] = {
   let arr = FixedArray::make(256, false)
-  // 可见 ASCII（排除空格、#、?）
   for c in b'!'.to_int()..<=b'~'.to_int() {
     arr[c] = true
   }
-  arr[b' '.to_int()] = false // 空格
+  arr[b' '.to_int()] = false
   arr[b'#'.to_int()] = false
   arr[b'?'.to_int()] = false
-  arr[b'/'.to_int()] = false // ← 添加，authority 结束标志
+  arr[b'/'.to_int()] = false
   arr[b'\n'.to_int()] = true
   arr
 }
 
 ///|
+/// path 字符 (排除 #、?、空格、换行、制表符)
 let is_path_char : FixedArray[Bool] = {
   let arr = FixedArray::make(256, false)
   for c in b'!'.to_int()..<=b'~'.to_int() {
@@ -334,19 +324,9 @@ let is_path_char : FixedArray[Bool] = {
   arr
 }
 
-///|
-// fn peek(data : BytesView, pos : Int) -> Byte? {
-//   if pos < data.length() {
-//     Some(data[pos])
-//   } else {
-//     None
-//   }
-// }
-
-///|
-// fn IriSpan::advance(self : IriSpan) -> Unit {
-//   self.pos += 1
-// }
+// ============================================================
+// 解析函数
+// ============================================================
 
 ///|
 /// 解析 scheme
@@ -358,21 +338,19 @@ fn IriSpan::parse_scheme(self : IriSpan, data : BytesView) -> Unit {
   }
   if self.pos > start && self.pos < len && data[self.pos] == b':' {
     self.scheme = (start, self.pos - start)
-    self.pos += 1 // 消费 :
+    self.pos += 1
   } else {
-    self.pos = start // 回退
+    self.pos = start
   }
 }
 
 ///|
-/// 解析 authority
+/// 解析 authority (//host:port)
 fn IriSpan::parse_authority(self : IriSpan, data : BytesView) -> Unit {
   let len = data.length()
-  // 检查 //（必须有两个 / 才算 authority）
   if self.pos + 1 < len && data[self.pos] == b'/' && data[self.pos + 1] == b'/' {
-    self.pos += 2 // 消费 //
+    self.pos += 2
     let start = self.pos
-    // authority 在 / ? # 或字符串结束时结束
     while self.pos < len && is_auth_char[data[self.pos].to_int()] {
       self.pos += 1
     }
@@ -383,7 +361,7 @@ fn IriSpan::parse_authority(self : IriSpan, data : BytesView) -> Unit {
 }
 
 ///|
-/// 解析 path（遇到 ? # 空格 换行 停止，但包含 :）
+/// 解析 path
 fn IriSpan::parse_path(self : IriSpan, data : BytesView) -> Unit {
   let start = self.pos
   let len = data.length()
@@ -396,7 +374,7 @@ fn IriSpan::parse_path(self : IriSpan, data : BytesView) -> Unit {
 }
 
 ///|
-/// 解析 query
+/// 解析 query (?key=value)
 fn IriSpan::parse_query(self : IriSpan, data : BytesView) -> Unit {
   let len = data.length()
   if self.pos < len && data[self.pos] == b'?' {
@@ -415,7 +393,7 @@ fn IriSpan::parse_query(self : IriSpan, data : BytesView) -> Unit {
 }
 
 ///|
-/// 解析 fragment
+/// 解析 fragment (#anchor)
 fn IriSpan::parse_fragment(self : IriSpan, data : BytesView) -> Unit {
   let len = data.length()
   if self.pos < len && data[self.pos] == b'#' {
@@ -433,33 +411,19 @@ fn IriSpan::parse_fragment(self : IriSpan, data : BytesView) -> Unit {
   }
 }
 
-// ============================================================
-// 主解析函数
-// ============================================================
-
 ///|
-/// 解析 IRI，返回 IriSpan
+/// 主解析函数
 pub fn parse_iri(data : BytesView, start : Int) -> Result[IriSpan, ParseError] {
   let span = IriSpan::default()
   span.pos = start
   let len = data.length()
 
-  // 1. 尝试解析 scheme（可选）
   span.parse_scheme(data)
-
-  // 2. 解析 authority（可选）
   span.parse_authority(data)
-
-  // 3. 解析 path
   span.parse_path(data)
-
-  // 4. 解析 query
   span.parse_query(data)
-
-  // 5. 解析 fragment
   span.parse_fragment(data)
 
-  // 6. query/fragment 都为空时，剩余输入追加到 path
   if span.query.1 == 0 && span.fragment.1 == 0 && span.pos < len {
     span.path = (span.path.0, len - span.path.0)
     span.pos = len
@@ -469,9 +433,7 @@ pub fn parse_iri(data : BytesView, start : Int) -> Result[IriSpan, ParseError] {
 }
 
 ///|
-/// 从 IriSpan 构建 Iri
-
-///|
+/// 从字节位置构建 Iri
 fn IriSpan::build(self : IriSpan, data : BytesView) -> Iri {
   let scheme = if self.scheme.1 > 0 {
     data[self.scheme.0:self.scheme.0 + self.scheme.1]

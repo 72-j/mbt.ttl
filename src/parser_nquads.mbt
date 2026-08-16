@@ -54,16 +54,6 @@ pub fn PendingQuad::compute_span(self : PendingQuad) -> Span {
 }
 
 ///|
-/// 获取错误 span（如有）
-// pub fn PendingQuad::error_span(self : PendingQuad) -> Span? {
-//   if self.has_err {
-//     Some(self.graph)
-//   } else {
-//     None
-//   }
-// }
-
-///|
 /// 重置状态
 pub fn PendingQuad::reset(self : PendingQuad) -> Unit {
   self.subj = (0, 0)

@@ -1,10 +1,16 @@
+// ============================================================
+// N-Triples / N-Quads 序列化器
+// ============================================================
+
 ///|
+/// N-Triples 序列化器
 pub struct Serializer {
   data : ArrayView[Byte]
   mode : StringView
 }
 
 ///|
+/// 创建序列化器
 pub fn Serializer::new(
   data : ArrayView[Byte],
   mode? : StringView = "triple",
@@ -21,6 +27,7 @@ pub fn Serializer::serialize(self : Serializer, quad : QuadEmit) -> String {
 }
 
 ///|
+/// 写入字节视图
 fn Serializer::append_span(
   _self : Serializer,
   view : ArrayView[Byte],
@@ -32,7 +39,7 @@ fn Serializer::append_span(
 }
 
 ///|
-/// 内联优化：主语序列化
+/// 序列化主语
 fn Serializer::append_subject(
   self : Serializer,
   subject : Subject,
@@ -42,16 +49,14 @@ fn Serializer::append_subject(
     Subject::Iri(view) => self.append_span(view, buf)
     Subject::BNode(view) => {
       buf.write_string("_:")
-      // 跳过前两个字符 _:，直接写 label
-      let label = view[2:]
-      self.append_span(label, buf)
+      self.append_span(view[2:], buf) // 跳过 "_:" 前缀
     }
     Subject::PrefName(view) => self.append_span(view, buf)
   }
 }
 
 ///|
-/// 内联优化：宾语序列化
+/// 序列化宾语
 fn Serializer::append_object(
   self : Serializer,
   object : Object,
@@ -61,8 +66,7 @@ fn Serializer::append_object(
     Object::Iri(view) => self.append_span(view, buf)
     Object::BNode(view) => {
       buf.write_string("_:")
-      let label = view[2:]
-      self.append_span(label, buf)
+      self.append_span(view[2:], buf)
     }
     Object::Literal(view) => self.append_span(view, buf)
     Object::PrefName(view) => self.append_span(view, buf)
@@ -70,28 +74,21 @@ fn Serializer::append_object(
 }
 
 ///|
-/// 优化后的 Quad 序列化
+/// 序列化完整 Quad (包含图名)
 fn Serializer::append_quad(
   self : Serializer,
   quad : QuadEmit,
   buf : StringBuilder,
 ) -> Unit {
-  // 主语
   self.append_subject(quad.subject, buf)
   buf.write_char(' ')
-
-  // 谓语
   self.append_span(quad.predicate, buf)
   buf.write_char(' ')
-
-  // 宾语
   self.append_object(quad.object, buf)
 
-  // 图名
   match quad.graph {
     GraphName::Iri(view) => {
       buf.write_char(' ')
-
       self.append_span(view, buf)
     }
     GraphName::None => ()
@@ -101,7 +98,7 @@ fn Serializer::append_quad(
 }
 
 ///|
-/// 序列化三元组（忽略图名）
+/// 序列化 Triple (忽略图名)
 fn Serializer::append_triple(
   self : Serializer,
   quad : QuadEmit,
@@ -116,6 +113,7 @@ fn Serializer::append_triple(
 }
 
 ///|
+/// 批量序列化
 pub fn Serializer::serialize_all(
   self : Serializer,
   quads : Array[QuadEmit],
@@ -123,23 +121,15 @@ pub fn Serializer::serialize_all(
   let buf = StringBuilder::new()
   for quad in quads {
     lexmatch self.mode with longest {
-      // 三元组模式
-      re"^(?i:triple|Triple)$" => self.append_triple(quad, buf)
-
-      // 四元组模式（包含图名）
-      re"^(?i:quad|nquads|Quad|all)$" => self.append_quad(quad, buf)
-
-      // 只输出有图名的四元组
+      re"^(?i:triple|Triple)$" => self.append_triple(quad, buf) // 三元组模式
+      re"^(?i:quad|nquads|Quad|all)$" => self.append_quad(quad, buf) // 四元组模式
       re"^(?i:quadonly)$" =>
         match quad.graph {
-          GraphName::Iri(_) => self.append_quad(quad, buf)
+          GraphName::Iri(_) => self.append_quad(quad, buf) // 仅有名图的
           GraphName::None => ()
         }
-
-      // 默认三元组
-      _ => self.append_triple(quad, buf)
+      _ => self.append_triple(quad, buf) // 默认三元组
     }
   }
-
   buf.to_string()
 }
