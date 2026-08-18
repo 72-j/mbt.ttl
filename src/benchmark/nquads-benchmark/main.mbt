@@ -26,34 +26,30 @@ async fn main {
     lexer.destroy()
     let elapsed1 = @bench.monotonic_clock_end(start1)
 
-    // 2. Parser (不含验证)
-    let engine = @lib.NQuadsEngine::new()
-    let parser = @lib.Parser::from_bytes(data, engine)
+    // 2. NQuadsEngine (不含验证)
+    let engine = @lib.NQuadsEngine::from_bytes(data)
     let start2 = @bench.monotonic_clock_start()
     let mut parser_count = 0
     for ;; {
-      match parser.next() {
+      match engine.next() {
         Some(Ok(_)) => parser_count = parser_count + 1
         Some(Err(_)) => ()
         None => break
       }
     }
-    // let (_quads, _parse_errors) = parser.parse_all()
 
     let elapsed2 = @bench.monotonic_clock_end(start2)
 
     // 3. SliceParser::parse_all (含验证)
-    let engine2 = @lib.NQuadsEngine::new()
-    let parser2 = @lib.Parser::from_bytes(data, engine2)
-    let slice = @lib.SliceParser::new(parser2, data)
+    let engine2 = @lib.NQuadsEngine::from_bytes(data)
+    let slice = @lib.SliceParser::new(engine2, data)
     let start3 = @bench.monotonic_clock_start()
     let (quads, parse_errors) = slice.parse_all()
     let elapsed3 = @bench.monotonic_clock_end(start3)
 
     // 4. materialize
-    let engine3 = @lib.NQuadsEngine::new()
-    let parser3 = @lib.Parser::from_bytes(data, engine3)
-    let slice3 = @lib.SliceParser::new(parser3, data)
+    let engine3 = @lib.NQuadsEngine::from_bytes(data)
+    let slice3 = @lib.SliceParser::new(engine3, data)
     let (quad_spans, _) = slice3.parse_all()
     let start4 = @bench.monotonic_clock_start()
     let (quad_emits, mat_errors) = @lib.materialize_all(quad_spans)

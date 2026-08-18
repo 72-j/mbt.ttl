@@ -1,49 +1,23 @@
 ///|
-pub struct ParserIter[E] {
-  parser : Parser[E]
-}
-
-///|
-pub fn[E] ParserIter::new(
-  parser : Parser[E],
-  // last_error_span : Span,
-) -> ParserIter[E] {
-  { parser, }
-}
-
-///|
-/// ParserIter 添加 get_errors 方法
-// pub fn[E] ParserIter::get_error(self : ParserIter[E]) -> ParseError? {
-//   self.parser.get_error()
-// }
-
-///|
-pub fn[E : ParserEngine] ParserIter::next(
-  self : ParserIter[E],
-) -> Result[PendingQuad, ParseError]? {
-  self.parser.next()
-}
-
-///|
-pub struct SliceParser[E] {
-  inner : ParserIter[E]
+pub struct SliceParser {
+  engine : NQuadsEngine
   data : ArrayView[Byte]
   lenient : Bool // lenient 模式下跳过验证
   errors : Array[ParseError] // 收集的结构错误
 }
 
 ///|
-pub fn[E] SliceParser::new(
-  parser : Parser[E],
+pub fn SliceParser::new(
+  engine : NQuadsEngine,
   data : ArrayView[Byte],
   lenient? : Bool = false,
-) -> SliceParser[E] {
-  { inner: ParserIter::new(parser), data, lenient, errors: [] }
+) -> SliceParser {
+  { engine, data, lenient, errors: [] }
 }
 
 ///|
 /// 链式调用设置宽松模式
-pub fn[E] SliceParser::lenient(self : SliceParser[E]) -> SliceParser[E] {
+pub fn SliceParser::lenient(self : SliceParser) -> SliceParser {
   { ..self, lenient: true }
 }
 
@@ -51,53 +25,35 @@ pub fn[E] SliceParser::lenient(self : SliceParser[E]) -> SliceParser[E] {
 /// 实现 Iter trait
 
 ///|
-pub fn[E : ParserEngine] SliceParser::next(
-  self : SliceParser[E],
-) -> Result[QuadSpan, ParseError]? {
-  for ;; {
-    match self.inner.next() {
-      None =>
-        return {
-          // 检查最后是否有未处理的错误
-          match self.inner.parser.last_error {
-            Some((span, line)) =>
-              self.errors.push(
-                ParseError::StructSyntaxErr("Structure error", line, span),
-              )
-            None => ()
-          }
-          return None
-        }
-      Some(Err(e)) => return Some(Err(e))
-      Some(Ok(pending)) =>
-        // 收集 Parser 中的结构错误
-        // match self.inner.get_error() {
-        //   Some(err) => {
-        //     debug("Parser error: \{err}")
-        //     self.errors.push(err)
-        //   }
-        //   None => ()
-        // }
-
-        // if !pending.is_complete() {
-        //   continue
-        // }
-
-        match self.validate(pending) {
-          Ok(q) => return Some(Ok(q))
-          Err(e) => {
-            self.errors.push(e)
-            continue
-          }
-        }
+pub fn SliceParser::next(self : SliceParser) -> Result[QuadSpan, ParseError]? {
+  match self.engine.next() {
+    None => {
+      // 检查最后是否有未处理的错误
+      match self.engine.last_error {
+        Some((span, line)) =>
+          self.errors.push(
+            ParseError::StructSyntaxErr("Structure error", line, span),
+          )
+        None => ()
+      }
+      None
     }
+    Some(Err(e)) => Some(Err(e))
+    Some(Ok(pending)) =>
+      match self.validate(pending) {
+        Ok(q) => Some(Ok(q))
+        Err(e) => {
+          self.errors.push(e)
+          self.next() // 递归重试
+        }
+      }
   }
 }
 
 ///|
 /// 解析全部
-pub fn[E : ParserEngine] SliceParser::parse_all(
-  self : SliceParser[E],
+pub fn SliceParser::parse_all(
+  self : SliceParser,
 ) -> (Array[QuadSpan], Array[ParseError]) {
   let quads : Array[QuadSpan] = []
   let errors = self.errors
@@ -114,8 +70,8 @@ pub fn[E : ParserEngine] SliceParser::parse_all(
 }
 
 ///|
-fn[E] SliceParser::validate(
-  self : SliceParser[E],
+fn SliceParser::validate(
+  self : SliceParser,
   pending : PendingQuad,
 ) -> Result[QuadSpan, ParseError] {
   // 提取 span 并切分 data
@@ -195,16 +151,7 @@ fn[E] SliceParser::validate(
     None
   }
 
-  Ok({
-    subj: subject,
-    pred: predicate,
-    obj: object,
-    graph,
-    // line: pending.line,
-    subj_type,
-    obj_type,
-    // has_err: pending.has_err,
-  })
+  Ok({ subj: subject, pred: predicate, obj: object, graph, subj_type, obj_type })
 }
 
 ///|

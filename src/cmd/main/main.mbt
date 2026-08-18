@@ -84,9 +84,8 @@ async fn parse_content(content : Bytes, verbose : Bool) -> Unit {
     // println("Data length: \{data.length()} bytes")
 
     // Create parser
-    let engine = @lib.NQuadsEngine::new()
-    let parser = @lib.Parser::from_bytes(data, engine)
-    let slice = @lib.SliceParser::new(parser, data)
+    let engine = @lib.NQuadsEngine::from_bytes(data)
+    let slice = @lib.SliceParser::new(engine, data)
 
     // Parse all quads
     println("")

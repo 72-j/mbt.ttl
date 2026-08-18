@@ -104,38 +104,13 @@ pub impl Show for PendingState with fn output(
 // ============================================================
 
 ///|
-pub impl ParserEngine for NQuadsEngine with fn error_recovery_state(
-  _self : NQuadsEngine,
-) -> NQuadsEngine {
-  NQuadsEngine::new()
-}
-
-///|
-pub impl ParserEngine for NQuadsEngine with fn create_pending(
-  _self : NQuadsEngine,
-) -> PendingQuad {
-  PendingQuad::default()
-}
-
-///|
-pub impl ParserEngine for NQuadsEngine with fn is_complete(
-  _self : NQuadsEngine,
-  pending : PendingQuad,
-) -> Bool {
-  pending.is_complete()
-}
-
-///|
-pub impl ParserEngine for NQuadsEngine with fn step(
-  _self : NQuadsEngine,
-  pending : PendingQuad,
-  token : Token,
-) -> StepResult {
-  match (pending.state, token) {
+/// 解析步骤
+fn NQuadsEngine::step(self : NQuadsEngine, token : Token) -> StepResult {
+  match (self.pending.state, token) {
     // 期望主语
     (ExpectSubject, Iri(span) | BlankNode(span)) => {
-      pending.subj = span
-      pending.state = ExpectPredicate
+      self.pending.subj = span
+      self.pending.state = ExpectPredicate
       Continue
     }
     (ExpectSubject, PrefName(span)) => SkipError(span)
@@ -143,44 +118,42 @@ pub impl ParserEngine for NQuadsEngine with fn step(
 
     // 期望谓语
     (ExpectPredicate, Iri(span)) => {
-      pending.pred = span
-      pending.state = ExpectObject
+      self.pending.pred = span
+      self.pending.state = ExpectObject
       Continue
     }
     (ExpectPredicate, token) => SkipError(ParseError::span(token))
 
     // 期望宾语
     (ExpectObject, Iri(span) | Literal(span) | BlankNode(span)) => {
-      pending.obj = span
-      pending.state = ExpectDotOrGraph
+      self.pending.obj = span
+      self.pending.state = ExpectDotOrGraph
       Continue
     }
     (ExpectObject, token) => SkipError(ParseError::span(token))
 
     // 期望 . 或 图名
     (ExpectDotOrGraph, Dot(_)) => {
-      pending.has_dot = true
-      pending.state = Complete
-      // pending.line += 1
+      self.pending.has_dot = true
+      self.pending.state = Complete
       Emit
     }
     (ExpectDotOrGraph, Iri(span)) => {
-      pending.graph = span
-      pending.state = ExpectDot
+      self.pending.graph = span
+      self.pending.state = ExpectDot
       Continue
     }
     (ExpectDotOrGraph, PrefName(span)) => SkipError(span)
     (ExpectDotOrGraph, Unknown(_)) => {
-      pending.has_dot = true
-      pending.state = Complete
+      self.pending.has_dot = true
+      self.pending.state = Complete
       Emit
     }
 
     // 期望 . (在图名之后)
     (ExpectDot, Dot(_)) => {
-      pending.has_dot = true
-      pending.state = Complete
-      // pending.line += 1
+      self.pending.has_dot = true
+      self.pending.state = Complete
       Emit
     }
     (ExpectDot, token) => SkipError(ParseError::span(token))
@@ -194,23 +167,21 @@ pub impl ParserEngine for NQuadsEngine with fn step(
 }
 
 ///|
-pub impl ParserEngine for NQuadsEngine with fn recognize_end(
-  _self : NQuadsEngine,
-  pending : PendingQuad,
-  results : Array[Span],
-) -> Unit {
-  results.push(pending.compute_span())
-}
-
-///|
 /// NQuadsEngine - 直接对接 Lexerc，管理 PendingQuad 组装和错误收集
 pub(all) struct NQuadsEngine {
   mut pending : PendingQuad
+  lexer : Lexerc
+  data : ArrayView[Byte]
+  mut last_error : (Span, Int)? // (错误位置, 行号)
+  mut line : Int
 }
 
 ///|
 /// 创建空 NQuadsEngine
-pub fn NQuadsEngine::new() -> NQuadsEngine {
+pub fn NQuadsEngine::new(
+  lexer : Lexerc,
+  data : ArrayView[Byte],
+) -> NQuadsEngine {
   NQuadsEngine::{
     pending: PendingQuad::{
       subj: (0, 0),
@@ -219,9 +190,102 @@ pub fn NQuadsEngine::new() -> NQuadsEngine {
       graph: (0, 0),
       has_dot: false,
       state: PendingState::ExpectSubject,
-      // line: 0,
-      // error_span: (0, 0),
-      // has_err: false,
     },
+    lexer,
+    data,
+    last_error: None,
+    line: 0,
+  }
+}
+
+///|
+/// 从字节数组创建
+pub fn NQuadsEngine::from_bytes(data : FixedArray[Byte]) -> NQuadsEngine {
+  NQuadsEngine::new(Lexerc::new(data), data)
+}
+
+///|
+/// 获取原始数据
+pub fn NQuadsEngine::data(self : NQuadsEngine) -> ArrayView[Byte] {
+  self.data
+}
+
+// ============================================================
+// 主解析循环
+// ============================================================
+
+///|
+/// 获取下一个三元组
+pub fn NQuadsEngine::next(
+  self : NQuadsEngine,
+) -> Result[PendingQuad, ParseError]? {
+  self.pending.reset()
+
+  for ;; {
+    match self.lexer.next() {
+      None => {
+        if self.pending.state != ExpectSubject {
+          return Some(
+            Err(
+              ParseError::SyntaxErr(
+                "Incomplete triple at end of input",
+                self.pending.compute_span(),
+              ),
+            ),
+          )
+        }
+        return None
+      }
+      Some(token) =>
+        if is_eof_token(token) {
+          if self.pending.state != ExpectSubject {
+            return Some(
+              Err(
+                ParseError::SyntaxErr(
+                  "Incomplete triple at end of input",
+                  self.pending.compute_span(),
+                ),
+              ),
+            )
+          }
+          return None
+        } else {
+          match self.step(token) {
+            Continue => continue
+            Emit => {
+              let result = self.pending
+              self.line += 1
+              return Some(Ok(result))
+            }
+            SkipLine => {
+              self.line += 1
+              self.pending.reset()
+              continue
+            }
+            SkipError(span) => {
+              self.last_error = Some((span, self.line))
+              // 消费整行直到 . 或 EOF
+              for ;; {
+                match self.lexer.next() {
+                  None => break
+                  Some(t) =>
+                    if is_dot_token(t) {
+                      self.line += 1
+                      break
+                    } else if is_eof_token(t) {
+                      break
+                    }
+                }
+              }
+              self.pending.reset()
+              continue
+            }
+            Error(err) => {
+              self.pending.reset()
+              return Some(Err(err))
+            }
+          }
+        }
+    }
   }
 }

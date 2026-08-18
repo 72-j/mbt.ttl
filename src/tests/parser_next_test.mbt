@@ -4,9 +4,9 @@ test "nquads: basic triple with dot" {
     #| <http://a.example/s> <http://a.example/p> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> .
 
   let data = @utf8.encode(data).to_fixedarray()
-  let parser = @lib.nquads_parser(data)
+  let engine = @lib.NQuadsEngine::from_bytes(data)
 
-  match parser.next() {
+  match engine.next() {
     Some(Ok(pending)) =>
       // 验证各部分
       debug(pending)
@@ -15,7 +15,7 @@ test "nquads: basic triple with dot" {
   }
 
   // EOF
-  match parser.next() {
+  match engine.next() {
     None => debug("EOF ok")
     Some(Err(err)) => debug(err)
     Some(Ok(pending)) => debug(pending)

@@ -7,6 +7,8 @@ import {
   "brickfrog/tempo@0.8.0",
   "moonbit-community/quickcheck_statemachine@0.0.1",
   "moonbitlang/quickcheck@0.14.0",
+  "hnlyxiaobing/toml@0.4.6",
+  "minie135/moon-audit@0.2.1",
 }
 
 readme = "README.mbt.md"
