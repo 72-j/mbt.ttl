@@ -11,3 +11,4 @@ testnook/
 skills/
 *.log
 src/benchmark/*/target/
+src/fsm/*.toml

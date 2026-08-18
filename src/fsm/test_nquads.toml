@@ -1,0 +1,320 @@
+# ==========================================================
+# N-Quads 解析器 FSM 配置
+# ==========================================================
+
+[meta]
+name = "nquads_parser"
+version = "0.1.0"
+description = "N-Quads RDF 解析器状态机 (Effect 调度)"
+
+# 命名空间前缀：生成代码中所有类型名统一加此前缀
+#   Event / State / Effect / ActionError / EffectError / EffectHandler
+#   及 Context 默认结构体名（"{prefix}Context"）、事件与状态变体名
+# 未声明（或为空）时借用 name 派生：剔除特殊字符并转 PascalCase
+#   如 name = "nquads_parser" -> 前缀 "NquadsParser"
+prefix = "NQuads"
+
+# Actions trait 名；未声明时为 "{prefix}Actions"
+trait_name = "NQuadsActions"
+
+# 无 action 转移的默认 Effect 变体；未声明时为 "Continue"
+default_effect = "Continue"
+
+# ==========================================================
+# 1. 事件定义 (Events)
+# ==========================================================
+
+[[events]]
+name = "Iri"
+doc = "IRI 节点 <http://...>"
+payload = [{ name = "iri", type = "Span" }]
+
+[[events]]
+name = "BlankNode"
+doc = "空白节点 _:..."
+payload = [{ name = "label", type = "Span" }]
+
+[[events]]
+name = "Literal"
+doc = "字面量 \"...\" 或 \"...\"@lang"
+payload = [
+  { name = "value", type = "Span" },
+  { name = "lang", type = "Span?" }
+]
+
+[[events]]
+name = "Dot"
+doc = "三元组结束符 ."
+
+[[events]]
+name = "PrefName"
+doc = "前缀名 ex:s"
+payload = [{ name = "prefix", type = "Span" }]
+
+[[events]]
+name = "Unknown"
+doc = "未知 token"
+
+[[events]]
+name = "EOF"
+doc = "输入结束"
+
+# ==========================================================
+# 2. 状态定义 (States)
+# ==========================================================
+
+[[states]]
+name = "ExpectSubject"
+is_initial = true
+doc = "等待主语 (IRI 或 BlankNode)"
+
+[[states]]
+name = "ExpectPredicate"
+doc = "等待谓词 (必须为 IRI)"
+
+[[states]]
+name = "ExpectObject"
+doc = "等待宾语 (IRI, BlankNode 或 Literal)"
+
+[[states]]
+name = "ExpectDotOrGraph"
+doc = "等待 . 或 图名 IRI"
+
+[[states]]
+name = "ExpectDot"
+doc = "等待 . (图名之后)"
+
+[[states]]
+name = "Complete"
+doc = "当前三元组已完成"
+
+# ==========================================================
+# 3. Effect 定义 (Effects)
+# ==========================================================
+
+[[effects]]
+name = "Continue"
+doc = "正常流转，使用 transition 声明的默认 goto 状态"
+
+[[effects]]
+name = "EmitQuad"
+payload = [{ name = "quad", type = "QuadSpan" }]
+doc = "发射一个完整的四元组"
+
+[[effects]]
+name = "SkipLine"
+doc = "跳过当前行（错误恢复）"
+
+[[effects]]
+name = "SkipError"
+payload = [{ name = "span", type = "Span" }]
+doc = "跳过并记录错误"
+
+[[effects]]
+name = "Goto"
+payload = [{ name = "state", type = "State" }]
+doc = "强制跳转到指定状态"
+
+[[effects]]
+name = "Done"
+doc = "解析完成，终止主循环"
+
+# ==========================================================
+# 4. 转移规则 (Transitions)
+# ==========================================================
+
+# --- ExpectSubject 状态 ---
+[[transitions]]
+from = "ExpectSubject"
+on = "Iri"
+to = "ExpectPredicate"
+action = "set_subject"
+
+[[transitions]]
+from = "ExpectSubject"
+on = "BlankNode"
+to = "ExpectPredicate"
+action = "set_subject"
+
+[[transitions]]
+from = "ExpectSubject"
+on = "PrefName"
+to = "ExpectSubject"
+action = "skip_error"
+emits = ["SkipError"]
+
+[[transitions]]
+from = "ExpectSubject"
+on = "Unknown"
+to = "ExpectSubject"
+action = "noop"
+emits = ["Continue"]
+
+# --- ExpectPredicate 状态 ---
+[[transitions]]
+from = "ExpectPredicate"
+on = "Iri"
+to = "ExpectObject"
+action = "set_predicate"
+
+[[transitions]]
+from = "ExpectPredicate"
+on = "BlankNode"
+to = "ExpectPredicate"
+action = "skip_error"
+emits = ["SkipError"]
+
+[[transitions]]
+from = "ExpectPredicate"
+on = "Literal"
+to = "ExpectPredicate"
+action = "skip_error"
+emits = ["SkipError"]
+
+[[transitions]]
+from = "ExpectPredicate"
+on = "Dot"
+to = "ExpectPredicate"
+action = "skip_error"
+emits = ["SkipError"]
+
+# --- ExpectObject 状态 ---
+[[transitions]]
+from = "ExpectObject"
+on = "Iri"
+to = "ExpectDotOrGraph"
+action = "set_object"
+
+[[transitions]]
+from = "ExpectObject"
+on = "BlankNode"
+to = "ExpectDotOrGraph"
+action = "set_object"
+
+[[transitions]]
+from = "ExpectObject"
+on = "Literal"
+to = "ExpectDotOrGraph"
+action = "set_object"
+
+[[transitions]]
+from = "ExpectObject"
+on = "Dot"
+to = "ExpectObject"
+action = "skip_error"
+emits = ["SkipError"]
+
+# --- ExpectDotOrGraph 状态 ---
+[[transitions]]
+from = "ExpectDotOrGraph"
+on = "Dot"
+to = "Complete"
+action = "emit_quad"
+emits = ["EmitQuad"]
+
+[[transitions]]
+from = "ExpectDotOrGraph"
+on = "Iri"
+to = "ExpectDot"
+action = "set_graph"
+
+[[transitions]]
+from = "ExpectDotOrGraph"
+on = "PrefName"
+to = "ExpectDotOrGraph"
+action = "skip_error"
+emits = ["SkipError"]
+
+[[transitions]]
+from = "ExpectDotOrGraph"
+on = "Unknown"
+to = "Complete"
+action = "emit_quad"
+emits = ["EmitQuad"]
+
+# --- ExpectDot 状态 ---
+[[transitions]]
+from = "ExpectDot"
+on = "Dot"
+to = "Complete"
+action = "emit_quad"
+emits = ["EmitQuad"]
+
+[[transitions]]
+from = "ExpectDot"
+on = "Iri"
+to = "ExpectDot"
+action = "skip_error"
+emits = ["SkipError"]
+
+# --- Complete 状态 ---
+[[transitions]]
+from = "Complete"
+on = "Iri"
+to = "ExpectPredicate"
+action = "set_subject"
+
+[[transitions]]
+from = "Complete"
+on = "BlankNode"
+to = "ExpectPredicate"
+action = "set_subject"
+
+[[transitions]]
+from = "Complete"
+on = "EOF"
+to = "Complete"
+action = "done"
+emits = ["Done"]
+
+# ==========================================================
+# 5. Context 定义 (Context)
+# ==========================================================
+
+[context]
+struct_name = "NQuadsContext"
+fields = [
+  { name = "subject", type = "Span?" },
+  { name = "predicate", type = "Span?" },
+  { name = "object", type = "Span?" },
+  { name = "graph", type = "Span?" },
+  { name = "has_dot", type = "Bool", default = "false" }
+]
+
+# ==========================================================
+# 6. 动作实现模板 (Actions)
+# ==========================================================
+
+[actions]
+
+[actions.set_subject]
+emits = ["Continue"]
+doc = "设置主语"
+
+[actions.set_predicate]
+emits = ["Continue"]
+doc = "设置谓词"
+
+[actions.set_object]
+emits = ["Continue"]
+doc = "设置宾语"
+
+[actions.set_graph]
+emits = ["Continue"]
+doc = "设置图名"
+
+[actions.emit_quad]
+emits = ["EmitQuad"]
+doc = "发射四元组"
+
+[actions.skip_error]
+emits = ["SkipError"]
+doc = "跳过错误并消费当前行"
+
+[actions.done]
+emits = ["Done"]
+doc = "解析完成"
+
+[actions.noop]
+emits = ["Continue"]
+doc = "空操作"

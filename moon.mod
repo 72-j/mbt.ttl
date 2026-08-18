@@ -9,6 +9,8 @@ import {
   "moonbitlang/quickcheck@0.14.0",
   "hnlyxiaobing/toml@0.4.6",
   "minie135/moon-audit@0.2.1",
+  "wedarp/moongraph@0.2.2",
+  "moonbit-community/graphviz@0.1.3",
 }
 
 readme = "README.mbt.md"

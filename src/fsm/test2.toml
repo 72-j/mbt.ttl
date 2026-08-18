@@ -1,0 +1,36 @@
+  version = 1
+
+  [events]
+  start = []
+  stop = []
+  push = []
+  pop = []
+
+  [states]
+  idle = { is_initial = true }
+  processing = {}
+  done = {}
+
+  [[transitions]]
+  from = "idle"
+  to = "processing"
+  on = "start"
+  action = "on_enter"
+
+  [[transitions]]
+  from = "processing"
+  to = "done"
+  on = "stop"
+  action = "on_exit"
+  guard_def = "count > 0"
+
+  [[transitions]]
+  from = "done"
+  to = "idle"
+  on = "push"
+
+  [[transitions]]
+  from = "idle"
+  to = "idle"
+  on = "pop"
+  action = "cleanup"

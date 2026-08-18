@@ -1,0 +1,40 @@
+import {
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/string",
+  "moonbitlang/core/strconv",
+  "moonbitlang/core/ref",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/test",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/core/quickcheck/splitmix",
+  "thy1016/moonttl" @lib,
+  "thy1016/moonttl/path_analyzer",
+  "moonbitlang/core/argparse",
+  "hnlyxiaobing/toml",
+  "moonbitlang/core/queue",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+import {
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/string",
+  "moonbitlang/core/strconv",
+  "moonbitlang/core/ref",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/test",
+  "moonbitlang/core/encoding/utf8",
+  // "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/quickcheck/splitmix",
+  "thy1016/moonttl" @lib,
+  "moonbitlang/core/bench",
+  "hnlyxiaobing/toml",
+} for "test"
+
+options(
+  "is-main": false,
+)

@@ -1,0 +1,311 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "thy1016/moonttl/fsm"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn build_ir(Array[StateMeta], Array[EventMeta], Array[TransitionRule]) -> FsmIR
+
+pub async fn cache_exists(String) -> Bool
+
+pub async fn check_codegen(FsmIR, CodegenConfig) -> Result[Unit, String]
+
+pub async fn check_generated_code(String) -> Result[Unit, String]
+
+pub async fn clean_expired_cache(String, UInt64) -> Bool
+
+pub async fn cmd_fsm() -> Unit
+
+pub fn codegen(FsmIR, CodegenConfig) -> String
+
+pub fn construct(Map[String, StateDef], Map[String, EventDef], Array[TransitionRule], Map[String, ActionDef], Map[String, EffectDef]) -> Result[FsmIR, ConstructError]
+
+pub fn construct_from_arrays(Array[String], Array[String], Array[TransitionRule]) -> Result[FsmIR, ConstructError]
+
+pub fn construct_simple(Array[String], Array[String], Array[(String, String, String)]) -> Result[FsmIR, ConstructError]
+
+pub async fn delete_cache(String) -> Bool
+
+pub fn emit_default_effect_enum(CodegenConfig) -> String
+
+pub fn emit_effect_enum(Array[EffectDef], CodegenConfig) -> String
+
+pub fn emit_fsm_handler(Array[ActionDef], Array[EffectDef], CodegenConfig) -> String
+
+pub fn emit_fsm_handler_impl(Array[EffectDef], CodegenConfig) -> String
+
+pub fn emit_fsm_handler_trait(Array[ActionDef], Array[EffectDef], CodegenConfig) -> String
+
+pub fn fuse(FsmIR) -> FsmIR
+
+pub fn generate(FsmIR, CodegenConfig) -> String
+
+pub async fn load_cache(String) -> Cache?
+
+pub fn minimize(FsmIR) -> FsmIR
+
+pub async fn needs_regenerate(String, CodegenConfig, String) -> Bool
+
+pub fn parse_cache_json(String) -> Cache?
+
+pub fn parse_raw(String) -> Result[(MetaDef, Array[StateMeta], Array[EventMeta], Array[TransitionRule], Array[EffectDef], ContextDef), String]
+
+pub fn parse_toml(String) -> Result[FsmIR, String]
+
+pub fn prune(FsmIR) -> FsmIR
+
+pub async fn run_fsm_generator(String, String?, String, Bool, Bool, Bool, Bool, String?) -> Unit
+
+pub async fn save_cache(Cache, String) -> Unit
+
+pub fn validate(Array[StateMeta], Array[String], Array[TransitionRule], Array[ValidationError]) -> ValidationResult
+
+pub fn validate_and_halt(FsmIR) -> FsmIR
+
+pub fn validate_ir(FsmIR) -> ValidationResult
+
+// Errors
+
+// Types and methods
+pub struct Action {
+  name : String
+  params : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn Action::new(String) -> Self
+pub fn Action::to_string(Self) -> String
+pub fn Action::with_params(String, Array[String]) -> Self
+
+pub(all) struct ActionDef {
+  name : String
+  params : Array[String]
+  emits : Array[String]
+} derive(@debug.Debug)
+
+type ActionParam
+
+pub struct Axis {
+  name : String
+  labels : Array[String]
+  index : Map[String, Int]
+}
+pub fn Axis::idx_to_label(Self, Int) -> String
+pub fn Axis::label_to_idx(Self, String) -> Int
+pub fn Axis::new(String, Array[String]) -> Self
+pub fn Axis::size(Self) -> Int
+
+pub struct Cache {
+  input_hash : String?
+  config_hash : String?
+  generated_at : UInt64
+}
+pub fn Cache::info(Self) -> String
+pub fn Cache::new(String?, CodegenConfig) -> Self
+
+pub(all) struct CodegenConfig {
+  debug : Bool
+  output_module : String
+  name_prefix : String
+  trait_name : String
+  actions : Array[ActionDef]?
+  effects : Array[EffectDef]?
+  context : ContextDef?
+}
+pub fn CodegenConfig::default() -> Self
+pub fn CodegenConfig::with_prefix(String) -> Self
+
+pub(all) enum ConstructError {
+  UnknownState(String)
+  UnknownEvent(String)
+  UnknownAction(String)
+  UnknownEffect(String, String)
+} derive(@debug.Debug)
+
+pub(all) struct ContextDef {
+  struct_name : String
+  fields : Array[ContextField]
+} derive(@debug.Debug)
+
+pub(all) struct ContextField {
+  name : String
+  type_ : String
+  default : String?
+} derive(@debug.Debug)
+
+pub struct CooStorage {
+  rows : Array[Int]
+  cols : Array[Int]
+  values : Array[Transition]
+}
+pub fn CooStorage::append(Self, Int, Int, Transition) -> Unit
+pub fn CooStorage::empty() -> Self
+pub fn CooStorage::nnz(Self) -> Int
+
+pub struct CsrStorage {
+  row_ptr : Array[Int]
+  col_idx : Array[Int]
+  values : Array[Transition]
+}
+pub fn CsrStorage::from_coo(CooStorage, Int) -> Self
+pub fn CsrStorage::get_row(Self, Int) -> Array[(Int, Transition)]
+
+pub struct Diag {
+  rule : String
+  severity : Severity
+  message : String
+  location : SourceLocation?
+  suggestion : String?
+}
+
+pub(all) struct EffectDef {
+  name : String
+  payload : Array[PayloadField]
+  doc : String?
+}
+
+pub struct EventDef {
+  id : Int
+  name : String
+  payload : Array[PayloadField]
+  metadata : Map[String, String]
+}
+
+pub(all) struct EventMeta {
+  name : String
+  payload : Array[PayloadField]
+} derive(@debug.Debug)
+
+pub struct FieldDef {
+  name : String
+  field_type : String
+  default_value : String?
+}
+
+pub struct FsmIR {
+  version : Int
+  events : Array[EventDef]
+  states : Array[StateDef]
+  transitions : Array[TransitionDef]
+  state_index : Map[String, Int]
+  event_index : Map[String, Int]
+}
+pub fn FsmIR::add_event(Self, String, payload? : Array[PayloadField]) -> (Self, Int)
+pub fn FsmIR::add_state(Self, String, is_initial? : Bool, is_nestable? : Bool, exit_event? : String?, data_fields? : Array[FieldDef]) -> (Self, Int)
+pub fn FsmIR::add_transition(Self, Int, Int, Int, guard_def? : GuardDef?, action? : String?) -> Self
+pub fn FsmIR::new() -> Self
+
+pub struct Guard {
+  name : String
+  condition : String
+} derive(Eq, @debug.Debug)
+pub fn Guard::new(String) -> Self
+pub fn Guard::to_string(Self) -> String
+
+pub(all) struct GuardDef {
+  name : String
+  expression : String?
+} derive(@debug.Debug)
+
+pub(all) struct MetaDef {
+  name : String
+  version : String
+  description : String?
+  trait_name : String?
+  default_effect : String?
+  prefix : String
+} derive(@debug.Debug)
+pub fn MetaDef::effect_or_default(Self) -> String
+pub fn MetaDef::trait_or_default(Self) -> String
+
+type Partition
+
+pub(all) struct PayloadField {
+  name : String
+  type_ : String
+} derive(@debug.Debug)
+
+pub(all) enum Rule {
+  V1_FROM_REFS_STATE
+  V2_ON_REFS_EVENT
+  V3_UNIQUE_INITIAL
+  V4_NESTABLE_HAS_EXIT
+  V5_EXIT_EVENT_DEFINED
+  V6_NO_DUPLICATE_TRANS
+} derive(Eq, @debug.Debug)
+pub impl Show for Rule
+
+pub enum Severity {
+  Error
+  Warning
+}
+
+pub struct SourceLocation {
+  filename : String
+  line : Int
+  column : Int
+}
+
+pub struct StateDef {
+  id : Int
+  name : String
+  is_initial : Bool
+  is_nestable : Bool
+  parent : Int?
+  exit_event : String?
+  data_fields : Array[FieldDef]
+  metadata : Map[String, String]
+}
+
+pub(all) struct StateMeta {
+  name : String
+  is_initial : Bool
+  is_nestable : Bool
+  exit_event : String?
+}
+
+pub struct Transition {
+  next_state : String
+  guard_def : Guard?
+  action : Action?
+} derive(@debug.Debug)
+pub fn Transition::new(String, Guard?, Action?) -> Self
+pub impl Show for Transition
+
+pub struct TransitionDef {
+  id : Int
+  from_state : Int
+  to_state : Int
+  on_event : Int
+  guard_def : GuardDef?
+  action : String?
+  metadata : Map[String, String]
+}
+
+pub(all) struct TransitionRule {
+  from_state : String
+  on_event : String
+  to_state : String
+  guard_def : GuardDef?
+  action : String?
+} derive(@debug.Debug)
+
+pub struct ValidationError {
+  rule : Rule
+  message : String
+  suggestion : String?
+}
+pub impl Show for ValidationError
+
+pub struct ValidationResult {
+  errors : Array[ValidationError]
+}
+pub fn ValidationResult::add_error(Self, Rule, String) -> Unit
+pub fn ValidationResult::add_error_with_suggestion(Self, Rule, String, String) -> Unit
+pub fn ValidationResult::format_errors(Self) -> String
+pub fn ValidationResult::is_ok(Self) -> Bool
+pub fn ValidationResult::new() -> Self
+
+// Type aliases
+
+// Traits

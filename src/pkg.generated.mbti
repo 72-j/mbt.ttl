@@ -52,156 +52,6 @@ pub fn lexer_destroy(@ref.Ref[Void]) -> Unit
 
 pub fn lexer_next(@ref.Ref[Void], FixedArray[Byte]) -> Bool
 
-pub let lwALT : NamedNodeRef
-
-pub let lwANY_URI : NamedNodeRef
-
-pub let lwBAG : NamedNodeRef
-
-pub let lwBASE_64_BINARY : NamedNodeRef
-
-pub let lwBOOLEAN : NamedNodeRef
-
-pub let lwBYTE : NamedNodeRef
-
-pub let lwCLASS : NamedNodeRef
-
-pub let lwCOMMENT : NamedNodeRef
-
-pub let lwCONTAINER : NamedNodeRef
-
-pub let lwCONTAINER_MEMBERSHIP_PROPERTY : NamedNodeRef
-
-pub let lwDATATYPE : NamedNodeRef
-
-pub let lwDATE : NamedNodeRef
-
-pub let lwDATE_TIME : NamedNodeRef
-
-pub let lwDATE_TIME_STAMP : NamedNodeRef
-
-pub let lwDAY_TIME_DURATION : NamedNodeRef
-
-pub let lwDECIMAL : NamedNodeRef
-
-pub let lwDIR_LANG_STRING : NamedNodeRef
-
-pub let lwDOMAIN : NamedNodeRef
-
-pub let lwDOUBLE : NamedNodeRef
-
-pub let lwDURATION : NamedNodeRef
-
-pub let lwFIRST : NamedNodeRef
-
-pub let lwFLOAT : NamedNodeRef
-
-pub let lwG_DAY : NamedNodeRef
-
-pub let lwG_MONTH : NamedNodeRef
-
-pub let lwG_MONTH_DAY : NamedNodeRef
-
-pub let lwG_YEAR : NamedNodeRef
-
-pub let lwG_YEAR_MONTH : NamedNodeRef
-
-pub let lwHEX_BINARY : NamedNodeRef
-
-pub let lwHTML : NamedNodeRef
-
-pub let lwINT : NamedNodeRef
-
-pub let lwINTEGER : NamedNodeRef
-
-pub let lwIS_DEFINED_BY : NamedNodeRef
-
-pub let lwJSON : NamedNodeRef
-
-pub let lwLABEL : NamedNodeRef
-
-pub let lwLANGUAGE : NamedNodeRef
-
-pub let lwLANG_STRING : NamedNodeRef
-
-pub let lwLIST : NamedNodeRef
-
-pub let lwLITERAL : NamedNodeRef
-
-pub let lwLONG : NamedNodeRef
-
-pub let lwMEMBER : NamedNodeRef
-
-pub let lwNAME : NamedNodeRef
-
-pub let lwNC_NAME : NamedNodeRef
-
-pub let lwNEGATIVE_INTEGER : NamedNodeRef
-
-pub let lwNIL : NamedNodeRef
-
-pub let lwNMTOKEN : NamedNodeRef
-
-pub let lwNON_NEGATIVE_INTEGER : NamedNodeRef
-
-pub let lwNON_POSITIVE_INTEGER : NamedNodeRef
-
-pub let lwNORMALIZED_STRING : NamedNodeRef
-
-pub let lwOBJECT : NamedNodeRef
-
-pub let lwPOSITIVE_INTEGER : NamedNodeRef
-
-pub let lwPREDICATE : NamedNodeRef
-
-pub let lwPROPERTY : NamedNodeRef
-
-pub let lwRANGE : NamedNodeRef
-
-pub let lwREIFIES : NamedNodeRef
-
-pub let lwRESOURCE : NamedNodeRef
-
-pub let lwREST : NamedNodeRef
-
-pub let lwSEE_ALSO : NamedNodeRef
-
-pub let lwSEQ : NamedNodeRef
-
-pub let lwSHORT : NamedNodeRef
-
-pub let lwSTATEMENT : NamedNodeRef
-
-pub let lwSTRING : NamedNodeRef
-
-pub let lwSUBJECT : NamedNodeRef
-
-pub let lwSUB_CLASS_OF : NamedNodeRef
-
-pub let lwSUB_PROPERTY_OF : NamedNodeRef
-
-pub let lwTIME : NamedNodeRef
-
-pub let lwTOKEN : NamedNodeRef
-
-pub let lwTYPE : NamedNodeRef
-
-pub let lwUNSIGNED_BYTE : NamedNodeRef
-
-pub let lwUNSIGNED_INT : NamedNodeRef
-
-pub let lwUNSIGNED_LONG : NamedNodeRef
-
-pub let lwUNSIGNED_SHORT : NamedNodeRef
-
-pub let lwVALUE : NamedNodeRef
-
-pub let lwWKT_LITERAL : NamedNodeRef
-
-pub let lwXML_LITERAL : NamedNodeRef
-
-pub let lwYEAR_MONTH_DURATION : NamedNodeRef
-
 pub fn make_console_logger() -> ConsoleLogger
 
 pub fn make_mute_logger() -> MuteLogger
@@ -210,7 +60,9 @@ pub fn materialize_all(Array[QuadSpan]) -> (Array[QuadEmit], Array[ParseError])
 
 pub fn materialize_quad(QuadSpan) -> Result[QuadEmit, ParseError]
 
-pub fn nquads_parser(FixedArray[Byte]) -> Parser[NQuadsEngine]
+pub fn nquads_parser(FixedArray[Byte], lenient? : Bool) -> (Array[QuadSpan], Array[ParseError])
+
+pub fn nquads_serializer(ArrayView[Byte], Array[QuadEmit], mode? : StringView) -> String
 
 pub fn parse(BytesView) -> Result[Iri, ParseError]
 
@@ -221,6 +73,156 @@ pub fn parse_iri(BytesView, Int) -> Result[IriSpan, ParseError]
 pub fn parse_unchecked(BytesView) -> Iri
 
 pub fn parse_xsd_date(String) -> Result[String, String]
+
+pub let rdf_alt : NamedNodeRef
+
+pub let rdf_any_uri : NamedNodeRef
+
+pub let rdf_bag : NamedNodeRef
+
+pub let rdf_base_64_binary : NamedNodeRef
+
+pub let rdf_boolean : NamedNodeRef
+
+pub let rdf_byte : NamedNodeRef
+
+pub let rdf_class : NamedNodeRef
+
+pub let rdf_comment : NamedNodeRef
+
+pub let rdf_container : NamedNodeRef
+
+pub let rdf_container_membership_property : NamedNodeRef
+
+pub let rdf_datatype : NamedNodeRef
+
+pub let rdf_date : NamedNodeRef
+
+pub let rdf_date_time : NamedNodeRef
+
+pub let rdf_date_time_stamp : NamedNodeRef
+
+pub let rdf_day_time_duration : NamedNodeRef
+
+pub let rdf_decimal : NamedNodeRef
+
+pub let rdf_dir_lang_string : NamedNodeRef
+
+pub let rdf_domain : NamedNodeRef
+
+pub let rdf_double : NamedNodeRef
+
+pub let rdf_duration : NamedNodeRef
+
+pub let rdf_first : NamedNodeRef
+
+pub let rdf_float : NamedNodeRef
+
+pub let rdf_g_day : NamedNodeRef
+
+pub let rdf_g_month : NamedNodeRef
+
+pub let rdf_g_month_day : NamedNodeRef
+
+pub let rdf_g_year : NamedNodeRef
+
+pub let rdf_g_year_month : NamedNodeRef
+
+pub let rdf_hex_binary : NamedNodeRef
+
+pub let rdf_html : NamedNodeRef
+
+pub let rdf_int : NamedNodeRef
+
+pub let rdf_integer : NamedNodeRef
+
+pub let rdf_is_defined_by : NamedNodeRef
+
+pub let rdf_json : NamedNodeRef
+
+pub let rdf_label : NamedNodeRef
+
+pub let rdf_lang_string : NamedNodeRef
+
+pub let rdf_language : NamedNodeRef
+
+pub let rdf_list : NamedNodeRef
+
+pub let rdf_literal : NamedNodeRef
+
+pub let rdf_long : NamedNodeRef
+
+pub let rdf_member : NamedNodeRef
+
+pub let rdf_name : NamedNodeRef
+
+pub let rdf_nc_name : NamedNodeRef
+
+pub let rdf_negative_integer : NamedNodeRef
+
+pub let rdf_nil : NamedNodeRef
+
+pub let rdf_nmtoken : NamedNodeRef
+
+pub let rdf_non_negative_integer : NamedNodeRef
+
+pub let rdf_non_positive_integer : NamedNodeRef
+
+pub let rdf_normalized_string : NamedNodeRef
+
+pub let rdf_object : NamedNodeRef
+
+pub let rdf_positive_integer : NamedNodeRef
+
+pub let rdf_predicate : NamedNodeRef
+
+pub let rdf_property : NamedNodeRef
+
+pub let rdf_range : NamedNodeRef
+
+pub let rdf_reifies : NamedNodeRef
+
+pub let rdf_resource : NamedNodeRef
+
+pub let rdf_rest : NamedNodeRef
+
+pub let rdf_see_also : NamedNodeRef
+
+pub let rdf_seq : NamedNodeRef
+
+pub let rdf_short : NamedNodeRef
+
+pub let rdf_statement : NamedNodeRef
+
+pub let rdf_string : NamedNodeRef
+
+pub let rdf_sub_class_of : NamedNodeRef
+
+pub let rdf_sub_property_of : NamedNodeRef
+
+pub let rdf_subject : NamedNodeRef
+
+pub let rdf_time : NamedNodeRef
+
+pub let rdf_token : NamedNodeRef
+
+pub let rdf_type : NamedNodeRef
+
+pub let rdf_unsigned_byte : NamedNodeRef
+
+pub let rdf_unsigned_int : NamedNodeRef
+
+pub let rdf_unsigned_long : NamedNodeRef
+
+pub let rdf_unsigned_short : NamedNodeRef
+
+pub let rdf_value : NamedNodeRef
+
+pub let rdf_wkt_literal : NamedNodeRef
+
+pub let rdf_xml_literal : NamedNodeRef
+
+pub let rdf_year_month_duration : NamedNodeRef
 
 pub fn remove_dot_segments_from_array(Array[String]) -> Array[String]
 
@@ -391,9 +393,15 @@ pub impl DebugLogger for MuteLogger
 
 pub(all) struct NQuadsEngine {
   mut pending : PendingQuad
+  lexer : Lexerc
+  data : ArrayView[Byte]
+  mut last_error : ((Int, Int), Int)?
+  mut line : Int
 }
-pub fn NQuadsEngine::new() -> Self
-pub impl ParserEngine for NQuadsEngine
+pub fn NQuadsEngine::data(Self) -> ArrayView[Byte]
+pub fn NQuadsEngine::from_bytes(FixedArray[Byte]) -> Self
+pub fn NQuadsEngine::new(Lexerc, ArrayView[Byte]) -> Self
+pub fn NQuadsEngine::next(Self) -> Result[PendingQuad, ParseError]?
 
 pub(all) struct NamedNode {
   iri : String
@@ -415,25 +423,6 @@ pub(all) enum Object {
   PrefName(ArrayView[Byte])
 } derive(Eq, @debug.Debug)
 pub impl Show for Object
-
-pub struct Parser[E] {
-  lexer : Lexerc
-  engine : E
-  pending : PendingQuad
-  data : ArrayView[Byte]
-  mut last_error : ((Int, Int), Int)?
-  mut line : Int
-}
-pub fn[E] Parser::data(Self[E]) -> ArrayView[Byte]
-pub fn[E : ParserEngine] Parser::from_bytes(FixedArray[Byte], E) -> Self[E]
-pub fn[E : ParserEngine] Parser::new(Lexerc, E, ArrayView[Byte]) -> Self[E]
-pub fn[E : ParserEngine] Parser::next(Self[E]) -> Result[PendingQuad, ParseError]?
-
-pub struct ParserIter[E] {
-  parser : Parser[E]
-}
-pub fn[E] ParserIter::new(Parser[E]) -> Self[E]
-pub fn[E : ParserEngine] ParserIter::next(Self[E]) -> Result[PendingQuad, ParseError]?
 
 pub struct PendingQuad {
   mut subj : (Int, Int)
@@ -497,16 +486,16 @@ pub fn Serializer::new(ArrayView[Byte], mode? : StringView) -> Self
 pub fn Serializer::serialize(Self, QuadEmit) -> String
 pub fn Serializer::serialize_all(Self, Array[QuadEmit]) -> String
 
-pub struct SliceParser[E] {
-  inner : ParserIter[E]
+pub struct SliceParser {
+  engine : NQuadsEngine
   data : ArrayView[Byte]
   lenient : Bool
   errors : Array[ParseError]
 }
-pub fn[E] SliceParser::lenient(Self[E]) -> Self[E]
-pub fn[E] SliceParser::new(Parser[E], ArrayView[Byte], lenient? : Bool) -> Self[E]
-pub fn[E : ParserEngine] SliceParser::next(Self[E]) -> Result[QuadSpan, ParseError]?
-pub fn[E : ParserEngine] SliceParser::parse_all(Self[E]) -> (Array[QuadSpan], Array[ParseError])
+pub fn SliceParser::lenient(Self) -> Self
+pub fn SliceParser::new(NQuadsEngine, ArrayView[Byte], lenient? : Bool) -> Self
+pub fn SliceParser::next(Self) -> Result[QuadSpan, ParseError]?
+pub fn SliceParser::parse_all(Self) -> (Array[QuadSpan], Array[ParseError])
 
 pub(all) enum StepResult {
   Continue
@@ -578,12 +567,4 @@ pub trait DebugLogger {
 pub trait ErrOut {
   fn message(Self) -> String
   fn err_kind(Self) -> String
-}
-
-pub trait ParserEngine {
-  fn error_recovery_state(Self) -> Self
-  fn create_pending(Self) -> PendingQuad
-  fn step(Self, PendingQuad, Token) -> StepResult
-  fn is_complete(Self, PendingQuad) -> Bool
-  fn recognize_end(Self, PendingQuad, Array[(Int, Int)]) -> Unit
 }

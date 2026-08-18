@@ -1,0 +1,21 @@
+import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/encoding/utf8",
+  "thy1016/moonttl/fsm",
+}
+
+import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/encoding/utf8",
+  "thy1016/moonttl/fsm",
+} for "test"
+
+pkgtype(kind: "executable")

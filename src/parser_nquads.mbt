@@ -6,8 +6,6 @@ pub struct PendingQuad {
   mut graph : Span // 图名 span，错误时保存错误 span
   mut has_dot : Bool
   mut state : PendingState
-  // mut line : Int
-  // mut error_span : Span // 错误发生的位置
 } derive(Debug, Eq)
 
 ///|
@@ -29,9 +27,6 @@ pub fn PendingQuad::default() -> PendingQuad {
     graph: (0, 0),
     has_dot: false,
     state: ExpectSubject,
-    // line: 0,
-    // error_span: (0, 0),
-    // has_err: false,
   }
 }
 
