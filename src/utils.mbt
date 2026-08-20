@@ -22,6 +22,23 @@ pub fn is_unreserved(c : Char) -> Bool {
 }
 
 ///|
+/// 是否为 ASCII 数字 (0-9)
+fn Byte::is_ascii_digit(b : Byte) -> Bool {
+  b >= b'0' && b <= b'9'
+}
+
+///|
+/// 是否为 ASCII 字母 (a-z, A-Z)
+fn Byte::is_ascii_alpha(b : Byte) -> Bool {
+  (b >= b'a' && b <= b'z') || (b >= b'A' && b <= b'Z')
+}
+
+///|
+fn Byte::is_ascii_alnum(b : Byte) -> Bool {
+  b.is_ascii_alpha() || b.is_ascii_digit()
+}
+
+///|
 pub fn remove_dot_segments_from_array(
   segments : Array[String],
 ) -> Array[String] {
