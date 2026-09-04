@@ -25,7 +25,7 @@ pub fn Iri::Iri(
 ///|
 
 // 解析中间状态: 存储各组件的 (偏移, 长度)
-pub(all) struct IriSpan {
+struct IriSpan {
   mut scheme : Span
   mut authority : Span
   mut path : Span
@@ -49,7 +49,7 @@ pub fn parse(view : BytesView) -> Result[Iri, ParseError] {
 
 ///|
 /// 解析 IRI，忽略错误
-pub fn parse_unchecked(view : BytesView) -> Iri {
+fn parse_unchecked(view : BytesView) -> Iri {
   let span = IriSpan::default()
   span.pos = 0
   span.parse_scheme(view)
@@ -206,7 +206,7 @@ pub fn Iri::resolve_unchecked(
 ///|
 /// 序列化为字符串
 pub fn Iri::into_string(self : Iri) -> String {
-  let s = StringBuilder::new()
+  let s = StringBuilder()
 
   if self.scheme.length() > 0 {
     s.write_view(self.scheme)
@@ -241,7 +241,7 @@ pub fn Iri::into_string(self : Iri) -> String {
 
 ///|
 /// 规范化路径: 处理 . 和 .. (RFC 3986 5.2.4)
-pub fn fn_remove_dot_segments(path : StringView) -> StringView {
+fn fn_remove_dot_segments(path : StringView) -> StringView {
   if path.is_empty() {
     return path
   }
@@ -426,7 +426,7 @@ fn IriSpan::parse_fragment(self : IriSpan, data : BytesView) -> Unit {
 
 ///|
 /// 主解析函数
-pub fn parse_iri(data : BytesView, start : Int) -> Result[IriSpan, ParseError] {
+fn parse_iri(data : BytesView, start : Int) -> Result[IriSpan, ParseError] {
   let span = IriSpan::default()
   span.pos = start
   let len = data.length()

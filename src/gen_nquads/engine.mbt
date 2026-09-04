@@ -314,7 +314,7 @@ pub fn[L : LexerSource] NQuadsEngine::next(
 
 ///|
 /// 便捷入口：解析全部（参考手写 src/moon_ttl/src/parser.mbt 的 nquads_parser）
-pub fn nquads_parser(
+fn nquads_parser(
   input : Array[Byte],
   lenient? : Bool = false,
   rdf12? : Bool = true,

@@ -8,22 +8,6 @@ pub(all) suberror ParseError {
 } derive(Debug)
 
 ///|
-fn ParseError::span(token : Token) -> Span {
-  match token {
-    Iri(s)
-    | Literal(s)
-    | BlankNode(s)
-    | PrefName(s)
-    | TripleTerm(s)
-    | Dot(s)
-    | Unknown(s)
-    | Comma(s)
-    | Semicolon(s) => s
-    EOF(int) => (0, int)
-  }
-}
-
-///|
 pub fn ParseError::to_span(err : ParseError) -> Span {
   match err {
     ValidationErr(_) => (0, 0)
@@ -52,12 +36,6 @@ pub impl ErrOut for ParseError with fn err_kind(self : ParseError) -> String {
     ParseError::IriErr(_) => "IriErr"
   }
 }
-
-///|
-/// 从 span 创建错误
-// pub fn ParseError::from_span(message : String, span : Span) -> ParseError {
-//   { message, span }
-// }
 
 ///|
 pub impl Show for ParseError with fn output(self : ParseError, logger : &Logger) -> Unit {
@@ -163,22 +141,6 @@ pub impl Show for IriError with fn output(self : IriError, logger : &Logger) -> 
     logger.write_string(msg)
   }
 }
-
-///|
-// pub(all) suberror LanguageTagParseError {
-//   // LanguageTagParseError
-//   TagParseErr(TagParseErr)
-// } derive(Debug)
-
-// ///|
-// pub impl Show for LanguageTagParseError with fn output(self, logger : &Logger) -> Unit {
-//   match self {
-//     LanguageTagParseError::TagParseErr(e) => {
-//       logger.write_string("Error: Language Tag Parse Error - ")
-//       logger.write_string(e.to_string())
-//     }
-//   }
-// }
 
 ///|
 pub(all) suberror TagParseErr {

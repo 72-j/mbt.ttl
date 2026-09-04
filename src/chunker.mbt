@@ -2,7 +2,7 @@
 const CHUNK_SIZE : Int = 64 * 1024
 
 ///|
-pub fn get_ntriples_slice_chunks(
+fn get_ntriples_slice_chunks(
   bytes : Array[Byte],
   n_chunks : Int,
 ) -> Array[(Int, Int)] {
@@ -61,7 +61,7 @@ pub fn get_ntriples_slice_chunks(
 
 ///|
 /// 在指定范围内搜索换行符，返回换行符的绝对位置
-pub fn find_newline_in_range(bytes : BytesView, start : Int, end : Int) -> Int? {
+fn find_newline_in_range(bytes : BytesView, start : Int, end : Int) -> Int? {
   for i in start..<end {
     if bytes[i] == b'\n' {
       return Some(i)
@@ -71,7 +71,7 @@ pub fn find_newline_in_range(bytes : BytesView, start : Int, end : Int) -> Int? 
 }
 
 ///|
-pub async fn get_ntriples_file_chunks(
+async fn get_ntriples_file_chunks(
   file : File,
   file_size : Int64,
   n_chunks : Int,
@@ -144,7 +144,7 @@ pub async fn get_ntriples_file_chunks(
 }
 
 ///|
-pub fn get_turtle_slice_chunks(
+fn get_turtle_slice_chunks(
   bytes : Array[Byte],
   n_chunks : Int,
 ) -> Array[(Int, Int)] {

@@ -1,4 +1,13 @@
 ///|
+extend LiteralRef with Show::{to_string}
+
+///|
+extend Literal with Show::{to_string}
+
+///|
+extend NamedNodeRef with Show::{to_string}
+
+///|
 test "simple literal creation" {
   let lit = Literal::new_simple_literal("hello")
   @debug.assert_eq(lit.value(), "hello")

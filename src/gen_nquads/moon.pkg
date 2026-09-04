@@ -9,10 +9,17 @@ import {
 import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
-} for "test"
+} for "wbtest"
 
 options(
   "is-main": false,
   "native-stub": [ "lexerc_ffi.c" ],
-  targets: { "lexerc.mbt": [ "native" ] },
+  targets: {
+    // C FFI 词法器仅 native；用到它的文件与白盒测试同样限制
+    "lexerc.mbt": [ "native" ],
+    "engine_c.mbt": [ "native" ],
+    "nquads_wbtest.mbt": [ "native" ],
+    "nquads_bench_wbtest.mbt": [ "native" ],
+    "lexerc_parity_wbtest.mbt": [ "native" ],
+  },
 )

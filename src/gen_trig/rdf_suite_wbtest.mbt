@@ -95,9 +95,7 @@ async fn run_trig_suite(
       }
     }
   }
-  debug(
-    "=== \{label}: \{passed}/\{passed + failed} (failed \{failed}) ===",
-  )
+  debug("=== \{label}: \{passed}/\{passed + failed} (failed \{failed}) ===")
   if pin {
     // 收口钉：全集闭合 + 零失败
     assert_eq(failed, 0)

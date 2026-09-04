@@ -66,9 +66,9 @@ pub fn TrigMaterializer::new(
     base_fallback,
     scalar_only_escapes,
     fallback_parsed: None,
-    base_memo: Map::new(),
+    base_memo: Map([]),
     deep_validate: true,
-    fresh_ids: Map::new(),
+    fresh_ids: Map([]),
     arena: [],
   }
 }
@@ -167,7 +167,7 @@ fn TrigMaterializer::resolve_prefname(
   self : TrigMaterializer,
   span : Span,
   pver : Int,
-) -> Result[(Span, Int)?,  ParseError] {
+) -> Result[(Span, Int)?, ParseError] {
   let (off, len) = span
   let mut colon = -1
   for i in 0..<len {
@@ -298,7 +298,8 @@ fn TrigMaterializer::expand_prefname(
           Ok(b) => b
           Err(e) => return Err(e)
         }
-        match base_iri.resolve(Bytes::from_array(view[1:view.length() - 1])[:]) {
+        match
+          base_iri.resolve(Bytes::from_array(view[1:view.length() - 1])[:]) {
           Ok(resolved) => {
             let start = self.arena.length()
             self.push_byte(b'<')
@@ -306,13 +307,15 @@ fn TrigMaterializer::expand_prefname(
             self.push_byte(b'>')
             Ok(Some((start, self.arena.length() - start)))
           }
-          Err(e) => Err(ParseError::ValidationErr("IRI resolution failed: \{e}"))
+          Err(e) =>
+            Err(ParseError::ValidationErr("IRI resolution failed: \{e}"))
         }
       }
     }
   }
 }
 
+///|
 /// IRI 词项取值（"相对 IRI 解析在物化层"定案的落点）：
 ///   绝对 IRI → 原 data 零拷贝保真
 ///   相对 IRI + 有 base → iri.mbt resolve 展开（含 dot-segment 移除）进 arena
@@ -425,7 +428,9 @@ fn TrigMaterializer::base_at(
           match a.resolve(Bytes::from_array(body)[:]) {
             Ok(r) => acc = Some(r)
             Err(e) =>
-              return Err(ParseError::ValidationErr("IRI resolution failed: \{e}"))
+              return Err(
+                ParseError::ValidationErr("IRI resolution failed: \{e}"),
+              )
           }
         None =>
           return Err(
@@ -602,7 +607,9 @@ pub fn TrigMaterializer::materialize_quad(
     // rdf:nil 标记（Span(open.0, 0)，长度 0 = 无字节词项）：合成词表 IRI，可信免深验
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_nil)
-    @nquads.Subject::Iri(slice_span(self.arena[:], (start, self.arena.length() - start)))
+    @nquads.Subject::Iri(
+      slice_span(self.arena[:], (start, self.arena.length() - start)),
+    )
   } else {
     let c0 = self.data[quad.s.0]
     if c0 == b'<' {
@@ -656,8 +663,7 @@ pub fn TrigMaterializer::materialize_quad(
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_rest)
     slice_span(self.arena[:], (start, self.arena.length() - start))
-  } else if quad.p.1 == 1 &&
-    self.data[quad.p.0] == b'a' {
+  } else if quad.p.1 == 1 && self.data[quad.p.0] == b'a' {
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_type)
     let pspan = (start, self.arena.length() - start)
@@ -690,7 +696,9 @@ pub fn TrigMaterializer::materialize_quad(
     // rdf:nil 标记（空集合宾位）：合成词表 IRI，可信免深验
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_nil)
-    @nquads.Object::Iri(slice_span(self.arena[:], (start, self.arena.length() - start)))
+    @nquads.Object::Iri(
+      slice_span(self.arena[:], (start, self.arena.length() - start)),
+    )
   } else {
     let c0 = self.data[quad.o.0]
     let is_num = (
@@ -1583,13 +1591,13 @@ test "深验: 长串扩跑+后缀拒（bad-string-06）/ 无后缀扩并放行�
 ///|
 test "深验: IRI 转义解码码点——代理/禁字符拒（good escape, bad character）" {
   // \uDC00 代理码点
-  let (e1, m1, p1) = mat_chain_deep(
+  let (_e1, m1, p1) = mat_chain_deep(
     "@prefix ex: <http://example/> .\nex:s ex:p <http://example/\\uDC00> .\n", true,
   )
   assert_eq(p1.length(), 0)
   assert_eq(m1.length(), 1)
   // \u0022 解码为 `"`（IRI 禁字符）
-  let (e2, m2, p2) = mat_chain_deep(
+  let (_e2, m2, p2) = mat_chain_deep(
     "@prefix ex: <http://example/> .\nex:s ex:p <http://example/\\u0022> .\n", true,
   )
   assert_eq(p2.length(), 0)

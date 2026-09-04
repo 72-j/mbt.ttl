@@ -115,7 +115,10 @@ async fn parse_content(content : Bytes, verbose : Bool) -> Unit {
       println("")
       println("=== Serialized Output ===")
 
-      let output = match (@nquads.Serializer::new(format=@nquads.SerializeFormat::Quad)).serialize_all(quads) {
+      let output = match
+        @nquads.Serializer::new(format=@nquads.SerializeFormat::Quad).serialize_all(
+          quads,
+        ) {
         Ok(value) => value
         Err(error) => {
           println("Serialize Error: \{error}")

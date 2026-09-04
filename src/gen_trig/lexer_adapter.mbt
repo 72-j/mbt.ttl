@@ -298,10 +298,12 @@ pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) 
           self.data[boff] == b'[' {
           let mut j = boff + 1
           while j < self.data.length() &&
-                (self.data[j] == b' ' ||
-                self.data[j] == b'\t' ||
-                self.data[j] == b'\r' ||
-                self.data[j] == b'\n') {
+                (
+                  self.data[j] == b' ' ||
+                  self.data[j] == b'\t' ||
+                  self.data[j] == b'\r' ||
+                  self.data[j] == b'\n'
+                ) {
             j = j + 1
           }
           if j < self.data.length() && self.data[j] == b']' {
@@ -316,8 +318,7 @@ pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) 
         //   仅精确 "kw:" 形拆分——"kw:foo" 带本地部非法（prefixID 只收 PNAME_NS
         //   无 local），不拆、落普通 PrefName 表外报错；term 位 `prefix:x` 无
         //   @ 邻接永不命中（合法 pname 不受扰）
-        if token is Token::PrefName((off, len)) &&
-          at_style_kw(self.data, off) {
+        if token is Token::PrefName((off, len)) && at_style_kw(self.data, off) {
           let colon_at = if len == 7 &&
             eq_lower(self.data, off, b"prefix") &&
             self.data[off + 6] == b':' {

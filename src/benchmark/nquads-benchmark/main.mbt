@@ -40,14 +40,18 @@ async fn main {
     let elapsed2 = @bench.monotonic_clock_end(start2)
 
     // 3. SliceParser::parse_all (含验证)
-    let engine2 = @nquads.NQuadsEngine::from_bytes(Array::from_fixed_array(data))
+    let engine2 = @nquads.NQuadsEngine::from_bytes(
+      Array::from_fixed_array(data),
+    )
     let slice = @nquads.SliceParser::new(engine2, data)
     let start3 = @bench.monotonic_clock_start()
     let (quads, parse_errors) = slice.parse_all()
     let elapsed3 = @bench.monotonic_clock_end(start3)
 
     // 4. materialize
-    let engine3 = @nquads.NQuadsEngine::from_bytes(Array::from_fixed_array(data))
+    let engine3 = @nquads.NQuadsEngine::from_bytes(
+      Array::from_fixed_array(data),
+    )
     let slice3 = @nquads.SliceParser::new(engine3, data)
     let (quad_spans, _) = slice3.parse_all()
     let start4 = @bench.monotonic_clock_start()

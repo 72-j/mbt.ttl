@@ -84,7 +84,9 @@ async test "gen_trig 性能(简单语料): lexer / engine / parse_all / 物化" 
   } else {
     0.0
   }
-  println("=== gen_trig 简单语料（全 IRI 扁平三元组 + 具名图块） ===")
+  println(
+    "=== gen_trig 简单语料（全 IRI 扁平三元组 + 具名图块） ===",
+  )
   println("文件大小:    \{data.length()} bytes")
   println("词法:        \{elapsed1} µs (\{token_count} tokens)")
   println(
@@ -202,7 +204,9 @@ async test "gen_trig 性能(复杂语料): lexer / engine / parse_all / 物化" 
   } else {
     0.0
   }
-  println("=== gen_trig 复杂语料（指令/图块/链式/字面量族/三元组词项/注解） ===")
+  println(
+    "=== gen_trig 复杂语料（指令/图块/链式/字面量族/三元组词项/注解） ===",
+  )
   println("文件大小:    \{data.length()} bytes")
   println("词法:        \{elapsed1} µs (\{token_count} tokens)")
   println(
@@ -336,7 +340,10 @@ fn lexmoon_stream(data : Array[Byte]) -> Array[(Int, Int, Int)] {
 ///|
 /// C 词法流（lexerc_ffi.c 经 FFI）：逐 token 收集 → (分类, offset, len) 序列，
 /// EOF 不计（与 MoonBit 口径一致）；Lexer 显式销毁（裸指针 UInt64 持有，GC 不追踪）
-fn lexerc_stream(fa : FixedArray[Byte], data : Array[Byte]) -> Array[(Int, Int, Int)] {
+fn lexerc_stream(
+  fa : FixedArray[Byte],
+  data : Array[Byte],
+) -> Array[(Int, Int, Int)] {
   let lex = @nquads.Lexerc::new(fa)
   let out : Array[(Int, Int, Int)] = []
   for ;; {

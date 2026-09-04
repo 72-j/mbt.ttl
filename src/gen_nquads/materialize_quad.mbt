@@ -1,6 +1,6 @@
 ///|
 /// 物化 Quad（批量优化）
-pub fn materialize_quad(
+fn materialize_quad(
   quad : QuadSpan,
   // data : ArrayView[Byte],
 ) -> Result[QuadEmit, ParseError] {

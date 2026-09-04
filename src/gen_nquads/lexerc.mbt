@@ -1,74 +1,6 @@
 // ============================================================
-// Token 类型定义
+// C FFI 词法器封装（Lexerc）——仅 native（见 moon.pkg targets）
 // ============================================================
-
-///|
-// type Span = (Int, Int) // (offset, length)
-
-///|
-pub(all) enum Token {
-  // 结构标点
-  Dot(Span) // .
-  Semicolon(Span) // ;
-  Comma(Span) // ,
-
-  // 标识符
-  Iri(Span) // <...> 或 _:name 或 :name
-
-  // 字符串
-  Literal(Span) // "..."
-  BlankNode(Span)
-  PrefName(Span) // 字母或:开头（可能是前缀名）
-  TripleTerm(Span) // <<( ... )>> 三元组词项（RDF 1.2；平衡配对是物理边界，语法归验证层）
-  // 容错
-  Unknown(Span) // 其他字符
-
-  // 结束
-  EOF(Int) // 文件结束
-} derive(Debug)
-
-///|
-pub impl Show for Token with fn output(self : Token, logger : &Logger) -> Unit {
-  match self {
-    Token::Dot(span) => {
-      let (offset, length) = span
-      logger.write_string("Dot(\{offset},\{length})")
-    }
-    Token::Semicolon(span) => {
-      let (offset, length) = span
-      logger.write_string("Semicolon(\{offset},\{length})")
-    }
-    Token::Comma(span) => {
-      let (offset, length) = span
-      logger.write_string("Comma(\{offset},\{length})")
-    }
-    Token::Iri(span) => {
-      let (offset, length) = span
-      logger.write_string("Iri(\{offset},\{length})")
-    }
-    Token::Literal(span) => {
-      let (offset, length) = span
-      logger.write_string("Literal(\{offset},\{length})")
-    }
-    Token::BlankNode(span) => {
-      let (offset, length) = span
-      logger.write_string("BlankNode(\{offset},\{length})")
-    }
-    Token::PrefName(span) => {
-      let (offset, length) = span
-      logger.write_string("PrefName(\{offset},\{length})")
-    }
-    Token::TripleTerm(span) => {
-      let (offset, length) = span
-      logger.write_string("TripleTerm(\{offset},\{length})")
-    }
-    Token::Unknown(span) => {
-      let (offset, length) = span
-      logger.write_string("Unknown(\{offset},\{length})")
-    }
-    Token::EOF(offset) => logger.write_string("EOF(\{offset})")
-  }
-}
 
 ///|
 // type Void
@@ -94,11 +26,11 @@ pub impl Show for Token with fn output(self : Token, logger : &Logger) -> Unit {
 ///|
 /// 创建词法分析器
 #borrow(data)
-pub extern "C" fn lexer_create(data : FixedArray[Byte], len : Int) -> UInt64 = "lexer_create"
+extern "C" fn lexer_create(data : FixedArray[Byte], len : Int) -> UInt64 = "lexer_create"
 
 ///|
 /// 销毁词法分析器
-pub extern "C" fn lexer_destroy(lexer : UInt64) -> Unit = "lexer_destroy"
+extern "C" fn lexer_destroy(lexer : UInt64) -> Unit = "lexer_destroy"
 
 ///|
 /// 重置词法分析器
@@ -107,10 +39,7 @@ extern "C" fn lexer_reset(lexer : UInt64) -> Unit = "lexer_reset"
 ///|
 /// 获取下一个 Token（写入 Bytes 缓冲区）
 #borrow(token_buf)
-pub extern "C" fn lexer_next(
-  lexer : UInt64,
-  token_buf : FixedArray[Byte],
-) -> Bool = "lexer_next"
+extern "C" fn lexer_next(lexer : UInt64, token_buf : FixedArray[Byte]) -> Bool = "lexer_next"
 
 ///|
 /// 获取当前位置

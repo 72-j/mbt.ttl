@@ -425,7 +425,7 @@ pub fn scan_string_body(
 /// lit[at] 是 '@'，标签必须消费到 len（span 尾即标签尾）。
 /// 主子标签字母 2-3 或 5-8（4 无效），'-' 子标签字母数字 1-8；
 /// rdf12=true 接受 --ltr/--rtl 方向后缀（小写精确），false 一律拒绝
-pub fn validate_lang_suffix(
+fn validate_lang_suffix(
   lit : ArrayView[Byte],
   base : Int,
   at : Int,

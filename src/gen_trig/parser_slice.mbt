@@ -207,7 +207,13 @@ fn triple_term_inner_terms(data : ArrayView[Byte], span : Span) -> Array[Span] {
       if terms.length() == 3 && item_start < 0 && !tail_seen {
         tail_seen = true
         i = i + 1
-        while i < e && (data[i] == b' ' || data[i] == b'\t' || data[i] == b'\r' || data[i] == b'\n') {
+        while i < e &&
+              (
+                data[i] == b' ' ||
+                data[i] == b'\t' ||
+                data[i] == b'\r' ||
+                data[i] == b'\n'
+              ) {
           i = i + 1
         }
         if i < e && data[i] == b'<' {
@@ -220,7 +226,11 @@ fn triple_term_inner_terms(data : ArrayView[Byte], span : Span) -> Array[Span] {
           }
         } else {
           // PrefName / BlankNode reifier：吞到空白或壳尾
-          while i < e && data[i] != b' ' && data[i] != b'\t' && data[i] != b'\r' && data[i] != b'\n' {
+          while i < e &&
+                data[i] != b' ' &&
+                data[i] != b'\t' &&
+                data[i] != b'\r' &&
+                data[i] != b'\n' {
             i = i + 1
           }
         }
@@ -418,7 +428,7 @@ fn[L] TrigSliceParser::assemble(
   let pending = if pending.pk is PredKind::Normal {
     pending
   } else {
-    { ..pending, pred: Some((0, 0)) }
+    { ..pending, pred: Some((0, 0)), }
   }
   match (pending.subj, pending.pred, pending.obj) {
     (Some(s), Some(p), Some(o)) => {
@@ -445,7 +455,15 @@ fn[L] TrigSliceParser::assemble(
           None => ()
         }
       }
-      Ok({ s, p, o, g: pending.graph, pk: pending.pk, pver: pending.pver, bver: pending.bver })
+      Ok({
+        s,
+        p,
+        o,
+        g: pending.graph,
+        pk: pending.pk,
+        pver: pending.pver,
+        bver: pending.bver,
+      })
     }
     // RDF 1.2 引用三元组壳独立成句：`<< s p o >> .`——壳落主语槽后无谓词/宾语，
     // 语句即断言壳内三元组（组装层拆壳，三项交 validate_term 递归验证）
@@ -453,7 +471,15 @@ fn[L] TrigSliceParser::assemble(
       match self.tt_shell_terms(s) {
         Some((ts, tp, to)) =>
           if self.lenient {
-            Ok({ s: ts, p: tp, o: to, g: pending.graph, pk: pending.pk, pver: pending.pver, bver: pending.bver })
+            Ok({
+              s: ts,
+              p: tp,
+              o: to,
+              g: pending.graph,
+              pk: pending.pk,
+              pver: pending.pver,
+              bver: pending.bver,
+            })
           } else {
             let prefixes = self.engine.ctx.prefixes
             match validate_term(self.data, prefixes, ts, false) {
@@ -476,7 +502,15 @@ fn[L] TrigSliceParser::assemble(
                 }
               None => ()
             }
-            Ok({ s: ts, p: tp, o: to, g: pending.graph, pk: pending.pk, pver: pending.pver, bver: pending.bver })
+            Ok({
+              s: ts,
+              p: tp,
+              o: to,
+              g: pending.graph,
+              pk: pending.pk,
+              pver: pending.pver,
+              bver: pending.bver,
+            })
           }
         None => Err(ParseError::SyntaxErr("Incomplete quad at emission", s))
       }

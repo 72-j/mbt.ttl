@@ -19,7 +19,6 @@ pub(all) enum NQuadsEvent {
   NQuadsEOF
 }
 
-
 ///|
 pub(all) enum NQuadsState {
   NQuadsExpectSubject
@@ -28,7 +27,6 @@ pub(all) enum NQuadsState {
   NQuadsExpectDotOrGraph
   NQuadsExpectDot
 }
-
 
 ///|
 /// 重置粒度：每个变体显式列出"清谁"，未列字段一律保留（防错误重置）。
@@ -40,14 +38,13 @@ pub(all) enum ResetScope {
   All // 清 subject/predicate/object/graph（N-Quads 行口径）
 } derive(Debug)
 
-
+///|
 /// Effect 枚举：状态机可能产生的副作用（纯数据）
 pub(all) enum NQuadsEffect {
   Continue
   EmitQuad(ResetScope)
   Done
 }
-
 
 ///|
 /// FSM 运行时上下文：ctx 提供状态（state）与业务数据（其余字段）
@@ -62,16 +59,20 @@ pub(all) struct NQuadsContext {
 ///|
 /// 状态机初始上下文
 pub fn NQuadsContext::new() -> NQuadsContext {
-  { state: NQuadsExpectSubject, subject: None, predicate: None, object: None, graph: None }
+  {
+    state: NQuadsExpectSubject,
+    subject: None,
+    predicate: None,
+    object: None,
+    graph: None,
+  }
 }
 
 ///|
 /// 原地重置：按 scope 清槽位，未列字段一律保留（粒度语义见 ResetScope）
-pub fn NQuadsContext::reset(self : NQuadsContext, scope : ResetScope) -> Unit {
+fn NQuadsContext::reset(self : NQuadsContext, scope : ResetScope) -> Unit {
   match scope {
-    ResetScope::Object => {
-      self.object = None
-    }
+    ResetScope::Object => self.object = None
     ResetScope::PredObj => {
       self.predicate = None
       self.object = None
@@ -132,7 +133,6 @@ pub trait NQuadsLoopPolicy {
   fn on_business_failed(Self, String) -> ParseError
 }
 
-
 ///|
 /// Action 执行或状态转移阶段的错误
 pub(all) enum NQuadsActionError {
@@ -140,17 +140,27 @@ pub(all) enum NQuadsActionError {
   BusinessFailed(String) // 用户业务逻辑抛出：Action 执行失败（如解析格式错误）
 }
 
-
 ///|
 /// Actions trait：actions 提供逻辑，Self 携带运行时数据
 /// 每个方法：(ctx, 事件载荷) → 副作用意图或错误（ctx 为原地写，state 由 step 管理）
 pub trait NQuadsActions {
-  set_subject(Self, NQuadsContext, Span) -> Result[NQuadsEffect, NQuadsActionError]
-  set_predicate(Self, NQuadsContext, Span) -> Result[NQuadsEffect, NQuadsActionError]
-  set_object(Self, NQuadsContext, Span) -> Result[NQuadsEffect, NQuadsActionError]
-  set_graph(Self, NQuadsContext, Span) -> Result[NQuadsEffect, NQuadsActionError]
+  fn set_subject(Self, NQuadsContext, Span) -> Result[
+    NQuadsEffect,
+    NQuadsActionError,
+  ]
+  fn set_predicate(Self, NQuadsContext, Span) -> Result[
+    NQuadsEffect,
+    NQuadsActionError,
+  ]
+  fn set_object(Self, NQuadsContext, Span) -> Result[
+    NQuadsEffect,
+    NQuadsActionError,
+  ]
+  fn set_graph(Self, NQuadsContext, Span) -> Result[
+    NQuadsEffect,
+    NQuadsActionError,
+  ]
 }
-
 
 ///|
 /// FSM Driver（mutable）：接收事件，原地推进 ctx，返回副作用意图或错误
@@ -221,14 +231,12 @@ pub fn[A : NQuadsActions] step(
   }
 }
 
-
 ///|
 /// 副作用执行阶段的错误（第二层）
 pub(all) enum NQuadsEffectError {
   SinkFailed(String) // 下游写入失败（可恢复）
   Fatal(String) // 致命错误，需要终止状态机
 }
-
 
 ///|
 /// 第二层 EffectHandler：真正的 match effect 发生在 step 外部
@@ -241,21 +249,25 @@ pub trait NQuadsEffectHandler {
   fn dispatch(Self, effect : NQuadsEffect) -> Result[Unit, NQuadsEffectError] = _
 }
 
+///|
 /// handle_continue 模板默认：无操作
 impl NQuadsEffectHandler with fn handle_continue(_self) {
   Ok(())
 }
 
+///|
 /// handle_emit_quad 模板默认：无操作
 impl NQuadsEffectHandler with fn handle_emit_quad(_self, _scope) {
   Ok(())
 }
 
+///|
 /// handle_done 模板默认：无操作
 impl NQuadsEffectHandler with fn handle_done(_self) {
   Ok(())
 }
 
+///|
 /// dispatch 模板默认：match effect 并分发到 handle_*
 impl NQuadsEffectHandler with fn dispatch(self, effect) {
   match effect {

@@ -367,7 +367,7 @@ pub impl Show for LiteralRef with fn to_string(self) {
 
 ///|
 /// 转义 N-Triples 特殊字符
-pub fn append_escaped_str(f : StringBuilder, string : StringView) -> Unit {
+fn append_escaped_str(f : StringBuilder, string : StringView) -> Unit {
   for c in string {
     let code = Char::to_uint(c)
     match c {

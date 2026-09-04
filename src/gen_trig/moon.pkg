@@ -11,4 +11,9 @@ import {
 import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
-} for "test"
+} for "wbtest"
+
+options(
+  // trig_bench 对照 C FFI 词法器（@nquads.Lexerc），仅 native
+  targets: { "trig_bench_wbtest.mbt": [ "native" ] },
+)

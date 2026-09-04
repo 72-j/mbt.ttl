@@ -1,5 +1,5 @@
 ///|
-pub fn is_pchar(c : Char) -> Bool {
+fn is_pchar(c : Char) -> Bool {
   is_unreserved(c) ||
   c == ':' ||
   c == '@' ||
@@ -12,7 +12,7 @@ pub fn is_pchar(c : Char) -> Bool {
 }
 
 ///|
-pub fn is_unreserved(c : Char) -> Bool {
+fn is_unreserved(c : Char) -> Bool {
   c.is_ascii_alphabetic() ||
   c.is_ascii_digit() ||
   c == '-' ||
@@ -22,26 +22,7 @@ pub fn is_unreserved(c : Char) -> Bool {
 }
 
 ///|
-/// 是否为 ASCII 数字 (0-9)
-fn Byte::is_ascii_digit(b : Byte) -> Bool {
-  b >= b'0' && b <= b'9'
-}
-
-///|
-/// 是否为 ASCII 字母 (a-z, A-Z)
-fn Byte::is_ascii_alpha(b : Byte) -> Bool {
-  (b >= b'a' && b <= b'z') || (b >= b'A' && b <= b'Z')
-}
-
-///|
-fn Byte::is_ascii_alnum(b : Byte) -> Bool {
-  b.is_ascii_alpha() || b.is_ascii_digit()
-}
-
-///|
-pub fn remove_dot_segments_from_array(
-  segments : Array[String],
-) -> Array[String] {
+fn remove_dot_segments_from_array(segments : Array[String]) -> Array[String] {
   let output = []
   for segment in segments {
     match segment {
@@ -59,13 +40,13 @@ pub fn remove_dot_segments_from_array(
 }
 
 ///|
-pub fn array_to_view(arr : ArrayView[Byte]) -> BytesView {
+fn array_to_view(arr : ArrayView[Byte]) -> BytesView {
   let bytes : Bytes = Bytes::from_array(arr)
   return bytes
 }
 
 ///|
-pub fn array_view_has_prefix(data : ArrayView[Byte], prefix : Bytes) -> Bool {
+fn array_view_has_prefix(data : ArrayView[Byte], prefix : Bytes) -> Bool {
   if data.length() < prefix.length() {
     return false
   }
@@ -78,52 +59,7 @@ pub fn array_view_has_prefix(data : ArrayView[Byte], prefix : Bytes) -> Bool {
 }
 
 ///|
-// fn eq_ignore_ascii_case(s1 : StringView, s2 : StringView) -> Bool {
-//   if s1.length() != s2.length() {
-//     return false
-//   }
-
-//   for i = 0; i < s1.length(); i = i + 1 {
-//     let u1 = s1[i] // UInt16
-//     let u2 = s2[i] // UInt16
-
-//     if u1 == u2 {
-//       continue
-//     }
-
-//     let is_alpha1 = (u1 >= 65 && u1 <= 90) || (u1 >= 97 && u1 <= 122)
-//     let is_alpha2 = (u2 >= 65 && u2 <= 90) || (u2 >= 97 && u2 <= 122)
-
-//     // 如果其中有一个不是 ASCII 字母，且它们不相等（前面已判断 u1 != u2），则不匹配
-//     if !(is_alpha1 && is_alpha2) {
-//       return false
-//     }
-
-//     // 都转为小写再比较
-//     // 'A'(65)->'a'(97), ..., 'Z'(90)->'z'(122)
-//     // 'a'-'z' 保持不变
-//     let lower1 = if u1 >= 65 && u1 <= 90 { u1 + 32 } else { u1 }
-//     let lower2 = if u2 >= 65 && u2 <= 90 { u2 + 32 } else { u2 }
-
-//     if lower1 != lower2 {
-//       return false
-//     }
-//   }
-
-//   true
-// }
-
-///|
-// fn is_ascii_alphanumeric(c : Char) -> Bool {
-//   let code = c.to_int()
-//   // '0'=48, '9'=57, 'A'=65, 'Z'=90, 'a'=97, 'z'=122
-//   (code >= 48 && code <= 57) ||
-//   (code >= 65 && code <= 90) ||
-//   (code >= 97 && code <= 122)
-// }
-
-///|
-pub fn array_view_memchr(target : Byte, data : ArrayView[Byte]) -> Int? {
+fn array_view_memchr(target : Byte, data : ArrayView[Byte]) -> Int? {
   for i in 0..<data.length() {
     if data[i] == target {
       return Some(i)
@@ -133,7 +69,7 @@ pub fn array_view_memchr(target : Byte, data : ArrayView[Byte]) -> Int? {
 }
 
 ///|
-pub fn array_view_memchr2(c1 : Byte, c2 : Byte, data : ArrayView[Byte]) -> Int? {
+fn array_view_memchr2(c1 : Byte, c2 : Byte, data : ArrayView[Byte]) -> Int? {
   let len = data.length()
   for i in 0..<len {
     let b = data[i]
@@ -145,81 +81,7 @@ pub fn array_view_memchr2(c1 : Byte, c2 : Byte, data : ArrayView[Byte]) -> Int? 
 }
 
 ///|
-// fn is_alphabetic(s : StringView) -> Bool {
-//   if s.is_empty() {
-//     return false
-//   }
-
-//   let mut result = true
-//   for c in s {
-//     if !c.is_ascii_alphabetic() {
-//       result = false
-//       break
-//     }
-//   }
-//   result
-// }
-
-///|
-// fn is_numeric(s : StringView) -> Bool {
-//   // let chars = StringView::iter(s)
-//   if s.is_empty() {
-//     return false
-//   }
-
-//   let mut result = true
-//   for c in s {
-//     if !c.is_ascii_digit() {
-//       result = false
-//       break
-//     }
-//   }
-//   result
-// }
-
-///|
-// fn is_alphanumeric(s : StringView) -> Bool {
-//   let mut result = true
-//   for c in s {
-//     if !is_ascii_alphanumeric(c) {
-//       result = false
-//       break
-//     }
-//   }
-//   result
-// }
-
-///|
-// fn is_alphanumeric_or_dash(s : StringView) -> Bool {
-//   let chars = StringView::iter(s)
-//   let mut result = true
-//   for c in chars {
-//     if !(is_ascii_alphanumeric(c) || c == '-') {
-//       result = false
-//       break
-//     }
-//   }
-//   result
-// }
-
-///|
-// fn to_title_case(s : StringView) -> String {
-//   let result = StringBuilder::new()
-//   let chars = StringView::iter(s)
-//   let mut is_first = true
-//   for c in chars {
-//     if is_first {
-//       result.write_char(c.to_ascii_uppercase())
-//       is_first = false
-//     } else {
-//       result.write_char(c.to_ascii_lowercase())
-//     }
-//   }
-//   result.to_string()
-// }
-
-///|
-pub fn from_str_radix(s : String, radix : Int) -> Result[UInt, String] {
+fn from_str_radix(s : String, radix : Int) -> Result[UInt, String] {
   if s.is_empty() {
     return Err("Input string is empty")
   }
@@ -257,7 +119,7 @@ pub fn from_str_radix(s : String, radix : Int) -> Result[UInt, String] {
 }
 
 ///|
-pub fn parse_duration(s : String) -> Result[String, String] {
+fn parse_duration(s : String) -> Result[String, String] {
   if s.is_empty() {
     return Err("Empty duration string")
   }
@@ -377,7 +239,7 @@ fn extract_number(s : StringView, unit : String) -> Int64 {
 }
 
 ///|
-pub fn parse_xsd_date(s : String) -> Result[String, String] {
+fn parse_xsd_date(s : String) -> Result[String, String] {
   // 支持格式：YYYY-MM-DDThh:mm:ss[Z|±hh:mm]
   let re = try
     @string.Regex("^([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2})$") |> Ok
@@ -454,7 +316,7 @@ pub fn parse_xsd_date(s : String) -> Result[String, String] {
 }
 
 ///|
-pub fn is_valid_hex_string(hex : String) -> Bool {
+fn is_valid_hex_string(hex : String) -> Bool {
   for c in hex {
     if !((c >= '0' && c <= '9') ||
       (c >= 'A' && c <= 'F') ||
@@ -467,7 +329,7 @@ pub fn is_valid_hex_string(hex : String) -> Bool {
 
 ///|
 /// 非法字符查表：索引为字节值 (0-255)，值为 1 表示非法
-pub let iri_illegal_table : FixedArray[Int] = {
+let iri_illegal_table : FixedArray[Int] = {
   let table = FixedArray::make(256, 0)
 
   // 设置非法字符

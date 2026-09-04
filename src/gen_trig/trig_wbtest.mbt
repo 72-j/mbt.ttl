@@ -262,8 +262,8 @@ test "适配器: 结构字符逐 token 分类（含 @ → TrigAt）" {
   assert_eq(events.length(), 7)
   assert_true(events[0] is TrigEvent::TrigLbrace)
   assert_true(events[1] is TrigEvent::TrigRbrace)
-  assert_true(events[2] is TrigEvent::TrigAnon)
-  assert_true(events[3] is TrigEvent::TrigLparen)
+  assert_true(events[2] is TrigEvent::TrigAnon(_))
+  assert_true(events[3] is TrigEvent::TrigLparen(_))
   assert_true(events[4] is TrigEvent::TrigRparen)
   assert_true(events[5] is TrigEvent::TrigAt)
   assert_true(events[6] is TrigEvent::TrigEOF)
@@ -297,7 +297,7 @@ test "适配器: 指令收紧——@ 风格小写精确 / 无冒号 PrefName 降
   let e4 = evs(bytes_of("x"))
   assert_true(e4[0] is TrigEvent::TrigUnknown)
   let e5 = evs(bytes_of("ex:p"))
-  assert_true(e5[0] is TrigEvent::TrigPrefName)
+  assert_true(e5[0] is TrigEvent::TrigPrefName(_))
 }
 
 ///|
@@ -354,14 +354,14 @@ test "适配器: TT 括号壳分流——<<( )>> → BracketTripleTerm，<< >> �
   }
   // 括号壳（含无空格形态 basic-03 `<<(:s` 口径）
   let e1 = evs(bytes_of("<<( <s> <p> <o> )>>"))
-  assert_true(e1[0] is TrigEvent::TrigBracketTripleTerm)
+  assert_true(e1[0] is TrigEvent::TrigBracketTripleTerm(_))
   let e2 = evs(bytes_of("<<(:s :p :o )>>"))
-  assert_true(e2[0] is TrigEvent::TrigBracketTripleTerm)
+  assert_true(e2[0] is TrigEvent::TrigBracketTripleTerm(_))
   // 裸壳
   let e3 = evs(bytes_of("<< <s> <p> <o> >>"))
-  assert_true(e3[0] is TrigEvent::TrigTripleTerm)
+  assert_true(e3[0] is TrigEvent::TrigTripleTerm(_))
   let e4 = evs(bytes_of("<<:s :p :o>>"))
-  assert_true(e4[0] is TrigEvent::TrigTripleTerm)
+  assert_true(e4[0] is TrigEvent::TrigTripleTerm(_))
 }
 
 ///|
@@ -431,6 +431,9 @@ test "方言守卫: Turtle 禁图块区（裸 { } / <g> { }），TriG 默认放�
 /// N3 预埋分类 pin：适配层发出新事件（表未接走兜底，不进任何 quad）。
 /// 量化指令要求 @ 邻接精确拼写；适配层无跨 token 状态，
 /// @keywords 模式下 'a' 仍出 KeywordA（语义豁免归表/物化层，将来接表再定）。
+extend TrigLexerAdapter with LexerSource::{next}
+
+///|
 test "N3 预埋: ! ^ => <= 与 @forAll/@forSome/@keywords 分类" {
   let input = "! ^ => <=\n@forAll :x .\n@forSome :y .\n@keywords a.\n"
   let data = bytes_of(input)
@@ -496,9 +499,7 @@ test "★3 宾位 [] ：内层先发 + 外层宾槽落 fresh" {
 test "★3 空形式：[] 独立成句谓语缺位必拒（ANON 终结符口径）；宾位空 [] 落 fresh" {
   // ANON 是 bnode 终结符，`[] .` 谓语缺位 = 非法文法（旧空帧口径曾静默吞，
   // 词法立词后表自然拒绝——收紧而非放宽）
-  let (_, errors1) = mat_chain(
-    "@prefix ex: <http://example/> .\n[] .\n",
-  )
+  let (_, errors1) = mat_chain("@prefix ex: <http://example/> .\n[] .\n")
   assert_true(errors1.length() > 0)
   // 宾位空 []：fresh 落 o 槽（`[` 在 42 号偏移）
   let (emits, errors) = mat_chain(
@@ -623,9 +624,7 @@ test "★3 集合内 [] 作元素：first 链指 fresh bnode + 内层三元组�
 
 ///|
 test "★3 集合字面量元素：数值 typed 展开 + 简单字面量保真" {
-  let (emits, errors) = mat_chain(
-    "<http://s> <http://p> ( 1 \"two\" ) .\n",
-  )
+  let (emits, errors) = mat_chain("<http://s> <http://p> ( 1 \"two\" ) .\n")
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 5)
   assert_eq(
@@ -649,9 +648,7 @@ test "★3 集合未闭合：区域无 Dot 出边（表即裁决）+ EOF 栈判�
 test "★3 回收: 词法后缀门——字面量紧邻 ) 出独立结构符（lists-05 口径）" {
   // 旧"只认空白收束"把 "a") 的闭括号吞进词项；门收紧后 `"a"` 出 Literal、
   // `)` 出 Rparen，集合元素位正常闭合
-  let (emits, errors) = mat_chain(
-    "<http://s> <http://p> ( \"a\" \"b\") .\n",
-  )
+  let (emits, errors) = mat_chain("<http://s> <http://p> ( \"a\" \"b\") .\n")
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 5)
   assert_eq(mat_vs(mat_obj(emits[0])), "\"a\"")
@@ -690,9 +687,13 @@ test "★3 回收: `] }` 图块无点收口 vs 集合主位 `}` 必拒（sole/ba
   assert_true(errors3.length() > 0)
   // collection-graph-bad 口径：顶层集合后 Lbrace（集合头做图名）必拒
   //（ret=ExpectVerbRequired 无 Lbrace 出边；<g> { 主形态走 ExpectPredicate 行不受扰）
-  let (_, errors4) = mat_chain("( 1 2 ) <http://s> <http://p> .\n<http://g> { <http://s> <http://p> <http://o> . }\n")
+  let (_, errors4) = mat_chain(
+    "( 1 2 ) <http://s> <http://p> .\n<http://g> { <http://s> <http://p> <http://o> . }\n",
+  )
   assert_eq(errors4.length(), 0)
-  let (_, errors5) = mat_chain("( 1 2 ) { <http://s> <http://p> <http://o> . }\n")
+  let (_, errors5) = mat_chain(
+    "( 1 2 ) { <http://s> <http://p> <http://o> . }\n",
+  )
   assert_true(errors5.length() > 0)
 }
 
@@ -711,9 +712,7 @@ test "★3 回收: 指令后 TT 壳主位（turtle12-bnode-03 口径）" {
     _ => assert_true(false)
   }
   // 括号壳主位：无行 → 恢复报错
-  let (_, errors2) = mat_chain(
-    "<<(:s :p :o) >> :q :z .\n",
-  )
+  let (_, errors2) = mat_chain("<<(:s :p :o) >> :q :z .\n")
   assert_true(errors2.length() > 0)
 }
 
@@ -748,7 +747,7 @@ test "★1 per-quad 快照: 中途换 base / 前缀重声明不污染历史 quad
   // 相对词项报错）；quad2 发射时点 bver=1 → 按 chain[0..1] 折叠出 ns base。
   // 绝对词项不受任何 base 影响，两 quad 均保真——差异在相对词项的改写：
   // 把 quad1 放 @base 声明前且词项全相对 = 报错路径，放声明后 = 改写路径
-  let (emits, errors) = mat_chain(
+  let (_emits, errors) = mat_chain(
     "<a1> <b1> <c1> .\n@base <http://example.org/ns/> .\n<a2> <b2> <c2> .\n",
   )
   assert_true(errors.length() == 1) // quad1：发射时无生效 base，物化层拒
@@ -797,7 +796,6 @@ test "★1 base 链: 相对 @base 折叠 + 相对前缀声明随 base 改写（s
   assert_eq(mat_vs(mat_subj(emits2[1])), "<http://example.org/ns2#a5>")
 }
 
-
 ///|
 test "壳内 ~ reifier：分写 / 连写 / 全连写 / 裸 ~ / IRI 形（syntax-inside 口径）" {
   // 分写 PrefName：尾巴吞掉不计项，壳整段保真
@@ -838,7 +836,8 @@ test "壳内 ~ reifier：分写 / 连写 / 全连写 / 裸 ~ / IRI 形（syntax-
   assert_eq(errors6.length(), 0)
   assert_eq(emits6.length(), 1)
   match emits6[0].subject {
-    @nquads.Subject::TripleTerm(v) => assert_eq(mat_vs(v), "<< :s :p :o ~ :id >>")
+    @nquads.Subject::TripleTerm(v) =>
+      assert_eq(mat_vs(v), "<< :s :p :o ~ :id >>")
     _ => assert_true(false)
   }
 }
@@ -861,7 +860,6 @@ test "壳内 ~ reifier 负例：4 真项 / 项后垃圾 / 双 ~ 仍拒" {
   )
   assert_true(errors3.length() > 0)
 }
-
 
 ///|
 test "[] 图标签/主位/宾位/集合元素（kw-graph-07 + anonymous_blank_node_graph 口径）" {
@@ -886,9 +884,7 @@ test "[] 图标签/主位/宾位/集合元素（kw-graph-07 + anonymous_blank_no
     _ => assert_true(false)
   }
   // `[]` 主位：fresh 占 s 槽（graph-kw-06 家族回归口径）
-  let (emits3, errors3) = mat_chain(
-    "[] <http://p> <http://o> .\n",
-  )
+  let (emits3, errors3) = mat_chain("[] <http://p> <http://o> .\n")
   assert_eq(errors3.length(), 0)
   assert_eq(emits3.length(), 1)
   assert_eq(mat_vs(mat_subj(emits3[0])), "_:genid0")
@@ -902,9 +898,7 @@ test "[] 图标签/主位/宾位/集合元素（kw-graph-07 + anonymous_blank_no
   assert_eq(mat_vs(mat_obj(emits4[1])), "_:genid49")
   // `[]` 集合元素位：fresh 作链元素（first 指向，不开嵌套帧）；
   // 单元素链 = first + rest:nil 两链 + 主三元组
-  let (emits5, errors5) = mat_chain(
-    "( [] ) <http://p> <http://o> .\n",
-  )
+  let (emits5, errors5) = mat_chain("( [] ) <http://p> <http://o> .\n")
   assert_eq(errors5.length(), 0)
   assert_eq(emits5.length(), 3)
   // 指令后 `[]` 主位
@@ -925,7 +919,6 @@ test "[] 图标签负例：非空属性列表落图位必拒（bnodeplist-graph-
   let (_, errors2) = mat_chain("[] .\n")
   assert_true(errors2.length() > 0)
 }
-
 
 ///|
 test "注解体内 fresh 结构：[] 嵌套帧 + [] 终结符（annotation-2 口径）" {

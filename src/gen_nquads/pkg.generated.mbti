@@ -1,0 +1,601 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "thy1016/moonttl/gen_nquads"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn append_escaped_str(StringBuilder, StringView) -> Unit
+
+pub fn fn_remove_dot_segments(StringView) -> StringView
+
+pub fn is_banned_langstring_iri(ArrayView[Byte]) -> Bool
+
+pub fn lexer_create(FixedArray[Byte], Int) -> UInt64
+
+pub fn lexer_destroy(UInt64) -> Unit
+
+pub fn lexer_next(UInt64, FixedArray[Byte]) -> Bool
+
+pub fn materialize_all(Array[QuadSpan]) -> (Array[QuadEmit], Array[ParseError])
+
+pub fn materialize_quad(QuadSpan) -> Result[QuadEmit, ParseError]
+
+pub fn nquads_parser(Array[Byte], lenient? : Bool, rdf12? : Bool) -> (Array[QuadSpan], Array[ParseError])
+
+pub fn nquads_parser_c(FixedArray[Byte], lenient? : Bool) -> (Array[QuadSpan], Array[ParseError])
+
+pub fn parse(BytesView) -> Result[Iri, ParseError]
+
+pub fn parse_iri(BytesView, Int) -> Result[IriSpan, ParseError]
+
+pub fn parse_unchecked(BytesView) -> Iri
+
+pub let rdf_alt : NamedNodeRef
+
+pub let rdf_any_uri : NamedNodeRef
+
+pub let rdf_bag : NamedNodeRef
+
+pub let rdf_base_64_binary : NamedNodeRef
+
+pub let rdf_boolean : NamedNodeRef
+
+pub let rdf_byte : NamedNodeRef
+
+pub let rdf_class : NamedNodeRef
+
+pub let rdf_comment : NamedNodeRef
+
+pub let rdf_container : NamedNodeRef
+
+pub let rdf_container_membership_property : NamedNodeRef
+
+pub let rdf_datatype : NamedNodeRef
+
+pub let rdf_date : NamedNodeRef
+
+pub let rdf_date_time : NamedNodeRef
+
+pub let rdf_date_time_stamp : NamedNodeRef
+
+pub let rdf_day_time_duration : NamedNodeRef
+
+pub let rdf_decimal : NamedNodeRef
+
+pub let rdf_dir_lang_string : NamedNodeRef
+
+pub let rdf_domain : NamedNodeRef
+
+pub let rdf_double : NamedNodeRef
+
+pub let rdf_duration : NamedNodeRef
+
+pub let rdf_first : NamedNodeRef
+
+pub let rdf_float : NamedNodeRef
+
+pub let rdf_g_day : NamedNodeRef
+
+pub let rdf_g_month : NamedNodeRef
+
+pub let rdf_g_month_day : NamedNodeRef
+
+pub let rdf_g_year : NamedNodeRef
+
+pub let rdf_g_year_month : NamedNodeRef
+
+pub let rdf_hex_binary : NamedNodeRef
+
+pub let rdf_html : NamedNodeRef
+
+pub let rdf_int : NamedNodeRef
+
+pub let rdf_integer : NamedNodeRef
+
+pub let rdf_is_defined_by : NamedNodeRef
+
+pub let rdf_json : NamedNodeRef
+
+pub let rdf_label : NamedNodeRef
+
+pub let rdf_lang_string : NamedNodeRef
+
+pub let rdf_language : NamedNodeRef
+
+pub let rdf_list : NamedNodeRef
+
+pub let rdf_literal : NamedNodeRef
+
+pub let rdf_long : NamedNodeRef
+
+pub let rdf_member : NamedNodeRef
+
+pub let rdf_name : NamedNodeRef
+
+pub let rdf_nc_name : NamedNodeRef
+
+pub let rdf_negative_integer : NamedNodeRef
+
+pub let rdf_nil : NamedNodeRef
+
+pub let rdf_nmtoken : NamedNodeRef
+
+pub let rdf_non_negative_integer : NamedNodeRef
+
+pub let rdf_non_positive_integer : NamedNodeRef
+
+pub let rdf_normalized_string : NamedNodeRef
+
+pub let rdf_object : NamedNodeRef
+
+pub let rdf_positive_integer : NamedNodeRef
+
+pub let rdf_predicate : NamedNodeRef
+
+pub let rdf_property : NamedNodeRef
+
+pub let rdf_range : NamedNodeRef
+
+pub let rdf_reifies : NamedNodeRef
+
+pub let rdf_resource : NamedNodeRef
+
+pub let rdf_rest : NamedNodeRef
+
+pub let rdf_see_also : NamedNodeRef
+
+pub let rdf_seq : NamedNodeRef
+
+pub let rdf_short : NamedNodeRef
+
+pub let rdf_statement : NamedNodeRef
+
+pub let rdf_string : NamedNodeRef
+
+pub let rdf_sub_class_of : NamedNodeRef
+
+pub let rdf_sub_property_of : NamedNodeRef
+
+pub let rdf_subject : NamedNodeRef
+
+pub let rdf_time : NamedNodeRef
+
+pub let rdf_token : NamedNodeRef
+
+pub let rdf_type : NamedNodeRef
+
+pub let rdf_unsigned_byte : NamedNodeRef
+
+pub let rdf_unsigned_int : NamedNodeRef
+
+pub let rdf_unsigned_long : NamedNodeRef
+
+pub let rdf_unsigned_short : NamedNodeRef
+
+pub let rdf_value : NamedNodeRef
+
+pub let rdf_wkt_literal : NamedNodeRef
+
+pub let rdf_xml_literal : NamedNodeRef
+
+pub let rdf_year_month_duration : NamedNodeRef
+
+pub fn scan_string_body(ArrayView[Byte], Int, Int, Int) -> Result[Int, ParseError]
+
+pub fn[A : NQuadsActions] step(NQuadsContext, NQuadsEvent, A) -> Result[NQuadsEffect, NQuadsActionError]
+
+pub fn validate_bnode(ArrayView[Byte], Int) -> Result[Unit, ParseError]
+
+pub fn validate_escapes_unicode(ArrayView[Byte], Int, Int, Int, scalar_only? : Bool) -> Result[Unit, ParseError]
+
+pub fn validate_iri_body(ArrayView[Byte], Int, Int, Int) -> Result[Unit, ParseError]
+
+pub fn validate_lang_suffix(ArrayView[Byte], Int, Int, Int, Bool) -> Result[Unit, ParseError]
+
+// Errors
+pub(all) suberror IriError {
+  NoScheme(Int)
+  InvalidScheme(Char, Int)
+  InvalidCharacter(Char, Int)
+  InvalidPath(Int)
+  InvalidAuthority(String)
+  InvalidPercentEncoding(Int)
+  UnexpectedEnd(Int)
+} derive(@debug.Debug)
+pub fn IriError::position(Self) -> Int
+pub impl Show for IriError
+pub impl ErrOut for IriError
+
+pub(all) suberror ParseError {
+  StructSyntaxErr(String, Int, (Int, Int))
+  SyntaxErr(String, (Int, Int))
+  ValidationErr(String)
+  IriErr(String)
+} derive(@debug.Debug)
+pub fn ParseError::to_span(Self) -> (Int, Int)
+pub impl Show for ParseError
+pub impl ErrOut for ParseError
+
+pub(all) suberror TagParseErr {
+  EmptyTag
+  EmptySubtag
+  InvalidLanguageLength
+  ForbiddenChar
+  TooManyExtlangs
+  InvalidSubtag((Int, Int), StringView)
+  EmptyExtension
+  EmptyPrivateUse
+  InvalidVariant
+  InvalidPrivateUsePrefix
+} derive(@debug.Debug)
+pub impl Show for TagParseErr
+
+// Types and methods
+pub(all) enum BaseDirection {
+  Ltr
+  Rtl
+} derive(Eq, Hash, ToJson, @debug.Debug)
+pub impl Show for BaseDirection
+
+pub struct Extension {
+  ident : (Int, Int)
+  subtags : Array[(Int, Int)]
+} derive(Eq, @debug.Debug)
+pub impl Show for Extension
+
+pub struct ExtensionIter {
+  tag : StringView
+  extensions : Array[Extension]
+  index : Int
+}
+pub fn ExtensionIter::to_array(Self) -> Array[(StringView, Array[StringView])]
+
+pub(all) enum GraphName {
+  None
+  Iri(ArrayView[Byte])
+  BNode(ArrayView[Byte])
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GraphPolicy {
+  Strict
+  Drop
+} derive(Eq, @debug.Debug)
+
+pub struct Hooks {
+}
+pub fn Hooks::new() -> Self
+
+pub(all) struct Iri {
+  scheme : StringView
+  authority : StringView
+  path : StringView
+  query : StringView?
+  fragment : StringView?
+} derive(Default, Eq, @debug.Debug)
+pub fn Iri::Iri(StringView, StringView, StringView, StringView?, StringView?) -> Self
+pub fn Iri::into_string(Self) -> String
+pub fn Iri::relativize(Self, Self) -> Result[Self, ParseError]
+pub fn Iri::resolve(Self, BytesView, remove_dot_segments? : Bool) -> Result[Self, ParseError]
+pub fn Iri::resolve_unchecked(Self, BytesView, remove_dot_segments? : Bool) -> Self
+
+pub(all) struct IriSpan {
+  mut scheme : (Int, Int)
+  mut authority : (Int, Int)
+  mut path : (Int, Int)
+  mut query : (Int, Int)?
+  mut fragment : (Int, Int)?
+  mut pos : Int
+} derive(Default, Eq)
+
+pub struct LanguageTag {
+  tag : StringView
+  state : TagState
+} derive(Eq, @debug.Debug)
+pub fn LanguageTag::extended_language(Self) -> StringView?
+pub fn LanguageTag::extended_language_subtags(Self) -> Array[StringView]
+pub fn LanguageTag::extension_subtags(Self) -> ExtensionIter
+pub fn LanguageTag::extensions(Self) -> ExtensionIter
+pub fn LanguageTag::full_language(Self) -> StringView
+pub fn LanguageTag::has_extensions(Self) -> Bool
+pub fn LanguageTag::has_private_use(Self) -> Bool
+pub fn LanguageTag::parse(StringView) -> Result[Self, TagParseErr]
+pub fn LanguageTag::parse_and_normalize(StringView) -> Result[Self, TagParseErr]
+pub fn LanguageTag::primary_language(Self) -> StringView
+pub fn LanguageTag::private_use_subtags(Self) -> Array[StringView]
+pub fn LanguageTag::region(Self) -> StringView?
+pub fn LanguageTag::script(Self) -> StringView?
+pub fn LanguageTag::to_tagstr(Self) -> String
+pub fn LanguageTag::variant_subtags(Self) -> Array[StringView]
+pub impl Show for LanguageTag
+
+pub(all) struct Lexerc {
+  ptr : UInt64
+  data : FixedArray[Byte]
+  mut offset : Int
+  token_buf : FixedArray[Byte]
+}
+pub fn Lexerc::data(Self) -> FixedArray[Byte]
+pub fn Lexerc::destroy(Self) -> Unit
+pub fn Lexerc::extract(Self, (Int, Int)) -> String
+pub fn Lexerc::extract_iri(Self, Token) -> ArrayView[Byte]
+pub fn Lexerc::extract_literal(Self, Token) -> ArrayView[Byte]
+pub fn Lexerc::is_end(Self) -> Bool
+pub fn Lexerc::new(FixedArray[Byte]) -> Self
+pub fn Lexerc::next(Self) -> Token?
+pub fn Lexerc::position(Self) -> Int
+pub fn Lexerc::remaining(Self) -> Int
+pub fn Lexerc::reset(Self) -> Unit
+pub impl LexerSource for Lexerc
+
+pub(all) struct Lexermoon {
+  view : ArrayView[Byte]
+  mut pos : Int
+  mut len : Int
+}
+pub fn Lexermoon::current_pos(Self) -> Int
+pub fn Lexermoon::extract(Self, Int, Int) -> String
+pub fn Lexermoon::extract_iri(Self, Token) -> String
+pub fn Lexermoon::new(ArrayView[Byte]) -> Self
+pub fn Lexermoon::next(Self) -> Token?
+pub fn Lexermoon::tokenize(Self) -> Array[Token]
+pub impl LexerSource for Lexermoon
+
+pub(all) struct Literal(LiteralContent) derive(Eq, Hash, @debug.Debug)
+pub fn Literal::datatype(Self) -> NamedNodeRef
+pub fn Literal::destruct(Self) -> (StringView, NamedNode?, String?, BaseDirection?)
+pub fn Literal::direction(Self) -> BaseDirection?
+pub fn Literal::language(Self) -> String?
+pub fn Literal::new_directional_language_tagged_literal(String, String, BaseDirection) -> Result[Self, TagParseErr]
+pub fn Literal::new_directional_language_tagged_literal_unchecked(StringView, LanguageTag, BaseDirection) -> Self
+pub fn Literal::new_language_tagged_literal(String, String) -> Result[Self, TagParseErr]
+pub fn Literal::new_language_tagged_literal_unchecked(String, String) -> Self
+pub fn Literal::new_simple_literal(String) -> Self
+pub fn Literal::new_simple_literal_unchecked(String) -> Self
+pub fn Literal::new_typed_literal_unchecked(String, NamedNodeRef) -> LiteralRef
+pub fn Literal::value(Self) -> String
+pub impl Show for Literal
+
+pub(all) enum LiteralContent {
+  String(String)
+  LanguageTaggedString(value~ : String, language~ : String)
+  DirectionalLanguageTaggedString(value~ : StringView, language~ : String, direction~ : BaseDirection)
+  TypedLiteral(value~ : String, datatype~ : NamedNode)
+} derive(Eq, Hash, @debug.Debug)
+
+pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Hash, @debug.Debug)
+pub fn LiteralRef::as_value(Self) -> StringView
+pub fn LiteralRef::datatype(Self) -> NamedNodeRef
+pub fn LiteralRef::into_owned(Self) -> Literal
+pub impl Show for LiteralRef
+
+pub(all) enum LiteralRefContent {
+  String(StringView)
+  LanguageTaggedString(value~ : String, language~ : StringView)
+  DirectionalLanguageTaggedString(value~ : StringView, language~ : StringView, direction~ : BaseDirection)
+  TypedLiteral(value~ : String, datatype~ : NamedNodeRef)
+} derive(Eq, Hash, @debug.Debug)
+
+pub(all) enum NQuadsActionError {
+  UnexpectedEvent(NQuadsState, NQuadsEvent)
+  BusinessFailed(String)
+}
+
+pub(all) struct NQuadsContext {
+  mut state : NQuadsState
+  mut subject : (Int, Int)?
+  mut predicate : (Int, Int)?
+  mut object : (Int, Int)?
+  mut graph : (Int, Int)?
+}
+pub fn NQuadsContext::has_pending(Self) -> Bool
+pub fn NQuadsContext::new() -> Self
+pub fn NQuadsContext::reset(Self, ResetScope) -> Unit
+pub fn NQuadsContext::snapshot(Self) -> NQuadsPendingQuad
+
+pub(all) enum NQuadsEffect {
+  Continue
+  EmitQuad(ResetScope)
+  Done
+}
+
+pub(all) enum NQuadsEffectError {
+  SinkFailed(String)
+  Fatal(String)
+}
+
+pub struct NQuadsEngine[L] {
+  lexer : L
+  hooks : Hooks
+  ctx : NQuadsContext
+  mut last_error : (Int, Int)?
+}
+pub fn NQuadsEngine::from_bytes(Array[Byte]) -> Self[Lexermoon]
+pub fn[L] NQuadsEngine::new(L) -> Self[L]
+pub fn[L : LexerSource] NQuadsEngine::next(Self[L]) -> Result[NQuadsPendingQuad, ParseError]?
+
+pub(all) enum NQuadsEvent {
+  NQuadsIri((Int, Int))
+  NQuadsBlankNode((Int, Int))
+  NQuadsLiteral((Int, Int))
+  NQuadsPrefName((Int, Int))
+  NQuadsTripleTerm((Int, Int))
+  NQuadsComma
+  NQuadsSemicolon
+  NQuadsDot
+  NQuadsUnknown
+  NQuadsEOF
+}
+
+pub(all) struct NQuadsPendingQuad {
+  subj : (Int, Int)?
+  pred : (Int, Int)?
+  obj : (Int, Int)?
+  graph : (Int, Int)?
+} derive(Eq)
+
+pub(all) enum NQuadsState {
+  NQuadsExpectSubject
+  NQuadsExpectPredicate
+  NQuadsExpectObject
+  NQuadsExpectDotOrGraph
+  NQuadsExpectDot
+}
+
+pub(all) struct NamedNode {
+  iri : String
+} derive(Default, Eq, Hash, @debug.Debug)
+pub fn NamedNode::as_ref(Self) -> NamedNodeRef
+pub fn NamedNode::new_unchecked(StringView) -> NamedNodeRef
+pub impl Show for NamedNode
+
+pub(all) struct NamedNodeRef {
+  iri : StringView
+} derive(Eq, Hash, @debug.Debug)
+pub fn NamedNodeRef::into_owned(Self) -> NamedNode
+pub impl Show for NamedNodeRef
+
+pub(all) enum Object {
+  Iri(ArrayView[Byte])
+  BNode(ArrayView[Byte])
+  Literal(ArrayView[Byte])
+  TripleTerm(ArrayView[Byte])
+  PrefName(ArrayView[Byte])
+} derive(Eq, @debug.Debug)
+pub impl Show for Object
+
+pub struct PrivateUse {
+  prefix : (Int, Int)
+  subtags : Array[(Int, Int)]
+} derive(Eq, @debug.Debug)
+pub impl Show for PrivateUse
+
+pub(all) struct QuadEmit {
+  subject : Subject
+  predicate : ArrayView[Byte]
+  object : Object
+  graph : GraphName
+} derive(Eq, @debug.Debug)
+pub impl Show for QuadEmit
+
+pub struct QuadSpan {
+  subj : ArrayView[Byte]
+  pred : ArrayView[Byte]
+  obj : ArrayView[Byte]
+  graph : ArrayView[Byte]?
+  subj_type : TermType
+  obj_type : TermType
+} derive(@debug.Debug)
+pub impl Show for QuadSpan
+
+pub(all) enum ResetScope {
+  Object
+  PredObj
+  SPO
+  All
+} derive(@debug.Debug)
+
+pub(all) enum SerializeFormat {
+  Triple
+  Quad
+} derive(Eq, @debug.Debug)
+
+pub struct Serializer {
+  format : SerializeFormat
+  graph_policy : GraphPolicy
+  only_named_graph : Bool
+}
+pub fn Serializer::new(format? : SerializeFormat, graph_policy? : GraphPolicy, only_named_graph? : Bool) -> Self
+pub fn Serializer::serialize(Self, QuadEmit) -> Result[String, ParseError]
+pub fn Serializer::serialize_all(Self, Array[QuadEmit]) -> Result[String, ParseError]
+
+pub struct SliceParser[L] {
+  engine : NQuadsEngine[L]
+  data : ArrayView[Byte]
+  lenient : Bool
+  rdf12 : Bool
+  errors : Array[ParseError]
+}
+pub fn[L] SliceParser::lenient(Self[L]) -> Self[L]
+pub fn[L] SliceParser::new(NQuadsEngine[L], ArrayView[Byte], lenient? : Bool, rdf12? : Bool) -> Self[L]
+pub fn[L : LexerSource] SliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[ParseError])
+pub fn[L : LexerSource] SliceParser::parse_next(Self[L]) -> Result[QuadSpan, ParseError]?
+
+pub(all) enum Subject {
+  Iri(ArrayView[Byte])
+  BNode(ArrayView[Byte])
+  PrefName(ArrayView[Byte])
+  TripleTerm(ArrayView[Byte])
+} derive(Eq, @debug.Debug)
+pub impl Show for Subject
+
+pub struct TagState {
+  language : (Int, Int)
+  extlang : (Int, Int)?
+  script : (Int, Int)?
+  region : (Int, Int)?
+  variants : Array[(Int, Int)]
+  extensions : Array[Extension]
+  private_use : PrivateUse?
+  is_grandfathered : Bool
+} derive(Eq, @debug.Debug)
+pub impl Show for TagState
+
+pub(all) enum TermType {
+  Iri
+  BNode
+  Literal
+  TripleTerm
+} derive(Eq, @debug.Debug)
+pub impl Show for TermType
+
+pub(all) enum Token {
+  Dot((Int, Int))
+  Semicolon((Int, Int))
+  Comma((Int, Int))
+  Iri((Int, Int))
+  Literal((Int, Int))
+  BlankNode((Int, Int))
+  PrefName((Int, Int))
+  TripleTerm((Int, Int))
+  Unknown((Int, Int))
+  EOF(Int)
+} derive(@debug.Debug)
+pub impl Show for Token
+
+// Type aliases
+pub type Predicate = ArrayView[Byte]
+
+pub type Span = (Int, Int)
+
+pub type TagSpan = (Int, Int)
+
+// Traits
+pub trait ErrOut {
+  fn message(Self) -> String
+  fn err_kind(Self) -> String
+}
+
+trait LexerSource
+
+pub trait NQuadsActions {
+  fn set_subject(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]
+  fn set_predicate(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]
+  fn set_object(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]
+  fn set_graph(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]
+}
+
+pub trait NQuadsEffectHandler {
+  fn handle_continue(Self) -> Result[Unit, NQuadsEffectError]
+  fn handle_emit_quad(Self, ResetScope) -> Result[Unit, NQuadsEffectError]
+  fn handle_done(Self) -> Result[Unit, NQuadsEffectError]
+  fn dispatch(Self, NQuadsEffect) -> Result[Unit, NQuadsEffectError]
+}
+
+pub trait NQuadsLoopPolicy {
+  fn begin_record(Self) -> Unit
+  fn recover(Self, (Int, Int)) -> Unit
+  fn finish_at_end(Self) -> Result[NQuadsPendingQuad, ParseError]?
+  fn on_business_failed(Self, String) -> ParseError
+}

@@ -23,7 +23,7 @@ keywords = [ "nquads", "rdf" ]
 
 description = "MoonTTL is a high-performance RDF parsing and serialization library for MoonBit."
 
-preferred_target = "native"
+preferred_target = "wasm"
 
 source = "src"
 

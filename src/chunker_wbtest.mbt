@@ -1,7 +1,7 @@
 ///|
 test "ntriples chunker: empty input" {
   let bytes = @utf8.encode("")
-  let chunks =get_ntriples_slice_chunks(bytes[:].to_array(), 5)
+  let chunks = get_ntriples_slice_chunks(bytes[:].to_array(), 5)
   @debug.assert_eq(chunks.length(), 0)
 }
 

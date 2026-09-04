@@ -59,7 +59,6 @@ fn span_of_event(event : TrigEvent) -> Span {
     | TrigLbrace
     | TrigRbrace
     | TrigRbracket
-    | TrigAnon
     | TrigRparen
     | TrigBang
     | TrigCaret

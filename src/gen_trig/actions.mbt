@@ -173,7 +173,7 @@ impl TrigActions for Hooks with fn pop_bnode_prop(
 /// ★3 阶段3 `()` 集合：开集合 action——List 帧压栈，外层 s/p/g 快照入帧；
 /// s 槽留空（链头未定：空集合 = rdf:nil，非空集合头 = node0，收口/pop 时裁决）
 impl TrigActions for Hooks with fn open_collection(
-  self : Hooks,
+  _self : Hooks,
   ctx : TrigContext,
   open_span : Span,
   as_subject : Bool,
@@ -207,8 +207,9 @@ impl TrigActions for Hooks with fn open_slot(
 ) -> Result[TrigEffect, TrigActionError] {
   match typ {
     SlotType::BnodeProp =>
-      self.open_bnode_prop(ctx, open_span, false, ret_state)
-    SlotType::List => self.open_collection(ctx, open_span, false, ret_state)
+      TrigActions::open_bnode_prop(self, ctx, open_span, false, ret_state)
+    SlotType::List =>
+      TrigActions::open_collection(self, ctx, open_span, false, ret_state)
     SlotType::Formula =>
       // N3 公式预埋未接表；表外形态，防御位
       Err(TrigActionError::BusinessFailed("Formula slot not supported"))
@@ -228,7 +229,7 @@ fn list_top(ctx : TrigContext) -> Result[Slot, TrigActionError] {
 /// 首元素 first 链发射：链头未建则建 node0 = (open.0, 1)；first 标记 + 元素落 o 槽。
 /// EmitQuad(PredObj) 收拾后 s 槽保留链节点（下一元素 rest 链复用）
 impl TrigActions for Hooks with fn list_first(
-  self : Hooks,
+  _self : Hooks,
   ctx : TrigContext,
   elem : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -249,7 +250,7 @@ impl TrigActions for Hooks with fn list_first(
 /// 首元素为嵌套结构（`[`/`(`）：first 链发射（o = 嵌套头 span，开括号即身份）→
 /// OpenSlot 兑现开帧（发射在先——快照要拍到链节点，开帧覆写 s 在其后）
 impl TrigActions for Hooks with fn list_first_nested(
-  self : Hooks,
+  _self : Hooks,
   ctx : TrigContext,
   elem : Span,
   typ : SlotType,
@@ -277,7 +278,7 @@ impl TrigActions for Hooks with fn list_first_nested(
 /// 后续元素：rest 链发射（当前节点 → 新节点 Span(open.0, node_seq+1)）→
 /// ListStep 兑现（切新节点 + first 标记 + 元素落 o）→ 第二次发射（新节点 first 元素）
 impl TrigActions for Hooks with fn list_next(
-  self : Hooks,
+  _self : Hooks,
   ctx : TrigContext,
   elem : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -301,7 +302,7 @@ impl TrigActions for Hooks with fn list_next(
 /// 后续元素为嵌套结构：rest 链 → ListStep 切新节点 + first 标记落 o = 嵌套头 →
 /// 第二次发射 → OpenSlot 开帧（四意图序）
 impl TrigActions for Hooks with fn list_next_nested(
-  self : Hooks,
+  _self : Hooks,
   ctx : TrigContext,
   elem : Span,
   typ : SlotType,
@@ -327,7 +328,7 @@ impl TrigActions for Hooks with fn list_next_nested(
 ///|
 /// 集合收口（尾元素后 `)`）：尾节点 rdf:rest rdf:nil（标记 Span(open.0, 0)）→
 /// pop（头节点 fr.open_span 落目标槽 + 返回状态兑现）
-impl TrigActions for Hooks with fn list_nil(self : Hooks, ctx : TrigContext) -> Result[
+impl TrigActions for Hooks with fn list_nil(_self : Hooks, ctx : TrigContext) -> Result[
   TrigEffect,
   TrigActionError,
 ] {
@@ -349,7 +350,7 @@ impl TrigActions for Hooks with fn list_nil(self : Hooks, ctx : TrigContext) -> 
 /// ListStep 意图兑现 action：节点序号 +1，s 槽切新节点（Span(open.0, 新序号)），
 /// first 标记 + 元素落 o 槽（供串列中第二次 EmitQuad 快照）
 impl TrigActions for Hooks with fn list_step(
-  self : Hooks,
+  _self : Hooks,
   ctx : TrigContext,
   elem : Span,
 ) -> Result[TrigEffect, TrigActionError] {

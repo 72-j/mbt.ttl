@@ -26,9 +26,9 @@ pub struct QuadSpan {
   obj_type : TermType
 } derive(Debug)
 
-
 // PendingQuad 已由生成的 nquads.mbt 自带（槽位名 subject/predicate/object/graph），
 // 此处手抄副本退役——字段名以生成契约为准。
+
 ///|
 /// 解析错误（携带位置信息）
 // pub(all) suberror ParseError {
@@ -38,10 +38,10 @@ pub struct QuadSpan {
 
 ///|
 /// 按 span 安全切分数据（越界返回空视图）
-fn slice_span(data : ArrayView[Byte], span : Span) -> ArrayView[Byte] {
-  let (off, len) = span
-  if off < 0 || len < 0 || off + len > data.length() {
-    return data[0:0]
-  }
-  data[off:off + len]
-}
+// fn slice_span(data : ArrayView[Byte], span : Span) -> ArrayView[Byte] {
+//   let (off, len) = span
+//   if off < 0 || len < 0 || off + len > data.length() {
+//     return data[0:0]
+//   }
+//   data[off:off + len]
+// }

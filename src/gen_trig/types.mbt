@@ -102,7 +102,7 @@ pub trait ErrOut {
 
 ///|
 /// 按 span 安全切分数据（越界返回空视图）
-pub fn slice_span(data : ArrayView[Byte], span : Span) -> ArrayView[Byte] {
+fn slice_span(data : ArrayView[Byte], span : Span) -> ArrayView[Byte] {
   let (off, len) = span
   if off < 0 || len < 0 || off + len > data.length() {
     return data[0:0]
@@ -113,12 +113,17 @@ pub fn slice_span(data : ArrayView[Byte], span : Span) -> ArrayView[Byte] {
 ///|
 pub impl Show for TrigEvent with fn output(self : TrigEvent, logger : &Logger) -> Unit {
   match self {
-    TrigEvent::TrigIri(span) => logger.write("IRI \{span}")
-    TrigEvent::TrigBlankNode(span) => logger.write("BlankNode \{span}")
-    TrigEvent::TrigLiteral(span) => logger.write("Literal \{span}")
-    TrigEvent::TrigPrefName(span) => logger.write("PrefName \{span}")
-    TrigEvent::TrigTripleTerm(span) => logger.write("TripleTerm \{span}")
-    TrigEvent::TrigKeywordA(span) => logger.write("KeywordA \{span}")
+    TrigEvent::TrigIri(span) => logger.write("IRI \{@debug.to_string(span)}")
+    TrigEvent::TrigBlankNode(span) =>
+      logger.write("BlankNode \{@debug.to_string(span)}")
+    TrigEvent::TrigLiteral(span) =>
+      logger.write("Literal \{@debug.to_string(span)}")
+    TrigEvent::TrigPrefName(span) =>
+      logger.write("PrefName \{@debug.to_string(span)}")
+    TrigEvent::TrigTripleTerm(span) =>
+      logger.write("TripleTerm \{@debug.to_string(span)}")
+    TrigEvent::TrigKeywordA(span) =>
+      logger.write("KeywordA \{@debug.to_string(span)}")
     TrigEvent::TrigAt => logger.write("@")
     TrigEvent::TrigPrefixKw => logger.write("PrefixKw")
     TrigEvent::TrigBaseKw => logger.write("BaseKw")
@@ -128,10 +133,12 @@ pub impl Show for TrigEvent with fn output(self : TrigEvent, logger : &Logger) -
     TrigEvent::TrigDot => logger.write("Dot")
     TrigEvent::TrigLbrace => logger.write("Lbrace")
     TrigEvent::TrigRbrace => logger.write("Rbrace")
-    TrigEvent::TrigLbracket(span) => logger.write("Lbracket \{span}")
-    TrigEvent::TrigAnon(span) => logger.write("Anon \{span}")
+    TrigEvent::TrigLbracket(span) =>
+      logger.write("Lbracket \{@debug.to_string(span)}")
+    TrigEvent::TrigAnon(span) => logger.write("Anon \{@debug.to_string(span)}")
     TrigEvent::TrigRbracket => logger.write("Rbracket")
-    TrigEvent::TrigLparen(span) => logger.write("Lparen \{span}")
+    TrigEvent::TrigLparen(span) =>
+      logger.write("Lparen " + @debug.to_string(span))
     TrigEvent::TrigRparen => logger.write("Rparen")
     TrigEvent::TrigUnknown => logger.write("Unknown")
     TrigEvent::TrigEOF => logger.write("EOF")

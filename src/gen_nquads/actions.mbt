@@ -17,7 +17,7 @@
 pub struct Hooks {}
 
 ///|
-pub fn Hooks::new() -> Hooks {
+fn Hooks::new() -> Hooks {
   Hooks::{ }
 }
 

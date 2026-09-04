@@ -20,7 +20,7 @@ import {
   "moonbitlang/core/ref",
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
-} for "test"
+} for "wbtest"
 
 options(
   "is-main": false,

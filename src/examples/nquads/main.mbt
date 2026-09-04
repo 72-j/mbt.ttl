@@ -24,8 +24,8 @@ async fn main {
     println("Data length: \{data.length()} bytes")
 
     // Create parser
-    let engine = @nquads.NQuadsEngine::from_bytes(data.to_array())
-    let slice = @nquads.SliceParser::new(engine, Bytes::to_array(data))
+    let engine = @gen_nquads.NQuadsEngine::from_bytes(data.to_array())
+    let slice = @gen_nquads.SliceParser::new(engine, Bytes::to_array(data))
 
     // Parse all quads
     println("")
@@ -44,7 +44,7 @@ async fn main {
     println("")
     println("=== Materializing ===")
 
-    let (quads, mat_errors) = @nquads.materialize_all(quad_spans)
+    let (quads, mat_errors) = @gen_nquads.materialize_all(quad_spans)
 
     println("Materialized \{quads.length()} quads")
     // Print materialize errors
@@ -59,7 +59,10 @@ async fn main {
     println("")
     println("=== Serialized Output ===")
 
-    let output = match (@nquads.Serializer::new(format=@nquads.SerializeFormat::Quad)).serialize_all(quads) {
+    let output = match
+      @gen_nquads.Serializer::new(format=@gen_nquads.SerializeFormat::Quad).serialize_all(
+        quads,
+      ) {
       Ok(value) => value
       Err(error) => {
         println("Serialize Error: \{error}")

@@ -94,7 +94,7 @@ test "extended language" {
   let tag_zh = LanguageTag::parse("zh").unwrap()
   @debug.assert_eq("zh", tag_zh.full_language().to_owned())
   @debug.assert_eq("zh", tag_zh.primary_language().to_owned())
-  @debug.assert_eq(None, tag_zh.extended_language())
+  @debug.assert_eq(Option::None, tag_zh.extended_language())
 
   @debug.assert_eq([], tag_zh.extended_language_subtags())
 
@@ -116,21 +116,21 @@ test "extended language" {
   let tag_zh_min_nan = LanguageTag::parse("zh-min-nan").unwrap()
   @debug.assert_eq("zh-min-nan"[:], tag_zh_min_nan.full_language().to_owned())
   @debug.assert_eq("zh-min-nan", tag_zh_min_nan.primary_language().to_owned())
-  @debug.assert_eq(None, tag_zh_min_nan.extended_language())
+  @debug.assert_eq(Option::None, tag_zh_min_nan.extended_language())
 
   @debug.assert_eq(0, tag_zh_min_nan.extended_language_subtags().length())
 
   let tag_i_tsu = LanguageTag::parse("i-tsu").unwrap()
   @debug.assert_eq("i-tsu", tag_i_tsu.full_language().to_owned())
   @debug.assert_eq("i-tsu", tag_i_tsu.primary_language().to_owned())
-  @debug.assert_eq(None, tag_i_tsu.extended_language())
+  @debug.assert_eq(Option::None, tag_i_tsu.extended_language())
 
   @debug.assert_eq(0, tag_i_tsu.extended_language_subtags().length())
 
   let tag_zh_cn = LanguageTag::parse("zh-CN").unwrap()
   @debug.assert_eq("zh", tag_zh_cn.full_language().to_owned())
   @debug.assert_eq("zh", tag_zh_cn.primary_language().to_owned())
-  @debug.assert_eq(None, tag_zh_cn.extended_language())
+  @debug.assert_eq(Option::None, tag_zh_cn.extended_language())
 
   @debug.assert_eq(0, tag_zh_cn.extended_language_subtags().length())
 
@@ -201,7 +201,10 @@ test "variant" {
 ///|
 test "extended_language" {
   // 无扩展语言
-  @debug.assert_eq(None, LanguageTag::parse("en").unwrap().extended_language())
+  @debug.assert_eq(
+    Option::None,
+    LanguageTag::parse("en").unwrap().extended_language(),
+  )
 
   // 标准扩展语言（3位字母）
   let tag_zh_gan = LanguageTag::parse("zh-gan").unwrap()
@@ -216,7 +219,7 @@ test "extended_language" {
 
   // 祖父标签无扩展语言
   @debug.assert_eq(
-    None,
+    Option::None,
     LanguageTag::parse("i-tsu").unwrap().extended_language(),
   )
 }
@@ -284,7 +287,7 @@ test "private_use_first_subtag" {
 ///|
 test "privateuse" {
   @debug.assert_eq(
-    None,
+    Option::None,
     LanguageTag::parse("en").unwrap().private_use_subtags().get(0),
   )
 
