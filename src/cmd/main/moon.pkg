@@ -5,7 +5,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/core/encoding/utf8",
-  "thy1016/moonttl" @lib,
+  "thy1016/moonttl/gen_nquads" @nquads,
 }
 
 pkgtype(kind: "executable")

@@ -10,7 +10,7 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/core/bench",
   "moonbitlang/core/quickcheck/splitmix",
-  "thy1016/moonttl" @lib,
+  "thy1016/moonttl/gen_nquads" @nquads,
 }
 
 pkgtype(kind: "executable")

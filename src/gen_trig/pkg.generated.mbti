@@ -1,0 +1,232 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "thy1016/moonttl/gen_trig"
+
+import {
+  "moonbitlang/core/debug",
+  "thy1016/moonttl/gen_nquads",
+}
+
+// Values
+pub fn array_to_view(ArrayView[Byte]) -> BytesView
+
+pub fn from_str_radix(String, Int) -> Result[Int, String]
+
+pub fn is_pchar(Char) -> Bool
+
+pub fn is_unreserved(Char) -> Bool
+
+pub fn is_valid_hex_string(String) -> Bool
+
+pub fn slice_span(ArrayView[Byte], (Int, Int)) -> ArrayView[Byte]
+
+pub fn[A : TrigActions] step(TrigContext, TrigEvent, A) -> Result[TrigEffect, TrigActionError]
+
+pub fn trig_parser(Array[Byte], lenient? : Bool) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
+
+// Errors
+
+// Types and methods
+pub(all) enum GraphPolicy {
+  Strict
+  Drop
+} derive(Eq, @debug.Debug)
+
+pub struct Hooks {
+}
+pub fn Hooks::new() -> Self
+
+pub(all) struct QuadSpan {
+  s : (Int, Int)
+  p : (Int, Int)
+  o : (Int, Int)
+  g : (Int, Int)?
+}
+
+pub(all) enum SerializeFormat {
+  Turtle
+  TriG
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TrigActionError {
+  UnexpectedEvent(TrigState, TrigEvent)
+  BusinessFailed(String)
+}
+
+pub(all) struct TrigContext {
+  mut state : TrigState
+  mut subject : (Int, Int)?
+  mut predicate : (Int, Int)?
+  mut object : (Int, Int)?
+  mut graph : (Int, Int)?
+  mut prefix_name : (Int, Int)?
+  mut base : (Int, Int)?
+  prefixes : Array[((Int, Int), (Int, Int))]
+}
+pub fn TrigContext::has_pending(Self) -> Bool
+pub fn TrigContext::new() -> Self
+pub fn TrigContext::reset(Self, @gen_nquads.ResetScope) -> Unit
+pub fn TrigContext::snapshot(Self) -> @gen_nquads.PendingQuad
+
+pub(all) enum TrigEffect {
+  Continue
+  EmitQuad(@gen_nquads.ResetScope)
+  Reset(@gen_nquads.ResetScope)
+  Done
+  EnterGraph
+  ExitGraph
+  Sequence(Array[TrigEffect])
+} derive(@debug.Debug)
+
+pub struct TrigEngine[L] {
+  lexer : L
+  hooks : Hooks
+  ctx : TrigContext
+  mut last_error : (Int, Int)?
+  mut pending : TrigEvent?
+}
+pub fn TrigEngine::from_bytes(Array[Byte]) -> Self[TrigLexerAdapter]
+pub fn[L : LexerSource] TrigEngine::new(L) -> Self[L]
+pub fn[L : LexerSource] TrigEngine::next(Self[L]) -> Result[@gen_nquads.PendingQuad, @gen_nquads.ParseError]?
+
+pub(all) enum TrigEvent {
+  TrigIri((Int, Int))
+  TrigBlankNode((Int, Int))
+  TrigLiteral((Int, Int))
+  TrigPrefName((Int, Int))
+  TrigTripleTerm((Int, Int))
+  TrigKeywordA((Int, Int))
+  TrigAt
+  TrigPrefixKw
+  TrigBaseKw
+  TrigGraphKw
+  TrigVersionKw
+  TrigTilde
+  TrigAnnotStart
+  TrigAnnotEnd
+  TrigComma
+  TrigSemicolon
+  TrigDot
+  TrigLbrace
+  TrigRbrace
+  TrigLbracket
+  TrigRbracket
+  TrigLparen
+  TrigRparen
+  TrigUnknown
+  TrigEOF
+} derive(@debug.Debug)
+pub impl Show for TrigEvent
+
+pub(all) struct TrigLexerAdapter {
+  inner : @gen_nquads.Lexermoon
+  data : ArrayView[Byte]
+  mut eof_seen : Bool
+}
+pub fn TrigLexerAdapter::new(ArrayView[Byte]) -> Self
+pub impl LexerSource for TrigLexerAdapter
+
+pub struct TrigMaterializer {
+  data : ArrayView[Byte]
+  prefixes : Array[((Int, Int), (Int, Int))]
+  base : (Int, Int)?
+  arena : Array[Byte]
+}
+pub fn TrigMaterializer::materialize_all(Self, Array[QuadSpan], deep_validate? : Bool) -> (Array[@gen_nquads.QuadEmit], Array[@gen_nquads.ParseError])
+pub fn TrigMaterializer::materialize_quad(Self, QuadSpan) -> Result[@gen_nquads.QuadEmit, @gen_nquads.ParseError]
+pub fn TrigMaterializer::new(ArrayView[Byte], Array[((Int, Int), (Int, Int))], base? : (Int, Int)?) -> Self
+
+pub struct TrigSerializer {
+  format : SerializeFormat
+  graph_policy : GraphPolicy
+}
+pub fn TrigSerializer::new(format? : SerializeFormat, graph_policy? : GraphPolicy) -> Self
+pub fn TrigSerializer::serialize(Self, Array[@gen_nquads.QuadEmit]) -> Result[String, @gen_nquads.ParseError]
+
+pub struct TrigSliceParser[L] {
+  engine : TrigEngine[L]
+  data : ArrayView[Byte]
+  lenient : Bool
+  errors : Array[@gen_nquads.ParseError]
+}
+pub fn[L] TrigSliceParser::new(TrigEngine[L], ArrayView[Byte], lenient? : Bool) -> Self[L]
+pub fn[L : LexerSource] TrigSliceParser::next(Self[L]) -> Result[QuadSpan, @gen_nquads.ParseError]?
+pub fn[L : LexerSource] TrigSliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
+
+pub(all) enum TrigState {
+  TrigExpectSubject
+  TrigExpectPredicate
+  TrigExpectObject
+  TrigExpectDotOrGraph
+  TrigExpectDirectiveKind
+  TrigExpectPrefixName
+  TrigExpectPrefixIri
+  TrigExpectBaseIri
+  TrigExpectDirectiveEnd
+  TrigExpectGraphLabel
+  TrigExpectGraphLbrace
+  TrigExpectVerbOrEnd
+  TrigExpectVersionLiteral
+  TrigExpectVerbOrDot
+  TrigExpectTildeEnd
+  TrigAnnotExpectVerb
+  TrigAnnotExpectVerbTail
+  TrigAnnotExpectObject
+  TrigAnnotExpectEnd
+  GraphAnnotExpectVerb
+  GraphAnnotExpectVerbTail
+  GraphAnnotExpectObject
+  GraphAnnotExpectEnd
+  GraphExpectSubject
+  GraphExpectPredicate
+  GraphExpectObject
+  GraphExpectDotOrGraph
+  GraphExpectVerbOrDot
+  GraphExpectTildeEnd
+  GraphExpectVerbOrEnd
+} derive(@debug.Debug)
+
+// Type aliases
+pub using @gen_nquads {type Lexermoon}
+
+pub using @gen_nquads {type ParseError}
+
+pub using @gen_nquads {type PendingQuad}
+
+pub using @gen_nquads {type ResetScope}
+
+pub type Span = (Int, Int)
+
+pub using @gen_nquads {type TermType}
+
+pub using @gen_nquads {type Token}
+
+// Traits
+pub trait ErrOut {
+  fn message(Self) -> String
+  fn err_kind(Self) -> String
+}
+pub impl ErrOut for @gen_nquads.ParseError
+
+pub trait LexerSource {
+  fn next(Self) -> TrigEvent?
+  fn pos(Self) -> Int
+  fn byte_at(Self, Int) -> Byte
+}
+
+pub trait TrigActions {
+  fn set_subject(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn set_predicate(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn set_object(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn set_prefix_name(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn declare_prefix(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn set_base(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn enter_graph(Self, TrigContext, (Int, Int)?) -> Result[TrigEffect, TrigActionError]
+  fn exit_graph(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
+}
+
+pub trait TrigLoopPolicy {
+  fn begin_record(Self) -> Unit
+  fn recover(Self, (Int, Int)) -> Unit
+  fn finish_at_end(Self) -> Result[@gen_nquads.PendingQuad, @gen_nquads.ParseError]?
+  fn on_business_failed(Self, String) -> @gen_nquads.ParseError
+}

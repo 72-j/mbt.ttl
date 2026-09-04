@@ -1,6 +1,6 @@
 ///|
 /// Parse N-Quads file example
-/// 
+///
 /// This example demonstrates how to parse N-Quads format RDF data from a file.
 /// N-Quads is a line-based format for RDF triples/quads.
 async fn main {
@@ -20,12 +20,12 @@ async fn main {
     println("Written N-Quads content to: \{path}")
 
     // Read file content as binary
-    let data = @fs.read_file(path).binary().to_fixedarray()
+    let data = @fs.read_file(path).binary()
     println("Data length: \{data.length()} bytes")
 
     // Create parser
-    let engine = @lib.NQuadsEngine::from_bytes(data)
-    let slice = @lib.SliceParser::new(engine, data)
+    let engine = @nquads.NQuadsEngine::from_bytes(data.to_array())
+    let slice = @nquads.SliceParser::new(engine, Bytes::to_array(data))
 
     // Parse all quads
     println("")
@@ -44,9 +44,11 @@ async fn main {
     println("")
     println("=== Materializing ===")
 
-    let (quads, mat_errors) = @lib.materialize_all(quad_spans)
+    let (quads, mat_errors) = @nquads.materialize_all(quad_spans)
 
+    println("Materialized \{quads.length()} quads")
     // Print materialize errors
+
     for err in mat_errors {
       println("Materialize Error: \{err}")
     }
@@ -57,8 +59,13 @@ async fn main {
     println("")
     println("=== Serialized Output ===")
 
-    let serializer = @lib.Serializer::new(data)
-    let output = serializer.serialize_all(quads)
+    let output = match (@nquads.Serializer::new(format=@nquads.SerializeFormat::Quad)).serialize_all(quads) {
+      Ok(value) => value
+      Err(error) => {
+        println("Serialize Error: \{error}")
+        ""
+      }
+    }
     println(output)
 
     // Summary

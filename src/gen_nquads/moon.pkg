@@ -1,0 +1,18 @@
+// gen_nquads：fsm 生成器产物 + 用户补充部分（词法器/Actions 回调/主循环/SliceParser）
+// 词法器复用用户提供的 lexer_mbt.mbt（Lexermoon；Token 与 C 版 Lexerc 同型同宽）
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/bench",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+} for "test"
+
+options(
+  "is-main": false,
+  "native-stub": [ "lexerc_ffi.c" ],
+  targets: { "lexerc.mbt": [ "native" ] },
+)

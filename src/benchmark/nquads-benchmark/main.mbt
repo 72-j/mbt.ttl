@@ -9,16 +9,15 @@ async fn main {
       "./src/benchmark/test_1000.nq"
     }
     let content = @fs.read_file(path).binary()
-    let bytes = content.to_fixedarray()
-    let data = bytes
+    let data = content.to_fixedarray()
 
     // 1. 仅 Lexer
     let start1 = @bench.monotonic_clock_start()
-    let lexer = @lib.Lexerc::new(data)
+    let lexer = @nquads.Lexerc::new(data)
     let mut lexer_count = 0
     for ;; {
       match lexer.next() {
-        Some(@lib.Token::EOF(_)) => break
+        Some(@nquads.Token::EOF(_)) => break
         Some(_) => lexer_count = lexer_count + 1
         None => break
       }
@@ -27,7 +26,7 @@ async fn main {
     let elapsed1 = @bench.monotonic_clock_end(start1)
 
     // 2. NQuadsEngine (不含验证)
-    let engine = @lib.NQuadsEngine::from_bytes(data)
+    let engine = @nquads.NQuadsEngine::from_bytes(Array::from_fixed_array(data))
     let start2 = @bench.monotonic_clock_start()
     let mut parser_count = 0
     for ;; {
@@ -41,18 +40,18 @@ async fn main {
     let elapsed2 = @bench.monotonic_clock_end(start2)
 
     // 3. SliceParser::parse_all (含验证)
-    let engine2 = @lib.NQuadsEngine::from_bytes(data)
-    let slice = @lib.SliceParser::new(engine2, data)
+    let engine2 = @nquads.NQuadsEngine::from_bytes(Array::from_fixed_array(data))
+    let slice = @nquads.SliceParser::new(engine2, data)
     let start3 = @bench.monotonic_clock_start()
     let (quads, parse_errors) = slice.parse_all()
     let elapsed3 = @bench.monotonic_clock_end(start3)
 
     // 4. materialize
-    let engine3 = @lib.NQuadsEngine::from_bytes(data)
-    let slice3 = @lib.SliceParser::new(engine3, data)
+    let engine3 = @nquads.NQuadsEngine::from_bytes(Array::from_fixed_array(data))
+    let slice3 = @nquads.SliceParser::new(engine3, data)
     let (quad_spans, _) = slice3.parse_all()
     let start4 = @bench.monotonic_clock_start()
-    let (quad_emits, mat_errors) = @lib.materialize_all(quad_spans)
+    let (quad_emits, mat_errors) = @nquads.materialize_all(quad_spans)
     let elapsed4 = @bench.monotonic_clock_end(start4)
 
     let total_ms = (elapsed3 + elapsed4) / 1000.0

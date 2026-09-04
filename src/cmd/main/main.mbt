@@ -79,13 +79,10 @@ async fn parse_file(path : String, verbose : Bool) -> Unit {
 ///|
 async fn parse_content(content : Bytes, verbose : Bool) -> Unit {
   @async.with_task_group() <| _root => {
-    let data = content.to_fixedarray()
-    // Read file content as binary
-    // println("Data length: \{data.length()} bytes")
 
     // Create parser
-    let engine = @lib.NQuadsEngine::from_bytes(data)
-    let slice = @lib.SliceParser::new(engine, data)
+    let engine = @nquads.NQuadsEngine::from_bytes(content.to_array())
+    let slice = @nquads.SliceParser::new(engine, Bytes::to_array(content))
 
     // Parse all quads
     println("")
@@ -104,7 +101,7 @@ async fn parse_content(content : Bytes, verbose : Bool) -> Unit {
     println("")
     println("=== Materializing ===")
 
-    let (quads, mat_errors) = @lib.materialize_all(quad_spans)
+    let (quads, mat_errors) = @nquads.materialize_all(quad_spans)
 
     println("Materialized \{quads.length()} quads")
     // Print materialize errors
@@ -118,8 +115,13 @@ async fn parse_content(content : Bytes, verbose : Bool) -> Unit {
       println("")
       println("=== Serialized Output ===")
 
-      let serializer = @lib.Serializer::new(data)
-      let output = serializer.serialize_all(quads)
+      let output = match (@nquads.Serializer::new(format=@nquads.SerializeFormat::Quad)).serialize_all(quads) {
+        Ok(value) => value
+        Err(error) => {
+          println("Serialize Error: \{error}")
+          ""
+        }
+      }
       println(output)
     }
 
