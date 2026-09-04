@@ -1,0 +1,156 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "thy1016/bitbang/gen_n3"
+
+import {
+  "moonbitlang/core/debug",
+  "thy1016/bitbang/gen_nquads",
+}
+
+// Values
+pub fn slice_span(ArrayView[Byte], (Int, Int)) -> ArrayView[Byte]
+
+// Errors
+
+// Types and methods
+pub(all) enum IRIUpcastEvent {
+  UpcastRDFRest
+  UpcastRDFFirst
+} derive(Eq)
+
+pub(all) struct N3Context {
+  mut state : N3State
+  mut subject : (Int, Int)?
+  mut predicate : (Int, Int)?
+  mut object : (Int, Int)?
+  mut graph : (Int, Int)?
+  mut prefix_name : (Int, Int)?
+  mut base : (Int, Int)?
+  mut directive_at : Bool
+  mut prefixes : Array[((Int, Int), (Int, Int))]
+  mut bases : Array[(Int, Int)]
+  mut slot_stack : Array[Slot]
+  mut pred_kind : PredKind
+  mut variable_name : (Int, Int)?
+  mut path_chain : Array[(Int, Int)]
+  mut rule_side : RuleSide?
+  mut iri_upcast : Int
+}
+
+pub(all) enum N3Dialect {
+  N3
+  RDFStarOff
+} derive(Eq)
+
+pub(all) enum N3Event {
+  N3Iri((Int, Int))
+  N3BlankNode((Int, Int))
+  N3Literal((Int, Int), (Int, Int)?)
+  N3PrefName((Int, Int))
+  N3TripleTerm((Int, Int))
+  N3BracketTripleTerm((Int, Int))
+  N3KeywordA((Int, Int))
+  N3Variable((Int, Int))
+  N3Equals
+  N3At
+  N3PrefixKw
+  N3BaseKw
+  N3ForAllKw
+  N3ForSomeKw
+  N3KeywordsKw
+  N3Comma
+  N3Semicolon
+  N3Dot
+  N3Lbrace
+  N3Rbrace
+  N3Lbracket((Int, Int))
+  N3Rbracket
+  N3Lparen((Int, Int))
+  N3Rparen
+  N3Anon((Int, Int))
+  N3Bang
+  N3Caret
+  N3Implies
+  N3ImpliedBy
+  N3Unknown
+  N3EOF
+}
+pub impl Show for N3Event
+
+pub(all) enum N3State {
+  ExpectSubject
+  ExpectPredicate
+  ExpectObject
+  ExpectDot
+  Complete
+  ExpectDirectiveKind
+} derive(Eq)
+
+pub(all) enum PredKind {
+  Normal
+  RDFFirst
+  RDFRest
+} derive(Eq)
+
+pub(all) struct QuadSpan {
+  s : (Int, Int)
+  p : (Int, Int)
+  o : (Int, Int)
+  g : (Int, Int)?
+  pk : PredKind
+  pver : Int
+  bver : Int
+  iver : Int
+}
+
+pub(all) enum ResetScope {
+  SlotOnly
+  Object
+  PredObj
+  SPO
+  All
+} derive(@debug.Debug)
+
+pub(all) enum RuleSide {
+  Body
+  Head
+} derive(Eq)
+
+pub(all) struct Slot {
+  typ : SlotType
+  open_span : (Int, Int)
+  subject : (Int, Int)?
+  predicate : (Int, Int)?
+  graph : (Int, Int)?
+  ret_state : N3State
+  as_subject : Bool
+  prev_node : (Int, Int)?
+  mut node_seq : Int
+}
+
+pub(all) enum SlotNodeId {
+  SlotNodeId(Int)
+}
+
+pub(all) enum SlotType {
+  BnodeProp
+  Collection
+  Formula
+} derive(Eq)
+
+// Type aliases
+pub using @gen_nquads {type Lexermoon}
+
+pub using @gen_nquads {type ParseError}
+
+pub type Span = (Int, Int)
+
+pub using @gen_nquads {type TermType}
+
+pub using @gen_nquads {type Token}
+
+// Traits
+pub trait ErrOut {
+  fn message(Self) -> String
+  fn err_kind(Self) -> String
+}
+pub impl ErrOut for @gen_nquads.ParseError
