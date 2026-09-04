@@ -1,13 +1,15 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "thy1016/bitbang/gen_n3"
+package "thy1016/moonttl/gen_n3"
 
 import {
   "moonbitlang/core/debug",
-  "thy1016/bitbang/gen_nquads",
+  "thy1016/moonttl/gen_nquads",
 }
 
 // Values
 pub fn slice_span(ArrayView[Byte], (Int, Int)) -> ArrayView[Byte]
+
+pub fn[A : N3Actions] step(N3Context, N3Event, A) -> Result[N3Effect, N3ActionError]
 
 // Errors
 
@@ -16,6 +18,11 @@ pub(all) enum IRIUpcastEvent {
   UpcastRDFRest
   UpcastRDFFirst
 } derive(Eq)
+
+pub(all) enum N3ActionError {
+  UnexpectedEvent(N3State, N3Event)
+  BusinessFailed(String)
+}
 
 pub(all) struct N3Context {
   mut state : N3State
@@ -35,11 +42,36 @@ pub(all) struct N3Context {
   mut rule_side : RuleSide?
   mut iri_upcast : Int
 }
+pub fn N3Context::has_pending(Self) -> Bool
+pub fn N3Context::new() -> Self
+pub fn N3Context::reset(Self, ResetScope) -> Unit
+pub fn N3Context::snapshot(Self) -> N3PendingQuad
 
 pub(all) enum N3Dialect {
   N3
   RDFStarOff
 } derive(Eq)
+
+pub(all) enum N3Effect {
+  Continue
+  EmitQuad(ResetScope)
+  Reset(ResetScope)
+  Done
+  Sequence(Array[N3Effect])
+  PopBnp
+  OpenSlot((Int, Int), SlotType, N3State)
+}
+
+pub(all) enum N3EffectError {
+  SinkFailed(String)
+  Fatal(String)
+}
+
+pub(all) enum N3EffectOutcome {
+  KeepGoing
+  YieldQuad(N3PendingQuad)
+  Stop
+}
 
 pub(all) enum N3Event {
   N3Iri((Int, Int))
@@ -76,14 +108,46 @@ pub(all) enum N3Event {
 }
 pub impl Show for N3Event
 
-pub(all) enum N3State {
-  ExpectSubject
-  ExpectPredicate
-  ExpectObject
-  ExpectDot
-  Complete
-  ExpectDirectiveKind
+pub(all) struct N3LexerAdapter {
+  inner : @gen_nquads.Lexermoon
+  data : ArrayView[Byte]
+  mut eof_seen : Bool
+  mut pending : N3Event?
+  mut anon_swallow : Bool
+}
+pub fn N3LexerAdapter::new(ArrayView[Byte]) -> Self
+pub impl LexerSource for N3LexerAdapter
+
+pub(all) struct N3PendingQuad {
+  subj : (Int, Int)?
+  pred : (Int, Int)?
+  obj : (Int, Int)?
+  graph : (Int, Int)?
+  pk : PredKind
+  pver : Int
+  bver : Int
+  iver : Int
 } derive(Eq)
+
+pub(all) enum N3State {
+  N3ExpectSubject
+  N3ExpectPredicate
+  N3ExpectObject
+  N3ExpectDotOrGraph
+  N3ExpectDirectiveKind
+  N3ExpectPrefixName
+  N3ExpectPrefixIri
+  N3ExpectBaseIri
+  N3ExpectDirectiveEnd
+  N3ExpectVerbOrEnd
+  N3ExpectVerbOrDot
+  N3ExpectVerbRequired
+  N3BnpExpectPredicate
+  N3BnpExpectObject
+  N3BnpAfterObject
+  N3ListExpectElemOrEnd
+  N3ListAfterElem
+}
 
 pub(all) enum PredKind {
   Normal
@@ -103,7 +167,6 @@ pub(all) struct QuadSpan {
 }
 
 pub(all) enum ResetScope {
-  SlotOnly
   Object
   PredObj
   SPO
@@ -154,3 +217,51 @@ pub trait ErrOut {
   fn err_kind(Self) -> String
 }
 pub impl ErrOut for @gen_nquads.ParseError
+
+pub trait LexerSource {
+  fn next(Self) -> N3Event?
+  fn pos(Self) -> Int
+  fn byte_at(Self, Int) -> Byte
+}
+
+pub trait N3Actions {
+  fn set_subject(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn set_predicate(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn set_object(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn set_prefix_name(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn declare_prefix(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn set_base(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn open_bnode_prop(Self, N3Context, (Int, Int), Bool, N3State) -> Result[N3Effect, N3ActionError]
+  fn list_first(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn list_first_nested(Self, N3Context, (Int, Int), SlotType, N3State) -> Result[N3Effect, N3ActionError]
+  fn list_next(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn list_next_nested(Self, N3Context, (Int, Int), SlotType, N3State) -> Result[N3Effect, N3ActionError]
+  fn list_nil(Self, N3Context) -> Result[N3Effect, N3ActionError]
+  fn open_collection(Self, N3Context, (Int, Int), Bool, N3State) -> Result[N3Effect, N3ActionError]
+  fn open_slot(Self, N3Context, (Int, Int), SlotType, N3State) -> Result[N3Effect, N3ActionError]
+  fn pop_bnode_prop(Self, N3Context) -> Result[N3Effect, N3ActionError]
+}
+
+pub trait N3EffectHandler {
+  fn handle_continue(Self) -> Result[Unit, N3EffectError]
+  fn handle_emit_quad(Self, ResetScope) -> Result[Unit, N3EffectError]
+  fn handle_reset(Self, ResetScope) -> Result[Unit, N3EffectError]
+  fn handle_done(Self) -> Result[Unit, N3EffectError]
+  fn handle_sequence(Self, Array[N3Effect]) -> Result[Unit, N3EffectError]
+  fn handle_pop_bnp(Self) -> Result[Unit, N3EffectError]
+  fn handle_open_slot(Self, (Int, Int), SlotType, N3State) -> Result[Unit, N3EffectError]
+  fn snapshot(Self, N3Context) -> N3PendingQuad
+  fn apply_scope(Self, N3Context, ResetScope) -> Unit
+  fn on_exit_graph(Self) -> Unit
+  fn on_pop_bnp(Self, N3Context) -> Unit
+  fn on_open_slot(Self, N3Context, (Int, Int), SlotType, N3State) -> Unit
+  fn interpret(Self, N3Context, N3Effect) -> N3EffectOutcome
+  fn dispatch(Self, N3Effect) -> Result[Unit, N3EffectError]
+}
+
+pub trait N3LoopPolicy {
+  fn begin_record(Self) -> Unit
+  fn recover(Self, (Int, Int)) -> Unit
+  fn finish_at_end(Self) -> Result[N3PendingQuad, @gen_nquads.ParseError]?
+  fn on_business_failed(Self, String) -> @gen_nquads.ParseError
+}

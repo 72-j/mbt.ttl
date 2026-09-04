@@ -7,18 +7,6 @@ import {
 }
 
 // Values
-pub fn array_to_view(ArrayView[Byte]) -> BytesView
-
-pub fn from_str_radix(String, Int) -> Result[Int, String]
-
-pub fn is_pchar(Char) -> Bool
-
-pub fn is_unreserved(Char) -> Bool
-
-pub fn is_valid_hex_string(String) -> Bool
-
-pub fn slice_span(ArrayView[Byte], (Int, Int)) -> ArrayView[Byte]
-
 pub fn[A : TrigActions] step(TrigContext, TrigEvent, A) -> Result[TrigEffect, TrigActionError]
 
 pub fn trig_parser(Array[Byte], lenient? : Bool, dialect? : TrigDialect) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])

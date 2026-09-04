@@ -6,31 +6,11 @@ import {
 }
 
 // Values
-pub fn append_escaped_str(StringBuilder, StringView) -> Unit
-
-pub fn fn_remove_dot_segments(StringView) -> StringView
-
 pub fn is_banned_langstring_iri(ArrayView[Byte]) -> Bool
-
-pub fn lexer_create(FixedArray[Byte], Int) -> UInt64
-
-pub fn lexer_destroy(UInt64) -> Unit
-
-pub fn lexer_next(UInt64, FixedArray[Byte]) -> Bool
 
 pub fn materialize_all(Array[QuadSpan]) -> (Array[QuadEmit], Array[ParseError])
 
-pub fn materialize_quad(QuadSpan) -> Result[QuadEmit, ParseError]
-
-pub fn nquads_parser(Array[Byte], lenient? : Bool, rdf12? : Bool) -> (Array[QuadSpan], Array[ParseError])
-
-pub fn nquads_parser_c(FixedArray[Byte], lenient? : Bool) -> (Array[QuadSpan], Array[ParseError])
-
 pub fn parse(BytesView) -> Result[Iri, ParseError]
-
-pub fn parse_iri(BytesView, Int) -> Result[IriSpan, ParseError]
-
-pub fn parse_unchecked(BytesView) -> Iri
 
 pub let rdf_alt : NamedNodeRef
 
@@ -192,8 +172,6 @@ pub fn validate_escapes_unicode(ArrayView[Byte], Int, Int, Int, scalar_only? : B
 
 pub fn validate_iri_body(ArrayView[Byte], Int, Int, Int) -> Result[Unit, ParseError]
 
-pub fn validate_lang_suffix(ArrayView[Byte], Int, Int, Int, Bool) -> Result[Unit, ParseError]
-
 // Errors
 pub(all) suberror IriError {
   NoScheme(Int)
@@ -265,7 +243,6 @@ pub(all) enum GraphPolicy {
 
 pub struct Hooks {
 }
-pub fn Hooks::new() -> Self
 
 pub(all) struct Iri {
   scheme : StringView
@@ -280,14 +257,7 @@ pub fn Iri::relativize(Self, Self) -> Result[Self, ParseError]
 pub fn Iri::resolve(Self, BytesView, remove_dot_segments? : Bool) -> Result[Self, ParseError]
 pub fn Iri::resolve_unchecked(Self, BytesView, remove_dot_segments? : Bool) -> Self
 
-pub(all) struct IriSpan {
-  mut scheme : (Int, Int)
-  mut authority : (Int, Int)
-  mut path : (Int, Int)
-  mut query : (Int, Int)?
-  mut fragment : (Int, Int)?
-  mut pos : Int
-} derive(Default, Eq)
+type IriSpan derive(Default, Eq)
 
 pub struct LanguageTag {
   tag : StringView
@@ -310,25 +280,6 @@ pub fn LanguageTag::to_tagstr(Self) -> String
 pub fn LanguageTag::variant_subtags(Self) -> Array[StringView]
 pub impl Show for LanguageTag
 
-pub(all) struct Lexerc {
-  ptr : UInt64
-  data : FixedArray[Byte]
-  mut offset : Int
-  token_buf : FixedArray[Byte]
-}
-pub fn Lexerc::data(Self) -> FixedArray[Byte]
-pub fn Lexerc::destroy(Self) -> Unit
-pub fn Lexerc::extract(Self, (Int, Int)) -> String
-pub fn Lexerc::extract_iri(Self, Token) -> ArrayView[Byte]
-pub fn Lexerc::extract_literal(Self, Token) -> ArrayView[Byte]
-pub fn Lexerc::is_end(Self) -> Bool
-pub fn Lexerc::new(FixedArray[Byte]) -> Self
-pub fn Lexerc::next(Self) -> Token?
-pub fn Lexerc::position(Self) -> Int
-pub fn Lexerc::remaining(Self) -> Int
-pub fn Lexerc::reset(Self) -> Unit
-pub impl LexerSource for Lexerc
-
 pub(all) struct Lexermoon {
   view : ArrayView[Byte]
   mut pos : Int
@@ -339,7 +290,6 @@ pub fn Lexermoon::extract(Self, Int, Int) -> String
 pub fn Lexermoon::extract_iri(Self, Token) -> String
 pub fn Lexermoon::new(ArrayView[Byte]) -> Self
 pub fn Lexermoon::next(Self) -> Token?
-pub fn Lexermoon::tokenize(Self) -> Array[Token]
 pub impl LexerSource for Lexermoon
 
 pub(all) struct Literal(LiteralContent) derive(Eq, Hash, @debug.Debug)
@@ -391,7 +341,6 @@ pub(all) struct NQuadsContext {
 }
 pub fn NQuadsContext::has_pending(Self) -> Bool
 pub fn NQuadsContext::new() -> Self
-pub fn NQuadsContext::reset(Self, ResetScope) -> Unit
 pub fn NQuadsContext::snapshot(Self) -> NQuadsPendingQuad
 
 pub(all) enum NQuadsEffect {

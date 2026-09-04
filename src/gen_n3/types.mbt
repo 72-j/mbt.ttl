@@ -146,16 +146,23 @@ pub fn slice_span(data : ArrayView[Byte], span : Span) -> ArrayView[Byte] {
 ///|
 pub impl Show for N3Event with fn output(self : N3Event, logger : &Logger) -> Unit {
   match self {
-    N3Event::N3Iri(span) => logger.write("IRI \{span}")
-    N3Event::N3BlankNode(span) => logger.write("BlankNode \{span}")
+    N3Event::N3Iri(span) => logger.write("IRI \{@debug.to_string(span)}")
+    N3Event::N3BlankNode(span) =>
+      logger.write("BlankNode \{@debug.to_string(span)}")
     N3Event::N3Literal(span, span2) =>
-      logger.write("Literal \{span} lang=\{span2}")
-    N3Event::N3PrefName(span) => logger.write("PrefName \{span}")
-    N3Event::N3TripleTerm(span) => logger.write("TripleTerm \{span}")
+      logger.write(
+        "Literal \{@debug.to_string(span)} lang=\{@debug.to_string(span2)}",
+      )
+    N3Event::N3PrefName(span) =>
+      logger.write("PrefName \{@debug.to_string(span)}")
+    N3Event::N3TripleTerm(span) =>
+      logger.write("TripleTerm \{@debug.to_string(span)}")
     N3Event::N3BracketTripleTerm(span) =>
       logger.write("BracketTripleTerm \{@debug.to_string(span)}")
-    N3Event::N3KeywordA(span) => logger.write("KeywordA \{span}")
-    N3Event::N3Variable(span) => logger.write("Variable \{span}")
+    N3Event::N3KeywordA(span) =>
+      logger.write("KeywordA \{@debug.to_string(span)}")
+    N3Event::N3Variable(span) =>
+      logger.write("Variable \{@debug.to_string(span)}")
     N3Event::N3Equals => logger.write("Equals")
     N3Event::N3At => logger.write("@")
     N3Event::N3PrefixKw => logger.write("PrefixKw")
@@ -168,11 +175,12 @@ pub impl Show for N3Event with fn output(self : N3Event, logger : &Logger) -> Un
     N3Event::N3Dot => logger.write("Dot")
     N3Event::N3Lbrace => logger.write("Lbrace")
     N3Event::N3Rbrace => logger.write("Rbrace")
-    N3Event::N3Lbracket(span) => logger.write("Lbracket \{span}")
+    N3Event::N3Lbracket(span) =>
+      logger.write("Lbracket \{@debug.to_string(span)}")
     N3Event::N3Rbracket => logger.write("Rbracket")
-    N3Event::N3Lparen(span) => logger.write("Lparen \{span}")
+    N3Event::N3Lparen(span) => logger.write("Lparen \{@debug.to_string(span)}")
     N3Event::N3Rparen => logger.write("Rparen")
-    N3Event::N3Anon(span) => logger.write("Anon \{span}")
+    N3Event::N3Anon(span) => logger.write("Anon \{@debug.to_string(span)}")
     N3Event::N3Bang => logger.write("Bang")
     N3Event::N3Caret => logger.write("Caret")
     N3Event::N3Implies => logger.write("Implies")
