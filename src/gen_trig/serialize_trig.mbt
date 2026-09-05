@@ -91,6 +91,12 @@ fn append_terms(
           (0, 0),
         ),
       )
+    // Turtle/TriG 无变量（N3 专属词项，方言不产出）：透传会写出上层语言
+    // 语法，报错钉住不变量
+    Variable(_) =>
+      return Err(
+        ParseError::SyntaxErr("Variables are not valid in serialized output", (0, 0)),
+      )
   }
   buf.write_char(' ')
   trig_ser_span(quad.predicate, buf)
@@ -107,6 +113,10 @@ fn append_terms(
           "Prefixed names are not valid in serialized output",
           (0, 0),
         ),
+      )
+    Variable(_) =>
+      return Err(
+        ParseError::SyntaxErr("Variables are not valid in serialized output", (0, 0)),
       )
   }
   Ok(())

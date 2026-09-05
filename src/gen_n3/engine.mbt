@@ -39,6 +39,9 @@ fn span_of_event(event : N3Event) -> Span {
     N3Lbracket(span) => span
     N3Anon(span) => span
     N3Lparen(span) => span
+    N3Lbrace(span) => span
+    N3Bang(span) => span // 路径操作符 span = 中间节点 fresh 身份（役3）
+    N3Caret(span) => span
     N3Equals
     | N3At
     | N3PrefixKw
@@ -53,12 +56,9 @@ fn span_of_event(event : N3Event) -> Span {
     | N3Comma
     | N3Semicolon
     | N3Dot
-    | N3Lbrace
     | N3Rbrace
     | N3Rbracket
     | N3Rparen
-    | N3Bang
-    | N3Caret
     | N3Implies
     | N3ImpliedBy
     | N3Unknown
@@ -232,6 +232,20 @@ fn[L] N3Engine::record_error(self : N3Engine[L], span : Span) -> Unit {
 }
 
 ///|
+/// ADR-002 引擎不变量：slot_stack 存在 Formula 帧 = 处在公式内容区。
+/// 罩内 EmitQuad 意图降级为纯收拾（只 reset 不 snapshot 上抛）——公式
+/// 状态自身零 EmitQuad 行（决策在表），此为共享区域行（Bnp/集合收口
+/// Sequence、Comma/Semicolon 穿罩复用）的单点压制位，机械归模板。
+fn under_formula(ctx : N3Context) -> Bool {
+  for f in ctx.slot_stack {
+    if f.typ is SlotType::Formula {
+      return true
+    }
+  }
+  false
+}
+
+///|
 /// N3LoopPolicy 实现（Engine 持有 lexer/ctx/last_error，钩子落在此处）
 
 ///|
@@ -387,6 +401,11 @@ pub fn[L : LexerSource] N3Engine::next(
         continue
       }
       Ok(N3Effect::EmitQuad(scope)) => {
+        if under_formula(self.ctx) {
+          // ADR-002：公式帧罩内发射意图 = 内容不断言——只收拾不上抛
+          self.ctx.reset(scope)
+          continue
+        }
         // 发射：snapshot 打包槽位 span，按 scope 粒度重置后上抛
         let pending = self.ctx.snapshot()
         self.ctx.reset(scope)
@@ -399,9 +418,14 @@ pub fn[L : LexerSource] N3Engine::next(
         for effect in effects {
           match effect {
             N3Effect::EmitQuad(scope) => {
-              let item = self.ctx.snapshot()
-              self.ctx.reset(scope)
-              self.emit_queue.push(item)
+              if under_formula(self.ctx) {
+                // ADR-002：公式帧罩内发射意图 = 内容不断言——只收拾不上抛
+                self.ctx.reset(scope)
+              } else {
+                let item = self.ctx.snapshot()
+                self.ctx.reset(scope)
+                self.emit_queue.push(item)
+              }
             }
             N3Effect::Reset(scope) => self.ctx.reset(scope)
             N3Effect::PopBnp => {

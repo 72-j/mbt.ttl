@@ -294,9 +294,24 @@ fn validate_term(
     }
     return None
   }
-  if c0 == b'[' || c0 == b'(' {
+  if c0 == b'?' {
+    // 变量形（ADR-004：只记身份）：`?` + 非空 varname。轻验只收词形——
+    // 谓词位变量不接（表无行 + 明确报错），其余深验在物化层 gate_variable
+    if is_predicate {
+      return Some(
+        ParseError::SyntaxErr("Variable is not allowed in predicate position", span),
+      )
+    }
+    if n < 2 {
+      return Some(ParseError::SyntaxErr("Variable must have a name", span))
+    }
+    return None
+  }
+  if c0 == b'[' || c0 == b'(' || c0 == b'!' || c0 == b'^' {
     // fresh 结构词：`[`/`(` 开括号 token 自身 span 作 fresh 身份（`[]`/集合
-    // 单一 BNode/nil 标记）。语法闭合由引擎表保证（栈判脏在 EOF 收尾），此处只认形态
+    // 单一 BNode/nil 标记）；`!`/`^` 路径操作符 span = 中间节点身份（役3，
+    // 引擎铸 identities，用户文本不可达此形）。语法闭合由引擎表保证
+    //（栈判脏在 EOF 收尾），此处只认形态
     return None
   }
   if c0 == b'"' || c0 == b'\'' {

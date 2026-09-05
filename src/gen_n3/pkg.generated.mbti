@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn n3_parser(Array[Byte]) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
+
 pub fn slice_span(ArrayView[Byte], (Int, Int)) -> ArrayView[Byte]
 
 pub fn[A : N3Actions] step(N3Context, N3Event, A) -> Result[N3Effect, N3ActionError]
@@ -14,6 +16,10 @@ pub fn[A : N3Actions] step(N3Context, N3Event, A) -> Result[N3Effect, N3ActionEr
 // Errors
 
 // Types and methods
+pub struct Hooks {
+}
+pub fn Hooks::new() -> Self
+
 pub(all) enum IRIUpcastEvent {
   UpcastRDFRest
   UpcastRDFFirst
@@ -41,6 +47,7 @@ pub(all) struct N3Context {
   mut path_chain : Array[(Int, Int)]
   mut rule_side : RuleSide?
   mut iri_upcast : Int
+  mut version_lit_ok : Bool
 }
 pub fn N3Context::has_pending(Self) -> Bool
 pub fn N3Context::new() -> Self
@@ -73,6 +80,19 @@ pub(all) enum N3EffectOutcome {
   Stop
 }
 
+pub struct N3Engine[L] {
+  lexer : L
+  hooks : Hooks
+  ctx : N3Context
+  dialect : N3Dialect
+  mut last_error : (Int, Int)?
+  mut pending : N3Event?
+  emit_queue : Array[N3PendingQuad]
+}
+pub fn N3Engine::from_bytes(Array[Byte], dialect? : N3Dialect) -> Self[N3LexerAdapter]
+pub fn[L : LexerSource] N3Engine::new(L, dialect? : N3Dialect) -> Self[L]
+pub fn[L : LexerSource] N3Engine::next(Self[L]) -> Result[N3PendingQuad, @gen_nquads.ParseError]?
+
 pub(all) enum N3Event {
   N3Iri((Int, Int))
   N3BlankNode((Int, Int))
@@ -86,13 +106,17 @@ pub(all) enum N3Event {
   N3At
   N3PrefixKw
   N3BaseKw
+  N3VersionKw
+  N3Tilde
+  N3AnnotStart
+  N3AnnotEnd
   N3ForAllKw
   N3ForSomeKw
   N3KeywordsKw
   N3Comma
   N3Semicolon
   N3Dot
-  N3Lbrace
+  N3Lbrace((Int, Int))
   N3Rbrace
   N3Lbracket((Int, Int))
   N3Rbracket
@@ -118,6 +142,22 @@ pub(all) struct N3LexerAdapter {
 pub fn N3LexerAdapter::new(ArrayView[Byte]) -> Self
 pub impl LexerSource for N3LexerAdapter
 
+pub struct N3Materializer {
+  data : ArrayView[Byte]
+  prefixes : Array[((Int, Int), (Int, Int))]
+  bases : Array[(Int, Int)]
+  base_fallback : String?
+  scalar_only_escapes : Bool
+  mut fallback_parsed : @gen_nquads.Iri?
+  base_memo : Map[Int, @gen_nquads.Iri]
+  mut deep_validate : Bool
+  fresh_ids : Map[(Int, Int), (Int, Int)]
+  arena : Array[Byte]
+}
+pub fn N3Materializer::materialize_all(Self, Array[QuadSpan], deep_validate? : Bool) -> (Array[@gen_nquads.QuadEmit], Array[@gen_nquads.ParseError])
+pub fn N3Materializer::materialize_quad(Self, QuadSpan) -> Result[@gen_nquads.QuadEmit, @gen_nquads.ParseError]
+pub fn N3Materializer::new(ArrayView[Byte], Array[((Int, Int), (Int, Int))], bases? : Array[(Int, Int)], base_fallback? : String?, scalar_only_escapes? : Bool) -> Self
+
 pub(all) struct N3PendingQuad {
   subj : (Int, Int)?
   pred : (Int, Int)?
@@ -129,6 +169,21 @@ pub(all) struct N3PendingQuad {
   iver : Int
 } derive(Eq)
 
+pub struct N3Serializer {
+}
+pub fn N3Serializer::new() -> Self
+pub fn N3Serializer::serialize(Self, Array[@gen_nquads.QuadEmit]) -> Result[String, @gen_nquads.ParseError]
+
+pub struct N3SliceParser[L] {
+  engine : N3Engine[L]
+  data : ArrayView[Byte]
+  lenient : Bool
+  errors : Array[@gen_nquads.ParseError]
+}
+pub fn[L] N3SliceParser::new(N3Engine[L], ArrayView[Byte], lenient? : Bool) -> Self[L]
+pub fn[L : LexerSource] N3SliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
+pub fn[L : LexerSource] N3SliceParser::parse_next(Self[L]) -> Result[QuadSpan, @gen_nquads.ParseError]?
+
 pub(all) enum N3State {
   N3ExpectSubject
   N3ExpectPredicate
@@ -138,15 +193,25 @@ pub(all) enum N3State {
   N3ExpectPrefixName
   N3ExpectPrefixIri
   N3ExpectBaseIri
+  N3ExpectVersionLiteral
   N3ExpectDirectiveEnd
   N3ExpectVerbOrEnd
   N3ExpectVerbOrDot
   N3ExpectVerbRequired
+  N3ExpectTildeEnd
+  N3AnnotExpectVerb
+  N3AnnotExpectVerbTail
+  N3AnnotExpectObject
+  N3AnnotExpectEnd
   N3BnpExpectPredicate
   N3BnpExpectObject
   N3BnpAfterObject
   N3ListExpectElemOrEnd
   N3ListAfterElem
+  N3FormulaExpectSubject
+  N3FormulaExpectPredicate
+  N3FormulaExpectObject
+  N3FormulaAfterObject
 }
 
 pub(all) enum PredKind {
@@ -186,7 +251,7 @@ pub(all) struct Slot {
   graph : (Int, Int)?
   ret_state : N3State
   as_subject : Bool
-  prev_node : (Int, Int)?
+  mut prev_node : (Int, Int)?
   mut node_seq : Int
 }
 
@@ -238,6 +303,8 @@ pub trait N3Actions {
   fn list_next_nested(Self, N3Context, (Int, Int), SlotType, N3State) -> Result[N3Effect, N3ActionError]
   fn list_nil(Self, N3Context) -> Result[N3Effect, N3ActionError]
   fn open_collection(Self, N3Context, (Int, Int), Bool, N3State) -> Result[N3Effect, N3ActionError]
+  fn open_formula(Self, N3Context, (Int, Int), Bool, N3State) -> Result[N3Effect, N3ActionError]
+  fn close_formula(Self, N3Context) -> Result[N3Effect, N3ActionError]
   fn open_slot(Self, N3Context, (Int, Int), SlotType, N3State) -> Result[N3Effect, N3ActionError]
   fn pop_bnode_prop(Self, N3Context) -> Result[N3Effect, N3ActionError]
 }

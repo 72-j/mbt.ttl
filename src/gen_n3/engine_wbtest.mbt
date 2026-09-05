@@ -182,3 +182,167 @@ test "切片: `[] .` 谓语缺位 = 非法文法（trig wbtest:500 同口径）"
   assert_eq(errors.length(), 1)
   assert_eq(quads.length(), 0)
 }
+
+///|
+test "役1: 公式主位——内容零发射，身份 = { span" {
+  let input = "{ <a> <b> <c> } <p> <o> .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // ADR-002：花括号内三元组不断言——内容零 quad；statement 一条
+  assert_eq(quads.length(), 1)
+  // 公式身份 = { 自身 span（无 nil 特判，() 集合口径除外）
+  assert_eq(quads[0].subj.unwrap(), (0, 1))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "<p>")
+  assert_eq(view_str(data[:], quads[0].obj.unwrap()), "<o>")
+}
+
+///|
+test "役1: 公式宾位——内容零发射，身份 = { span" {
+  let input = "<s> <p> { <a> <b> <c> } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // 身份 = { span（offset 8）
+  assert_eq(quads[0].obj.unwrap(), (8, 1))
+}
+
+///|
+test "役1: 空公式 { } 主位——同占位身份，无 nil 特判" {
+  let input = "{ } <p> <o> .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // 空公式身份 = { span（与 () 的 rdf:nil 零长标记分野）
+  assert_eq(quads[0].subj.unwrap(), (0, 1))
+}
+
+///|
+test "役1: 公式内 Comma/Semicolon 只收拾不发射" {
+  let input = "{ <a> <b> <c>, <d> ; <q> <r> } <p> <o> .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 公式状态自身零 EmitQuad 行（决策在表）：内容多语句也零发射
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (0, 1))
+}
+
+///|
+test "役1: Bnp 罩内收口压制——公式帧在罩，EmitQuad 降级纯收拾" {
+  let input = "<s> <p> { [ <q> <r> ] <P> <O> } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // ] 共享行的 EmitQuad(PredObj) 在公式罩内被压制：bnp 内部 quad 不泄漏
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].obj.unwrap(), (8, 1))
+  // 公式帧快照恢复外层槽位：statement = <s> <p> { }（<P>/<O> 是罩内被压制的内层语句）
+  assert_eq(view_str(data[:], quads[0].subj.unwrap()), "<s>")
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "<p>")
+}
+
+///|
+test "役1: 集合元素公式——list_first_nested 开公式帧" {
+  let input = "<s> <p> ( { <a> <b> <c> } ) .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // 集合单一 BNode = ( 自身 span
+  assert_eq(quads[0].obj.unwrap(), (8, 1))
+}
+
+///|
+test "役1: 嵌套公式（内层带动词）——内层语句同被罩内压制" {
+  let input = "<s> <p> { { <a> <b> <c> } <q> <r> } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // 身份 = 外层 { span
+  assert_eq(quads[0].obj.unwrap(), (8, 1))
+}
+
+///|
+test "役1: Bnp 内公式宾位正常发射（非压制对照）" {
+  let input = "<s> <p> [ <q> { <a> <b> <c> } ] .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 公式已 ] 前收口：] 共享行 EmitQuad 不在罩内 → bnp 内部 quad 照常发射
+  assert_eq(quads.length(), 2)
+  // [0] = bnp 内部 quad：s = [ span(8,1)，o = 公式身份(14,1)
+  assert_eq(quads[0].subj.unwrap(), (8, 1))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "<q>")
+  assert_eq(quads[0].obj.unwrap(), (14, 1))
+  // [1] = statement：o = [ 身份
+  assert_eq(quads[1].obj.unwrap(), (8, 1))
+}
+
+///|
+test "役2: 变量主/宾位——只记身份 span" {
+  let input = "?s <p> ?o .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // ADR-004：变量名与位置即全部语义——span 原样持有（?s = (0,2)）
+  assert_eq(quads[0].subj.unwrap(), (0, 2))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "<p>")
+  assert_eq(quads[0].obj.unwrap(), (7, 2))
+}
+
+///|
+test "役2: 公式内变量——罩内零发射" {
+  let input = "<s> <p> { ?x <q> ?y } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 公式内容零 quad（ADR-002），statement 一条
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].obj.unwrap(), (8, 1))
+}
+
+///|
+test "役2: 集合元素变量 + bnp 宾位变量" {
+  let input = "<s> <p> ( ?x <y> ) .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 集合单一 BNode = ( 自身 span（ADR-003a，元素只记账）
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].obj.unwrap(), (8, 1))
+  let input2 = "<s> <p> [ <q> ?o ] .\n"
+  let data2 = bytes_of(input2)
+  let (quads2, errors2) = drain_n3(N3Engine::from_bytes(data2))
+  assert_eq(errors2.length(), 0)
+  // bnp 内部 quad + statement
+  assert_eq(quads2.length(), 2)
+  assert_eq(quads2[0].obj.unwrap(), (14, 2))
+  assert_eq(quads2[1].obj.unwrap(), (8, 1))
+}
+
+///|
+test "役2: 全链路 round-trip——变量字节保真回写" {
+  // 绝对 IRI：mat_chain 无 base_fallback（相对 IRI 落 base-bad 桶）
+  let (emits, errors) = mat_chain("?s <http://p> ?o .\n")
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 1)
+  match N3Serializer::new().serialize(emits) {
+    Ok(out) => assert_eq(out, "?s <http://p> ?o .\n")
+    Err(e) => {
+      debug("serialize error: \{e}")
+      assert_false(true)
+    }
+  }
+}
+
+///|
+test "役2: 谓词位变量显式拒绝" {
+  let (quads, errors) = n3_parser(bytes_of("<s> ?p <o> .\n"))
+  assert_eq(quads.length(), 0)
+  assert_eq(errors.length(), 1)
+}

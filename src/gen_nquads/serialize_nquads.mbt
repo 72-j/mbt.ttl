@@ -113,6 +113,12 @@ fn Serializer::append_subject(
           (0, 0),
         ),
       )
+    // N-Triples/N-Quads 无变量（guides/nquads/terms/variable-reserved.md）：
+    // 方言不产出，透传会写出上层语言语法，报错钉住不变量
+    Subject::Variable(_) =>
+      Err(
+        ParseError::SyntaxErr("Variables are not valid in N-Triples/N-Quads", (0, 0)),
+      )
   }
 }
 
@@ -147,6 +153,10 @@ fn Serializer::append_object(
           "Prefixed names are not valid in N-Triples/N-Quads",
           (0, 0),
         ),
+      )
+    Object::Variable(_) =>
+      Err(
+        ParseError::SyntaxErr("Variables are not valid in N-Triples/N-Quads", (0, 0)),
       )
   }
 }

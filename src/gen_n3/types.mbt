@@ -177,7 +177,8 @@ pub impl Show for N3Event with fn output(self : N3Event, logger : &Logger) -> Un
     N3Event::N3Comma => logger.write("Comma")
     N3Event::N3Semicolon => logger.write("Semicolon")
     N3Event::N3Dot => logger.write("Dot")
-    N3Event::N3Lbrace => logger.write("Lbrace")
+    N3Event::N3Lbrace(span) =>
+      logger.write("Lbrace \{@debug.to_string(span)}")
     N3Event::N3Rbrace => logger.write("Rbrace")
     N3Event::N3Lbracket(span) =>
       logger.write("Lbracket \{@debug.to_string(span)}")
@@ -185,8 +186,8 @@ pub impl Show for N3Event with fn output(self : N3Event, logger : &Logger) -> Un
     N3Event::N3Lparen(span) => logger.write("Lparen \{@debug.to_string(span)}")
     N3Event::N3Rparen => logger.write("Rparen")
     N3Event::N3Anon(span) => logger.write("Anon \{@debug.to_string(span)}")
-    N3Event::N3Bang => logger.write("Bang")
-    N3Event::N3Caret => logger.write("Caret")
+    N3Event::N3Bang(span) => logger.write("Bang \{@debug.to_string(span)}")
+    N3Event::N3Caret(span) => logger.write("Caret \{@debug.to_string(span)}")
     N3Event::N3Implies => logger.write("Implies")
     N3Event::N3ImpliedBy => logger.write("ImpliedBy")
     N3Event::N3Unknown => logger.write("Unknown")

@@ -609,9 +609,18 @@ pub fn N3Materializer::materialize_quad(
         Ok(v) => @nquads.Subject::BNode(v)
         Err(e) => return Err(e)
       }
-    } else if c0 == b'[' || c0 == b'(' {
+    } else if c0 == b'?' {
+      // 变量 `?x`（ADR-004：只记身份）：语法面收紧后整段原文持有——
+      // 不展开、不前缀解析、不绑定，名与位置即全部语义
+      let v = slice_span(self.data, quad.s)
+      match self.gate_variable(v) {
+        Ok(v) => @nquads.Subject::Variable(v)
+        Err(e) => return Err(e)
+      }
+    } else if c0 == b'[' || c0 == b'(' || c0 == b'!' || c0 == b'^' {
       // fresh 结构节点：`[]` fresh / 集合单一 BNode（ADR-003a：`(` 自身
-      // span 即身份）。开括号 offset memo `_:genid<N>`，可信构造免深验
+      // span 即身份）；`!`/`^` 路径中间节点（役3：操作符 span 即身份）。
+      // 开括号 offset memo `_:genid<N>`，可信构造免深验
       @nquads.Subject::BNode(self.fresh_bnode(quad.s))
     } else {
       match self.expand_prefname(quad.s, quad.pver, quad.bver) {
@@ -705,8 +714,16 @@ pub fn N3Materializer::materialize_quad(
         Ok(v) => @nquads.Object::BNode(v)
         Err(e) => return Err(e)
       }
-    } else if c0 == b'[' || c0 == b'(' {
-      // fresh 结构节点：`[]` fresh / 集合单一 BNode（ADR-003a）
+    } else if c0 == b'?' {
+      // 变量 `?x`（ADR-004：只记身份）：语法面收紧后整段原文持有——
+      // 不展开、不前缀解析、不绑定，名与位置即全部语义
+      let v = slice_span(self.data, quad.o)
+      match self.gate_variable(v) {
+        Ok(v) => @nquads.Object::Variable(v)
+        Err(e) => return Err(e)
+      }
+    } else if c0 == b'[' || c0 == b'(' || c0 == b'!' || c0 == b'^' {
+      // fresh 结构节点：`[]` fresh / 集合单一 BNode / 路径中间节点（役3 同身份）
       @nquads.Object::BNode(self.fresh_bnode(quad.o))
     } else if c0 == b'"' || c0 == b'\'' {
       match self.materialize_literal(quad.o, quad.pver) {
@@ -863,6 +880,36 @@ fn check_bnode_view(view : ArrayView[Byte]) -> Result[Unit, ParseError] {
 }
 
 ///|
+/// 深验变量词项（ADR-004：只记身份——语法面收紧在此）：`?` + varname，
+/// varname 字符集 [A-Za-z0-9_]、首字符不许数字（N3 VARNAME 口径；词法
+/// PrefName 合成已保证 `?` 后零空格邻接，此处只收词形）。变量不进谓词位
+///（表无行 + 验证层显式拒），不展开不绑定。
+fn check_variable_view(view : ArrayView[Byte]) -> Result[Unit, ParseError] {
+  let n = view.length()
+  if n < 2 {
+    return Err(ParseError::ValidationErr("Variable must have a name"))
+  }
+  if view[1] >= b'0' && view[1] <= b'9' {
+    return Err(
+      ParseError::ValidationErr("Variable name must not start with a digit"),
+    )
+  }
+  for i in 1..<n {
+    let c = view[i]
+    let ok = (
+        (c >= b'a' && c <= b'z') ||
+        (c >= b'A' && c <= b'Z') ||
+        (c >= b'0' && c <= b'9') ||
+        c == b'_'
+      )
+    if !ok {
+      return Err(ParseError::ValidationErr("Invalid variable name character"))
+    }
+  }
+  Ok(())
+}
+
+///|
 /// 深验融合门（deep_validate 开时校验，关时直通；成功原样返还 view）
 fn N3Materializer::gate_iri(
   self : N3Materializer,
@@ -885,6 +932,25 @@ fn N3Materializer::gate_bnode(
 ) -> Result[ArrayView[Byte], ParseError] {
   if self.deep_validate {
     match check_bnode_view(view) {
+      Ok(_) => Ok(view)
+      Err(e) => Err(e)
+    }
+  } else {
+    Ok(view)
+  }
+}
+
+///|
+/// 变量门（ADR-004：只记身份——语法面收紧在此）：`?` + varname，varname
+/// 字符集 [A-Za-z0-9_]、首字符不许数字（N3 VARNAME 口径；词法 PrefName
+/// 合成已保证 `?` 后零空格邻接，跨度由词法钉住，此处只收词形）。变量
+/// 不进谓词位（表无行 + 验证层显式拒），不展开不绑定。
+fn N3Materializer::gate_variable(
+  self : N3Materializer,
+  view : ArrayView[Byte],
+) -> Result[ArrayView[Byte], ParseError] {
+  if self.deep_validate {
+    match check_variable_view(view) {
       Ok(_) => Ok(view)
       Err(e) => Err(e)
     }
@@ -1322,6 +1388,7 @@ fn mat_obj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
     Literal(v) => v
     TripleTerm(v) => v
     PrefName(v) => v
+    Variable(v) => v
   }
 }
 

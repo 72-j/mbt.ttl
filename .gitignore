@@ -19,3 +19,7 @@ src/fsm/*.toml
 *_usage.md
 *const.md
 *pseudocode.md
+adr.md
+const.md
+pseudocode.md
+spec.md

@@ -31,15 +31,15 @@ fn n3_ev_tag(ev : N3Event) -> String {
     N3Event::N3Comma => "Comma"
     N3Event::N3Semicolon => "Semi"
     N3Event::N3Dot => "Dot"
-    N3Event::N3Lbrace => "Lbrace"
+    N3Event::N3Lbrace((o, l)) => "Lbrace(\{o},\{l})"
     N3Event::N3Rbrace => "Rbrace"
     N3Event::N3Lbracket((o, l)) => "Lbracket(\{o},\{l})"
     N3Event::N3Rbracket => "Rbracket"
     N3Event::N3Lparen((o, l)) => "Lparen(\{o},\{l})"
     N3Event::N3Rparen => "Rparen"
     N3Event::N3Anon((o, l)) => "Anon(\{o},\{l})"
-    N3Event::N3Bang => "Bang"
-    N3Event::N3Caret => "Caret"
+    N3Event::N3Bang((o, l)) => "Bang(\{o},\{l})"
+    N3Event::N3Caret((o, l)) => "Caret(\{o},\{l})"
     N3Event::N3Implies => "Implies"
     N3Event::N3ImpliedBy => "ImpliedBy"
     N3Event::N3Unknown => "Unk"
@@ -86,18 +86,18 @@ test "变量 ?x：邻接合成 / 裸 ? 拒 / ??x 不吞词" {
 test "路径 !/^ 与规则 =>/<=/= 事件流" {
   assert_eq(
     n3_drain(":a!:b :p :o ."),
-    "Pref(0,2) Bang Pref(3,2) Pref(6,2) Pref(9,2) Dot EOF",
+    "Pref(0,2) Bang(2,1) Pref(3,2) Pref(6,2) Pref(9,2) Dot EOF",
   )
   assert_eq(
     n3_drain(":a^:b :p :o ."),
-    "Pref(0,2) Caret Pref(3,2) Pref(6,2) Pref(9,2) Dot EOF",
+    "Pref(0,2) Caret(2,1) Pref(3,2) Pref(6,2) Pref(9,2) Dot EOF",
   )
   assert_eq(n3_drain(":a => :b ."), "Pref(0,2) Implies Pref(6,2) Dot EOF")
   assert_eq(n3_drain(":a <= :b ."), "Pref(0,2) ImpliedBy Pref(6,2) Dot EOF")
   assert_eq(n3_drain(":a = :b ."), "Pref(0,2) Eq Pref(5,2) Dot EOF")
   assert_eq(
     n3_drain("{ :a :b :c } => { :d :e :f } ."),
-    "Lbrace Pref(2,2) Pref(5,2) Pref(8,2) Rbrace Implies Lbrace Pref(18,2) Pref(21,2) Pref(24,2) Rbrace Dot EOF",
+    "Lbrace(0,1) Pref(2,2) Pref(5,2) Pref(8,2) Rbrace Implies Lbrace(16,1) Pref(18,2) Pref(21,2) Pref(24,2) Rbrace Dot EOF",
   )
 }
 

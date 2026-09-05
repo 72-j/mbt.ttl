@@ -411,6 +411,7 @@ pub(all) enum Object {
   Literal(ArrayView[Byte])
   TripleTerm(ArrayView[Byte])
   PrefName(ArrayView[Byte])
+  Variable(ArrayView[Byte])
 } derive(Eq, @debug.Debug)
 pub impl Show for Object
 
@@ -476,6 +477,7 @@ pub(all) enum Subject {
   BNode(ArrayView[Byte])
   PrefName(ArrayView[Byte])
   TripleTerm(ArrayView[Byte])
+  Variable(ArrayView[Byte])
 } derive(Eq, @debug.Debug)
 pub impl Show for Subject
 

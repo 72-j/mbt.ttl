@@ -88,7 +88,8 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
   } else if span.1 == 1 {
     let c = data[span.0]
     if c == b'{' {
-      N3Event::N3Lbrace
+      // 同 Lbracket 口径（公式身份；ADR-002 不透明图项身份 = { span）
+      N3Event::N3Lbrace(span)
     } else if c == b'}' {
       N3Event::N3Rbrace
     } else if c == b'[' {
@@ -107,14 +108,15 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
       // N3 `=`：owl:sameAs 语法糖标识（ADR-005）
       N3Event::N3Equals
     } else if c == b'!' {
-      // N3 前向路径引导符（ADR-006）
-      N3Event::N3Bang
+      // N3 前向路径引导符（ADR-006，役3 接表）；载荷化 = token 自身 span
+      // ——路径中间节点 fresh 身份（开括号族同教义）
+      N3Event::N3Bang(span)
     } else if c == b'~' {
       // RDF 1.2 reifier introducer (~ label / ~ annotation combo)
       N3Event::N3Tilde
     } else if c == b'^' {
-      // N3 反向路径引导符
-      N3Event::N3Caret
+      // N3 反向路径引导符（载荷化同 Bang：操作符 span = 中间节点身份）
+      N3Event::N3Caret(span)
     } else {
       N3Event::N3Unknown
     }

@@ -46,6 +46,9 @@ fn n3_append_terms(
           (0, 0),
         ),
       )
+    // 变量 `?x`（ADR-004：只记身份）整段原文回写——名与位置即全部语义，
+    // round-trip 不变量
+    Variable(v) => n3_ser_span(v, buf)
   }
   buf.write_char(' ')
   n3_ser_span(quad.predicate, buf)
@@ -63,6 +66,7 @@ fn n3_append_terms(
           (0, 0),
         ),
       )
+    Variable(v) => n3_ser_span(v, buf)
   }
   Ok(())
 }

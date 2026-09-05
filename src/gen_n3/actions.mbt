@@ -121,8 +121,7 @@ impl N3Actions for Hooks with fn open_bnode_prop(
 ///|
 /// 区域栈：弹栈 action——恢复外层 s/p/g，区域身份落入目标槽（as_subject 定槽位），
 /// 返回状态兑现帧携带的决策（state 由表间接管理的唯一例外）。
-/// Bnp 帧与 Collection 帧共用本动作；目标裁决：
-///   - 空集合（Collection 且 node_seq==0）：rdf:nil 标记 Span(open.0, 0)
+/// Bnp 帧与 Collection 帧共用本动作（Formula 帧同径：身份 = { span，无 nil 特判）；目标裁决：
 ///     （零长 span = 物化层 rdf:nil 识别位；ADR-003a"无 rdf:nil 发射"指不发
 ///     rest 链尾 quad，值位 nil 标记保留）
 ///   - 非空集合：单一 BNode = fr.open_span（开括号即身份，ADR-003a 不展开链）
@@ -201,9 +200,228 @@ impl N3Actions for Hooks with fn open_slot(
     SlotType::Collection =>
       N3Actions::open_collection(self, ctx, open_span, false, ret_state)
     SlotType::Formula =>
-      // N3 公式 Step 5（ADR-002）接表；表外形态，防御位
-      Err(N3ActionError::BusinessFailed("Formula slot not supported"))
+      N3Actions::open_formula(self, ctx, open_span, false, ret_state)
   }
+}
+
+///|
+/// 公式区域栈：开公式 action（ADR-002：不透明图项，内容不断言）——外层槽位
+/// 快照入帧（s/p/g + ret_state；身份 = { span，pop 时按 as_subject 落位），
+/// 内层从新主语起（s/p 清空——与 Bnp 占 s 槽的语义分野）。
+impl N3Actions for Hooks with fn open_formula(
+  _self : Hooks,
+  ctx : N3Context,
+  open_span : Span,
+  as_subject : Bool,
+  ret_state : N3State,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.slot_stack.push({
+    typ: SlotType::Formula,
+    open_span,
+    subject: ctx.subject,
+    predicate: ctx.predicate,
+    graph: ctx.graph,
+    ret_state,
+    as_subject,
+    prev_node: None,
+    node_seq: 0,
+  })
+  ctx.subject = None
+  ctx.predicate = None
+  Ok(N3Effect::Continue)
+}
+
+///|
+/// 公式收口 action：裸 PopBnp 意图（公式内容零发射；pop_bnode_prop 共享机械
+/// 恢复外层槽位 + 身份落位 + 返回状态兑现——list_nil 同款形状）。
+impl N3Actions for Hooks with fn close_formula(
+  _self : Hooks,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
+  let _ = ctx
+  Ok(N3Effect::PopBnp)
+}
+
+// —— !/^ 路径区（ADR-006 + spec §4.7：跟随谓语；役3）——
+// desugar = fresh 中间节点链：每操作符一个中间节点（身份 = 操作符 token
+// span），中间跳急发 EmitQuad(SPO)，末跳只装 ctx 槽（发射交既有收口行
+// Dot/Comma/Semicolon——零新发射语义）。方向旗标 path_fwd 随操作符事件
+// 立起：path_fwd/path_bwd 立入口方向（基动词在场则急兑现基跳），
+// path_hop_fwd/path_hop_bwd 兑现在押步并立下一步方向。
+
+///|
+/// 跳兑现共享机械：押步动词 × 当前源 × fresh（操作符 span）装槽后急发
+/// EmitQuad(SPO)。方向 fwd = 正跳 (源, 动词, fresh)；反跳 (fresh, 动词, 源)。
+/// 新鲜节点接棒为源；押步清账；旗标换新方向（hop_* 变体各立各的）。
+fn path_hop_resolve(
+  ctx : N3Context,
+  fresh : Span,
+  fwd : Bool,
+) -> Result[N3Effect, N3ActionError] {
+  let src = match ctx.path_src {
+    Some(src) => src
+    None => return Err(N3ActionError::BusinessFailed("Path source missing"))
+  }
+  let verb = match ctx.path_pend {
+    Some(verb) => verb
+    None => return Err(N3ActionError::BusinessFailed("Path step missing"))
+  }
+  if fwd {
+    ctx.subject = Some(src)
+    ctx.predicate = Some(verb)
+    ctx.object = Some(fresh)
+  } else {
+    ctx.subject = Some(fresh)
+    ctx.predicate = Some(verb)
+    ctx.object = Some(src)
+  }
+  ctx.path_src = Some(fresh)
+  ctx.path_pend = None
+  ctx.path_fwd = fwd
+  Ok(N3Effect::EmitQuad(ResetScope::SPO))
+}
+
+///|
+/// 路径入口 `!`：立正跳旗标。基动词在场（`S P!…`）= bang 证明非末跳，
+/// 基跳急兑现（fresh = 操作符 span）；裸入口（`S !P O`）源 = 主语。
+impl N3Actions for Hooks with fn path_fwd(
+  _self : Hooks,
+  ctx : N3Context,
+  op : Span,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.path_fwd = true
+  ctx.path_pend = None
+  match ctx.predicate {
+    Some(_) => {
+      ctx.object = Some(op)
+      ctx.path_src = Some(op)
+      Ok(N3Effect::EmitQuad(ResetScope::SPO))
+    }
+    None => {
+      ctx.path_src = ctx.subject
+      Ok(N3Effect::Continue)
+    }
+  }
+}
+
+///|
+/// 路径入口 `^`：立反跳旗标；基跳兑现同 path_fwd（基动词恒正跳——
+/// `^` 只管辖它后面的步）。
+impl N3Actions for Hooks with fn path_bwd(
+  _self : Hooks,
+  ctx : N3Context,
+  op : Span,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.path_fwd = false
+  ctx.path_pend = None
+  match ctx.predicate {
+    Some(_) => {
+      ctx.object = Some(op)
+      ctx.path_src = Some(op)
+      Ok(N3Effect::EmitQuad(ResetScope::SPO))
+    }
+    None => {
+      ctx.path_src = ctx.subject
+      Ok(N3Effect::Continue)
+    }
+  }
+}
+
+///|
+/// 路径步进：押步动词入账（方向取旗标；Iri/PrefName 两行落此）。
+impl N3Actions for Hooks with fn path_step(
+  _self : Hooks,
+  ctx : N3Context,
+  verb : Span,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.path_pend = Some(verb)
+  Ok(N3Effect::Continue)
+}
+
+///|
+/// 路径中跳 `!`：押步急兑现（fresh = 本操作符 span），立正跳旗标。
+impl N3Actions for Hooks with fn path_hop_fwd(
+  _self : Hooks,
+  ctx : N3Context,
+  op : Span,
+) -> Result[N3Effect, N3ActionError] {
+  path_hop_resolve(ctx, op, true)
+}
+
+///|
+/// 路径中跳 `^`：押步急兑现，立反跳旗标。
+impl N3Actions for Hooks with fn path_hop_bwd(
+  _self : Hooks,
+  ctx : N3Context,
+  op : Span,
+) -> Result[N3Effect, N3ActionError] {
+  path_hop_resolve(ctx, op, false)
+}
+
+///|
+/// 路径末跳：终跳装 ctx 槽（正跳 (源,动词,宾) / 反跳 (宾,动词,源)），
+/// 路径账清——发射交既有收口行（Dot → EmitQuad(SPO) / Comma → Object 粒度
+/// / Semicolon → PredObj 粒度），延续位语义（`,` 每宾一发、`;` 换谓词）
+/// 全部免费继承。
+impl N3Actions for Hooks with fn path_end(
+  _self : Hooks,
+  ctx : N3Context,
+  obj : Span,
+) -> Result[N3Effect, N3ActionError] {
+  let src = match ctx.path_src {
+    Some(src) => src
+    None => return Err(N3ActionError::BusinessFailed("Path source missing"))
+  }
+  let verb = match ctx.path_pend {
+    Some(verb) => verb
+    None => return Err(N3ActionError::BusinessFailed("Path step missing"))
+  }
+  if ctx.path_fwd {
+    ctx.subject = Some(src)
+    ctx.predicate = Some(verb)
+    ctx.object = Some(obj)
+  } else {
+    ctx.subject = Some(obj)
+    ctx.predicate = Some(verb)
+    ctx.object = Some(src)
+  }
+  ctx.path_src = None
+  ctx.path_pend = None
+  Ok(N3Effect::Continue)
+}
+
+///|
+/// 路径末跳复合节点（`[`/`(`/`{`）：hop 先装 s/p（嵌套帧外快照携带——
+/// pop 恢复后收口行发连接边 (源, 押步动词, fresh帧身份)），再借共享帧
+/// 机械开嵌套（open_slot 按 typ 分派）。反跳拒：pop 机械 object 槽不帧管，
+/// 反跳连接边 (fresh, 动词, 源) 无处落位——诚实报错非静默错装。
+impl N3Actions for Hooks with fn path_end_nested(
+  self : Hooks,
+  ctx : N3Context,
+  open_span : Span,
+  typ : SlotType,
+  ret_state : N3State,
+) -> Result[N3Effect, N3ActionError] {
+  if !(ctx.path_fwd) {
+    return Err(
+      N3ActionError::BusinessFailed(
+        "Reverse path cannot end at a composite node",
+      ),
+    )
+  }
+  let src = match ctx.path_src {
+    Some(src) => src
+    None => return Err(N3ActionError::BusinessFailed("Path source missing"))
+  }
+  let verb = match ctx.path_pend {
+    Some(verb) => verb
+    None => return Err(N3ActionError::BusinessFailed("Path step missing"))
+  }
+  ctx.subject = Some(src)
+  ctx.predicate = Some(verb)
+  ctx.path_src = None
+  ctx.path_pend = None
+  N3Actions::open_slot(self, ctx, open_span, typ, ret_state)
 }
 
 ///|
