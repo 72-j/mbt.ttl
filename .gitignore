@@ -12,3 +12,10 @@ skills/
 *.log
 src/benchmark/*/target/
 src/fsm/*.toml
+*spec.md
+*.adr.md
+*_gen.md
+*_biz.md
+*_usage.md
+*const.md
+*pseudocode.md

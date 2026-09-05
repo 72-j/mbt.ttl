@@ -1,0 +1,114 @@
+// ===== W3C rdf-turtle official suite runner (clone of gen_trig/rdf_suite_wbtest.mbt, graph axis retired) =====
+// Verdict (skeleton syntax + materialization gates, full chain):
+//   Axis deltas vs trig runner: N3 has no graph-block syntax and no dialect knob
+//   (N3 engine has no graph states at all; the table has no edges for graph blocks
+//   so they reject naturally). is_bad = name contains "-bad" only -- the 3 trig
+//   graph-position exceptions do not apply (turtle suite has no graph-position cases).
+//   bad  -> must error somewhere on the chain (parse or materialize, incl. deep gates)
+//   good -> zero errors AND emits.length == quads.length (every parsed quad survives)
+// First sweep: failures print only (no assert) to bucket gaps into (deferred feature /
+// true bug); entries below pinned (failed==0, full-set closure) after bucketing.
+
+///|
+/// Negative verdict: name contains "-bad" (no graph-position exceptions for N3)
+fn n3_suite_is_bad(name : String) -> Bool {
+  name.contains("-bad")
+}
+
+///|
+/// Unified verdict: parse errors + materializer errors (incl. deep gates) merged;
+/// good files additionally require emits.length == quads.length
+fn n3_suite_verdict(
+  is_bad : Bool,
+  perr_count : Int,
+  emits : Array[@nquads.QuadEmit],
+  merrs : Array[ParseError],
+  quad_count : Int,
+) -> Bool {
+  if is_bad {
+    perr_count + merrs.length() > 0
+  } else {
+    perr_count == 0 && merrs.length() == 0 && emits.length() == quad_count
+  }
+}
+
+///|
+/// Run one suite directory: list files, per-file full chain, verdict, tally.
+/// manifest* = suite control files (W3C harness entry lists), not test cases;
+/// excluded at the filter layer (trig: its rdfs:comment carries an illegal \x
+/// escape as documentation -- treating control files as data is a category error).
+/// pin=true: assert failed==0 AND passed+failed==files.length() (full-set closure).
+async fn run_n3_suite(
+  test_dir : String,
+  suffix : String,
+  label : String,
+  suite_base : String,
+  pin? : Bool = false,
+  scalar_only? : Bool = false, // RDF 1.2: surrogate escapes banned outright (pairs too)
+) -> Unit {
+  let files = @fs.readdir(test_dir, sort=true).filter(fn(x) {
+    x.has_suffix(suffix) && !x.has_prefix("manifest")
+  })
+  let mut passed = 0
+  let mut failed = 0
+  for file in files {
+    let is_bad = n3_suite_is_bad(file)
+    let data = @fs.read_file("\{test_dir}/\{file}").binary().to_array()
+    let sec = data[:]
+    let engine = N3Engine::from_bytes(data)
+    let slice = N3SliceParser::new(engine, sec, lenient=true)
+    let (quads, perrs) = slice.parse_all()
+    let mat = N3Materializer::new(
+      sec,
+      slice.engine.ctx.prefixes,
+      bases=slice.engine.ctx.bases,
+      base_fallback=Some("\{suite_base}\{file}"),
+      scalar_only_escapes=scalar_only,
+    )
+    let (emits, merrs) = mat.materialize_all(quads)
+    let ok = n3_suite_verdict(
+      is_bad,
+      perrs.length(),
+      emits,
+      merrs,
+      quads.length(),
+      )
+    if ok {
+      passed = passed + 1
+    } else {
+      failed = failed + 1
+      debug("FAIL \{label}/\{file} p=\{perrs.length()} m=\{merrs.length()}")
+      for err in perrs {
+        debug("  P: \{err}")
+      }
+      for err in merrs {
+        debug("  M: \{err}")
+      }
+    }
+  }
+  debug("=== \{label}: \{passed}/\{passed + failed} (failed \{failed}) ===")
+  if pin {
+    // closure pin: zero failures, full-set coverage
+    assert_eq(failed, 0)
+    assert_eq(passed + failed, files.length())
+  }
+}
+
+///|
+async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
+  run_n3_suite(
+    "src/gen_n3/rdf-tests/rdf-turtle",
+    ".ttl",
+    "rdf-turtle",
+    "http://www.w3.org/2013/TurtleTests/",
+    pin=true,
+  )
+  run_n3_suite(
+    "src/gen_n3/rdf-tests/rdf12/rdf-turtle/syntax",
+    ".ttl",
+    "rdf12-turtle",
+    "https://w3c.github.io/rdf-tests/rdf12/rdf-turtle/syntax/",
+    pin=true,
+    scalar_only=true,
+  )
+}

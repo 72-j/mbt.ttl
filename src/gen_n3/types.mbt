@@ -87,7 +87,7 @@ pub(all) struct Slot {
   graph : Span?
   ret_state : N3State
   as_subject : Bool
-  prev_node : Span?
+  mut prev_node : Span?
   mut node_seq : Int
 }
 
@@ -167,6 +167,10 @@ pub impl Show for N3Event with fn output(self : N3Event, logger : &Logger) -> Un
     N3Event::N3At => logger.write("@")
     N3Event::N3PrefixKw => logger.write("PrefixKw")
     N3Event::N3BaseKw => logger.write("BaseKw")
+    N3Event::N3VersionKw => logger.write("VersionKw")
+    N3Event::N3Tilde => logger.write("Tilde")
+    N3Event::N3AnnotStart => logger.write("AnnotStart")
+    N3Event::N3AnnotEnd => logger.write("AnnotEnd")
     N3Event::N3ForAllKw => logger.write("ForAllKw")
     N3Event::N3ForSomeKw => logger.write("ForSomeKw")
     N3Event::N3KeywordsKw => logger.write("KeywordsKw")

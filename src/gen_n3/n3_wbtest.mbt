@@ -21,6 +21,10 @@ fn n3_ev_tag(ev : N3Event) -> String {
     N3Event::N3At => "@"
     N3Event::N3PrefixKw => "PrefixKw"
     N3Event::N3BaseKw => "BaseKw"
+    N3Event::N3VersionKw => "VersionKw"
+    N3Event::N3Tilde => "Tilde"
+    N3Event::N3AnnotStart => "AnnotStart"
+    N3Event::N3AnnotEnd => "AnnotEnd"
     N3Event::N3ForAllKw => "ForAllKw"
     N3Event::N3ForSomeKw => "ForSomeKw"
     N3Event::N3KeywordsKw => "KeywordsKw"
@@ -182,8 +186,8 @@ test "is/of 裸词保 PrefName + 垃圾降 Unknown" {
   )
   // 无冒号垃圾词降 Unknown（bad-prefix-05 口径）
   assert_eq(n3_drain(":x foo :y ."), "Pref(0,2) Unk Pref(7,2) Dot EOF")
-  // ~ 非 N3 事件（无壳内 reifier），落 Unknown
-  assert_eq(n3_drain(":a ~ :b ."), "Pref(0,2) Unk Pref(5,2) Dot EOF")
+  // ~ = RDF 1.2 reifier 引导符（正牌事件；表接 TildeEnd 驻留族）
+  assert_eq(n3_drain(":a ~ :b ."), "Pref(0,2) Tilde Pref(5,2) Dot EOF")
 }
 
 ///|

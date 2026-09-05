@@ -1,6 +1,6 @@
 # gen_n3 宪法（Biz / 命名 / Const）
 
-版本：v1.0.0
+版本：v1.1.0
 维护层：Gen / Biz
 强制等级：MUST / MUST NOT / NEVER / ALWAYS
 
@@ -44,16 +44,18 @@
 
 - **决策在表**：`step` 只产出 `Effect`；放映意图仅由转移行携带。`Sequence` 仅做意图打包。
 - **机械在模板**：主循环 = 生成器固定模板；切片组装与 `ctx.reset(scope)` 都在 loop 发生，引擎不碰槽位。
-- **业务在 trait**：领域钩子收敛为两个 trait：
-  `N3LoopPolicy`（`begin_record` / `recover` / `finish_at_end` / `on_business_failed`）
-  与 `N3EffectHandler`（`handle_*` 族 + `dispatch`）。
+- **业务在 trait**：业务动作与流转策略同属 Biz 一层，钩子收敛为两个 trait：
+  `N3Actions`（业务动作）与 `N3LoopPolicy`（`begin_record` / `recover` / `finish_at_end` / `on_business_failed`）。
+  `N3EffectHandler` 为 Gen 侧分发表（`handle_*` 默认体 + `dispatch`），Biz 按需覆盖默认体。
 
 ### A1 口径铁律
 
 - action 统一 `Span` 口径；无 payload 事件绑 `(0,0)`；错误兜底位置由 loop 用词法位置回填。
 - EOF 是数据边界，不进表；由 `finish_at_end` 判脏收尾；`Done` 仅用于 parser-all 边界。
 - 未列举组合 → `UnexpectedEvent` / `BusinessFailed` 兜底；loop 偶遇后进入 `recover`。
-- Effect 面向只加变体；`Continue`、`Reset`、`EmitQuad`、`SkipError`、`SkipToken`、`Goto`、`Done`、`EnterGraph`、`ExitGraph` 九个变体覆盖现状；再增需 ADR。
+- Effect 面向只加变体，实行分类管理：核心流转变体（`Continue`、`Reset`、`Done`、`Sequence`）增删需 ADR；
+  业务/输出/结构变体（`EmitQuad`、`PopBnp`、`OpenSlot`）属 Biz 扩展面，经 `N3EffectHandler` 默认体与 `N3Actions` 承接；
+  新增同类效果优先扩 Biz trait、不改 Gen 层枚举（确需扩枚举仍需 ADR）。
 - 图块区域与顶层彻底分离；`GraphExpect*` 无 `Lbrace` 出边；表即合法性裁决者。
 - 全文件由 TOML 可表达；枚举、上下文、action 面、step 表四段无表外逻辑。
 

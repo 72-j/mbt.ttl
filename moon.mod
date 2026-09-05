@@ -26,7 +26,3 @@ description = "MoonTTL is a high-performance RDF parsing and serialization libra
 preferred_target = "wasm"
 
 source = "src"
-
-options(
-  warn: false,
-)

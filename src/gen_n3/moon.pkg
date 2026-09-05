@@ -8,3 +8,8 @@ import {
   "moonbitlang/core/bench",
   "thy1016/moonttl/gen_nquads" @nquads,
 }
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+} for "wbtest"

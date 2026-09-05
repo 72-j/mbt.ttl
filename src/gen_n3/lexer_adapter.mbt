@@ -73,7 +73,12 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
     return N3Event::N3Literal(span, None)
   }
   if span.1 == 2 {
-    if data[span.0] == b'=' && data[span.0 + 1] == b'>' {
+    // RDF 1.2 annotation delimiters (lexer emits them as one two-byte token)
+    if data[span.0] == b'{' && data[span.0 + 1] == b'|' {
+      N3Event::N3AnnotStart
+    } else if data[span.0] == b'|' && data[span.0 + 1] == b'}' {
+      N3Event::N3AnnotEnd
+    } else if data[span.0] == b'=' && data[span.0 + 1] == b'>' {
       N3Event::N3Implies
     } else if data[span.0] == b'<' && data[span.0 + 1] == b'=' {
       N3Event::N3ImpliedBy
@@ -104,6 +109,9 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
     } else if c == b'!' {
       // N3 前向路径引导符（ADR-006）
       N3Event::N3Bang
+    } else if c == b'~' {
+      // RDF 1.2 reifier introducer (~ label / ~ annotation combo)
+      N3Event::N3Tilde
     } else if c == b'^' {
       // N3 反向路径引导符
       N3Event::N3Caret
@@ -147,6 +155,17 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> N3Event {
     N3Event::N3Literal(span, None)
   } else if len == 5 && eq_lower(data, off, b"false") {
     N3Event::N3Literal(span, None)
+  } else if len == 7 && eq_ignore_case(data, off, b"version") {
+    // RDF 1.2 VERSION directive keyword (case-insensitive; global reserved word,
+    // same trade-off as graph). @-style ('@' adjacent) must be lowercase exact,
+    // demote Unknown -> table-edge reject; SPARQL-style bare word is case-insensitive
+    // @version 在 RDF 1.2 文法（@ 风格带点收尾，与 @prefix 同取舍）：
+    // '@' 邻接须小写精确（@Version 非法，bad-base-02 同族）降级 Unknown
+    if at_style_kw(data, off) && !eq_lower(data, off, b"version") {
+      N3Event::N3Unknown
+    } else {
+      N3Event::N3VersionKw
+    }
   } else if len == 6 && eq_ignore_case(data, off, b"prefix") {
     // @ 风格（'@' 紧邻）指令名须小写精确：@Prefix 非法（bad-base-02 同族），
     // 降级 Unknown → 转移表外报错；SPARQL 风格裸词大小写不敏感，表裁决收口
