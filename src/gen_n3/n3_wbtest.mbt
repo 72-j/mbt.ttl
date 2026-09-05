@@ -16,8 +16,11 @@ fn n3_ev_tag(ev : N3Event) -> String {
     N3Event::N3TripleTerm((o, l)) => "TT(\{o},\{l})"
     N3Event::N3BracketTripleTerm((o, l)) => "BTT(\{o},\{l})"
     N3Event::N3KeywordA((o, l)) => "A(\{o},\{l})"
+    N3Event::N3KeywordX((o, l)) => "KwX(\{o},\{l})"
     N3Event::N3Variable((o, l)) => "Var(\{o},\{l})"
     N3Event::N3Equals => "Eq"
+    N3Event::N3Is => "Is"
+    N3Event::N3Of => "Of"
     N3Event::N3At => "@"
     N3Event::N3PrefixKw => "PrefixKw"
     N3Event::N3BaseKw => "BaseKw"
@@ -40,9 +43,9 @@ fn n3_ev_tag(ev : N3Event) -> String {
     N3Event::N3Anon((o, l)) => "Anon(\{o},\{l})"
     N3Event::N3Bang((o, l)) => "Bang(\{o},\{l})"
     N3Event::N3Caret((o, l)) => "Caret(\{o},\{l})"
-    N3Event::N3Implies => "Implies"
-    N3Event::N3ImpliedBy => "ImpliedBy"
-    N3Event::N3Unknown => "Unk"
+    N3Event::N3Implies((o, l)) => "Implies(\{o},\{l})"
+    N3Event::N3ImpliedBy((o, l)) => "ImpliedBy(\{o},\{l})"
+    N3Event::N3Unknown((o, l)) => "Unk(\{o},\{l})"
     N3Event::N3EOF => "EOF"
   }
 }
@@ -76,10 +79,10 @@ fn n3_drain(input : String) -> String {
 test "变量 ?x：邻接合成 / 裸 ? 拒 / ??x 不吞词" {
   assert_eq(n3_drain("?x :p ?y ."), "Var(0,2) Pref(3,2) Var(6,2) Dot EOF")
   // 裸 ?（后随空白非邻接）→ Unknown 错误路径；peek 回存保 token 不丢
-  assert_eq(n3_drain("? :p :o ."), "Unk Pref(2,2) Pref(5,2) Dot EOF")
+  assert_eq(n3_drain("? :p :o ."), "Unk(0,1) Pref(2,2) Pref(5,2) Dot EOF")
   // ??x：两枚独立 ?——首 ? peek 失配（次 token 是 ? 非 PrefName）落 Unknown，
   // 次 ? peek 到 x 但流已脏；全程无非法吞词（gen.md §4.2）
-  assert_eq(n3_drain("??x :p :o ."), "Unk Unk Unk Pref(4,2) Pref(7,2) Dot EOF")
+  assert_eq(n3_drain("??x :p :o ."), "Unk(0,1) Unk(1,1) Unk(2,1) Pref(4,2) Pref(7,2) Dot EOF")
 }
 
 ///|
@@ -92,12 +95,18 @@ test "路径 !/^ 与规则 =>/<=/= 事件流" {
     n3_drain(":a^:b :p :o ."),
     "Pref(0,2) Caret(2,1) Pref(3,2) Pref(6,2) Pref(9,2) Dot EOF",
   )
-  assert_eq(n3_drain(":a => :b ."), "Pref(0,2) Implies Pref(6,2) Dot EOF")
-  assert_eq(n3_drain(":a <= :b ."), "Pref(0,2) ImpliedBy Pref(6,2) Dot EOF")
+  assert_eq(
+    n3_drain(":a => :b ."),
+    "Pref(0,2) Implies(3,2) Pref(6,2) Dot EOF",
+  )
+  assert_eq(
+    n3_drain(":a <= :b ."),
+    "Pref(0,2) ImpliedBy(3,2) Pref(6,2) Dot EOF",
+  )
   assert_eq(n3_drain(":a = :b ."), "Pref(0,2) Eq Pref(5,2) Dot EOF")
   assert_eq(
     n3_drain("{ :a :b :c } => { :d :e :f } ."),
-    "Lbrace(0,1) Pref(2,2) Pref(5,2) Pref(8,2) Rbrace Implies Lbrace(16,1) Pref(18,2) Pref(21,2) Pref(24,2) Rbrace Dot EOF",
+    "Lbrace(0,1) Pref(2,2) Pref(5,2) Pref(8,2) Rbrace Implies(13,2) Lbrace(16,1) Pref(18,2) Pref(21,2) Pref(24,2) Rbrace Dot EOF",
   )
 }
 
@@ -179,13 +188,14 @@ test "@ 指令族：prefix/base 零空格拆分槽 + 量化/关键词" {
 }
 
 ///|
-test "is/of 裸词保 PrefName + 垃圾降 Unknown" {
+test "is/of 事件化（役6）+ 垃圾降 Unknown" {
+  // 裸 is/of 正牌事件（bare 无 span 位）；倒装接表见 engine_wbtest 役6 钉
   assert_eq(
     n3_drain("?x is :p of ?y ."),
-    "Var(0,2) Pref(3,2) Pref(6,2) Pref(9,2) Var(12,2) Dot EOF",
+    "Var(0,2) Is Pref(6,2) Of Var(12,2) Dot EOF",
   )
   // 无冒号垃圾词降 Unknown（bad-prefix-05 口径）
-  assert_eq(n3_drain(":x foo :y ."), "Pref(0,2) Unk Pref(7,2) Dot EOF")
+  assert_eq(n3_drain(":x foo :y ."), "Pref(0,2) Unk(3,3) Pref(7,2) Dot EOF")
   // ~ = RDF 1.2 reifier 引导符（正牌事件；表接 TildeEnd 驻留族）
   assert_eq(n3_drain(":a ~ :b ."), "Pref(0,2) Tilde Pref(5,2) Dot EOF")
 }
@@ -209,4 +219,14 @@ test "turtle 核回归 + EOF 单次枯竭" {
     }
   }
   assert_eq(eof_count, 1)
+}
+
+///|
+test "役5: @keywords 指令事件流——Unk/A 混列 + 逗号续（adapter 不发 KeywordX）" {
+  // 裸词 foo 非关键词 → 降 Unknown（span = 词本身）；KeywordX 只由引擎
+  // 归位点台账命中合成，adapter 事件面恒三词源直出
+  assert_eq(
+    n3_drain("@keywords foo, a ."),
+    "@ KeywordsKw Unk(10,3) Comma A(15,1) Dot EOF",
+  )
 }

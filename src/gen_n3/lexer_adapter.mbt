@@ -13,7 +13,7 @@
 //   单字节 { } [ ] ( ) @ = ! ^ → 结构/路径事件（N3 无 ~/{| |}/graph/version，
 //   落 Unknown）；@forAll/@forSome/@keywords @ 邻接精确拼写 → *Kw（N3 正牌）；
 //   @prefix/@base 零空格直连冒号拆分槽；'a' → KeywordA；true/false → Literal；
-//   裸 is/of 精确拼写保 PrefName（gen.md §4.3，语义规则战役表/action 层判）；
+//   裸 is/of → 正牌事件 Is/Of（役6 事件化：倒装接表；未接位置无行 = 干净拒）；
 //   其余无冒号词降 Unknown（bad-prefix-05 口径）。
 // 跨 token 决策仍零语法味：ANON/变量都是词法产生式，语法决策全留转移表。
 
@@ -79,11 +79,12 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
     } else if data[span.0] == b'|' && data[span.0 + 1] == b'}' {
       N3Event::N3AnnotEnd
     } else if data[span.0] == b'=' && data[span.0 + 1] == b'>' {
-      N3Event::N3Implies
+      // 载荷 = 操作符 token span（役4：规则谓词身份）
+      N3Event::N3Implies(span)
     } else if data[span.0] == b'<' && data[span.0 + 1] == b'=' {
-      N3Event::N3ImpliedBy
+      N3Event::N3ImpliedBy(span)
     } else {
-      N3Event::N3Unknown
+      N3Event::N3Unknown(span)
     }
   } else if span.1 == 1 {
     let c = data[span.0]
@@ -118,10 +119,10 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
       // N3 反向路径引导符（载荷化同 Bang：操作符 span = 中间节点身份）
       N3Event::N3Caret(span)
     } else {
-      N3Event::N3Unknown
+      N3Event::N3Unknown(span)
     }
   } else {
-    N3Event::N3Unknown
+    N3Event::N3Unknown(span)
   }
 }
 
@@ -146,7 +147,7 @@ fn is_numeric_span(data : ArrayView[Byte], off : Int, len : Int) -> Bool {
 }
 
 ///|
-/// PrefName 内容分类：'a' 缩写 / 指令关键词 / N3 量化指令 / 裸 is·of / 普通前缀名。
+/// PrefName 内容分类：'a' 缩写 / 指令关键词 / N3 量化指令 / 裸 is·of（役6 事件化）/ 普通前缀名。
 /// 只对完整 span 内容精确判别："a:x"、"prefix:" 这类不会误分类。
 fn classify_prefname(data : ArrayView[Byte], span : Span) -> N3Event {
   let (off, len) = span
@@ -164,7 +165,7 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> N3Event {
     // @version 在 RDF 1.2 文法（@ 风格带点收尾，与 @prefix 同取舍）：
     // '@' 邻接须小写精确（@Version 非法，bad-base-02 同族）降级 Unknown
     if at_style_kw(data, off) && !eq_lower(data, off, b"version") {
-      N3Event::N3Unknown
+      N3Event::N3Unknown(span)
     } else {
       N3Event::N3VersionKw
     }
@@ -172,13 +173,13 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> N3Event {
     // @ 风格（'@' 紧邻）指令名须小写精确：@Prefix 非法（bad-base-02 同族），
     // 降级 Unknown → 转移表外报错；SPARQL 风格裸词大小写不敏感，表裁决收口
     if at_style_kw(data, off) && !eq_lower(data, off, b"prefix") {
-      N3Event::N3Unknown
+      N3Event::N3Unknown(span)
     } else {
       N3Event::N3PrefixKw
     }
   } else if len == 4 && eq_ignore_case(data, off, b"base") {
     if at_style_kw(data, off) && !eq_lower(data, off, b"base") {
-      N3Event::N3Unknown
+      N3Event::N3Unknown(span)
     } else {
       N3Event::N3BaseKw
     }
@@ -193,19 +194,25 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> N3Event {
     at_style_kw(data, off) &&
     eq_lower(data, off, b"keywords") {
     // @keywords：关键词声明指令（@keywords 声明后裸词皆名——词法仍机械出
-    // KeywordA，声明语义归表/action，Step 5 @keywords 战役接）
+    // KeywordA，声明语义归表/action，役5 已接表：ExpectKeywordsList 台账）
     N3Event::N3KeywordsKw
   } else if len == 2 &&
     (eq_lower(data, off, b"is") || eq_lower(data, off, b"of")) {
-    // 裸 is/of（N3 `?x is :p of ?y` 集合等价语法）：保 PrefName——gen.md §4.3
-    // 多词判断留 Adapter/Action 层，此处仅保事件面，语义规则战役再接
-    N3Event::N3PrefName(span)
+    // 裸 is/of（N3 `?x is :p of ?y` 集合等价倒装 ≡ `Y P X`）：役6 事件化——
+    // 正牌事件入表（顶层四动词位接倒装行）；未接位置（bnp/公式/注解）无行 =
+    // UnexpectedEvent 干净拒。此前保 PrefName 被谓词行误收编：is 成谓词、
+    // 整句随 of 无行静默吞（零 quad 零报错）
+    if eq_lower(data, off, b"is") {
+      N3Event::N3Is
+    } else {
+      N3Event::N3Of
+    }
     // 无冒号 PrefName 全域非法：term 位 PNAME_NS 必带冒号（bad-prefix-05 口径）；
     // 关键词/'a'/布尔/is·of 已先行分流，此处降级 Unknown 表外报错
   } else if span_has_colon(data, off, len) {
     N3Event::N3PrefName(span)
   } else {
-    N3Event::N3Unknown
+    N3Event::N3Unknown(span)
   }
 }
 
@@ -332,7 +339,7 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
     self.anon_swallow = false
     match self.inner.next() {
       Some(Token::Unknown((o2, l2))) if l2 == 1 && self.data[o2] == b']' => ()
-      _ => return Some(N3Event::N3Unknown)
+      _ => return Some(N3Event::N3Unknown((self.pos(), 0)))
     }
   }
   match self.inner.next() {
@@ -386,7 +393,7 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
             Some(t2) => self.pending = Some(token_to_n3_event(self.data, t2))
             None => ()
           }
-          return Some(N3Event::N3Unknown)
+          return Some(N3Event::N3Unknown((qoff, qlen)))
         }
         // ★ @ 风格指令名零空格直连冒号拆分（minimal-whitespace 口径同 trig）：
         //   `@prefix:<iri>` 词法整词扫出 `prefix:`（冒号是名字字符），关键词臂

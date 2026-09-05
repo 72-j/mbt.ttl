@@ -163,7 +163,9 @@ fn N3Materializer::resolve_prefname(
     }
   }
   if colon < 0 {
-    return Ok(None) // 裸词：表外口径，保真兜底
+    // 役5 裸词（@keywords listed / `a` 失格降名）：无冒号名按空前缀展开
+    //（DefaultPrefixIRI = `:word` 同径）；默认前缀未声明仍走 Ok(None) 拒
+    colon = 0
   }
   // 前缀部尾点（PN_PREFIX 无尾点；bad-missing-ns-dot-end 口径）
   if colon > 0 && self.data[off + colon - 1] == b'.' {
@@ -241,8 +243,13 @@ fn N3Materializer::write_prefname_iri(
     self.push_view(self.data[iri.0 + 1:iri.0 + iri.1 - 1])
   }
   // local 部分：PN_LOCAL_ESC 解码（\X → X；百分号 %HH 保真——百分号序列按
-  // 原样三字符进 IRI，不展开）
-  let mut i = off + colon + 1
+  // 原样三字符进 IRI，不展开）。colon 位有冒号字符则本地部从 colon+1 起，
+  // 否则 = 役5 无冒号裸词（colon 归零哨兵），整词即本地部
+  let mut i = if off + colon < off + len && self.data[off + colon] == b':' {
+    off + colon + 1
+  } else {
+    off + colon
+  }
   let stop = off + len
   while i < stop {
     let c = self.data[i]
@@ -635,8 +642,9 @@ pub fn N3Materializer::materialize_quad(
       }
     }
   }
-  // 谓词位：'a' 缩写 → rdf:type；全 IRI 零拷贝；其余 PrefName 展开（谓词只许这三类）。
-  // RDFFirst/RDFRest 合成谓词臂 = ADR-003b 显式链预留位（引擎 pk 恒 Normal，当前死臂）
+  // 谓词位：pk 出账判定（'a' 缩写 KwA → rdf:type；役5 起活性裁定在引擎——
+  // 失效的 a 是 PrefName 裸名，字节嗅探已退役）；全 IRI 零拷贝；其余 PrefName 展开。
+  // RDFFirst/RDFRest 合成谓词臂 = ADR-003b 显式链预留位（N3 当前死臂）
   let predicate : ArrayView[Byte] = if quad.pk is PredKind::RDFFirst {
     // 集合链合成谓词 rdf:first（词表构造可信，免深验）
     let start = self.arena.length()
@@ -647,7 +655,7 @@ pub fn N3Materializer::materialize_quad(
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_rest)
     slice_span(self.arena[:], (start, self.arena.length() - start))
-  } else if quad.p.1 == 1 && self.data[quad.p.0] == b'a' {
+  } else if quad.pk is PredKind::KwA {
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_type)
     let pspan = (start, self.arena.length() - start)
@@ -1408,4 +1416,196 @@ fn mat_has_graph(e : @nquads.QuadEmit) -> Bool {
     None => false
     _ => true
   }
+}
+
+///|
+test "役3: 路径 ! 直连 ≡ S P O（无中间节点）" {
+  let (emits, errors) = mat_chain(
+    "<http://ex/s> !<http://ex/p> <http://ex/o> .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 1)
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
+  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
+  assert_eq(mat_vs(mat_obj(emits[0])), "<http://ex/o>")
+}
+
+///|
+test "役3: 路径 ^ 直连 ≡ O P S（零 fresh 零中转）" {
+  let (emits, errors) = mat_chain(
+    "<http://ex/s> ^<http://ex/p> <http://ex/o> .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 1)
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/o>")
+  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
+  assert_eq(mat_vs(mat_obj(emits[0])), "<http://ex/s>")
+}
+
+///|
+test "役3: 基动词 !/^ 中转 hop——desugar 双 quad，genid 同体" {
+  // S P!Q O ≡ S P _:1 . _:1 Q O
+  let (emits, errors) = mat_chain(
+    "<http://ex/s> <http://ex/p>!<http://ex/q> <http://ex/o> .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 2)
+  let g1 = mat_vs(mat_obj(emits[0]))
+  assert_true(g1.starts_with("_:genid"))
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
+  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
+  assert_eq(mat_vs(mat_subj(emits[1])), g1)
+  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
+  assert_eq(mat_vs(mat_obj(emits[1])), "<http://ex/o>")
+  // S P^Q O ≡ S P _:1 . O Q _:1（基跳恒正向；^ 只辖其后一步）
+  let (emits2, errors2) = mat_chain(
+    "<http://ex/s> <http://ex/p>^<http://ex/q> <http://ex/o> .\n",
+  )
+  assert_eq(errors2.length(), 0)
+  assert_eq(emits2.length(), 2)
+  let g2 = mat_vs(mat_obj(emits2[0]))
+  assert_true(g2.starts_with("_:genid"))
+  assert_eq(mat_vs(mat_subj(emits2[1])), "<http://ex/o>")
+  assert_eq(mat_vs(emits2[1].predicate), "<http://ex/q>")
+  assert_eq(mat_vs(mat_obj(emits2[1])), g2)
+}
+
+///|
+test "役3: 裸入口链 !P!Q / !P^Q——hop 方向 = 前 op 旗标，末 op 只翻账" {
+  // S !P!Q O ≡ S P _:1 . _:1 Q O
+  let (emits, errors) = mat_chain(
+    "<http://ex/s> !<http://ex/p>!<http://ex/q> <http://ex/o> .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 2)
+  let g1 = mat_vs(mat_subj(emits[1]))
+  assert_true(g1.starts_with("_:genid"))
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
+  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
+  assert_eq(mat_vs(mat_obj(emits[0])), g1)
+  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
+  assert_eq(mat_vs(mat_obj(emits[1])), "<http://ex/o>")
+  // S !P^Q O ≡ S P _:1 . O Q _:1——首边方向被 ^ hop 读取时仍是 ! 旗标
+  let (emits2, errors2) = mat_chain(
+    "<http://ex/s> !<http://ex/p>^<http://ex/q> <http://ex/o> .\n",
+  )
+  assert_eq(errors2.length(), 0)
+  assert_eq(emits2.length(), 2)
+  let g2 = mat_vs(mat_obj(emits2[0]))
+  assert_true(g2.starts_with("_:genid"))
+  assert_eq(mat_vs(mat_subj(emits2[0])), "<http://ex/s>")
+  assert_eq(mat_vs(emits2[0].predicate), "<http://ex/p>")
+  assert_eq(mat_vs(mat_subj(emits2[1])), "<http://ex/o>")
+  assert_eq(mat_vs(emits2[1].predicate), "<http://ex/q>")
+  assert_eq(mat_vs(mat_obj(emits2[1])), g2)
+}
+
+///|
+test "役3: 三跳链——中转节点逐跳 fresh（!p!q!r 双 genid 互异）" {
+  let (emits, errors) = mat_chain(
+    "<http://ex/s> <http://ex/p>!<http://ex/q>!<http://ex/r> <http://ex/o> .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 3)
+  let g1 = mat_vs(mat_obj(emits[0]))
+  let g2 = mat_vs(mat_subj(emits[2]))
+  assert_true(g1.starts_with("_:genid"))
+  assert_true(g2.starts_with("_:genid"))
+  assert_false(g1 == g2)
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
+  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
+  assert_eq(mat_vs(mat_subj(emits[1])), g1)
+  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
+  assert_eq(mat_vs(mat_obj(emits[1])), g2)
+  assert_eq(mat_vs(emits[2].predicate), "<http://ex/r>")
+  assert_eq(mat_vs(mat_obj(emits[2])), "<http://ex/o>")
+}
+
+///|
+test "役3: 复合末跳 bnp——借共享帧机械，连接边 Dot 收口" {
+  let (emits, errors) = mat_chain(
+    "<http://ex/s> !<http://ex/p> [ <http://ex/q> <http://ex/r> ] .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 2)
+  let g1 = mat_vs(mat_subj(emits[0]))
+  assert_true(g1.starts_with("_:genid"))
+  // bnp 内部 quad：(fresh, :q, :r)
+  assert_eq(mat_vs(emits[0].predicate), "<http://ex/q>")
+  assert_eq(mat_vs(mat_obj(emits[0])), "<http://ex/r>")
+  // statement 连接边：(s, :p, fresh)——同一 genid（memo 同体）
+  assert_eq(mat_vs(mat_subj(emits[1])), "<http://ex/s>")
+  assert_eq(mat_vs(emits[1].predicate), "<http://ex/p>")
+  assert_eq(mat_vs(mat_obj(emits[1])), g1)
+}
+
+///|
+test "役3: 复合末跳集合——单 BNode 身份落连接边（零链）" {
+  let (emits, errors) = mat_chain(
+    "<http://ex/s> !<http://ex/p> ( <http://ex/a> <http://ex/b> ) .\n",
+  )
+  assert_eq(errors.length(), 0)
+  // ADR-003a：集合零链 quad，statement 一条，o = ( 身份 fresh
+  assert_eq(emits.length(), 1)
+  assert_true(mat_vs(mat_obj(emits[0])).starts_with("_:genid"))
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
+  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
+}
+
+
+///|
+test "役5 物化: a 失效——@keywords 未列出 → PrefName 裸名按 DefaultPrefixIRI 展开" {
+  let (emits, errors) = mat_chain(
+    "@prefix : <http://dft/> .\n@keywords foo .\n:s a :o .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 1)
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/s>")
+  // a 失格 = 冒号无前缀 PrefName → 默认前缀展开（非 rdf:type）
+  assert_eq(mat_vs(emits[0].predicate), "<http://dft/a>")
+  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/o>")
+}
+
+///|
+test "役5 物化: a 复活——台账含 a 则 KeywordA 照常展开 rdf:type" {
+  let (emits, errors) = mat_chain(
+    "@prefix : <http://dft/> .\n@keywords a .\n:s a :o .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 1)
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/s>")
+  assert_eq(
+    mat_vs(emits[0].predicate),
+    "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+  )
+  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/o>")
+}
+
+
+///|
+test "役6 物化: 倒装端到端——:a is :p of :b 序列化为 :b :p :a" {
+  let (emits, errors) = mat_chain(
+    "@prefix : <http://dft/> .\n:a is :p of :b .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 1)
+  // 语义序出账（引擎发射点已互换，物化层零感知）
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/b>")
+  assert_eq(mat_vs(emits[0].predicate), "<http://dft/p>")
+  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/a>")
+}
+
+///|
+test "役6 物化: 'a' 倒装——KwA 出账 → rdf:type，主宾互换" {
+  let (emits, errors) = mat_chain(
+    "@prefix : <http://dft/> .\n:x is a of :y .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 1)
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/y>")
+  assert_eq(
+    mat_vs(emits[0].predicate),
+    "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+  )
+  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/x>")
 }

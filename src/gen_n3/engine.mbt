@@ -35,6 +35,7 @@ fn span_of_event(event : N3Event) -> Span {
     N3TripleTerm(span) => span
     N3BracketTripleTerm(span) => span
     N3KeywordA(span) => span
+    N3KeywordX(span) => span // 役5：listed 裸词（引擎合成，span 即词）
     N3Variable(span) => span
     N3Lbracket(span) => span
     N3Anon(span) => span
@@ -42,7 +43,11 @@ fn span_of_event(event : N3Event) -> Span {
     N3Lbrace(span) => span
     N3Bang(span) => span // 路径操作符 span = 中间节点 fresh 身份（役3）
     N3Caret(span) => span
+    N3Implies(span) => span // 规则操作符 span = 规则谓词身份（役4）
+    N3ImpliedBy(span) => span
     N3Equals
+    | N3Is // 役6 倒装引导符（bare，错误兜底位置由词法位置回填）
+    | N3Of
     | N3At
     | N3PrefixKw
     | N3BaseKw
@@ -59,10 +64,8 @@ fn span_of_event(event : N3Event) -> Span {
     | N3Rbrace
     | N3Rbracket
     | N3Rparen
-    | N3Implies
-    | N3ImpliedBy
-    | N3Unknown
     | N3EOF => (0, 0)
+    N3Unknown(span) => span // 役5 载荷化：兜底词项 span 供台账比对
   }
 }
 
@@ -121,7 +124,40 @@ fn[L : LexerSource] is_version_lit_form(
 }
 
 ///|
-/// 吞边界口径的引擎层修正：六类带 payload 术语事件做尾标点三瓣裁决，
+/// 役5 台账命中：候选词与台账某条目字节全等（@keywords listed 词判定）。
+/// 纯机械比对——词性决策仍在表行（KeywordX 行 / 兜底 UnexpectedEvent 同径）。
+fn[L : LexerSource] N3Engine::kw_ledger_hits(
+  self : N3Engine[L],
+  word : Span,
+) -> Bool {
+  let (off, len) = word
+  if len == 0 {
+    return false
+  }
+  let mut k = 0
+  while k < self.ctx.kw_ledger.length() {
+    let (loff, llen) = self.ctx.kw_ledger[k]
+    if llen == len {
+      let mut same = true
+      let mut i = 0
+      while i < len {
+        if self.lexer.byte_at(off + i) != self.lexer.byte_at(loff + i) {
+          same = false
+          break
+        }
+        i = i + 1
+      }
+      if same {
+        return true
+      }
+    }
+    k = k + 1
+  }
+  false
+}
+
+///|
+/// 吞边界口径的引擎层修正：七类带 payload 术语事件做尾标点三瓣裁决，
 /// 其余事件原样直通（结构 token 词法干净，无吞并口径）。
 /// 返回 (修正后事件, 待合成事件?)——待合成事件由 loop 在本事件处理完后喂表。
 fn[L : LexerSource] N3Engine::normalize_term_span(
@@ -131,10 +167,12 @@ fn[L : LexerSource] N3Engine::normalize_term_span(
   match event {
     N3Iri(span) => {
       let (s2, synth) = trim_trailing_punct(self.lexer, span)
+      self.ctx.kw_a_live = false // 役5：他谓词到场即熄（set_predicate 消费制）
       (N3Iri(s2), synth)
     }
     N3BlankNode(span) => {
       let (s2, synth) = trim_trailing_punct(self.lexer, span)
+      self.ctx.kw_a_live = false
       (N3BlankNode(s2), synth)
     }
     N3Literal(span, lang) => {
@@ -142,19 +180,45 @@ fn[L : LexerSource] N3Engine::normalize_term_span(
       let (s2, synth) = trim_trailing_punct(self.lexer, span)
       // VERSION guard 旗标：引擎归位点词法嗅探（纯形态标记，决策仍在表行 guard）
       self.ctx.version_lit_ok = is_version_lit_form(self.lexer, s2, lang)
+      self.ctx.kw_a_live = false
       (N3Literal(s2, lang), synth)
     }
     N3PrefName(span) => {
       let (s2, synth) = trim_trailing_punct(self.lexer, span)
+      self.ctx.kw_a_live = false
       (N3PrefName(s2), synth)
     }
     N3TripleTerm(span) => {
       let (s2, synth) = trim_trailing_punct(self.lexer, span)
+      self.ctx.kw_a_live = false
       (N3TripleTerm(s2), synth)
     }
     N3KeywordA(span) => {
       let (s2, synth) = trim_trailing_punct(self.lexer, span)
-      (N3KeywordA(s2), synth)
+      // 役5：a 失效——@keywords 声明后未列出 → 裸名降 PrefName（物化层按
+      // DefaultPrefixIRI 展开）。声明列表区内不重裁定（收词原样入账）
+      if !(self.ctx.state is N3State::N3ExpectKeywordsList) &&
+        self.ctx.kw_directive_seen &&
+        !self.kw_ledger_hits(s2) {
+        self.ctx.kw_a_live = false
+        (N3PrefName(s2), synth)
+      } else {
+        // 活性随行记账：kept → set_predicate 消费落 pk=KwA；声明列表区内
+        // passthrough 不置位（declare_keyword 非谓词消费）
+        self.ctx.kw_a_live = !(self.ctx.state is N3State::N3ExpectKeywordsList)
+        (N3KeywordA(s2), synth)
+      }
+    }
+    N3Unknown(span) => {
+      let (s2, synth) = trim_trailing_punct(self.lexer, span)
+      // 役5：listed 裸词再分类——台账命中即 KeywordX（词性 = 词，决策仍在表
+      // 行；未列入台账保 Unknown 兜底，bad-*-05 口径不变）
+      self.ctx.kw_a_live = false
+      if self.kw_ledger_hits(s2) {
+        (N3KeywordX(s2), synth)
+      } else {
+        (N3Unknown(s2), synth)
+      }
     }
     other => (other, None)
   }
@@ -272,6 +336,7 @@ impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn recover(
   self.record_error(span)
   self.ctx.slot_stack.clear()
   self.ctx.pred_kind = Normal
+  self.ctx.is_src = None // 役6：倒装交换键随错回收
   self.consume_to_recover_point()
 }
 
@@ -329,6 +394,7 @@ impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn finish_at_end(
     self.ctx.prefix_name = None
     self.ctx.slot_stack.clear()
     self.ctx.pred_kind = Normal
+    self.ctx.is_src = None
     self.ctx.state = N3ExpectSubject
     Some(Err(err))
   } else {
@@ -352,6 +418,40 @@ extend N3Engine with N3LoopPolicy::{
   begin_record,
   finish_at_end,
   on_business_failed,
+}
+
+///|
+/// is/of 倒装清账半边（役6）：非 Object 粒度且槽深与登记时齐平 = 语句级推进
+///（分号续谓词 / Dot 收口 / 罩内同层收拾）——交换键归零；嵌套内层发射（槽深
+/// 更深）不动外层账，倒装宾位的嵌套结构出账后外层照常互换。
+fn[L : LexerSource] N3Engine::settle_inversion(
+  self : N3Engine[L],
+  scope : ResetScope,
+) -> Unit {
+  if !(scope is ResetScope::Object) &&
+    self.ctx.slot_stack.length() == self.ctx.is_depth {
+    self.ctx.is_src = None
+  }
+}
+
+///|
+/// 发射出账机械（役6 收口）：快照打包槽位 span；倒装交换键在场且挂起主语即
+/// 倒装主语 → 主宾互换（`X is P of Y` grammar 序槽位、语义序 `Y P X` 出账
+/// ——span 全局唯一 ⇒ 嵌套 bnp/集合内层 fresh 主语天然错键不换）；随后按
+/// scope 粒度重置并走清账半边（逗号 Object 粒度保键连换）。
+fn[L : LexerSource] N3Engine::take_pending_quad(
+  self : N3Engine[L],
+  scope : ResetScope,
+) -> N3PendingQuad {
+  let pending = self.ctx.snapshot()
+  let pending = if self.ctx.is_src is Some(_) && pending.subj == self.ctx.is_src {
+    { ..pending, subj: pending.obj, obj: pending.subj }
+  } else {
+    pending
+  }
+  self.settle_inversion(scope)
+  self.ctx.reset(scope)
+  pending
 }
 
 ///|
@@ -403,12 +503,14 @@ pub fn[L : LexerSource] N3Engine::next(
       Ok(N3Effect::EmitQuad(scope)) => {
         if under_formula(self.ctx) {
           // ADR-002：公式帧罩内发射意图 = 内容不断言——只收拾不上抛
+          //（同层倒装账随壳消费：settle 清账半边，防 stale 键出罩）
+          self.settle_inversion(scope)
           self.ctx.reset(scope)
           continue
         }
-        // 发射：snapshot 打包槽位 span，按 scope 粒度重置后上抛
-        let pending = self.ctx.snapshot()
-        self.ctx.reset(scope)
+        // 发射：take 打包槽位 span（倒装键在场 = 主宾互换，役6），按 scope
+        // 粒度重置后上抛
+        let pending = self.take_pending_quad(scope)
         return Some(Ok(pending))
       }
       Ok(N3Effect::Sequence(effects)) => {
@@ -420,10 +522,11 @@ pub fn[L : LexerSource] N3Engine::next(
             N3Effect::EmitQuad(scope) => {
               if under_formula(self.ctx) {
                 // ADR-002：公式帧罩内发射意图 = 内容不断言——只收拾不上抛
+                //（同层倒装账随壳消费，防 stale 键出罩）
+                self.settle_inversion(scope)
                 self.ctx.reset(scope)
               } else {
-                let item = self.ctx.snapshot()
-                self.ctx.reset(scope)
+                let item = self.take_pending_quad(scope)
                 self.emit_queue.push(item)
               }
             }

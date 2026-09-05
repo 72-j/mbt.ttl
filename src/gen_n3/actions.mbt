@@ -35,6 +35,14 @@ impl N3Actions for Hooks with fn set_predicate(
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
   ctx.predicate = Some(payload)
+  // 役5：KeywordA 活性随行旗标（引擎归位点置位）此刻兑现落 pk——Comma
+  // 连发同谓词不再过 action，pk 快照直引保真；他谓词恒 Normal
+  ctx.pred_kind = if ctx.kw_a_live {
+    PredKind::KwA
+  } else {
+    PredKind::Normal
+  }
+  ctx.kw_a_live = false
   Ok(N3Effect::Continue)
 }
 
@@ -266,7 +274,9 @@ fn path_hop_resolve(
     Some(verb) => verb
     None => return Err(N3ActionError::BusinessFailed("Path step missing"))
   }
-  if fwd {
+  // 发射方向 = pend 边所属操作符（前一 op 定的旗标）；fwd 参数 = 本 op 方向，
+  // 发射后才翻——!P^Q 链首边才不会被末 op 的 ^ 带反
+  if ctx.path_fwd {
     ctx.subject = Some(src)
     ctx.predicate = Some(verb)
     ctx.object = Some(fresh)
@@ -403,6 +413,12 @@ impl N3Actions for Hooks with fn path_end_nested(
   ret_state : N3State,
 ) -> Result[N3Effect, N3ActionError] {
   if !(ctx.path_fwd) {
+    // 拒绝落点：state 已随行进到嵌套态——原地拨回 ExpectDotOrGraph，
+    // 后续流走 UnexpectedEvent 正规恢复（skip-to-Dot），不出垃圾内部
+    // quad（BusinessFailed 本身不 resync，context 带病续跑）
+    ctx.path_src = None
+    ctx.path_pend = None
+    ctx.state = N3ExpectDotOrGraph
     return Err(
       N3ActionError::BusinessFailed(
         "Reverse path cannot end at a composite node",
@@ -516,4 +532,46 @@ impl N3Actions for Hooks with fn list_nil(
 ) -> Result[N3Effect, N3ActionError] {
   let _ = ctx // 槽位不动：决策全在 pop（帧携带）；保留形参对齐 trait 形状
   Ok(N3Effect::PopBnp)
+}
+
+// —— @keywords 关键词声明（役5）：cwm 口径全量重置——台账跨语句存续
+//（ResetScope 只触 s/p/o/g，不触台账；新 @keywords 入口即清账重声明）——
+
+///|
+/// @keywords 入口：清台账 + seen 置位（旧 listed 词即刻失格，含 `a`）
+impl N3Actions for Hooks with fn kw_begin(
+  _self : Hooks,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.kw_ledger.clear()
+  ctx.kw_directive_seen = true
+  Ok(N3Effect::Continue)
+}
+
+///|
+/// @keywords 收词：词 span 入台账（listed 词主/谓/宾全位可用——引擎归位点
+/// 嗅探 Unknown→KeywordX；`a` 复活 = 台账含 a，KeywordA 嗅探放行）
+impl N3Actions for Hooks with fn declare_keyword(
+  _self : Hooks,
+  ctx : N3Context,
+  word : Span,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.kw_ledger.push(word)
+  Ok(N3Effect::Continue)
+}
+
+// —— is/of 集合等价倒装（役6：`X is P of Y ≡ Y P X`）——
+// grammar 序槽位（X 主 / P 谓 / Y 宾）不动，语义序出账全在引擎发射点互换
+//（take_pending_quad）：is_src = 交换键（主语 token span，全局唯一），
+
+///|
+/// of 收倒装头：主语 token span 入 is_src 作交换键 + 槽深入 is_depth 定清账界
+///（span 全局唯一 ⇒ 嵌套 bnp/集合内层 fresh 主语天然错键不换）
+impl N3Actions for Hooks with fn is_of(
+  _self : Hooks,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.is_src = ctx.subject
+  ctx.is_depth = ctx.slot_stack.length()
+  Ok(N3Effect::Continue)
 }

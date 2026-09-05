@@ -346,3 +346,351 @@ test "役2: 谓词位变量显式拒绝" {
   assert_eq(quads.length(), 0)
   assert_eq(errors.length(), 1)
 }
+
+///|
+test "役3: 公式罩内路径——内容零发射，statement 身份 = { span" {
+  let input = "<s> <p> { <a> !<b> <c> } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 罩内路径 desugar 全被压制（ADR-002 同口径）；statement 一条
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].obj.unwrap(), (8, 1))
+}
+
+///|
+test "役3: 公式罩内基动词 !——急兑现 EmitQuad 同被罩内压制" {
+  let input = "{ <a> <b> !<c> <d> } <p> <o> .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 罩内基跳急兑现走同一 suppression 单点（役1 决策在表）；statement 一条
+  assert_eq(quads.length(), 1)
+  // statement 主语 = 公式身份（{ 在 offset 0）
+  assert_eq(quads[0].subj.unwrap(), (0, 1))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "<p>")
+  assert_eq(view_str(data[:], quads[0].obj.unwrap()), "<o>")
+}
+
+///|
+test "役3: 公式主位路径——! 链从公式身份起步" {
+  // { <a> } 裸主语公式非法（Rbrace 在 FormulaExpectPredicate 无行 =
+  // 谓语缺位，`[] .` 同口径）——用完整内层语句
+  let input = "{ <a> <b> <c> } !<p> <o> .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 公式主语（罩内零发射后身份落主位槽）+ 路径 → statement = ({span}, <p>, <o>)
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (0, 1))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "<p>")
+  assert_eq(view_str(data[:], quads[0].obj.unwrap()), "<o>")
+}
+
+///|
+test "役3: 反向路径复合末跳拒绝——基跳急兑现先落，连接边不出" {
+  let input = "<http://ex/s> ^<http://ex/p> [ <http://ex/q> <http://ex/r> ] .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  // 拒绝报错一处（pop 机械不管宾位帧——诚实报错非静默错装）；
+  // 拒绝时拨回 ExpectDotOrGraph → 后续流走 UnexpectedEvent 正规恢复
+  // （skip-to-Dot）：零垃圾 quad、零连接边
+  assert_eq(errors.length(), 1)
+  assert_eq(quads.length(), 0)
+  // 基动词变体：基跳急兑现先于末跳拒绝已落（同 bnp 内部 quad 先落口径）
+  let input2 = "<http://ex/s> <http://ex/p>^<http://ex/q> [ <http://ex/r> <http://ex/t> ] .\n"
+  let data2 = bytes_of(input2)
+  let (quads2, errors2) = drain_n3(N3Engine::from_bytes(data2))
+  assert_eq(errors2.length(), 1)
+  assert_eq(quads2.length(), 1)
+  assert_eq(view_str(data2[:], quads2[0].subj.unwrap()), "<http://ex/s>")
+  assert_eq(view_str(data2[:], quads2[0].pred.unwrap()), "<http://ex/p>")
+  // 引擎层 = span 快照：基跳宾位 = ^ token span 本身（genid 化在物化层）
+  assert_eq(view_str(data2[:], quads2[0].obj.unwrap()), "^")
+}
+
+///|
+test "役4: 正向规则——({A}, =>span, {B}) 单 quad，操作符即谓词身份" {
+  let input = "{ <a> <b> <c> } => { <d> <e> <f> } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 罩内两侧内容零发射（ADR-002），规则语句一条
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (0, 1))
+  // 谓词 = => token span（规则方向自描述，rule_side 无需占用）
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "=>")
+  assert_eq(quads[0].obj.unwrap(), (19, 1))
+}
+
+///|
+test "役4: 反向规则——<= 同构，谓词 span 即方向" {
+  let input = "{ <a> <b> <c> } <= { <d> <e> <f> } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (0, 1))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "<=")
+  assert_eq(quads[0].obj.unwrap(), (19, 1))
+}
+
+///|
+test "役4: 公式罩内嵌套规则——内层语句同被罩内压制" {
+  let input = "<s> <p> { { <a> <b> <c> } => { <d> <e> <f> } } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 内层规则零 quad；statement 一条，o = 外层 { 身份（offset 8）
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].obj.unwrap(), (8, 1))
+  assert_eq(view_str(data[:], quads[0].subj.unwrap()), "<s>")
+}
+
+///|
+test "役4: 变量体规则——役2 只记身份 × 役4 规则谓词同帧" {
+  let input = "{ ?x <a> ?y } => { ?y <b> ?x } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (0, 1))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "=>")
+  // RHS { 身份（offset 17）
+  assert_eq(quads[0].obj.unwrap(), (17, 1))
+}
+
+///|
+test "役4: 裸词 LHS 拒绝——规则两侧必须 {}（表无行 = 静默兜底）" {
+  let input = "<a> => <b> .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  // Implies 在 ExpectPredicate 无行 → UnexpectedEvent → 恢复吞到 Dot：
+  // 零 quad 零报错（表无行兜底口径，与裸词垃圾同径）
+  assert_eq(quads.length(), 0)
+  assert_eq(errors.length(), 0)
+}
+
+///|
+test "役5: listed 词谓词位——台账命中 Unknown→KeywordX，词性 = 词" {
+  let input = "@keywords foo, a . :s foo :o .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (19, 2))
+  // 谓词 = listed 裸词自身 span（物化按 DefaultPrefixIRI 展开）
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "foo")
+  assert_eq(quads[0].obj.unwrap(), (26, 2))
+}
+
+///|
+test "役5: `a` 复活——台账含 a，KeywordA 嗅探放行照常 rdf:type" {
+  let input = "@keywords a . :s a :o .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // a 保 KeywordA（谓词 span 即 a 本词；物化层展开 rdf:type 由物化钉盖）
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "a")
+  assert_eq(quads[0].pred.unwrap(), (17, 1))
+}
+
+///|
+test "役5: listed 词主位 + 未列入词拒——无行静默兜底口径不变" {
+  let input = "@keywords sub . sub :p :o . junk :q :r .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // sub 台账命中走 KeywordX 主位；junk 未列入 = Unknown 无行 → 静默跳到 Dot
+  assert_eq(quads.length(), 1)
+  assert_eq(view_str(data[:], quads[0].subj.unwrap()), "sub")
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), ":p")
+}
+
+///|
+test "役5: 公式罩内 listed 词——node 位镜像 Variable，罩内零发射不变" {
+  let input = "@keywords foo . :s :p { foo foo foo } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 罩内语句消费不发射（ADR-002）；外层 statement 一条，o = { 身份
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].obj.unwrap(), (22, 1))
+}
+
+///|
+test "役5: 全量重置——新 @keywords 清账，旧 listed 词即刻失格" {
+  let input = "@keywords foo . foo :p :o . @keywords bar . foo :q :r .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 首声明期 foo 可用；再声明 @keywords bar 后 foo 失格 = Unknown 静默拒
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (16, 3))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), ":p")
+}
+
+///|
+test "役5: 空列表——@keywords . 全关键词失格，a 走 PrefName 谓词位照常" {
+  let input = "@keywords . :s a :o .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // a 失格 → PrefName（冒号无前缀裸名，物化层 DefaultPrefixIRI 展开径）
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "a")
+}
+
+
+// —— 役6：is/of 集合等价倒装（`X is P of Y ≡ Y P X`；grammar 序槽位、语义序出账）——
+
+///|
+test "役6: 正典倒装——主宾互换出账" {
+  let input = ":a is :p of :b .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // :a is :p of :b ≡ :b :p :a
+  assert_eq(quads[0].subj.unwrap(), (12, 2))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), ":p")
+  assert_eq(quads[0].obj.unwrap(), (0, 2))
+}
+
+///|
+test "役6: 变量倒装——?x is :p of ?y ≡ ?y :p ?x（W3C 正典形）" {
+  let input = "?x is :p of ?y .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (12, 2))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), ":p")
+  assert_eq(quads[0].obj.unwrap(), (0, 2))
+}
+
+///|
+test "役6: 逗号连换——Object 粒度保交换键，多宾各自互换" {
+  let input = ":a is :p of :b, :c .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // :b :p :a . :c :p :a .
+  assert_eq(quads.length(), 2)
+  assert_eq(quads[0].subj.unwrap(), (12, 2))
+  assert_eq(quads[0].obj.unwrap(), (0, 2))
+  assert_eq(quads[1].subj.unwrap(), (16, 2))
+  assert_eq(quads[1].obj.unwrap(), (0, 2))
+}
+
+///|
+test "役6: 分号续谓词——PredObj 粒度清键，后续谓词不互换" {
+  let input = ":a is :p of :b ; :q :c .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // :b :p :a . :a :q :c .——第二句语法主语 :a 不换
+  assert_eq(quads.length(), 2)
+  assert_eq(quads[0].subj.unwrap(), (12, 2))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), ":p")
+  assert_eq(quads[1].subj.unwrap(), (0, 2))
+  assert_eq(view_str(data[:], quads[1].pred.unwrap()), ":q")
+  assert_eq(quads[1].obj.unwrap(), (20, 2))
+}
+
+///|
+test "役6: 分号二次倒装——新 is/of 重新登记交换键" {
+  let input = ":a is :p of :b ; is :q of :c .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // :b :p :a . :c :q :a .
+  assert_eq(quads.length(), 2)
+  assert_eq(quads[0].subj.unwrap(), (12, 2))
+  assert_eq(quads[0].obj.unwrap(), (0, 2))
+  assert_eq(quads[1].subj.unwrap(), (26, 2))
+  assert_eq(view_str(data[:], quads[1].pred.unwrap()), ":q")
+  assert_eq(quads[1].obj.unwrap(), (0, 2))
+}
+
+///|
+test "役6: 嵌套 bnp 宾位——内层发射 fresh 主语错键不换，外层照常互换" {
+  let input = ":a is :p of [ :q :r ] .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 2)
+  // 内层：(fresh, :q, :r)——fresh = [ span，错键不换
+  assert_eq(quads[0].subj.unwrap(), (12, 1))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), ":q")
+  assert_eq(quads[0].obj.unwrap(), (17, 2))
+  // 外层：fresh :p :a——交换键 :a 仍在（槽深 1 ≠ 登记 0，内层未清账）
+  assert_eq(quads[1].subj.unwrap(), (12, 1))
+  assert_eq(view_str(data[:], quads[1].pred.unwrap()), ":p")
+  assert_eq(quads[1].obj.unwrap(), (0, 2))
+}
+
+///|
+test "役6: 公式宾位——罩内零发射不动外层账，GraphTerm 作倒装主语出账" {
+  let input = ":a is :p of { :x :q :z } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // { :p :a——罩内语句消费不发射；外层互换照常
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (12, 1))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), ":p")
+  assert_eq(quads[0].obj.unwrap(), (0, 2))
+}
+
+///|
+test "役6: 公式罩内 is 拒——未接位置无行 = UnexpectedEvent 干净拒（误收编退役）" {
+  let input = "{ :a is :p of :b } :s :z .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  // FormulaExpectPredicate 无 Is 行 → 表无行 = 静默兜底：0 quad 零报错
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 0)
+}
+
+///|
+test "役6: 残缺倒装拒——is 谓词后无 of = Dot 无行，不出 (:a,:b) 垃圾 quad" {
+  let input = ":a is :b .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  // 静默兜底：残缺倒装整句吞（误收编退役——此前 :b 成宾位出 (:a,is,:b)）
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 0)
+}
+
+///|
+test "役6: of 无行拒——裸 of 出现在非倒装位 = 静默兜底" {
+  let input = ":a :b of :c .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 0)
+}
+
+///|
+test "役6: bnp 位 is 拒——顶层四动词位之外的 scope cut" {
+  let input = "[ is :p of :x ] :q :z .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 0)
+}
+
+///|
+test "役6: 'a' 倒装——set_predicate 复用，pk 出账 KwA（物化层 rdf:type 同径）" {
+  let input = ":x is a of :y .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (11, 2))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), "a")
+  assert_true(quads[0].pk is PredKind::KwA)
+  assert_eq(quads[0].obj.unwrap(), (0, 2))
+}

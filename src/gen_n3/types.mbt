@@ -163,7 +163,11 @@ pub impl Show for N3Event with fn output(self : N3Event, logger : &Logger) -> Un
       logger.write("KeywordA \{@debug.to_string(span)}")
     N3Event::N3Variable(span) =>
       logger.write("Variable \{@debug.to_string(span)}")
+    N3Event::N3KeywordX(span) =>
+      logger.write("KeywordX \{@debug.to_string(span)}")
     N3Event::N3Equals => logger.write("Equals")
+    N3Event::N3Is => logger.write("Is")
+    N3Event::N3Of => logger.write("Of")
     N3Event::N3At => logger.write("@")
     N3Event::N3PrefixKw => logger.write("PrefixKw")
     N3Event::N3BaseKw => logger.write("BaseKw")
@@ -188,9 +192,10 @@ pub impl Show for N3Event with fn output(self : N3Event, logger : &Logger) -> Un
     N3Event::N3Anon(span) => logger.write("Anon \{@debug.to_string(span)}")
     N3Event::N3Bang(span) => logger.write("Bang \{@debug.to_string(span)}")
     N3Event::N3Caret(span) => logger.write("Caret \{@debug.to_string(span)}")
-    N3Event::N3Implies => logger.write("Implies")
-    N3Event::N3ImpliedBy => logger.write("ImpliedBy")
-    N3Event::N3Unknown => logger.write("Unknown")
+    N3Event::N3Implies((o, l)) => logger.write("Implies \{@debug.to_string((o, l))}")
+    N3Event::N3ImpliedBy((o, l)) => logger.write("ImpliedBy \{@debug.to_string((o, l))}")
+    N3Event::N3Unknown((o, l)) =>
+      logger.write("Unknown \{@debug.to_string((o, l))}")
     N3Event::N3EOF => logger.write("EOF")
   }
 }

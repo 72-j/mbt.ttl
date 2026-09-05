@@ -4,6 +4,8 @@
 //   (N3 engine has no graph states at all; the table has no edges for graph blocks
 //   so they reject naturally). is_bad = name contains "-bad" only -- the 3 trig
 //   graph-position exceptions do not apply (turtle suite has no graph-position cases).
+//   役6 豁免：turtle 负例、N3 方言正例（n3_suite_n3_legal）——verdict 反转为
+//   good（零错 + emits==quads），全量闭包不动。
 //   bad  -> must error somewhere on the chain (parse or materialize, incl. deep gates)
 //   good -> zero errors AND emits.length == quads.length (every parsed quad survives)
 // First sweep: failures print only (no assert) to bucket gaps into (deferred feature /
@@ -13,6 +15,15 @@
 /// Negative verdict: name contains "-bad" (no graph-position exceptions for N3)
 fn n3_suite_is_bad(name : String) -> Bool {
   name.contains("-bad")
+}
+
+///|
+/// Turtle 负例、N3 方言正例豁免（役6）：W3C turtle 负例清单里混着 N3 扩展
+/// 语法——对 TURTLE 非法，对 gen_n3 的 N3 方言合法。倒装 `is..of` 役6 起
+/// 正解出账（此前靠 of 无行 recover 撞进负例契约，属误收编的副产物）。
+/// 命中者 verdict 反转为 good（零错 + emits==quads），套件全量闭包不动。
+fn n3_suite_n3_legal(name : String) -> Bool {
+  name == "turtle-syntax-bad-n3-extras-05.ttl" // :z is :p of :x . ≡ (:x,:p,:z)
 }
 
 ///|
@@ -52,7 +63,7 @@ async fn run_n3_suite(
   let mut passed = 0
   let mut failed = 0
   for file in files {
-    let is_bad = n3_suite_is_bad(file)
+    let is_bad = n3_suite_is_bad(file) && !n3_suite_n3_legal(file)
     let data = @fs.read_file("\{test_dir}/\{file}").binary().to_array()
     let sec = data[:]
     let engine = N3Engine::from_bytes(data)
