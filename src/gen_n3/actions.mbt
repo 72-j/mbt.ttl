@@ -876,6 +876,50 @@ impl N3Actions for Hooks with fn path_obj_close(
 }
 
 ///|
+/// 宾位尾跳 Dot 收口：终跳边 + statement 边分两发（Dot = statement 边界，
+/// 非 Comma/Semicolon 的连发口径；Sequence 三跳 = emit 先 snapshot 后收拾、
+/// 帧恢复随其后、statement 接最后上抛——既有口径一以贯之）。
+impl N3Actions for Hooks with fn path_obj_close_end(
+  _self : Hooks,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
+  let src = match ctx.path_src {
+    Some(src) => src
+    None => return Err(N3ActionError::BusinessFailed("Path source missing"))
+  }
+  let verb = match ctx.path_pend {
+    Some(verb) => verb
+    None => return Err(N3ActionError::BusinessFailed("Path step missing"))
+  }
+  let tail = match ctx.path_tail {
+    Some(tail) => tail
+    None => return Err(N3ActionError::BusinessFailed("Path tail missing"))
+  }
+  if ctx.path_fwd {
+    ctx.subject = Some(src)
+    ctx.predicate = Some(verb)
+    ctx.object = Some(tail)
+  } else {
+    ctx.subject = Some(tail)
+    ctx.predicate = Some(verb)
+    ctx.object = Some(src)
+  }
+  let fr = match list_top(ctx) {
+    Ok(fr) => fr
+    Err(e) => return Err(e)
+  }
+  fr.ret_state = N3ExpectSubject
+  ctx.path_src = None
+  ctx.path_tail = None
+  ctx.path_pend = None
+  Ok(N3Effect::Sequence([
+    N3Effect::EmitQuad(ResetScope::SPO), // 终跳边
+    N3Effect::PopBnp,                    // 帧恢复（object := 尾白得，ret_state 兑现）
+    N3Effect::EmitQuad(ResetScope::SPO), // statement 边（pop 后 s/p 已就位）
+  ]))
+}
+
+///|
 /// 集合区域栈顶帧（表保证区域状态只在有帧时可达；空栈 = 组装层契约破坏，防御位）
 fn list_top(ctx : N3Context) -> Result[Slot, N3ActionError] {
   if ctx.slot_stack.length() == 0 {

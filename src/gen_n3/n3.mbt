@@ -318,6 +318,10 @@ pub trait N3Actions {
   fn annot_end(Self, N3Context) -> Result[N3Effect, N3ActionError]
   fn open_slot(Self, N3Context, Span, SlotType, N3State) -> Result[N3Effect, N3ActionError]
   fn pop_bnode_prop(Self, N3Context) -> Result[N3Effect, N3ActionError]
+ fn path_obj_close_end(
+  _self : Hooks,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError]
 }
 
 
