@@ -434,9 +434,13 @@ fn[L] TrigSliceParser::assemble(
     (Some(s), Some(p), Some(o)) => {
       if !self.lenient {
         let prefixes = self.engine.ctx.prefixes
-        match validate_term(self.data, prefixes, s, false) {
-          Some(e) => return Err(e)
-          None => ()
+        // 役9：壳主语跳验证（s 是锚 s→o 原文区间非词项；成分已在主 quad
+        // 组装时验过）
+        if !pending.subj_shell {
+          match validate_term(self.data, prefixes, s, false) {
+            Some(e) => return Err(e)
+            None => ()
+          }
         }
         match validate_term(self.data, prefixes, p, true) {
           Some(e) => return Err(e)
@@ -463,6 +467,7 @@ fn[L] TrigSliceParser::assemble(
         pk: pending.pk,
         pver: pending.pver,
         bver: pending.bver,
+        subj_shell: pending.subj_shell,
       })
     }
     // RDF 1.2 引用三元组壳独立成句：`<< s p o >> .`——壳落主语槽后无谓词/宾语，
@@ -479,6 +484,7 @@ fn[L] TrigSliceParser::assemble(
               pk: pending.pk,
               pver: pending.pver,
               bver: pending.bver,
+              subj_shell: false,
             })
           } else {
             let prefixes = self.engine.ctx.prefixes
@@ -510,6 +516,7 @@ fn[L] TrigSliceParser::assemble(
               pk: pending.pk,
               pver: pending.pver,
               bver: pending.bver,
+              subj_shell: false,
             })
           }
         None => Err(ParseError::SyntaxErr("Incomplete quad at emission", s))

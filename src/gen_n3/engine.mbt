@@ -45,8 +45,8 @@ fn span_of_event(event : N3Event) -> Span {
     N3Caret(span) => span
     N3Implies(span) => span // 规则操作符 span = 规则谓词身份（役4）
     N3ImpliedBy(span) => span
-    N3Equals
-    | N3Is // 役6 倒装引导符（bare，错误兜底位置由词法位置回填）
+    N3Equals(span) => span // 役7：= token span 占谓词槽（pk=SameAs 身份）
+    N3Is // 役6 倒装引导符（bare，错误兜底位置由词法位置回填）
     | N3Of
     | N3At
     | N3PrefixKw
@@ -322,6 +322,10 @@ impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn begin_record(
   self.ctx.slot_stack.clear()
   self.ctx.pred_kind = Normal
   self.ctx.state = N3ExpectSubject
+  self.ctx.annot_s = None
+  self.ctx.annot_o = None
+  self.ctx.subj_shell = false
+  self.ctx.annot_close = false
 }
 
 ///|
@@ -337,6 +341,10 @@ impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn recover(
   self.ctx.slot_stack.clear()
   self.ctx.pred_kind = Normal
   self.ctx.is_src = None // 役6：倒装交换键随错回收
+  self.ctx.annot_s = None // 役8：注解壳账随错回收
+  self.ctx.annot_o = None
+  self.ctx.subj_shell = false
+  self.ctx.annot_close = false
   self.consume_to_recover_point()
 }
 
@@ -395,6 +403,10 @@ impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn finish_at_end(
     self.ctx.slot_stack.clear()
     self.ctx.pred_kind = Normal
     self.ctx.is_src = None
+    self.ctx.annot_s = None
+    self.ctx.annot_o = None
+    self.ctx.subj_shell = false
+    self.ctx.annot_close = false
     self.ctx.state = N3ExpectSubject
     Some(Err(err))
   } else {
@@ -435,6 +447,21 @@ fn[L : LexerSource] N3Engine::settle_inversion(
 }
 
 ///|
+/// 注解壳账收口半边（役8）：末体 quad 出账点（take）或公式罩内压位点消费
+/// annot_close 旗——还原即清账（收口行 PredObj 粒度本就保锚主语在槽，`;` 续锚
+/// 直落现状；体区旗/壳账四件套齐清，防旗漏后语句）
+fn[L : LexerSource] N3Engine::settle_annotation(
+  self : N3Engine[L],
+) -> Unit {
+  if self.ctx.annot_close {
+    self.ctx.annot_close = false
+    self.ctx.subj_shell = false
+    self.ctx.annot_s = None
+    self.ctx.annot_o = None
+  }
+}
+
+///|
 /// 发射出账机械（役6 收口）：快照打包槽位 span；倒装交换键在场且挂起主语即
 /// 倒装主语 → 主宾互换（`X is P of Y` grammar 序槽位、语义序 `Y P X` 出账
 /// ——span 全局唯一 ⇒ 嵌套 bnp/集合内层 fresh 主语天然错键不换）；随后按
@@ -444,12 +471,30 @@ fn[L : LexerSource] N3Engine::take_pending_quad(
   scope : ResetScope,
 ) -> N3PendingQuad {
   let pending = self.ctx.snapshot()
+  // 役8 注解壳交换：体区旗在场且挂起主语 == 锚主语（span 身份键，嵌套内层
+  // fresh 主语错键不换）→ 主语改指壳 span（锚 s 起点至锚 o 终点的连续原文，
+  // 物化层合成 <<原文>> TT 壳）；先壳交换后倒装交换，两键互斥不叠加
+  let pending = if self.ctx.subj_shell && pending.subj == self.ctx.annot_s {
+    match (self.ctx.annot_s, self.ctx.annot_o) {
+      (Some(s), Some(o)) =>
+        // 命中：主语改指壳 span + 壳旗随账（extra 直引已真，显式保真）
+        { ..pending, subj: Some((s.0, o.0 + o.1 - s.0)), subj_shell: true }
+      (_, _) => pending
+    }
+  } else if self.ctx.subj_shell {
+    // 错键不换（嵌套 bnp/集合内层 fresh 主语，役6 同款）：壳旗强制落假——
+    // extra 直引自 ctx 会把体区旗漏挂到内层 quad 上
+    { ..pending, subj_shell: false }
+  } else {
+    pending
+  }
   let pending = if self.ctx.is_src is Some(_) && pending.subj == self.ctx.is_src {
     { ..pending, subj: pending.obj, obj: pending.subj }
   } else {
     pending
   }
   self.settle_inversion(scope)
+  self.settle_annotation()
   self.ctx.reset(scope)
   pending
 }
@@ -505,6 +550,7 @@ pub fn[L : LexerSource] N3Engine::next(
           // ADR-002：公式帧罩内发射意图 = 内容不断言——只收拾不上抛
           //（同层倒装账随壳消费：settle 清账半边，防 stale 键出罩）
           self.settle_inversion(scope)
+          self.settle_annotation()
           self.ctx.reset(scope)
           continue
         }
@@ -524,6 +570,7 @@ pub fn[L : LexerSource] N3Engine::next(
                 // ADR-002：公式帧罩内发射意图 = 内容不断言——只收拾不上抛
                 //（同层倒装账随壳消费，防 stale 键出罩）
                 self.settle_inversion(scope)
+                self.settle_annotation()
                 self.ctx.reset(scope)
               } else {
                 let item = self.take_pending_quad(scope)

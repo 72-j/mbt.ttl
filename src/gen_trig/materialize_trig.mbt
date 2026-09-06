@@ -603,7 +603,19 @@ pub fn TrigMaterializer::materialize_quad(
   // 主语位：Iri / BNode / TT 壳 / PrefName。融合深验（deep_validate 门）在词项
   // 构造点就地执行：Iri→check_iri_view / BNode→validate_bnode / TT 壳→deep_check_tt
   // （独立成句的壳已在组装层拆成普通槽位，此臂承接"壳+后续链"形态）
-  let subject : @nquads.Subject = if quad.s.1 == 0 {
+  let subject : @nquads.Subject = if quad.subj_shell {
+    // 役9 注解壳主语：s = 锚三元组原文区间（锚 s 起点→锚 o 终点，含原空白），
+    // 物化层 <<原文>> 逐字节保真合成 TT 壳；壳成分 = 主 quad 锚项已验，免深验
+    let start = self.arena.length()
+    self.push_byte(b'<')
+    self.push_byte(b'<')
+    self.push_view(self.data[quad.s.0:quad.s.0 + quad.s.1])
+    self.push_byte(b'>')
+    self.push_byte(b'>')
+    @nquads.Subject::TripleTerm(
+      slice_span(self.arena[:], (start, self.arena.length() - start)),
+    )
+  } else if quad.s.1 == 0 {
     // rdf:nil 标记（Span(open.0, 0)，长度 0 = 无字节词项）：合成词表 IRI，可信免深验
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_nil)
@@ -1178,6 +1190,8 @@ fn mat_subj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
     Iri(v) => v
     BNode(v) => v
     PrefName(v) => v
+    // 役9：TT 壳主语（注解体 quad）直通
+    TripleTerm(v) => v
     _ => mat_empty[:]
   }
 }

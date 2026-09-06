@@ -372,3 +372,8 @@ pub let rdf_year_month_duration : NamedNodeRef = NamedNode::new_unchecked(
 pub let rdf_wkt_literal : NamedNodeRef = NamedNode::new_unchecked(
   "http://www.opengis.net/ont/geosparql#wktLiteral",
 )
+
+///|
+pub let owl_sameas : NamedNodeRef = NamedNode::new_unchecked(
+  "http://www.w3.org/2002/07/owl#sameAs",
+)

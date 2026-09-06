@@ -244,6 +244,11 @@ impl[L : LexerSource] TrigLoopPolicy for TrigEngine[L] with fn recover(
   self.record_error(span)
   self.ctx.slot_stack.clear()
   self.ctx.pred_kind = Normal
+  // 役9：注解壳账随错回收（带病续跑不出幽灵壳）
+  self.ctx.annot_close = false
+  self.ctx.subj_shell = false
+  self.ctx.annot_s = None
+  self.ctx.annot_o = None
   self.consume_to_recover_point()
 }
 
@@ -323,6 +328,10 @@ impl[L : LexerSource] TrigLoopPolicy for TrigEngine[L] with fn finish_at_end(
     self.ctx.prefix_name = None
     self.ctx.slot_stack.clear()
     self.ctx.pred_kind = Normal
+    self.ctx.annot_close = false
+    self.ctx.subj_shell = false
+    self.ctx.annot_s = None
+    self.ctx.annot_o = None
     self.ctx.state = TrigState::TrigExpectSubject
     Some(Err(err))
   } else {
@@ -414,7 +423,9 @@ pub fn[L : LexerSource] TrigEngine::next(
       }
       Ok(TrigEffect::EmitQuad(scope)) => {
         // 发射：snapshot 打包槽位 span，按 scope 粒度重置后上抛
-        let pending = self.ctx.snapshot()
+        //（役9：壳旗结算 + 收口旗消费在快照与重置之间——换壳键只认锚主语身份）
+        let pending = self.settle_shell(self.ctx.snapshot())
+        self.settle_annotation()
         self.ctx.reset(scope)
         return Some(Ok(pending))
       }
@@ -424,7 +435,9 @@ pub fn[L : LexerSource] TrigEngine::next(
         for effect in effects {
           match effect {
             TrigEffect::EmitQuad(scope) => {
-              let item = self.ctx.snapshot()
+              // 役9：队列入队同样过壳旗结算（`]` 收口序列的内层 fresh 主语
+              // 错键不换、旗落假——extra 直引会漏挂）
+              let item = self.settle_shell(self.ctx.snapshot())
               self.ctx.reset(scope)
               self.emit_queue.push(item)
             }
@@ -480,4 +493,39 @@ pub fn trig_parser(
   let engine = TrigEngine::from_bytes(input, dialect~)
   let slice = TrigSliceParser::new(engine, input[:], lenient~)
   slice.parse_all()
+}
+
+///|
+/// 役9 注解壳主语结算：体区旗真且主语 = 锚主语（span 身份交换键，役6 is_src
+/// 同教义——嵌套 bnp/集合内层 fresh 主语天然错键）时换壳 span：锚主语起点→
+/// 锚宾语终点的原文连续区间，物化层据此合成 <<原文>> TT 壳。
+/// 错键支强制旗落假：subj_shell 是 ctx 直引 extra，不落旗内层 quad 无条件继承
+/// 壳旗被误包（役8 教训）。
+fn[L : LexerSource] TrigEngine::settle_shell(
+  self : TrigEngine[L],
+  pending : TrigPendingQuad,
+) -> TrigPendingQuad {
+  if pending.subj_shell {
+    if pending.subj == self.ctx.annot_s {
+      match (self.ctx.annot_s, self.ctx.annot_o) {
+        (Some(s), Some(o)) =>
+          return { ..pending, subj: Some((s.0, o.0 + o.1 - s.0)) }
+        (_, _) => ()
+      }
+    }
+    return { ..pending, subj_shell: false }
+  }
+  pending
+}
+
+///|
+/// 役9 收口旗消费：annot_close 置真时清壳账（发射位快照之后、reset 之前调用；
+/// PredObj reset 保锚主语在槽——`|} ; …` 续锚口径）
+fn[L : LexerSource] TrigEngine::settle_annotation(self : TrigEngine[L]) -> Unit {
+  if self.ctx.annot_close {
+    self.ctx.annot_close = false
+    self.ctx.subj_shell = false
+    self.ctx.annot_s = None
+    self.ctx.annot_o = None
+  }
 }

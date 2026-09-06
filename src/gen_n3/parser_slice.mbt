@@ -445,9 +445,13 @@ fn[L] N3SliceParser::assemble(
     (Some(s), Some(p), Some(o)) => {
       if !self.lenient {
         let prefixes = self.engine.ctx.prefixes
-        match validate_term(self.data, prefixes, s, false) {
-          Some(e) => return Err(e)
-          None => ()
+        // 役8 壳主语：s = 锚三元组原文 span（非单一词项），跳过主语深验——
+        // 分量已在主 quad（AnnotStart 出账）组装点各自过验；物化层据此合成壳
+        if !pending.subj_shell {
+          match validate_term(self.data, prefixes, s, false) {
+            Some(e) => return Err(e)
+            None => ()
+          }
         }
         match validate_term(self.data, prefixes, p, true) {
           Some(e) => return Err(e)
@@ -475,6 +479,7 @@ fn[L] N3SliceParser::assemble(
         pver: pending.pver,
         bver: pending.bver,
         iver: pending.iver,
+        subj_shell: pending.subj_shell,
       })
     }
     // RDF 1.2 triple-term shell standalone statement: `<< s p o >> .` --
@@ -518,6 +523,7 @@ fn[L] N3SliceParser::assemble(
           pver: pending.pver,
           bver: pending.bver,
           iver: pending.iver,
+          subj_shell: false,
         })
       } else {
         Err(ParseError::SyntaxErr("Incomplete quad at emission", s))

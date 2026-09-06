@@ -173,14 +173,14 @@ test "切片: 未声明前缀拒绝" {
   assert_eq(errors.length(), 1)
 }
 
-test "切片: `[] .` 谓语缺位 = 非法文法（trig wbtest:500 同口径）" {
+test "切片: `[] .` 零谓词 bnp 合法（役10 零谓词收口，trig 不受影响）" {
   let input = "[] .\n<http://s> <http://p> <http://o> .\n"
   let data = bytes_of(input)
   let (quads, errors) = n3_parser(data)
-  // 谓语缺位拒绝。触发事件就是 Dot 本身（已消费），恢复吞到下一 Dot：
-  // 后续语句同段被吃——恢复消费语义的固有形态（trig 同款，事件即恢复锚）
-  assert_eq(errors.length(), 1)
-  assert_eq(quads.length(), 0)
+  // 役10 零谓词收口：`[] .` 与 `[:c :d] .` 同径——空属性列表 = 零谓词裸
+    // 节点语句，bnp 帧空形式弹栈后 Dot 走零发射收口；后句照常发射 q=1
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
 }
 
 ///|
@@ -461,13 +461,13 @@ test "役4: 变量体规则——役2 只记身份 × 役4 规则谓词同帧" {
 }
 
 ///|
-test "役4: 裸词 LHS 拒绝——规则两侧必须 {}（表无行 = 静默兜底）" {
+test "役10: 裸规则形式合法化——`<a> => <b> .` 即普通三元组" {
   let input = "<a> => <b> .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
-  // Implies 在 ExpectPredicate 无行 → UnexpectedEvent → 恢复吞到 Dot：
-  // 零 quad 零报错（表无行兜底口径，与裸词垃圾同径）
-  assert_eq(quads.length(), 0)
+  // 役10：官方 manifest 翻案——操作符即普通谓词（verb ::= expression），
+  // ExpectPredicate+Implies 行落槽；规则罩形态役4 行继续并行
+  assert_eq(quads.length(), 1)
   assert_eq(errors.length(), 0)
 }
 
@@ -693,4 +693,200 @@ test "役6: 'a' 倒装——set_predicate 复用，pk 出账 KwA（物化层 rdf
   assert_eq(view_str(data[:], quads[0].pred.unwrap()), "a")
   assert_true(quads[0].pk is PredKind::KwA)
   assert_eq(quads[0].obj.unwrap(), (0, 2))
+}
+
+
+// —— 役7：`=` 等同谓词（ADR-005：owl:sameAs 语法糖；= token span 占槽、
+// 语义身份 pk=SameAs，物化层展开）——
+
+///|
+test "役7: 正典等同——:a = :b 出账谓词身份 pk=SameAs" {
+  let input = ":a = :b .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (0, 2))
+  // = token span 占谓词槽（展开语义在物化层 pk 账）
+  assert_eq(quads[0].pred.unwrap(), (3, 1))
+  assert_true(quads[0].pk is PredKind::SameAs)
+  assert_eq(quads[0].obj.unwrap(), (5, 2))
+}
+
+///|
+test "役7: 逗号连发——pk 快照直引保真，双宾同 SameAs" {
+  let input = ":a = :b, :c .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // (:a,sameAs,:b) (:a,sameAs,:c)——Comma 不过 action，pk 直引不写回
+  assert_eq(quads.length(), 2)
+  assert_eq(quads[0].pred.unwrap(), (3, 1))
+  assert_true(quads[0].pk is PredKind::SameAs)
+  assert_eq(quads[1].pred.unwrap(), (3, 1))
+  assert_true(quads[1].pk is PredKind::SameAs)
+  assert_eq(quads[0].obj.unwrap(), (5, 2))
+  assert_eq(quads[1].obj.unwrap(), (9, 2))
+}
+
+///|
+test "役7: 分号续谓词——set_predicate 归账 Normal，SameAs 不外溢" {
+  let input = ":a = :b ; :q :c .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 2)
+  assert_true(quads[0].pk is PredKind::SameAs)
+  assert_true(quads[1].pk is PredKind::Normal)
+  assert_eq(view_str(data[:], quads[1].pred.unwrap()), ":q")
+}
+
+///|
+test "役7: bnp 谓词位——八位全开口径，fresh 主语等同出账" {
+  let input = "[ :q :r ] = :z .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // (fresh,:q,:r) + (fresh,sameAs,:z)——fresh = [ span
+  assert_eq(quads.length(), 2)
+  assert_eq(quads[1].subj.unwrap(), (0, 1))
+  assert_eq(quads[1].pred.unwrap(), (10, 1))
+  assert_true(quads[1].pk is PredKind::SameAs)
+  assert_eq(quads[1].obj.unwrap(), (12, 2))
+}
+
+///|
+test "役7: 公式罩内 =——罩内零发射口径不变，外层不受扰" {
+  let input = ":s :p { :x = :y } .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  // 罩内语句消费不发射；外层一条，o = { 身份
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].obj.unwrap(), (6, 1))
+}
+
+
+///|
+test "役8: 正典注解——主 quad 锚主语 + 体 quad 壳主语（span 账）" {
+  let input = ":s :p :o {| :q :z |} .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 2)
+  // 主 quad：锚主语预发射，壳旗假
+  assert_eq(quads[0].subj.unwrap(), (0, 2))
+  assert_eq(quads[0].pred.unwrap(), (3, 2))
+  assert_eq(quads[0].obj.unwrap(), (6, 2))
+  assert_false(quads[0].subj_shell)
+  // 体 quad：subj = 壳 span（锚 s 起点 (0) 至锚 o 终点 (8) 的连续原文
+  // ":s :p :o"），壳旗真
+  assert_true(quads[1].subj_shell)
+  assert_eq(quads[1].subj.unwrap(), (0, 8))
+  assert_eq(view_str(data[:], quads[1].subj.unwrap()), ":s :p :o")
+  assert_eq(quads[1].pred.unwrap(), (12, 2))
+  assert_eq(quads[1].obj.unwrap(), (15, 2))
+}
+
+///|
+test "役8: 收尾续锚——{|…|} 后 `;` 谓词回锚主语（收口还原口径）" {
+  let input = ":s :p :o {| :q :z |} ; :r :w .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 3)
+  assert_true(quads[1].subj_shell)
+  // 末体 quad 收口发射（annot_end），其后 `; :r :w` 续锚主语、壳旗假
+  assert_false(quads[2].subj_shell)
+  assert_eq(quads[2].subj.unwrap(), (0, 2))
+  assert_eq(view_str(data[:], quads[2].pred.unwrap()), ":r")
+  assert_eq(view_str(data[:], quads[2].obj.unwrap()), ":w")
+}
+
+///|
+test "役8: 体区逗号连换——多体 quad 同壳（旗直引保真）" {
+  let input = ":s :p :o {| :q :z1, :z2 |} .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 3)
+  assert_true(quads[1].subj_shell)
+  assert_true(quads[2].subj_shell)
+  assert_eq(quads[1].subj.unwrap(), (0, 8))
+  assert_eq(quads[2].subj.unwrap(), (0, 8))
+  assert_eq(view_str(data[:], quads[2].obj.unwrap()), ":z2")
+}
+
+///|
+test "役8: 体区分号多谓词——逐体出账同壳" {
+  let input = ":s :p :o {| :q :z ; :r :w |} .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 3)
+  assert_true(quads[1].subj_shell)
+  assert_true(quads[2].subj_shell)
+  assert_eq(view_str(data[:], quads[2].pred.unwrap()), ":r")
+  assert_eq(view_str(data[:], quads[2].obj.unwrap()), ":w")
+}
+
+///|
+test "役8: 嵌套 bnp——内层 fresh 主语错键不带壳旗，外层体 quad 同壳" {
+  let input = ":s :p :o {| :q [ :x :y ] |} .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 3)
+  // 内层 (genid, :x, :y)：fresh 主语 ≠ 锚主语 = 错键不换 + 壳旗落假
+  assert_false(quads[1].subj_shell)
+  assert_true(quads[1].subj.unwrap() != (0, 8))
+  // 外层体 quad（壳, :q, genid）：收口发射，壳旗真
+  assert_true(quads[2].subj_shell)
+  assert_eq(quads[2].subj.unwrap(), (0, 8))
+}
+
+///|
+test "役8: 静默收口——体尾分号后 |} 直清壳账，后语句不染" {
+  let input = ":s :p :o {| :q :z ; |} . :a :b :c .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 3)
+  assert_true(quads[1].subj_shell)
+  // 后续正常语句：无壳旗（旗漏 = 全局污染，此处钉死）
+  assert_false(quads[2].subj_shell)
+  assert_eq(quads[2].subj.unwrap(), (25, 2))
+  assert_eq(view_str(data[:], quads[2].pred.unwrap()), ":b")
+}
+
+///|
+test "役8: 公式罩内注解——压位点消费收口旗，零发射零报错" {
+  let input = "{ :s :p :o {| :q :z |} }\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 0)
+}
+
+///|
+test "役8: 残缺体 EOF——主 quad 已出账，收尾判脏报错" {
+  let input = ":s :p :o {| :q"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(quads.length(), 1)
+  assert_false(quads[0].subj_shell)
+  assert_eq(errors.length(), 1)
+}
+
+///|
+test "役8: ~ 驻留位注解——标签驻留不占槽，壳账照抄锚槽" {
+  let input = ":s :p :o ~ :l {| :q :z |} .\n"
+  let data = bytes_of(input)
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 2)
+  assert_eq(quads[0].subj.unwrap(), (0, 2))
+  assert_true(quads[1].subj_shell)
+  assert_eq(quads[1].subj.unwrap(), (0, 8))
+  assert_eq(view_str(data[:], quads[1].pred.unwrap()), ":q")
 }

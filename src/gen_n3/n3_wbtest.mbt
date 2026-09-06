@@ -18,7 +18,7 @@ fn n3_ev_tag(ev : N3Event) -> String {
     N3Event::N3KeywordA((o, l)) => "A(\{o},\{l})"
     N3Event::N3KeywordX((o, l)) => "KwX(\{o},\{l})"
     N3Event::N3Variable((o, l)) => "Var(\{o},\{l})"
-    N3Event::N3Equals => "Eq"
+    N3Event::N3Equals((o, l)) => "Eq(\{o},\{l})"
     N3Event::N3Is => "Is"
     N3Event::N3Of => "Of"
     N3Event::N3At => "@"
@@ -103,7 +103,8 @@ test "路径 !/^ 与规则 =>/<=/= 事件流" {
     n3_drain(":a <= :b ."),
     "Pref(0,2) ImpliedBy(3,2) Pref(6,2) Dot EOF",
   )
-  assert_eq(n3_drain(":a = :b ."), "Pref(0,2) Eq Pref(5,2) Dot EOF")
+  // `=` 役7 事件化载荷（Eq(o,l)）；倒装/等同语义钉见 engine_wbtest
+  assert_eq(n3_drain(":a = :b ."), "Pref(0,2) Eq(3,1) Pref(5,2) Dot EOF")
   assert_eq(
     n3_drain("{ :a :b :c } => { :d :e :f } ."),
     "Lbrace(0,1) Pref(2,2) Pref(5,2) Pref(8,2) Rbrace Implies(13,2) Lbrace(16,1) Pref(18,2) Pref(21,2) Pref(24,2) Rbrace Dot EOF",

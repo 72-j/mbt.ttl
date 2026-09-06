@@ -118,6 +118,7 @@ impl N3Actions for Hooks with fn open_bnode_prop(
     graph: ctx.graph,
     ret_state,
     as_subject,
+    as_pred: false,
     prev_node: None,
     node_seq: 0,
   })
@@ -151,7 +152,10 @@ impl N3Actions for Hooks with fn pop_bnode_prop(
         // `[]` fresh / 非空集合单一 BNode：开括号 span 即身份（ADR-003a）
         fr.open_span
       }
-      if fr.as_subject {
+      // 役10 三向：公式谓词位帧（as_pred）身份落 p 槽；主/宾位随 as_subject
+      if fr.as_pred {
+        ctx.predicate = Some(target)
+      } else if fr.as_subject {
         ctx.subject = Some(target)
       } else {
         ctx.object = Some(target)
@@ -184,6 +188,7 @@ impl N3Actions for Hooks with fn open_collection(
     graph: ctx.graph,
     ret_state,
     as_subject,
+    as_pred: false,
     prev_node: None,
     node_seq: 0,
   })
@@ -231,6 +236,7 @@ impl N3Actions for Hooks with fn open_formula(
     graph: ctx.graph,
     ret_state,
     as_subject,
+    as_pred: false,
     prev_node: None,
     node_seq: 0,
   })
@@ -242,6 +248,34 @@ impl N3Actions for Hooks with fn open_formula(
 ///|
 /// 公式收口 action：裸 PopBnp 意图（公式内容零发射；pop_bnode_prop 共享机械
 /// 恢复外层槽位 + 身份落位 + 返回状态兑现——list_nil 同款形状）。
+///|
+/// 公式谓词位入口（役10）：帧携 as_pred——弹栈身份落外层谓词槽（bad-preds-formula
+/// 正典 `:e { :f :g :h } :i .`）。入帧快照/内层清空与 open_formula 全同，仅
+/// as_pred 置位；ret_state 由行定夺（各区宾态）。
+impl N3Actions for Hooks with fn open_formula_pred(
+  _self : Hooks,
+  ctx : N3Context,
+  open_span : Span,
+  _as_subject : Bool,
+  ret_state : N3State,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.slot_stack.push({
+    typ: SlotType::Formula,
+    open_span,
+    subject: ctx.subject,
+    predicate: ctx.predicate,
+    graph: ctx.graph,
+    ret_state,
+    as_subject: false,
+    as_pred: true,
+    prev_node: None,
+    node_seq: 0,
+  })
+  ctx.subject = None
+  ctx.predicate = None
+  Ok(N3Effect::Continue)
+}
+
 impl N3Actions for Hooks with fn close_formula(
   _self : Hooks,
   ctx : N3Context,
@@ -573,5 +607,81 @@ impl N3Actions for Hooks with fn is_of(
 ) -> Result[N3Effect, N3ActionError] {
   ctx.is_src = ctx.subject
   ctx.is_depth = ctx.slot_stack.length()
+  Ok(N3Effect::Continue)
+}
+
+// —— `=` 等同谓词（役7，ADR-005）：owl:sameAs 语法糖——役4 同构，操作符
+// token 占谓词槽，语义身份在 pk；Comma 连发同谓词不过 action（pk 直引保真）——
+
+///|
+/// `=` 谓词：= token span 占谓词槽 + pk=SameAs（物化层展开 owl:sameAs）
+impl N3Actions for Hooks with fn set_sameas(
+  _self : Hooks,
+  ctx : N3Context,
+  payload : Span,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.predicate = Some(payload)
+  ctx.pred_kind = SameAs
+  Ok(N3Effect::Continue)
+}
+
+
+///|
+/// 注解开壳（役8）：抄录锚 s/o 入壳账（槽位不动、不发射不收拾——发射意图
+/// 由动作返回值承载：主 quad 仍锚主语预发射，快照发生时壳账尚无旗 = 锚身出账）
+impl N3Actions for Hooks with fn annot_open(
+  _self : Hooks,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.annot_s = ctx.subject
+  ctx.annot_o = ctx.object
+  ctx.subj_shell = false
+  ctx.annot_close = false
+  // 主 quad 预发射（锚主语）：PredObj 粒度清 p/o、保 s——体区首动词前
+  // 槽位无发射，annot_body_verb 才开旗
+  Ok(N3Effect::EmitQuad(ResetScope::PredObj))
+}
+
+///|
+/// 注解体动词（役8）：首动词开体区旗（交换在引擎发射点 take：键 = subj ==
+/// annot_s），谓词槽位照 set_predicate 口径（kw_a_live 兑现落 pk）
+impl N3Actions for Hooks with fn annot_body_verb(
+  _self : Hooks,
+  ctx : N3Context,
+  payload : Span,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.subj_shell = true
+  ctx.predicate = Some(payload)
+  ctx.pred_kind = if ctx.kw_a_live {
+    PredKind::KwA
+  } else {
+    PredKind::Normal
+  }
+  ctx.kw_a_live = false
+  Ok(N3Effect::Continue)
+}
+
+///|
+/// 注解收口（役8）：置收口旗 + 返回末体 quad 发射——take 消费旗（壳交换先
+/// 兑现在本 quad 上）后还原清账；槽位经 PredObj 粒度保锚主语，`;` 续锚直落
+impl N3Actions for Hooks with fn annot_end(
+  _self : Hooks,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.annot_close = true
+  Ok(N3Effect::EmitQuad(ResetScope::PredObj))
+}
+
+///|
+/// 注解静默收口（役8）：体尾分号后 |}——末体 quad 已随分号行出账（壳交换
+/// 已兑现），直清壳账零发射
+impl N3Actions for Hooks with fn annot_close_silent(
+  _self : Hooks,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.annot_close = false
+  ctx.subj_shell = false
+  ctx.annot_s = None
+  ctx.annot_o = None
   Ok(N3Effect::Continue)
 }

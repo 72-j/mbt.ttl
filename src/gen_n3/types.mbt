@@ -56,6 +56,7 @@ pub(all) struct QuadSpan {
   pver : Int // 前缀账本版本 = 发射时点账本长（物化层回扫上界——中途重声明不污染历史 quad）。
   bver : Int // base 链版本 = 发射时点链长（物化层折叠得该 quad 生效 base）。
   iver : Int // IRI 版本 = 发射时点 upcast 账本长（ADR-003b 显式链专用；集合语法不经此槽）。
+  subj_shell : Bool // 注解壳主语（役8）：true = s 为锚三元组原文 span，物化层合成 <<原文>> TT 壳。
 }
 
 ///|
@@ -78,6 +79,8 @@ pub(all) enum SlotType {
 ///   ret_state = 返回状态：开括号转移行定夺（顶层/嵌套层各写各的），
 ///               帧只是携带表已做的决策；pop 时兑现——state 由表管理的唯一例外。
 ///   as_subject = fresh 节点落位：true = 外层 s 槽（主位进入），false = 外层 o 槽（宾位进入）。
+///   as_pred = 役10 公式谓词位：true = 弹栈身份落外层 p 槽（谓词位进入，
+///             open_formula_pred 专用；与 as_subject 互斥，pop 三向裁决）。
 ///   prev_node/node_seq = 集合链上一节点与节点序号（Collection 专用；BnodeProp/Formula 恒 None/0）。
 pub(all) struct Slot {
   typ : SlotType
@@ -87,6 +90,7 @@ pub(all) struct Slot {
   graph : Span?
   ret_state : N3State
   as_subject : Bool
+  as_pred : Bool
   mut prev_node : Span?
   mut node_seq : Int
 }
@@ -165,7 +169,7 @@ pub impl Show for N3Event with fn output(self : N3Event, logger : &Logger) -> Un
       logger.write("Variable \{@debug.to_string(span)}")
     N3Event::N3KeywordX(span) =>
       logger.write("KeywordX \{@debug.to_string(span)}")
-    N3Event::N3Equals => logger.write("Equals")
+    N3Event::N3Equals((o, l)) => logger.write("Eq(\{o},\{l})")
     N3Event::N3Is => logger.write("Is")
     N3Event::N3Of => logger.write("Of")
     N3Event::N3At => logger.write("@")

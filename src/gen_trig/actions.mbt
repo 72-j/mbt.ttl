@@ -364,3 +364,54 @@ impl TrigActions for Hooks with fn list_step(
   ctx.object = Some(elem)
   Ok(TrigEffect::Continue)
 }
+
+///|
+impl TrigActions for Hooks with fn annot_open(
+  _self : Hooks,
+  ctx : TrigContext,
+) -> Result[TrigEffect, TrigActionError] {
+  // 役9 注解开壳：锚 s/o 入壳账（槽位不动——主 quad 快照仍取锚槽位）。
+  // 返回 EmitQuad(PredObj) = 原固定效果行的 action 返回式（役8 同款架构约束：
+  // 生成的 action 一律返回 Effect，没有「action + 固定效果」行型）
+  ctx.annot_s = ctx.subject
+  ctx.annot_o = ctx.object
+  ctx.subj_shell = false
+  ctx.annot_close = false
+  Ok(TrigEffect::EmitQuad(ResetScope::PredObj))
+}
+
+///|
+impl TrigActions for Hooks with fn annot_body_verb(
+  _self : Hooks,
+  ctx : TrigContext,
+  payload : Span,
+) -> Result[TrigEffect, TrigActionError] {
+  // 役9 体动词：壳旗置真（体 quad 主语 = TT 壳）+ 谓词槽位（set_predicate 口径）
+  ctx.subj_shell = true
+  ctx.predicate = Some(payload)
+  Ok(TrigEffect::Continue)
+}
+
+///|
+impl TrigActions for Hooks with fn annot_end(
+  _self : Hooks,
+  ctx : TrigContext,
+) -> Result[TrigEffect, TrigActionError] {
+  // 役9 收口：置还原旗——末体 quad 在发射位（旗真）换 TT 壳主语，
+  // settle_annotation 在快照之后消费清账
+  ctx.annot_close = true
+  Ok(TrigEffect::EmitQuad(ResetScope::PredObj))
+}
+
+///|
+impl TrigActions for Hooks with fn annot_close_silent(
+  _self : Hooks,
+  ctx : TrigContext,
+) -> Result[TrigEffect, TrigActionError] {
+  // 役9 静默收口：末体 quad 已随分号行发射，直清壳账零发射
+  ctx.annot_close = false
+  ctx.subj_shell = false
+  ctx.annot_s = None
+  ctx.annot_o = None
+  Ok(TrigEffect::Continue)
+}

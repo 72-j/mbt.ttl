@@ -582,7 +582,21 @@ pub fn N3Materializer::materialize_quad(
 ) -> Result[@nquads.QuadEmit, ParseError] {
   // 主语位：Iri / BNode / fresh 结构 / PrefName（TT 壳臂为防御位：N3 表无
   // 主语位壳行）。融合深验在词项构造点就地执行
-  let subject : @nquads.Subject = if quad.s.1 == 0 {
+  let subject : @nquads.Subject = if quad.subj_shell {
+    // 役8 注解壳主语：s = 锚三元组连续原文 span，物化层合成 <<原文>> TT 壳
+    //（分量在主 quad 组装点各自过验；整段原样回写同 TT 黑盒口径）
+    let start = self.arena.length()
+    self.push_byte(b'<')
+    self.push_byte(b'<')
+    for i in quad.s.0..<(quad.s.0 + quad.s.1) {
+      self.arena.push(self.data[i])
+    }
+    self.push_byte(b'>')
+    self.push_byte(b'>')
+    @nquads.Subject::TripleTerm(
+      slice_span(self.arena[:], (start, self.arena.length() - start)),
+    )
+  } else if quad.s.1 == 0 {
     // rdf:nil 标记（Span(open.0, 0)，长度 0 = 无字节词项）：合成词表 IRI，
     // 可信免深验（ADR-003a 空集合主位）
     let start = self.arena.length()
@@ -660,6 +674,21 @@ pub fn N3Materializer::materialize_quad(
     self.push_vocab(@nquads.rdf_type)
     let pspan = (start, self.arena.length() - start)
     slice_span(self.arena[:], pspan) // 词表构造可信，免深验
+  } else if quad.pk is PredKind::SameAs {
+    // `=` 等同谓词（役7）：owl:sameAs（词表构造可信，免深验）
+    let start = self.arena.length()
+    self.push_vocab(@nquads.owl_sameas)
+    let pspan = (start, self.arena.length() - start)
+    slice_span(self.arena[:], pspan)
+  } else if (
+      self.data[quad.p.0] == b'"' ||
+      self.data[quad.p.0] == b'?' ||
+      self.data[quad.p.0] == b'[' ||
+      self.data[quad.p.0] == b'{'
+    ) {
+    // 役10 词位扩展：非词项谓词原文保真直出——字面量/变量谓词按原文重发
+    // （cwm 口径）；`[`/`{` 谓词只持开括号 token span，保真以 token 为界
+    slice_span(self.data, quad.p)
   } else if self.data[quad.p.0] == b'<' {
     match self.iri_term(quad.p, quad.bver) {
       Ok(v) =>
@@ -1384,6 +1413,8 @@ fn mat_subj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
     Iri(v) => v
     BNode(v) => v
     PrefName(v) => v
+    // 役8 注解壳主语（<<s p o>> arena 合成）走 TT 臂
+    TripleTerm(v) => v
     _ => mat_empty[:]
   }
 }
@@ -1608,4 +1639,58 @@ test "役6 物化: 'a' 倒装——KwA 出账 → rdf:type，主宾互换" {
     "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
   )
   assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/x>")
+}
+
+
+///|
+test "役7 物化: 等同端到端——:a = :b 展开谓词 owl:sameAs" {
+  let (emits, errors) = mat_chain(
+    "@prefix : <http://dft/> .\n:a = :b .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 1)
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/a>")
+  assert_eq(mat_vs(emits[0].predicate), "<http://www.w3.org/2002/07/owl#sameAs>")
+  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/b>")
+}
+
+///|
+test "役7 物化: 逗号连发——双 emit 同展开 owl:sameAs" {
+  let (emits, errors) = mat_chain(
+    "@prefix : <http://dft/> .\n:a = :b, :c .\n",
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 2)
+  assert_eq(
+    mat_vs(emits[0].predicate),
+    "<http://www.w3.org/2002/07/owl#sameAs>",
+  )
+  assert_eq(
+    mat_vs(emits[1].predicate),
+    "<http://www.w3.org/2002/07/owl#sameAs>",
+  )
+  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/b>")
+  assert_eq(mat_vs(mat_obj(emits[1])), "<http://dft/c>")
+}
+
+
+///|
+test "役8: 注解壳主语物化——体 quad 主语合成 <<锚三元组原文>> TT 壳" {
+  let (emits, errors) = mat_chain("<http://e/s> <http://e/p> <http://e/o> {| <http://e/q> <http://e/z> |} .\n")
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 2)
+  // 主 quad：锚主语原样
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://e/s>")
+  // 体 quad：主语 = <<<s> <p> <o>>>（锚三元组原文整段，arena 合成）
+  assert_eq(mat_vs(mat_subj(emits[1])), "<<<http://e/s> <http://e/p> <http://e/o>>>")
+  assert_eq(mat_vs(mat_obj(emits[1])), "<http://e/z>")
+}
+
+///|
+test "役8: 体区多 quad 同壳——逗号连发皆 TT 壳主语" {
+  let (emits, errors) = mat_chain("<http://e/s> <http://e/p> <http://e/o> {| <http://e/q> <http://e/z1>, <http://e/z2> |} .\n")
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 3)
+  assert_eq(mat_vs(mat_subj(emits[1])), "<<<http://e/s> <http://e/p> <http://e/o>>>")
+  assert_eq(mat_vs(mat_subj(emits[2])), "<<<http://e/s> <http://e/p> <http://e/o>>>")
 }

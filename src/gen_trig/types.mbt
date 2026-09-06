@@ -40,6 +40,7 @@ pub(all) struct QuadSpan {
   pk : PredKind // 谓词来源：Normal=原文；RDFFirst/RDFRest=集合链合成（p 无字节）
   pver : Int // 前缀账本版本 = 发射时点账本长（物化层回扫上界——中途重声明不污染历史 quad）
   bver : Int // base 链版本 = 发射时点链长（物化层折叠得该 quad 生效 base）
+  subj_shell : Bool // 注解壳主语（役9）：true = s 为锚三元组原文 span，物化层合成 <<原文>> TT 壳。
 }
 
 ///|

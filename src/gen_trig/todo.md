@@ -321,3 +321,33 @@ GraphExpectDotOrGraph/BnpAfterObject。
 冒号拆分，见 §4），
 ★1 per-quad 快照落地后再出槽 subm-27 ×2，余桶 2/1/5/6（账目见 §5 表 item 6）。skip 守卫收窄只认 `[`：`[] .` 独立成句
 合法静默跳过，`( 1 2 3 ) .` 集合独立成句非法必须进组装报错（bad-list-01 口径）。
+
+### 5.3 役9 注解精化 port（2026-09-06 落地）：体主语 = TT 壳，跨包同欠收口
+
+**定案**（RDF 1.2 注解，役8 gen_n3 同构移植）：`:s :p :o {| :q :z |}` = 主
+quad 锚 (s,p,o) 照发 + 体 quad 主语 = TT 壳 `<<:s :p :o>>`。壳 span = 锚主语
+起点→锚宾语终点原文连续区间（`(s.0, o.0+o.1-s.0)` 含原空白）；物化层
+`<<原文>>` 逐字节保真推 arena → Subject::TripleTerm（prefname 不展开，
+原文保真口径）。
+
+**表役（双区 20 行转换零新行，195 行不变）**：trig 比多包 N3 多一个图块区
+注解区（GraphAnnot* 前缀态）——顶层区 10 行 + 图块区 10 行，行型全同：
+AnnotStart 两入口（含 `~` 驻留位后）te→ta annot_open；六动词位
+（Iri/PrefName/KeywordA × Verb/VerbTail）set_predicate→annot_body_verb；
+AnnotEnd 静默收口 tr→ta annot_close_silent；AnnotExpectEnd 收口
+te→ta annot_end。toml 侧：+4 字段（annot_s/annot_o/subj_shell/annot_close，
+15 字段）+1 extra（subj_shell 直引，4 extras）+4 动作（廿二动作：表驱动
+19 + 声明面直调 3）。
+
+**机械差异账（vs 役8）**：① trig 无 take_pending_quad——发射点两处
+（EmitQuad 直臂 + Sequence 入队臂）各自过 settle_shell；settle_annotation
+（annot_close 消费）只在直臂（旗仅由 annot_end 置，其返回必走直臂）。
+② trig 无 pk=KwA/KeywordX——annot_body_verb = 置壳旗 + set_predicate 口径，
+无谓词账。③ begin_record 仅构造期一次（TriG 状态连续）——壳账清点落
+recover + finish_at_end 两处。④ mat_subj 补 TripleTerm 直通臂（役8 同款坑
+原样复刻，钉 8/9 失败即现形）。
+
+**验收**：rdf 16/16 + gen_trig 80/80（+9 钉：顶层正典/图块区壳+图名保持/
+续锚/嵌套 bnp 错键旗落假/静默收口/TT 独立主语回归/~ 驻留位 + 物化 2 钉
+——原文保真 `<<:s :p :o>>` 直出、图块区图名随行）+ gen_n3 104/104 +
+gen_nquads 124/124 + 套件 316/75/36 + 幂等（二次再生 body 稳定）。

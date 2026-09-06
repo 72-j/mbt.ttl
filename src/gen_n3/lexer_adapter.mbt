@@ -106,8 +106,9 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
     } else if c == b'@' {
       N3Event::N3At
     } else if c == b'=' {
-      // N3 `=`：owl:sameAs 语法糖标识（ADR-005）
-      N3Event::N3Equals
+      // N3 `=`：owl:sameAs 语法糖标识（ADR-005）；载荷化 = token 自身 span
+      //（役7 接表：= 占谓词槽，语义身份在 pk=SameAs，操作符族同教义）
+      N3Event::N3Equals(span)
     } else if c == b'!' {
       // N3 前向路径引导符（ADR-006，役3 接表）；载荷化 = token 自身 span
       // ——路径中间节点 fresh 身份（开括号族同教义）
