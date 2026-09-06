@@ -25,6 +25,9 @@ fn n3_suite_is_bad(name : String) -> Bool {
 fn n3_suite_n3_legal(name : String) -> Bool {
   // :z is :p of :x . ≡ (:x,:p,:z)——倒装役6
   name == "turtle-syntax-bad-n3-extras-05.ttl" ||
+  // :x^ns:p :p :z .（N3 路径）——役14 主位尾随正形：主语 = 路径节点
+  // `:x^ns:p`，真谓词 `:p`，宾语 `:z`（Turtle 非法、N3 合法）
+  name == "turtle-syntax-bad-n3-extras-04.ttl" ||
   // :a = :b . ≡ (:a, owl:sameAs, :b)——等同役7
   name == "turtle-syntax-bad-n3-extras-02.ttl" ||
   // <s> = <o> .（文件自注 "Turtle is not N3"）——同一语义的全 IRI 版
@@ -42,7 +45,10 @@ fn n3_suite_n3_legal(name : String) -> Bool {
   name == "turtle-syntax-bad-struct-16.ttl" ||
   // `:x .` 零谓词语句链（收口行零发射，emits==quads==1 白得过）
   name == "turtle-syntax-bad-n3-extras-03.ttl" ||
-  name == "turtle-syntax-bad-n3-extras-06.ttl"
+  name == "turtle-syntax-bad-n3-extras-06.ttl" ||
+  // @forSome/@forAll 量化指令（役13：指令头接表）——Turtle 非法、N3 正典
+  name == "turtle-syntax-bad-n3-extras-11.ttl" ||
+  name == "turtle-syntax-bad-n3-extras-12.ttl"
 }
 
 ///|

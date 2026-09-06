@@ -241,7 +241,7 @@ pub impl Show for LiteralRef with fn to_string(self) {
       append_escaped_str(f, value.to_owned())
       f.write("@")
       f.write(language)
-      f.write("^")
+      f.write("-")
       f.write(direction)
       f.to_string()
     }

@@ -20,6 +20,7 @@ fn n3_ev_tag(ev : N3Event) -> String {
     N3Event::N3Variable((o, l)) => "Var(\{o},\{l})"
     N3Event::N3Equals((o, l)) => "Eq(\{o},\{l})"
     N3Event::N3Is => "Is"
+    N3Event::N3Has => "Has"
     N3Event::N3Of => "Of"
     N3Event::N3At => "@"
     N3Event::N3PrefixKw => "PrefixKw"

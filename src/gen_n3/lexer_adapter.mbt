@@ -208,6 +208,11 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> N3Event {
     } else {
       N3Event::N3Of
     }
+  } else if len == 3 && eq_lower(data, off, b"has") {
+    // 裸 `has`（N3 `X has P` 谓词引导词，役11）：is/of 同款事件化——cwm 词法
+    // 保留，六动词位 self-loop 行接表（下个事件在本态收动词，罩/框包含不破）；
+    // 其余位置无行 = 干净拒
+    N3Event::N3Has
     // 无冒号 PrefName 全域非法：term 位 PNAME_NS 必带冒号（bad-prefix-05 口径）；
     // 关键词/'a'/布尔/is·of 已先行分流，此处降级 Unknown 表外报错
   } else if span_has_colon(data, off, len) {

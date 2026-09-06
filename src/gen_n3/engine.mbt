@@ -47,8 +47,9 @@ fn span_of_event(event : N3Event) -> Span {
     N3ImpliedBy(span) => span
     N3Equals(span) => span // 役7：= token span 占谓词槽（pk=SameAs 身份）
     N3Is
-     // 役6 倒装引导符（bare，错误兜底位置由词法位置回填）
+     // 役6 倒装引导符（bare，错误兜底位置由词法位置回填）；Has 役11 同款 bare
     | N3Of
+    | N3Has
     | N3At
     | N3PrefixKw
     | N3BaseKw

@@ -19,6 +19,8 @@ src/fsm/*.toml
 *_usage.md
 *const.md
 *pseudocode.md
+*viva.toml
+viva.toml
 adr.md
 const.md
 pseudocode.md

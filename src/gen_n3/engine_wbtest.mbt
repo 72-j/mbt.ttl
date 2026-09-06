@@ -646,13 +646,15 @@ test "役6: 公式宾位——罩内零发射不动外层账，GraphTerm 作倒�
 }
 
 ///|
-test "役6: 公式罩内 is 拒——未接位置无行 = UnexpectedEvent 干净拒（误收编退役）" {
+test "役12: 公式罩内 is——Is 入口接表（役6 拒钉翻转），内容零发射外层照常" {
   let input = "{ :a is :p of :b } :s :z .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
-  // FormulaExpectPredicate 无 Is 行 → 表无行 = 静默兜底：0 quad 零报错
+  // 公式内容 ADR-002 零发射（倒装含内），外层语句 ({span}, :s, :z) 出账
   assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 0)
+  assert_eq(quads.length(), 1)
+  assert_eq(quads[0].subj.unwrap(), (0, 1))
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), ":s")
 }
 
 ///|
@@ -675,12 +677,21 @@ test "役6: of 无行拒——裸 of 出现在非倒装位 = 静默兜底" {
 }
 
 ///|
-test "役6: bnp 位 is 拒——顶层四动词位之外的 scope cut" {
+test "役12: bnp 位 is——`[ is P of X ]` ≡ (X, P, bnode)（役6 拒钉翻转）" {
   let input = "[ is :p of :x ] :q :z .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  // `]` 收口 EmitQuad 交换键 = `[` 身份 span（is_src 恰匹配）→ 语义序出账；
+  // pop 后外层语句 ([span], :q, :z)
   assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 0)
+  assert_eq(quads.length(), 2)
+  // quad0 = 语义序 (:x, :p, [span)
+  assert_eq(view_str(data[:], quads[0].subj.unwrap()), ":x")
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), ":p")
+  assert_eq(quads[0].obj.unwrap(), (0, 1))
+  // quad1 = 外层 ([span], :q, :z)
+  assert_eq(quads[1].subj.unwrap(), (0, 1))
+  assert_eq(view_str(data[:], quads[1].pred.unwrap()), ":q")
 }
 
 ///|
@@ -888,4 +899,120 @@ test "役8: ~ 驻留位注解——标签驻留不占槽，壳账照抄锚槽" {
   assert_true(quads[1].subj_shell)
   assert_eq(quads[1].subj.unwrap(), (0, 8))
   assert_eq(view_str(data[:], quads[1].pred.unwrap()), ":q")
+}
+
+///|
+test "役11: has 引导词——六动词位 self-loop 收动词，主语位拒" {
+  // `X has P … ≡ X P …`：has 零簿记，下个事件在本态收动词
+  let data = bytes_of("@prefix : <http://e/> .\n:s has :p :o .\n")
+  let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  assert_eq(view_str(data[:], quads[0].pred.unwrap()), ":p")
+  // 公式罩内：行存在（FormulaExpectPredicate self-loop）但 ADR-002 内容零发射
+  // ——黑盒面 = 零 quad 零错静默收拾；行存在性由再生 assert 钉（表源白盒）
+  let data2 = bytes_of("@prefix : <http://e/> .\n{ :s has :p :o . } .\n")
+  let (quads2, errors2) = drain_n3(N3Engine::from_bytes(data2))
+  assert_eq(errors2.length(), 0)
+  assert_eq(quads2.length(), 0)
+  // bnp 内（BnpExpectPredicate self-loop，罩内发射不压制）：`[` 直入
+  // BnpExpectPredicate（两入口同款），`has` 作动词前缀收内层谓词——
+  // `[ has :r :t ]` ≡ (bnode, :r, :t)，内层/外层 quad 照常出账
+  let data3 = bytes_of("@prefix : <http://e/> .\n[ has :r :t ] :z :w .\n")
+  let (quads3, errors3) = drain_n3(N3Engine::from_bytes(data3))
+  assert_eq(errors3.length(), 0)
+  assert_eq(quads3.length(), 2)
+  // 分号续谓词位（ExpectVerbOrEnd self-loop）
+  let data4 = bytes_of("@prefix : <http://e/> .\n:s :p :o ; has :q :r .\n")
+  let (quads4, errors4) = drain_n3(N3Engine::from_bytes(data4))
+  assert_eq(errors4.length(), 0)
+  assert_eq(quads4.length(), 2)
+  // 主语位 `has` 无行 = 干净拒（拒绝钉口径）：引擎 recover 登记 last_error，
+  // SliceParser EOF 兑现为 ParseError——组装层可见错误
+  let data5 = bytes_of("@prefix : <http://e/> .\nhas :p :o .\n")
+  let engine5 = N3Engine::from_bytes(data5)
+  let slice5 = N3SliceParser::new(engine5, data5[:], lenient=true)
+  let (quads5, perrs5) = slice5.parse_all()
+  assert_eq(quads5.length(), 0)
+  assert_true(perrs5.length() > 0)
+}
+
+///|
+test "役11: `[]` 谓词位——as_pred 帧弹栈身份落 p 槽，mat raw 臂接住" {
+  let data = bytes_of("@prefix : <http://e/> .\n:s [ :p :o ] :obj .\n")
+  let engine = N3Engine::from_bytes(data)
+  let slice = N3SliceParser::new(engine, data[:], lenient=true)
+  let (quads, perrs) = slice.parse_all()
+  assert_eq(perrs.length(), 0)
+  assert_eq(quads.length(), 2)
+  let mat = N3Materializer::new(
+    data[:],
+    slice.engine.ctx.prefixes,
+    bases=slice.engine.ctx.bases,
+    base_fallback=Some("https://e/"),
+  )
+  let (emits, merrs) = mat.materialize_all(quads)
+  assert_eq(merrs.length(), 0)
+  assert_eq(emits.length(), 2)
+  // 外层 quad 谓词 = `[` 开括号原文 span（raw 直出）；SliceParser 面 = QuadSpan，p 恒有值
+  let (po, _pl) = quads[1].p
+  assert_eq(data[po], b'[')
+  // 分号续谓词位（ExpectVerbOrEnd 行）：罩内属性 quad + 外层谓词身份 quad，
+  // 共 3 条——谓词身份 = `[` 开括号原文 span
+  let data2 = bytes_of("@prefix : <http://e/> .\n:s :p :o ; [ :b :c ] :z .\n")
+  let (quads2, errors2) = drain_n3(N3Engine::from_bytes(data2))
+  assert_eq(errors2.length(), 0)
+  assert_eq(quads2.length(), 3)
+  let (so2, _sl2) = quads2[1].subj.unwrap()
+  assert_eq(data2[so2], b'[')
+  let (po2, _pl2) = quads2[2].pred.unwrap()
+  assert_eq(data2[po2], b'[')
+  assert_eq(view_str(data2[:], quads2[2].subj.unwrap()), ":s")
+}
+
+///|
+test "役11: 空语句拒钉——zero-objects/djb1 官方负例面（两轮拔行定案）" {
+  // `s p .` 无宾语句：官方负例 zero-objects 钉死非法。引擎层无行 = 静默吞
+  // （分层面：拒钉在 SliceParser 组装后校验，引擎只管 span 快照）
+  let data = bytes_of("@prefix : <http://e/> .\n:s :p .\n")
+  let engine = N3Engine::from_bytes(data)
+  let slice = N3SliceParser::new(engine, data[:], lenient=true)
+  let (quads, perrs) = slice.parse_all()
+  assert_eq(quads.length(), 0)
+  assert_true(perrs.length() > 0)
+  // 句后游离点：W3C bad-struct-09 面拒绝（组装层同口）
+  let data2 = bytes_of("@prefix : <http://e/> .\n:s :p :o . .\n")
+  let engine2 = N3Engine::from_bytes(data2)
+  let slice2 = N3SliceParser::new(engine2, data2[:], lenient=true)
+  let (quads2, perrs2) = slice2.parse_all()
+  assert_eq(quads2.length(), 1) // 首语句正常出账
+  assert_true(perrs2.length() > 0) // 游离点拒
+}
+
+///|
+test "役13: 量化指令——@forAll/@forSome 指令头接表，顶层/公式两语境" {
+  // 顶层指令：变量表逗号续、句点收口归位（零发射零簿记）
+  let data = bytes_of("@prefix : <#> .\n@forAll :x, :y, :z.\n@forSome :a .\n:s :p :o .\n")
+  let engine = N3Engine::from_bytes(data)
+  let slice = N3SliceParser::new(engine, data[:], lenient=true)
+  let (quads, perrs) = slice.parse_all()
+  assert_eq(perrs.length(), 0)
+  assert_eq(quads.length(), 1)
+  // 公式内指令（嵌套规则面，quantifiers 正典）：指令零发射，规则 quad 照常出账
+  let data2 = bytes_of("@prefix : <#> .\n{{ :foo :bar :baz } log:includes { @forSome :foo. :foo :bar :baz }}\n log:implies { :t a :s }.\n")
+  let (quads2, errors2) = drain_n3(N3Engine::from_bytes(data2))
+  assert_eq(errors2.length(), 0)
+  assert_eq(quads2.length(), 1)
+  // 公式宾位内指令（unify2 面）：`:Juno :says {@forAll :y. :Mars :fights :y}.`
+  let data3 = bytes_of("@prefix : <#> .\n:Juno :says {@forAll :y.  :Mars :fights :y}.\n")
+  let (quads3, errors3) = drain_n3(N3Engine::from_bytes(data3))
+  assert_eq(errors3.length(), 0)
+  assert_eq(quads3.length(), 1)
+  // 空变量表 `@forAll .` 无行 = 干净拒（组装层可见）
+  let data4 = bytes_of("@prefix : <#> .\n@forAll .\n")
+  let engine4 = N3Engine::from_bytes(data4)
+  let slice4 = N3SliceParser::new(engine4, data4[:], lenient=true)
+  let (quads4, perrs4) = slice4.parse_all()
+  assert_eq(quads4.length(), 0)
+  assert_true(perrs4.length() > 0)
 }

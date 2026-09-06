@@ -78,6 +78,8 @@ pub(all) enum SlotType {
 ///   subject/predicate/graph = 进入时外层槽位快照（弹栈恢复用）。
 ///   ret_state = 返回状态：开括号转移行定夺（顶层/嵌套层各写各的），
 ///               帧只是携带表已做的决策；pop 时兑现——state 由表管理的唯一例外。
+///               役14 宾位尾随收口按事件改写（path_obj_close：Dot/Comma/
+///               Semicolon 各指各的归位态）——mut。
 ///   as_subject = fresh 节点落位：true = 外层 s 槽（主位进入），false = 外层 o 槽（宾位进入）。
 ///   as_pred = 役10 公式谓词位：true = 弹栈身份落外层 p 槽（谓词位进入，
 ///             open_formula_pred 专用；与 as_subject 互斥，pop 三向裁决）。
@@ -88,7 +90,7 @@ pub(all) struct Slot {
   subject : Span?
   predicate : Span?
   graph : Span?
-  ret_state : N3State
+  mut ret_state : N3State
   as_subject : Bool
   as_pred : Bool
   mut prev_node : Span?
@@ -172,6 +174,7 @@ pub impl Show for N3Event with fn output(self : N3Event, logger : &Logger) -> Un
     N3Event::N3Equals((o, l)) => logger.write("Eq(\{o},\{l})")
     N3Event::N3Is => logger.write("Is")
     N3Event::N3Of => logger.write("Of")
+    N3Event::N3Has => logger.write("Has")
     N3Event::N3At => logger.write("@")
     N3Event::N3PrefixKw => logger.write("PrefixKw")
     N3Event::N3BaseKw => logger.write("BaseKw")

@@ -22,30 +22,37 @@ examples 保留作嵌套规则/内建谓词风格的冒烟覆盖。
 唯一超 100KB 的 `cwm_other/rdfcore-tests.n3` 以 `skip` 行排除（机器聚合料，
 parser 裁决价值零）。净重 1.1MB / 227 个唯一 .n3。
 
-## N3Tests 扫描成绩（2026-09-06，役10 后基线）
+## N3Tests 扫描成绩（2026-09-06，役13 后基线）
 
-229 项（1 skip）：**负例 22 通过 / 2 漏收；正+eval 205 项 = 67 全净 + 108 仅物化错
-（公式物化延后桶，解析零错）+ 30 解析失败**。役10 词位扩展前基线为
-58 / 68 / 79（首扫 2026-09-06，役8 后）。
+229 项（1 skip）：**负例 22 通过 / 2 漏收；正+eval 205 项 = 68 全净 + 124 仅物化错
+（公式物化延后桶，解析零错）+ 13 解析失败**。役13 前基线为
+68 / 116 / 21（役12 后，2026-09-06）；役12 前 68 / 109 / 28（役11 后）；
+役11 前 67 / 108 / 30（役10 后）。
 
-解析失败 30 文件按根因分桶（= 役候补清单，按体量排序；多面叠加文件按
+解析失败 13 文件按根因分桶（= 役候补清单，按体量排序；多面叠加文件按
 首要阻挡归类）：
 
 | 桶 | 根因 | 文件 | 件数 |
 |---|---|---|---|
-| 役6 尾 is/of | `is ... of` 在公式/嵌套内（役6 只开了顶层谓词位） | cwm_includes/{concat,conclusion,list-in}、cwm_list/append、cwm_list/last、cwm_other/dec-div、cwm_string/endsWith | 7 |
-| D 量词 | `@forAll` / `@forSome`（词表有事件、表上无行，无行兜底错） | cwm_includes/{quantifiers,quantifiers_limited}、cwm_syntax/{qvars3,this-quantifiers-ref,this-rules-ref}、cwm_other/{classes,underbarscope}、cwm_unify/unify2 | 8 |
-| B 路径主语位 | 顶层主位路径 `:albert!fam:mother fam:sister :x .` 无入口行（役3 尾巴） | cwm_syntax/{path1,path2}、cwm_reason/poor-urop、cwm_includes/xsd、cwm_math/math-test | 5 |
+| B 路径主语位 | 顶层主位路径 `:albert!fam:mother fam:sister :x .` 无入口行（役3 尾巴；list-in 役12 改判入此桶——集合收口后接 `!` 路径） | cwm_syntax/{path1,path2}、cwm_reason/poor-urop、cwm_includes/{xsd,list-in}、cwm_math/math-test | 6 |
 | C 新语法 token | `<-` 倒装谓词、iriPropertyList（空格分隔属性表 + `id` 键） | new_syntax/inverted_properties、iriPropertyList/*（5 件） | 6 |
-| `has` 谓词关键词 | `verb ::= 'has' expression`（役6 `is..of` 的对称口，token 有行无表） | cwm_other/schema-rules | 1 |
-| 空语句面 | 无宾语句 `?x .` / `<o>.` 直收——ExpectObject / FormulaExpectObject / ExpectSubject 空语句行未落（防负例回归，需钉负例对照） | cwm_other/{log-filter,smush-query} | 2 |
-| A 尾 `[` 谓词位 | Lbracket 谓词入口未开（役10 同教义一行役：ta_args open_bnode_prop 谓词位） | cwm_other/anon-prop | 1 |
+| 集合路径复合 | `!` 路径与集合/复合宾语叠用（役11 拔空语句行后显形：空语句非阻挡，真阻挡在此） | cwm_other/log-filter | 1 |
 | E 负例漏收 | `@prefix foo:bar <>` qname 作前缀名应拒；`@keywords this` 后 `this` 主语应拒 | qname-as-prefix-in-decl、neg-thisadoc | 2（漏收，非解析失败） |
-| F 公式物化 | 解析全过、物化层 `{` 无臂（已知延后桶，非解析失败） | equals1、formula-*、nested、sep-term 等 | 108 |
+| F 公式物化 | 解析全过、物化层 `{` 无臂（已知延后桶，非解析失败） | equals1、formula-*、nested、sep-term 等 | 116 |
+
+役13 收口：D 量词桶全清（8 件翻面 → F 桶：@forAll/@forSome 经指令头
+两语境接表，量化台账零动作后置；extras-11/12 套件豁免翻面）。
+役12 收口：役6尾 is/of 公式内桶全清（7 翻面 → F 桶：concat/conclusion/
+append/last/dec-div/endsWith/smush-query；list-in 改判桶 B——真阻挡是
+`((3 4 5) (5 12 13))!li:member` 主位路径）。役11 收口三桶：`has` 谓词
+关键词（schema-rules → F 桶）；A 尾 `[` 谓词位（anon-prop → 全净）；
+空语句面（`s p .` = 非法定案拔行——zero-objects.n3 官方负例 +
+bad-struct-09/10）。
 
 另有两档套件豁免见 `../rdf_suite_wbtest.mbt`：`n3_suite_n3_legal` 全净反转
-10 文件（役6 extras-05 + 役7 extras-02/struct-02 + 役10 七文件：官方
-bad-preds-*/neg-*-predicate 翻案 TestN3PositiveSyntax）、
+12 文件（役6 extras-05 + 役7 extras-02/struct-02 + 役10 七文件：官方
+bad-preds-*/neg-*-predicate 翻案 TestN3PositiveSyntax + 役13 extras-11/12
+量化指令）、
 `n3_suite_n3_legal_mat_deferred` 解析豁免 2 文件（bad-kw-04 主语字面量——
 @nquads.Subject 无 literal 变体；extras-09 `=>` 谓词——规则谓词 pk 延后桶）。
 
