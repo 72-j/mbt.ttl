@@ -10,6 +10,8 @@ pub fn is_banned_langstring_iri(ArrayView[Byte]) -> Bool
 
 pub fn materialize_all(Array[QuadSpan]) -> (Array[QuadEmit], Array[ParseError])
 
+pub let owl_sameas : NamedNodeRef
+
 pub fn parse(BytesView) -> Result[Iri, ParseError]
 
 pub let rdf_alt : NamedNodeRef
@@ -294,9 +296,9 @@ pub impl LexerSource for Lexermoon
 
 pub(all) struct Literal(LiteralContent) derive(Eq, Hash, @debug.Debug)
 pub fn Literal::datatype(Self) -> NamedNodeRef
-pub fn Literal::destruct(Self) -> (StringView, NamedNode?, String?, BaseDirection?)
+pub fn Literal::destruct(Self) -> (StringView, NamedNodeRef?, String?, BaseDirection?)
 pub fn Literal::direction(Self) -> BaseDirection?
-pub fn Literal::language(Self) -> String?
+pub fn Literal::language(Self) -> StringView?
 pub fn Literal::new_directional_language_tagged_literal(String, String, BaseDirection) -> Result[Self, TagParseErr]
 pub fn Literal::new_directional_language_tagged_literal_unchecked(StringView, LanguageTag, BaseDirection) -> Self
 pub fn Literal::new_language_tagged_literal(String, String) -> Result[Self, TagParseErr]
@@ -304,14 +306,14 @@ pub fn Literal::new_language_tagged_literal_unchecked(String, String) -> Self
 pub fn Literal::new_simple_literal(String) -> Self
 pub fn Literal::new_simple_literal_unchecked(String) -> Self
 pub fn Literal::new_typed_literal_unchecked(String, NamedNodeRef) -> LiteralRef
-pub fn Literal::value(Self) -> String
+pub fn Literal::value(Self) -> StringView
 pub impl Show for Literal
 
 pub(all) enum LiteralContent {
   String(String)
   LanguageTaggedString(value~ : String, language~ : String)
   DirectionalLanguageTaggedString(value~ : StringView, language~ : String, direction~ : BaseDirection)
-  TypedLiteral(value~ : String, datatype~ : NamedNode)
+  TypedLiteral(value~ : String, datatype~ : NamedNodeRef)
 } derive(Eq, Hash, @debug.Debug)
 
 pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Hash, @debug.Debug)
@@ -392,17 +394,10 @@ pub(all) enum NQuadsState {
   NQuadsExpectDot
 }
 
-pub(all) struct NamedNode {
-  iri : String
-} derive(Default, Eq, Hash, @debug.Debug)
-pub fn NamedNode::as_ref(Self) -> NamedNodeRef
-pub fn NamedNode::new_unchecked(StringView) -> NamedNodeRef
-pub impl Show for NamedNode
-
 pub(all) struct NamedNodeRef {
   iri : StringView
 } derive(Eq, Hash, @debug.Debug)
-pub fn NamedNodeRef::into_owned(Self) -> NamedNode
+pub fn NamedNodeRef::new_unchecked(StringView) -> Self
 pub impl Show for NamedNodeRef
 
 pub(all) enum Object {

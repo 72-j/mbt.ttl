@@ -30,10 +30,7 @@ pub fn[L] N3SliceParser::new(
 
 ///|
 /// 统计 offset 之前的换行数（0 基行号；词法器不吐换行 token，统一按数据统计）
-fn[L] N3SliceParser::line_before(
-  self : N3SliceParser[L],
-  offset : Int,
-) -> Int {
+fn[L] N3SliceParser::line_before(self : N3SliceParser[L], offset : Int) -> Int {
   let limit = if offset < self.data.length() {
     offset
   } else {
@@ -299,7 +296,9 @@ fn validate_term(
     // 谓词位变量不接（表无行 + 明确报错），其余深验在物化层 gate_variable
     if is_predicate {
       return Some(
-        ParseError::SyntaxErr("Variable is not allowed in predicate position", span),
+        ParseError::SyntaxErr(
+          "Variable is not allowed in predicate position", span,
+        ),
       )
     }
     if n < 2 {

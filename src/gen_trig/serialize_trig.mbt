@@ -95,7 +95,10 @@ fn append_terms(
     // 语法，报错钉住不变量
     Variable(_) =>
       return Err(
-        ParseError::SyntaxErr("Variables are not valid in serialized output", (0, 0)),
+        ParseError::SyntaxErr(
+          "Variables are not valid in serialized output",
+          (0, 0),
+        ),
       )
   }
   buf.write_char(' ')
@@ -116,7 +119,10 @@ fn append_terms(
       )
     Variable(_) =>
       return Err(
-        ParseError::SyntaxErr("Variables are not valid in serialized output", (0, 0)),
+        ParseError::SyntaxErr(
+          "Variables are not valid in serialized output",
+          (0, 0),
+        ),
       )
   }
   Ok(())

@@ -17,7 +17,6 @@ pub(all) enum PredKind {
   SameAs
 } derive(Eq)
 
-
 ///|
 pub(all) enum N3Event {
   N3Iri(Span)
@@ -60,7 +59,6 @@ pub(all) enum N3Event {
   N3EOF
 }
 
-
 ///|
 pub(all) enum N3State {
   N3ExpectSubject
@@ -99,7 +97,6 @@ pub(all) enum N3State {
   N3ExpectIsOf
 }
 
-
 ///|
 /// 重置粒度：每个变体显式列出"清谁"，未列字段一律保留（防错误重置）。
 /// 粒度不回头写 state —— state 由转移表的 to= 负责，两者正交。
@@ -110,7 +107,7 @@ pub(all) enum ResetScope {
   All // 清 subject/predicate/object/graph（N3 语句全清口径）
 } derive(Debug)
 
-
+///|
 /// Effect 枚举：状态机可能产生的副作用（纯数据）
 pub(all) enum N3Effect {
   Continue
@@ -121,7 +118,6 @@ pub(all) enum N3Effect {
   PopBnp
   OpenSlot(Span, SlotType, N3State)
 }
-
 
 ///|
 /// FSM 运行时上下文：ctx 提供状态（state）与业务数据（其余字段）
@@ -159,16 +155,43 @@ pub(all) struct N3Context {
 ///|
 /// 状态机初始上下文
 pub fn N3Context::new() -> N3Context {
-  { state: N3ExpectSubject, subject: None, predicate: None, object: None, graph: None, prefix_name: None, base: None, directive_at: false, prefixes: [], bases: [], slot_stack: [], pred_kind: Normal, variable_name: None, path_src: None, path_fwd: false, path_pend: None, rule_side: None, iri_upcast: 0, version_lit_ok: false, kw_ledger: [], kw_directive_seen: false, kw_a_live: false, is_src: None, is_depth: 0, annot_s: None, annot_o: None, subj_shell: false, annot_close: false }
+  {
+    state: N3ExpectSubject,
+    subject: None,
+    predicate: None,
+    object: None,
+    graph: None,
+    prefix_name: None,
+    base: None,
+    directive_at: false,
+    prefixes: [],
+    bases: [],
+    slot_stack: [],
+    pred_kind: Normal,
+    variable_name: None,
+    path_src: None,
+    path_fwd: false,
+    path_pend: None,
+    rule_side: None,
+    iri_upcast: 0,
+    version_lit_ok: false,
+    kw_ledger: [],
+    kw_directive_seen: false,
+    kw_a_live: false,
+    is_src: None,
+    is_depth: 0,
+    annot_s: None,
+    annot_o: None,
+    subj_shell: false,
+    annot_close: false,
+  }
 }
 
 ///|
 /// 原地重置：按 scope 清槽位，未列字段一律保留（粒度语义见 ResetScope）
 pub fn N3Context::reset(self : N3Context, scope : ResetScope) -> Unit {
   match scope {
-    ResetScope::Object => {
-      self.object = None
-    }
+    ResetScope::Object => self.object = None
     ResetScope::PredObj => {
       self.predicate = None
       self.object = None
@@ -239,14 +262,12 @@ pub trait N3LoopPolicy {
   fn on_business_failed(Self, String) -> ParseError
 }
 
-
 ///|
 /// Action 执行或状态转移阶段的错误
 pub(all) enum N3ActionError {
   UnexpectedEvent(N3State, N3Event) // 状态机引擎抛出：当前状态未定义该事件的转移
   BusinessFailed(String) // 用户业务逻辑抛出：Action 执行失败（如解析格式错误）
 }
-
 
 ///|
 /// Actions trait：actions 提供逻辑，Self 携带运行时数据
@@ -265,28 +286,51 @@ pub trait N3Actions {
   fn set_sameas(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn annot_body_verb(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn close_formula(Self, N3Context) -> Result[N3Effect, N3ActionError]
-  fn open_formula_pred(Self, N3Context, Span, Bool, N3State) -> Result[N3Effect, N3ActionError]
-  fn open_bnode_prop(Self, N3Context, Span, Bool, N3State) -> Result[N3Effect, N3ActionError]
+  fn open_formula_pred(Self, N3Context, Span, Bool, N3State) -> Result[
+    N3Effect,
+    N3ActionError,
+  ]
+  fn open_bnode_prop(Self, N3Context, Span, Bool, N3State) -> Result[
+    N3Effect,
+    N3ActionError,
+  ]
   fn list_first(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
-  fn list_first_nested(Self, N3Context, Span, SlotType, N3State) -> Result[N3Effect, N3ActionError]
+  fn list_first_nested(Self, N3Context, Span, SlotType, N3State) -> Result[
+    N3Effect,
+    N3ActionError,
+  ]
   fn list_next(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
-  fn list_next_nested(Self, N3Context, Span, SlotType, N3State) -> Result[N3Effect, N3ActionError]
+  fn list_next_nested(Self, N3Context, Span, SlotType, N3State) -> Result[
+    N3Effect,
+    N3ActionError,
+  ]
   fn list_nil(Self, N3Context) -> Result[N3Effect, N3ActionError]
-  fn open_collection(Self, N3Context, Span, Bool, N3State) -> Result[N3Effect, N3ActionError]
+  fn open_collection(Self, N3Context, Span, Bool, N3State) -> Result[
+    N3Effect,
+    N3ActionError,
+  ]
   fn path_fwd(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn path_bwd(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn path_step(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn path_hop_fwd(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn path_hop_bwd(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn path_end(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
-  fn path_end_nested(Self, N3Context, Span, SlotType, N3State) -> Result[N3Effect, N3ActionError]
-  fn open_formula(Self, N3Context, Span, Bool, N3State) -> Result[N3Effect, N3ActionError]
+  fn path_end_nested(Self, N3Context, Span, SlotType, N3State) -> Result[
+    N3Effect,
+    N3ActionError,
+  ]
+  fn open_formula(Self, N3Context, Span, Bool, N3State) -> Result[
+    N3Effect,
+    N3ActionError,
+  ]
   fn annot_close_silent(Self, N3Context) -> Result[N3Effect, N3ActionError]
   fn annot_end(Self, N3Context) -> Result[N3Effect, N3ActionError]
-  fn open_slot(Self, N3Context, Span, SlotType, N3State) -> Result[N3Effect, N3ActionError]
+  fn open_slot(Self, N3Context, Span, SlotType, N3State) -> Result[
+    N3Effect,
+    N3ActionError,
+  ]
   fn pop_bnode_prop(Self, N3Context) -> Result[N3Effect, N3ActionError]
 }
-
 
 ///|
 /// FSM Driver（mutable）：接收事件，原地推进 ctx，返回副作用意图或错误
@@ -817,7 +861,12 @@ pub fn[A : N3Actions] step(
     }
     (N3BnpAfterObject, N3Rbracket) => {
       ctx.state = N3BnpAfterObject
-      Ok(N3Effect::Sequence([N3Effect::EmitQuad(ResetScope::PredObj), N3Effect::PopBnp]))
+      Ok(
+        N3Effect::Sequence([
+          N3Effect::EmitQuad(ResetScope::PredObj),
+          N3Effect::PopBnp,
+        ]),
+      )
     }
     (N3ExpectSubject, N3Lbracket(payload)) => {
       ctx.state = N3BnpExpectPredicate
@@ -873,11 +922,21 @@ pub fn[A : N3Actions] step(
     }
     (N3ListExpectElemOrEnd, N3Lbracket(payload)) => {
       ctx.state = N3BnpExpectPredicate
-      actions.list_first_nested(ctx, payload, SlotType::BnodeProp, N3ListAfterElem)
+      actions.list_first_nested(
+        ctx,
+        payload,
+        SlotType::BnodeProp,
+        N3ListAfterElem,
+      )
     }
     (N3ListExpectElemOrEnd, N3Lparen(payload)) => {
       ctx.state = N3ListExpectElemOrEnd
-      actions.list_first_nested(ctx, payload, SlotType::Collection, N3ListAfterElem)
+      actions.list_first_nested(
+        ctx,
+        payload,
+        SlotType::Collection,
+        N3ListAfterElem,
+      )
     }
     (N3ListExpectElemOrEnd, N3Rparen) => {
       ctx.state = N3ListExpectElemOrEnd
@@ -909,11 +968,21 @@ pub fn[A : N3Actions] step(
     }
     (N3ListAfterElem, N3Lbracket(payload)) => {
       ctx.state = N3BnpExpectPredicate
-      actions.list_next_nested(ctx, payload, SlotType::BnodeProp, N3ListAfterElem)
+      actions.list_next_nested(
+        ctx,
+        payload,
+        SlotType::BnodeProp,
+        N3ListAfterElem,
+      )
     }
     (N3ListAfterElem, N3Lparen(payload)) => {
       ctx.state = N3ListExpectElemOrEnd
-      actions.list_next_nested(ctx, payload, SlotType::Collection, N3ListAfterElem)
+      actions.list_next_nested(
+        ctx,
+        payload,
+        SlotType::Collection,
+        N3ListAfterElem,
+      )
     }
     (N3ListAfterElem, N3Rparen) => {
       ctx.state = N3ListAfterElem
@@ -1121,15 +1190,30 @@ pub fn[A : N3Actions] step(
     }
     (N3PathAfterStep, N3Lbracket(payload)) => {
       ctx.state = N3BnpExpectPredicate
-      actions.path_end_nested(ctx, payload, SlotType::BnodeProp, N3ExpectDotOrGraph)
+      actions.path_end_nested(
+        ctx,
+        payload,
+        SlotType::BnodeProp,
+        N3ExpectDotOrGraph,
+      )
     }
     (N3PathAfterStep, N3Lparen(payload)) => {
       ctx.state = N3ListExpectElemOrEnd
-      actions.path_end_nested(ctx, payload, SlotType::Collection, N3ExpectDotOrGraph)
+      actions.path_end_nested(
+        ctx,
+        payload,
+        SlotType::Collection,
+        N3ExpectDotOrGraph,
+      )
     }
     (N3PathAfterStep, N3Lbrace(payload)) => {
       ctx.state = N3FormulaExpectSubject
-      actions.path_end_nested(ctx, payload, SlotType::Formula, N3ExpectDotOrGraph)
+      actions.path_end_nested(
+        ctx,
+        payload,
+        SlotType::Formula,
+        N3ExpectDotOrGraph,
+      )
     }
     (N3FormulaPathAfterStep, N3Iri(payload)) => {
       ctx.state = N3FormulaAfterObject
@@ -1165,15 +1249,30 @@ pub fn[A : N3Actions] step(
     }
     (N3FormulaPathAfterStep, N3Lbracket(payload)) => {
       ctx.state = N3BnpExpectPredicate
-      actions.path_end_nested(ctx, payload, SlotType::BnodeProp, N3FormulaAfterObject)
+      actions.path_end_nested(
+        ctx,
+        payload,
+        SlotType::BnodeProp,
+        N3FormulaAfterObject,
+      )
     }
     (N3FormulaPathAfterStep, N3Lparen(payload)) => {
       ctx.state = N3ListExpectElemOrEnd
-      actions.path_end_nested(ctx, payload, SlotType::Collection, N3FormulaAfterObject)
+      actions.path_end_nested(
+        ctx,
+        payload,
+        SlotType::Collection,
+        N3FormulaAfterObject,
+      )
     }
     (N3FormulaPathAfterStep, N3Lbrace(payload)) => {
       ctx.state = N3FormulaExpectSubject
-      actions.path_end_nested(ctx, payload, SlotType::Formula, N3FormulaAfterObject)
+      actions.path_end_nested(
+        ctx,
+        payload,
+        SlotType::Formula,
+        N3FormulaAfterObject,
+      )
     }
     (N3ExpectSubject, N3Lbrace(payload)) => {
       ctx.state = N3FormulaExpectSubject
@@ -1197,7 +1296,12 @@ pub fn[A : N3Actions] step(
     }
     (N3ListExpectElemOrEnd, N3Lbrace(payload)) => {
       ctx.state = N3FormulaExpectSubject
-      actions.list_first_nested(ctx, payload, SlotType::Formula, N3ListAfterElem)
+      actions.list_first_nested(
+        ctx,
+        payload,
+        SlotType::Formula,
+        N3ListAfterElem,
+      )
     }
     (N3ListAfterElem, N3Lbrace(payload)) => {
       ctx.state = N3FormulaExpectSubject
@@ -1427,14 +1531,12 @@ pub fn[A : N3Actions] step(
   }
 }
 
-
 ///|
 /// 副作用执行阶段的错误（第二层）
 pub(all) enum N3EffectError {
   SinkFailed(String) // 下游写入失败（可恢复）
   Fatal(String) // 致命错误，需要终止状态机
 }
-
 
 ///|
 /// 第二层 EffectHandler：真正的 match effect 发生在 step 外部
@@ -1447,48 +1549,64 @@ pub trait N3EffectHandler {
   fn handle_done(Self) -> Result[Unit, N3EffectError] = _
   fn handle_sequence(Self, Array[N3Effect]) -> Result[Unit, N3EffectError] = _
   fn handle_pop_bnp(Self) -> Result[Unit, N3EffectError] = _
-  fn handle_open_slot(Self, Span, SlotType, N3State) -> Result[Unit, N3EffectError] = _
+  fn handle_open_slot(Self, Span, SlotType, N3State) -> Result[
+    Unit,
+    N3EffectError,
+  ] = _
   // —— 用户补充面：组装机械（业务落点，必须实现）——
   fn snapshot(Self, ctx : N3Context) -> N3PendingQuad
   fn apply_scope(Self, ctx : N3Context, scope : ResetScope) -> Unit = _
   fn on_exit_graph(Self) -> Unit = _
   fn on_pop_bnp(Self, ctx : N3Context) -> Unit = _
-  fn on_open_slot(Self, ctx : N3Context, span : Span, typ : SlotType, ret_state : N3State) -> Unit = _
+  fn on_open_slot(
+    Self,
+    ctx : N3Context,
+    span : Span,
+    typ : SlotType,
+    ret_state : N3State,
+  ) -> Unit = _
   // —— 模板面：interpret 默认实现（TrigEngine::next 解释序同源抽取）——
   fn interpret(Self, ctx : N3Context, effect : N3Effect) -> N3EffectOutcome = _
   fn dispatch(Self, effect : N3Effect) -> Result[Unit, N3EffectError] = _
 }
 
+///|
 /// handle_continue 模板默认：无操作
 impl N3EffectHandler with fn handle_continue(_self) {
   Ok(())
 }
 
+///|
 /// handle_emit_quad 模板默认：无操作
 impl N3EffectHandler with fn handle_emit_quad(_self, _scope) {
   Ok(())
 }
 
+///|
 /// handle_reset 模板默认：无操作
 impl N3EffectHandler with fn handle_reset(_self, _scope) {
   Ok(())
 }
 
+///|
 /// handle_done 模板默认：无操作
 impl N3EffectHandler with fn handle_done(_self) {
   Ok(())
 }
 
+///|
 /// handle_sequence 模板默认：无操作
 impl N3EffectHandler with fn handle_sequence(_self, _effects) {
   Ok(())
 }
 
+///|
 /// handle_pop_bnp 模板默认：无操作
 impl N3EffectHandler with fn handle_pop_bnp(_self) {
   Ok(())
 }
 
+///|
 /// handle_open_slot 模板默认：无操作
 impl N3EffectHandler with fn handle_open_slot(_self, _span, _typ, _ret_state) {
   Ok(())
@@ -1502,28 +1620,30 @@ pub(all) enum N3EffectOutcome {
   Stop // 终止循环
 }
 
+///|
 /// on_exit_graph 模板默认：Sequence 内嵌退图（无帧机械时无操作）
 impl N3EffectHandler with fn on_exit_graph(_self) {
   ()
 }
 
+///|
 /// on_pop_bnp 模板默认：Sequence 内嵌钩子（无帧机械时无操作）
 impl N3EffectHandler with fn on_pop_bnp(_self, _ctx) {
   ()
 }
 
+///|
 /// on_open_slot 模板默认：Sequence 内嵌钩子（无帧机械时无操作）
 impl N3EffectHandler with fn on_open_slot(_self, _ctx, _span, _typ, _ret_state) {
   ()
 }
 
+///|
 /// apply_scope 模板默认：[[scope_chains]] 展开的收拾链
 /// （逐字段清槽，粒度不碰 state——state 由转移表 to= 负责）
 impl N3EffectHandler with fn apply_scope(_self, ctx, scope) {
   match scope {
-    ResetScope::Object => {
-      ctx.object = None
-    }
+    ResetScope::Object => ctx.object = None
     ResetScope::PredObj => {
       ctx.predicate = None
       ctx.object = None
@@ -1542,6 +1662,7 @@ impl N3EffectHandler with fn apply_scope(_self, ctx, scope) {
   }
 }
 
+///|
 /// interpret 模板默认：TrigEngine::next 解释序的同源抽取。
 /// 臂按语义分组发射；用户补充 snapshot / apply_scope 后即得完整解释器
 impl N3EffectHandler with fn interpret(self, ctx, effect) {
@@ -1568,7 +1689,8 @@ impl N3EffectHandler with fn interpret(self, ctx, effect) {
           }
           N3Effect::Reset(scope) => self.apply_scope(ctx, scope)
           N3Effect::PopBnp => self.on_pop_bnp(ctx)
-          N3Effect::OpenSlot(span, typ, ret_state) => self.on_open_slot(ctx, span, typ, ret_state)
+          N3Effect::OpenSlot(span, typ, ret_state) =>
+            self.on_open_slot(ctx, span, typ, ret_state)
           N3Effect::Done => break
           _ => ()
         }
@@ -1582,6 +1704,7 @@ impl N3EffectHandler with fn interpret(self, ctx, effect) {
   }
 }
 
+///|
 /// dispatch 模板默认：match effect 并分发到 handle_*
 impl N3EffectHandler with fn dispatch(self, effect) {
   match effect {
@@ -1591,6 +1714,7 @@ impl N3EffectHandler with fn dispatch(self, effect) {
     Done => self.handle_done()
     Sequence(effects) => self.handle_sequence(effects)
     PopBnp => self.handle_pop_bnp()
-    OpenSlot(span, typ, ret_state) => self.handle_open_slot(span, typ, ret_state)
+    OpenSlot(span, typ, ret_state) =>
+      self.handle_open_slot(span, typ, ret_state)
   }
 }

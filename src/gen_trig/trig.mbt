@@ -43,7 +43,6 @@ pub(all) enum TrigEvent {
   TrigEOF
 }
 
-
 ///|
 pub(all) enum TrigState {
   TrigExpectSubject
@@ -84,7 +83,6 @@ pub(all) enum TrigState {
   TrigListAfterElem
 }
 
-
 ///|
 /// 重置粒度：每个变体显式列出"清谁"，未列字段一律保留（防错误重置）。
 /// 粒度不回头写 state —— state 由转移表的 to= 负责，两者正交。
@@ -95,7 +93,7 @@ pub(all) enum ResetScope {
   All // 清 subject/predicate/object/graph（N-Quads 行口径）
 } derive(Debug)
 
-
+///|
 /// Effect 枚举：状态机可能产生的副作用（纯数据）
 pub(all) enum TrigEffect {
   Continue
@@ -109,7 +107,6 @@ pub(all) enum TrigEffect {
   ListStep(Span)
   OpenSlot(Span, SlotType, TrigState)
 }
-
 
 ///|
 /// FSM 运行时上下文：ctx 提供状态（state）与业务数据（其余字段）
@@ -135,16 +132,31 @@ pub(all) struct TrigContext {
 ///|
 /// 状态机初始上下文
 pub fn TrigContext::new() -> TrigContext {
-  { state: TrigExpectSubject, subject: None, predicate: None, object: None, graph: None, prefix_name: None, base: None, directive_at: false, prefixes: [], bases: [], slot_stack: [], pred_kind: Normal, annot_s: None, annot_o: None, subj_shell: false, annot_close: false }
+  {
+    state: TrigExpectSubject,
+    subject: None,
+    predicate: None,
+    object: None,
+    graph: None,
+    prefix_name: None,
+    base: None,
+    directive_at: false,
+    prefixes: [],
+    bases: [],
+    slot_stack: [],
+    pred_kind: Normal,
+    annot_s: None,
+    annot_o: None,
+    subj_shell: false,
+    annot_close: false,
+  }
 }
 
 ///|
 /// 原地重置：按 scope 清槽位，未列字段一律保留（粒度语义见 ResetScope）
 pub fn TrigContext::reset(self : TrigContext, scope : ResetScope) -> Unit {
   match scope {
-    ResetScope::Object => {
-      self.object = None
-    }
+    ResetScope::Object => self.object = None
     ResetScope::PredObj => {
       self.predicate = None
       self.object = None
@@ -215,7 +227,6 @@ pub trait TrigLoopPolicy {
   fn on_business_failed(Self, String) -> ParseError
 }
 
-
 ///|
 /// Action 执行或状态转移阶段的错误
 pub(all) enum TrigActionError {
@@ -223,35 +234,66 @@ pub(all) enum TrigActionError {
   BusinessFailed(String) // 用户业务逻辑抛出：Action 执行失败（如解析格式错误）
 }
 
-
 ///|
 /// Actions trait：actions 提供逻辑，Self 携带运行时数据
 /// 每个方法：(ctx, 事件载荷) → 副作用意图或错误（ctx 为原地写，state 由 step 管理）
 pub trait TrigActions {
   fn set_subject(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
-  fn enter_graph(Self, TrigContext, Span?) -> Result[TrigEffect, TrigActionError]
-  fn set_predicate(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
+  fn enter_graph(Self, TrigContext, Span?) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
+  fn set_predicate(Self, TrigContext, Span) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
   fn set_object(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
   fn annot_open(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
-  fn annot_body_verb(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
-  fn annot_close_silent(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
-  fn open_bnode_prop(Self, TrigContext, Span, Bool, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn annot_body_verb(Self, TrigContext, Span) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
+  fn annot_close_silent(Self, TrigContext) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
+  fn open_bnode_prop(Self, TrigContext, Span, Bool, TrigState) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
   fn annot_end(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
-  fn set_prefix_name(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
-  fn declare_prefix(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
+  fn set_prefix_name(Self, TrigContext, Span) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
+  fn declare_prefix(Self, TrigContext, Span) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
   fn set_base(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
   fn exit_graph(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
   fn list_first(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
-  fn list_first_nested(Self, TrigContext, Span, SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn list_first_nested(Self, TrigContext, Span, SlotType, TrigState) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
   fn list_next(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
-  fn list_next_nested(Self, TrigContext, Span, SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn list_next_nested(Self, TrigContext, Span, SlotType, TrigState) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
   fn list_nil(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
-  fn open_collection(Self, TrigContext, Span, Bool, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn open_collection(Self, TrigContext, Span, Bool, TrigState) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
   fn list_step(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
-  fn open_slot(Self, TrigContext, Span, SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn open_slot(Self, TrigContext, Span, SlotType, TrigState) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
   fn pop_bnode_prop(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
 }
-
 
 ///|
 /// FSM Driver（mutable）：接收事件，原地推进 ctx，返回副作用意图或错误
@@ -703,7 +745,12 @@ pub fn[A : TrigActions] step(
     }
     (TrigGraphExpectDotOrGraph, TrigRbrace) => {
       ctx.state = TrigExpectSubject
-      Ok(TrigEffect::Sequence([TrigEffect::EmitQuad(ResetScope::SPO), TrigEffect::ExitGraph]))
+      Ok(
+        TrigEffect::Sequence([
+          TrigEffect::EmitQuad(ResetScope::SPO),
+          TrigEffect::ExitGraph,
+        ]),
+      )
     }
     (TrigGraphExpectVerbOrEnd, TrigIri(payload)) => {
       ctx.state = TrigGraphExpectObject
@@ -779,7 +826,12 @@ pub fn[A : TrigActions] step(
     }
     (TrigGraphExpectTildeEnd, TrigRbrace) => {
       ctx.state = TrigExpectSubject
-      Ok(TrigEffect::Sequence([TrigEffect::EmitQuad(ResetScope::SPO), TrigEffect::ExitGraph]))
+      Ok(
+        TrigEffect::Sequence([
+          TrigEffect::EmitQuad(ResetScope::SPO),
+          TrigEffect::ExitGraph,
+        ]),
+      )
     }
     (TrigGraphAnnotExpectVerb, TrigIri(payload)) => {
       ctx.state = TrigGraphAnnotExpectObject
@@ -915,7 +967,12 @@ pub fn[A : TrigActions] step(
     }
     (TrigBnpAfterObject, TrigRbracket) => {
       ctx.state = TrigBnpAfterObject
-      Ok(TrigEffect::Sequence([TrigEffect::EmitQuad(ResetScope::PredObj), TrigEffect::PopBnp]))
+      Ok(
+        TrigEffect::Sequence([
+          TrigEffect::EmitQuad(ResetScope::PredObj),
+          TrigEffect::PopBnp,
+        ]),
+      )
     }
     (TrigExpectSubject, TrigLbracket(payload)) => {
       ctx.state = TrigBnpExpectPredicate
@@ -983,7 +1040,12 @@ pub fn[A : TrigActions] step(
     }
     (TrigListExpectElemOrEnd, TrigLbracket(payload)) => {
       ctx.state = TrigBnpExpectPredicate
-      actions.list_first_nested(ctx, payload, SlotType::BnodeProp, TrigListAfterElem)
+      actions.list_first_nested(
+        ctx,
+        payload,
+        SlotType::BnodeProp,
+        TrigListAfterElem,
+      )
     }
     (TrigListExpectElemOrEnd, TrigLparen(payload)) => {
       ctx.state = TrigListExpectElemOrEnd
@@ -1019,7 +1081,12 @@ pub fn[A : TrigActions] step(
     }
     (TrigListAfterElem, TrigLbracket(payload)) => {
       ctx.state = TrigBnpExpectPredicate
-      actions.list_next_nested(ctx, payload, SlotType::BnodeProp, TrigListAfterElem)
+      actions.list_next_nested(
+        ctx,
+        payload,
+        SlotType::BnodeProp,
+        TrigListAfterElem,
+      )
     }
     (TrigListAfterElem, TrigLparen(payload)) => {
       ctx.state = TrigListExpectElemOrEnd
@@ -1057,14 +1124,12 @@ pub fn[A : TrigActions] step(
   }
 }
 
-
 ///|
 /// 副作用执行阶段的错误（第二层）
 pub(all) enum TrigEffectError {
   SinkFailed(String) // 下游写入失败（可恢复）
   Fatal(String) // 致命错误，需要终止状态机
 }
-
 
 ///|
 /// 第二层 EffectHandler：真正的 match effect 发生在 step 外部
@@ -1080,64 +1145,83 @@ pub trait TrigEffectHandler {
   fn handle_sequence(Self, Array[TrigEffect]) -> Result[Unit, TrigEffectError] = _
   fn handle_pop_bnp(Self) -> Result[Unit, TrigEffectError] = _
   fn handle_list_step(Self, Span) -> Result[Unit, TrigEffectError] = _
-  fn handle_open_slot(Self, Span, SlotType, TrigState) -> Result[Unit, TrigEffectError] = _
+  fn handle_open_slot(Self, Span, SlotType, TrigState) -> Result[
+    Unit,
+    TrigEffectError,
+  ] = _
   // —— 用户补充面：组装机械（业务落点，必须实现）——
   fn snapshot(Self, ctx : TrigContext) -> TrigPendingQuad
   fn apply_scope(Self, ctx : TrigContext, scope : ResetScope) -> Unit = _
   fn on_exit_graph(Self) -> Unit = _
   fn on_pop_bnp(Self, ctx : TrigContext) -> Unit = _
   fn on_list_step(Self, ctx : TrigContext, elem : Span) -> Unit = _
-  fn on_open_slot(Self, ctx : TrigContext, span : Span, typ : SlotType, ret_state : TrigState) -> Unit = _
+  fn on_open_slot(
+    Self,
+    ctx : TrigContext,
+    span : Span,
+    typ : SlotType,
+    ret_state : TrigState,
+  ) -> Unit = _
   // —— 模板面：interpret 默认实现（TrigEngine::next 解释序同源抽取）——
   fn interpret(Self, ctx : TrigContext, effect : TrigEffect) -> TrigEffectOutcome = _
   fn dispatch(Self, effect : TrigEffect) -> Result[Unit, TrigEffectError] = _
 }
 
+///|
 /// handle_continue 模板默认：无操作
 impl TrigEffectHandler with fn handle_continue(_self) {
   Ok(())
 }
 
+///|
 /// handle_emit_quad 模板默认：无操作
 impl TrigEffectHandler with fn handle_emit_quad(_self, _scope) {
   Ok(())
 }
 
+///|
 /// handle_reset 模板默认：无操作
 impl TrigEffectHandler with fn handle_reset(_self, _scope) {
   Ok(())
 }
 
+///|
 /// handle_done 模板默认：无操作
 impl TrigEffectHandler with fn handle_done(_self) {
   Ok(())
 }
 
+///|
 /// handle_enter_graph 模板默认：无操作
 impl TrigEffectHandler with fn handle_enter_graph(_self) {
   Ok(())
 }
 
+///|
 /// handle_exit_graph 模板默认：无操作
 impl TrigEffectHandler with fn handle_exit_graph(_self) {
   Ok(())
 }
 
+///|
 /// handle_sequence 模板默认：无操作
 impl TrigEffectHandler with fn handle_sequence(_self, _effects) {
   Ok(())
 }
 
+///|
 /// handle_pop_bnp 模板默认：无操作
 impl TrigEffectHandler with fn handle_pop_bnp(_self) {
   Ok(())
 }
 
+///|
 /// handle_list_step 模板默认：无操作
 impl TrigEffectHandler with fn handle_list_step(_self, _elem) {
   Ok(())
 }
 
+///|
 /// handle_open_slot 模板默认：无操作
 impl TrigEffectHandler with fn handle_open_slot(_self, _span, _typ, _ret_state) {
   Ok(())
@@ -1151,33 +1235,42 @@ pub(all) enum TrigEffectOutcome {
   Stop // 终止循环
 }
 
+///|
 /// on_exit_graph 模板默认：Sequence 内嵌退图（无帧机械时无操作）
 impl TrigEffectHandler with fn on_exit_graph(_self) {
   ()
 }
 
+///|
 /// on_pop_bnp 模板默认：Sequence 内嵌钩子（无帧机械时无操作）
 impl TrigEffectHandler with fn on_pop_bnp(_self, _ctx) {
   ()
 }
 
+///|
 /// on_list_step 模板默认：Sequence 内嵌钩子（无帧机械时无操作）
 impl TrigEffectHandler with fn on_list_step(_self, _ctx, _elem) {
   ()
 }
 
+///|
 /// on_open_slot 模板默认：Sequence 内嵌钩子（无帧机械时无操作）
-impl TrigEffectHandler with fn on_open_slot(_self, _ctx, _span, _typ, _ret_state) {
+impl TrigEffectHandler with fn on_open_slot(
+  _self,
+  _ctx,
+  _span,
+  _typ,
+  _ret_state,
+) {
   ()
 }
 
+///|
 /// apply_scope 模板默认：[[scope_chains]] 展开的收拾链
 /// （逐字段清槽，粒度不碰 state——state 由转移表 to= 负责）
 impl TrigEffectHandler with fn apply_scope(_self, ctx, scope) {
   match scope {
-    ResetScope::Object => {
-      ctx.object = None
-    }
+    ResetScope::Object => ctx.object = None
     ResetScope::PredObj => {
       ctx.predicate = None
       ctx.object = None
@@ -1196,12 +1289,17 @@ impl TrigEffectHandler with fn apply_scope(_self, ctx, scope) {
   }
 }
 
+///|
 /// interpret 模板默认：TrigEngine::next 解释序的同源抽取。
 /// 臂按语义分组发射；用户补充 snapshot / apply_scope 后即得完整解释器
 impl TrigEffectHandler with fn interpret(self, ctx, effect) {
   match effect {
     TrigEffect::Continue => KeepGoing
-    TrigEffect::EnterGraph | TrigEffect::ExitGraph | TrigEffect::PopBnp | TrigEffect::ListStep(_) | TrigEffect::OpenSlot(_, _, _) => KeepGoing
+    TrigEffect::EnterGraph
+    | TrigEffect::ExitGraph
+    | TrigEffect::PopBnp
+    | TrigEffect::ListStep(_)
+    | TrigEffect::OpenSlot(_, _, _) => KeepGoing
     TrigEffect::Reset(scope) => {
       self.apply_scope(ctx, scope)
       KeepGoing
@@ -1224,7 +1322,8 @@ impl TrigEffectHandler with fn interpret(self, ctx, effect) {
           TrigEffect::ExitGraph => self.on_exit_graph()
           TrigEffect::PopBnp => self.on_pop_bnp(ctx)
           TrigEffect::ListStep(elem) => self.on_list_step(ctx, elem)
-          TrigEffect::OpenSlot(span, typ, ret_state) => self.on_open_slot(ctx, span, typ, ret_state)
+          TrigEffect::OpenSlot(span, typ, ret_state) =>
+            self.on_open_slot(ctx, span, typ, ret_state)
           TrigEffect::Done => break
           _ => ()
         }
@@ -1238,6 +1337,7 @@ impl TrigEffectHandler with fn interpret(self, ctx, effect) {
   }
 }
 
+///|
 /// dispatch 模板默认：match effect 并分发到 handle_*
 impl TrigEffectHandler with fn dispatch(self, effect) {
   match effect {
@@ -1250,6 +1350,7 @@ impl TrigEffectHandler with fn dispatch(self, effect) {
     Sequence(effects) => self.handle_sequence(effects)
     PopBnp => self.handle_pop_bnp()
     ListStep(elem) => self.handle_list_step(elem)
-    OpenSlot(span, typ, ret_state) => self.handle_open_slot(span, typ, ret_state)
+    OpenSlot(span, typ, ret_state) =>
+      self.handle_open_slot(span, typ, ret_state)
   }
 }

@@ -46,7 +46,8 @@ fn span_of_event(event : N3Event) -> Span {
     N3Implies(span) => span // 规则操作符 span = 规则谓词身份（役4）
     N3ImpliedBy(span) => span
     N3Equals(span) => span // 役7：= token span 占谓词槽（pk=SameAs 身份）
-    N3Is // 役6 倒装引导符（bare，错误兜底位置由词法位置回填）
+    N3Is
+     // 役6 倒装引导符（bare，错误兜底位置由词法位置回填）
     | N3Of
     | N3At
     | N3PrefixKw
@@ -450,9 +451,7 @@ fn[L : LexerSource] N3Engine::settle_inversion(
 /// 注解壳账收口半边（役8）：末体 quad 出账点（take）或公式罩内压位点消费
 /// annot_close 旗——还原即清账（收口行 PredObj 粒度本就保锚主语在槽，`;` 续锚
 /// 直落现状；体区旗/壳账四件套齐清，防旗漏后语句）
-fn[L : LexerSource] N3Engine::settle_annotation(
-  self : N3Engine[L],
-) -> Unit {
+fn[L : LexerSource] N3Engine::settle_annotation(self : N3Engine[L]) -> Unit {
   if self.ctx.annot_close {
     self.ctx.annot_close = false
     self.ctx.subj_shell = false
@@ -478,18 +477,18 @@ fn[L : LexerSource] N3Engine::take_pending_quad(
     match (self.ctx.annot_s, self.ctx.annot_o) {
       (Some(s), Some(o)) =>
         // 命中：主语改指壳 span + 壳旗随账（extra 直引已真，显式保真）
-        { ..pending, subj: Some((s.0, o.0 + o.1 - s.0)), subj_shell: true }
+        { ..pending, subj: Some((s.0, o.0 + o.1 - s.0)), subj_shell: true, }
       (_, _) => pending
     }
   } else if self.ctx.subj_shell {
     // 错键不换（嵌套 bnp/集合内层 fresh 主语，役6 同款）：壳旗强制落假——
     // extra 直引自 ctx 会把体区旗漏挂到内层 quad 上
-    { ..pending, subj_shell: false }
+    { ..pending, subj_shell: false, }
   } else {
     pending
   }
   let pending = if self.ctx.is_src is Some(_) && pending.subj == self.ctx.is_src {
-    { ..pending, subj: pending.obj, obj: pending.subj }
+    { ..pending, subj: pending.obj, obj: pending.subj, }
   } else {
     pending
   }
@@ -565,7 +564,7 @@ pub fn[L : LexerSource] N3Engine::next(
         // 循环后队首上抛
         for effect in effects {
           match effect {
-            N3Effect::EmitQuad(scope) => {
+            N3Effect::EmitQuad(scope) =>
               if under_formula(self.ctx) {
                 // ADR-002：公式帧罩内发射意图 = 内容不断言——只收拾不上抛
                 //（同层倒装账随壳消费，防 stale 键出罩）
@@ -576,7 +575,6 @@ pub fn[L : LexerSource] N3Engine::next(
                 let item = self.take_pending_quad(scope)
                 self.emit_queue.push(item)
               }
-            }
             N3Effect::Reset(scope) => self.ctx.reset(scope)
             N3Effect::PopBnp => {
               // 意图兑现：`]` 收口序列的弹栈恢复，机械在 action

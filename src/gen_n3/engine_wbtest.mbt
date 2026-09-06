@@ -150,7 +150,7 @@ test "骨架: 恢复：垃圾跳到 Dot，后续语句存活" {
   assert_eq(view_str(data[:], quads[0].subj.unwrap()), "<http://s2>")
 }
 
-
+///|
 test "切片: 端到端 n3_parser（前缀 + 集合宾位）" {
   let input = "@prefix : <http://ex/> .\n:s :p ( 1 2 ) .\n"
   let data = bytes_of(input)
@@ -166,6 +166,7 @@ test "切片: 端到端 n3_parser（前缀 + 集合宾位）" {
   assert_true(quads[0].g is None)
 }
 
+///|
 test "切片: 未声明前缀拒绝" {
   let data = bytes_of(":x :y :z .\n")
   let (quads, errors) = n3_parser(data)
@@ -173,12 +174,13 @@ test "切片: 未声明前缀拒绝" {
   assert_eq(errors.length(), 1)
 }
 
+///|
 test "切片: `[] .` 零谓词 bnp 合法（役10 零谓词收口，trig 不受影响）" {
   let input = "[] .\n<http://s> <http://p> <http://o> .\n"
   let data = bytes_of(input)
   let (quads, errors) = n3_parser(data)
   // 役10 零谓词收口：`[] .` 与 `[:c :d] .` 同径——空属性列表 = 零谓词裸
-    // 节点语句，bnp 帧空形式弹栈后 Dot 走零发射收口；后句照常发射 q=1
+  // 节点语句，bnp 帧空形式弹栈后 Dot 走零发射收口；后句照常发射 q=1
   assert_eq(errors.length(), 0)
   assert_eq(quads.length(), 1)
 }
@@ -542,7 +544,6 @@ test "役5: 空列表——@keywords . 全关键词失格，a 走 PrefName 谓�
   assert_eq(view_str(data[:], quads[0].pred.unwrap()), "a")
 }
 
-
 // —— 役6：is/of 集合等价倒装（`X is P of Y ≡ Y P X`；grammar 序槽位、语义序出账）——
 
 ///|
@@ -695,7 +696,6 @@ test "役6: 'a' 倒装——set_predicate 复用，pk 出账 KwA（物化层 rdf
   assert_eq(quads[0].obj.unwrap(), (0, 2))
 }
 
-
 // —— 役7：`=` 等同谓词（ADR-005：owl:sameAs 语法糖；= token span 占槽、
 // 语义身份 pk=SameAs，物化层展开）——
 
@@ -765,7 +765,6 @@ test "役7: 公式罩内 =——罩内零发射口径不变，外层不受扰" {
   assert_eq(quads.length(), 1)
   assert_eq(quads[0].obj.unwrap(), (6, 1))
 }
-
 
 ///|
 test "役8: 正典注解——主 quad 锚主语 + 体 quad 壳主语（span 账）" {

@@ -37,11 +37,7 @@ impl N3Actions for Hooks with fn set_predicate(
   ctx.predicate = Some(payload)
   // 役5：KeywordA 活性随行旗标（引擎归位点置位）此刻兑现落 pk——Comma
   // 连发同谓词不再过 action，pk 快照直引保真；他谓词恒 Normal
-  ctx.pred_kind = if ctx.kw_a_live {
-    PredKind::KwA
-  } else {
-    PredKind::Normal
-  }
+  ctx.pred_kind = if ctx.kw_a_live { PredKind::KwA } else { PredKind::Normal }
   ctx.kw_a_live = false
   Ok(N3Effect::Continue)
 }
@@ -136,10 +132,10 @@ impl N3Actions for Hooks with fn open_bnode_prop(
 ///   - 非空集合：单一 BNode = fr.open_span（开括号即身份，ADR-003a 不展开链）
 ///   - `[]`：fresh BNode = fr.open_span
 /// 序上恒在 EmitQuad 之后：emit 先 snapshot 后收拾，恢复值取自帧不受 PredObj 收拾波及
-impl N3Actions for Hooks with fn pop_bnode_prop(
-  _self : Hooks,
-  ctx : N3Context,
-) -> Result[N3Effect, N3ActionError] {
+impl N3Actions for Hooks with fn pop_bnode_prop(_self : Hooks, ctx : N3Context) -> Result[
+  N3Effect,
+  N3ActionError,
+] {
   match ctx.slot_stack.pop() {
     Some(fr) => {
       ctx.subject = fr.subject
@@ -248,6 +244,7 @@ impl N3Actions for Hooks with fn open_formula(
 ///|
 /// 公式收口 action：裸 PopBnp 意图（公式内容零发射；pop_bnode_prop 共享机械
 /// 恢复外层槽位 + 身份落位 + 返回状态兑现——list_nil 同款形状）。
+
 ///|
 /// 公式谓词位入口（役10）：帧携 as_pred——弹栈身份落外层谓词槽（bad-preds-formula
 /// 正典 `:e { :f :g :h } :i .`）。入帧快照/内层清空与 open_formula 全同，仅
@@ -276,10 +273,11 @@ impl N3Actions for Hooks with fn open_formula_pred(
   Ok(N3Effect::Continue)
 }
 
-impl N3Actions for Hooks with fn close_formula(
-  _self : Hooks,
-  ctx : N3Context,
-) -> Result[N3Effect, N3ActionError] {
+///|
+impl N3Actions for Hooks with fn close_formula(_self : Hooks, ctx : N3Context) -> Result[
+  N3Effect,
+  N3ActionError,
+] {
   let _ = ctx
   Ok(N3Effect::PopBnp)
 }
@@ -446,7 +444,7 @@ impl N3Actions for Hooks with fn path_end_nested(
   typ : SlotType,
   ret_state : N3State,
 ) -> Result[N3Effect, N3ActionError] {
-  if !(ctx.path_fwd) {
+  if !ctx.path_fwd {
     // 拒绝落点：state 已随行进到嵌套态——原地拨回 ExpectDotOrGraph，
     // 后续流走 UnexpectedEvent 正规恢复（skip-to-Dot），不出垃圾内部
     // quad（BusinessFailed 本身不 resync，context 带病续跑）
@@ -560,10 +558,10 @@ impl N3Actions for Hooks with fn list_next_nested(
 /// 集合收口（尾元素后 `)`，ADR-003a）：无 rdf:rest rdf:nil 尾 quad（trig 的
 /// 发射臂退役）——弹栈交 PopBnp，落位（非空 = 单一 BNode / 空 = nil 标记）
 /// 与返回状态兑现在 pop_bnode_prop。
-impl N3Actions for Hooks with fn list_nil(
-  _self : Hooks,
-  ctx : N3Context,
-) -> Result[N3Effect, N3ActionError] {
+impl N3Actions for Hooks with fn list_nil(_self : Hooks, ctx : N3Context) -> Result[
+  N3Effect,
+  N3ActionError,
+] {
   let _ = ctx // 槽位不动：决策全在 pop（帧携带）；保留形参对齐 trait 形状
   Ok(N3Effect::PopBnp)
 }
@@ -573,10 +571,10 @@ impl N3Actions for Hooks with fn list_nil(
 
 ///|
 /// @keywords 入口：清台账 + seen 置位（旧 listed 词即刻失格，含 `a`）
-impl N3Actions for Hooks with fn kw_begin(
-  _self : Hooks,
-  ctx : N3Context,
-) -> Result[N3Effect, N3ActionError] {
+impl N3Actions for Hooks with fn kw_begin(_self : Hooks, ctx : N3Context) -> Result[
+  N3Effect,
+  N3ActionError,
+] {
   ctx.kw_ledger.clear()
   ctx.kw_directive_seen = true
   Ok(N3Effect::Continue)
@@ -601,10 +599,10 @@ impl N3Actions for Hooks with fn declare_keyword(
 ///|
 /// of 收倒装头：主语 token span 入 is_src 作交换键 + 槽深入 is_depth 定清账界
 ///（span 全局唯一 ⇒ 嵌套 bnp/集合内层 fresh 主语天然错键不换）
-impl N3Actions for Hooks with fn is_of(
-  _self : Hooks,
-  ctx : N3Context,
-) -> Result[N3Effect, N3ActionError] {
+impl N3Actions for Hooks with fn is_of(_self : Hooks, ctx : N3Context) -> Result[
+  N3Effect,
+  N3ActionError,
+] {
   ctx.is_src = ctx.subject
   ctx.is_depth = ctx.slot_stack.length()
   Ok(N3Effect::Continue)
@@ -625,14 +623,13 @@ impl N3Actions for Hooks with fn set_sameas(
   Ok(N3Effect::Continue)
 }
 
-
 ///|
 /// 注解开壳（役8）：抄录锚 s/o 入壳账（槽位不动、不发射不收拾——发射意图
 /// 由动作返回值承载：主 quad 仍锚主语预发射，快照发生时壳账尚无旗 = 锚身出账）
-impl N3Actions for Hooks with fn annot_open(
-  _self : Hooks,
-  ctx : N3Context,
-) -> Result[N3Effect, N3ActionError] {
+impl N3Actions for Hooks with fn annot_open(_self : Hooks, ctx : N3Context) -> Result[
+  N3Effect,
+  N3ActionError,
+] {
   ctx.annot_s = ctx.subject
   ctx.annot_o = ctx.object
   ctx.subj_shell = false
@@ -652,11 +649,7 @@ impl N3Actions for Hooks with fn annot_body_verb(
 ) -> Result[N3Effect, N3ActionError] {
   ctx.subj_shell = true
   ctx.predicate = Some(payload)
-  ctx.pred_kind = if ctx.kw_a_live {
-    PredKind::KwA
-  } else {
-    PredKind::Normal
-  }
+  ctx.pred_kind = if ctx.kw_a_live { PredKind::KwA } else { PredKind::Normal }
   ctx.kw_a_live = false
   Ok(N3Effect::Continue)
 }
@@ -664,10 +657,10 @@ impl N3Actions for Hooks with fn annot_body_verb(
 ///|
 /// 注解收口（役8）：置收口旗 + 返回末体 quad 发射——take 消费旗（壳交换先
 /// 兑现在本 quad 上）后还原清账；槽位经 PredObj 粒度保锚主语，`;` 续锚直落
-impl N3Actions for Hooks with fn annot_end(
-  _self : Hooks,
-  ctx : N3Context,
-) -> Result[N3Effect, N3ActionError] {
+impl N3Actions for Hooks with fn annot_end(_self : Hooks, ctx : N3Context) -> Result[
+  N3Effect,
+  N3ActionError,
+] {
   ctx.annot_close = true
   Ok(N3Effect::EmitQuad(ResetScope::PredObj))
 }

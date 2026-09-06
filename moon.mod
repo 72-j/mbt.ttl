@@ -19,7 +19,7 @@ repository = "https://www.gitlink.org.cn/thy7/mbt.ttl"
 
 license = "Apache-2.0"
 
-keywords = [ "nqquads","trig", "rdf" ]
+keywords = [ "nqquads", "trig", "rdf" ]
 
 description = "MoonTTL is a high-performance RDF parsing and serialization library for MoonBit."
 

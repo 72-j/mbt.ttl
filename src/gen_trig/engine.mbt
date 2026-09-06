@@ -509,11 +509,11 @@ fn[L : LexerSource] TrigEngine::settle_shell(
     if pending.subj == self.ctx.annot_s {
       match (self.ctx.annot_s, self.ctx.annot_o) {
         (Some(s), Some(o)) =>
-          return { ..pending, subj: Some((s.0, o.0 + o.1 - s.0)) }
+          return { ..pending, subj: Some((s.0, o.0 + o.1 - s.0)), }
         (_, _) => ()
       }
     }
-    return { ..pending, subj_shell: false }
+    return { ..pending, subj_shell: false, }
   }
   pending
 }

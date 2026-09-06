@@ -118,7 +118,7 @@ async fn run_n3_suite(
       emits,
       merrs,
       quads.length(),
-      )
+    )
     if ok {
       passed = passed + 1
     } else {

@@ -82,10 +82,7 @@ pub fn N3Serializer::serialize(
   for quad in quads {
     if !(quad.graph is None) {
       return Err(
-        ParseError::SyntaxErr(
-          "Graph term is not representable in N3",
-          (0, 0),
-        ),
+        ParseError::SyntaxErr("Graph term is not representable in N3", (0, 0)),
       )
     }
     match n3_append_terms(quad, buf) {
@@ -152,10 +149,7 @@ test "序列化: 全链路 解析→物化→N3Serializer（前缀展开 + 集�
   assert_eq(errors.length(), 0)
   match N3Serializer::new().serialize(emits) {
     Ok(out) =>
-      assert_eq(
-        out,
-        "<http://example/s> <http://example/p> _:genid42 .\n",
-      )
+      assert_eq(out, "<http://example/s> <http://example/p> _:genid42 .\n")
     Err(e) => {
       debug("serialize error: \{e}")
       assert_false(true)

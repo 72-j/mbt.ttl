@@ -117,7 +117,10 @@ fn Serializer::append_subject(
     // 方言不产出，透传会写出上层语言语法，报错钉住不变量
     Subject::Variable(_) =>
       Err(
-        ParseError::SyntaxErr("Variables are not valid in N-Triples/N-Quads", (0, 0)),
+        ParseError::SyntaxErr(
+          "Variables are not valid in N-Triples/N-Quads",
+          (0, 0),
+        ),
       )
   }
 }
@@ -156,7 +159,10 @@ fn Serializer::append_object(
       )
     Object::Variable(_) =>
       Err(
-        ParseError::SyntaxErr("Variables are not valid in N-Triples/N-Quads", (0, 0)),
+        ParseError::SyntaxErr(
+          "Variables are not valid in N-Triples/N-Quads",
+          (0, 0),
+        ),
       )
   }
 }

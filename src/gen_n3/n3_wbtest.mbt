@@ -82,7 +82,10 @@ test "变量 ?x：邻接合成 / 裸 ? 拒 / ??x 不吞词" {
   assert_eq(n3_drain("? :p :o ."), "Unk(0,1) Pref(2,2) Pref(5,2) Dot EOF")
   // ??x：两枚独立 ?——首 ? peek 失配（次 token 是 ? 非 PrefName）落 Unknown，
   // 次 ? peek 到 x 但流已脏；全程无非法吞词（gen.md §4.2）
-  assert_eq(n3_drain("??x :p :o ."), "Unk(0,1) Unk(1,1) Unk(2,1) Pref(4,2) Pref(7,2) Dot EOF")
+  assert_eq(
+    n3_drain("??x :p :o ."),
+    "Unk(0,1) Unk(1,1) Unk(2,1) Pref(4,2) Pref(7,2) Dot EOF",
+  )
 }
 
 ///|
@@ -95,10 +98,7 @@ test "路径 !/^ 与规则 =>/<=/= 事件流" {
     n3_drain(":a^:b :p :o ."),
     "Pref(0,2) Caret(2,1) Pref(3,2) Pref(6,2) Pref(9,2) Dot EOF",
   )
-  assert_eq(
-    n3_drain(":a => :b ."),
-    "Pref(0,2) Implies(3,2) Pref(6,2) Dot EOF",
-  )
+  assert_eq(n3_drain(":a => :b ."), "Pref(0,2) Implies(3,2) Pref(6,2) Dot EOF")
   assert_eq(
     n3_drain(":a <= :b ."),
     "Pref(0,2) ImpliedBy(3,2) Pref(6,2) Dot EOF",

@@ -680,12 +680,10 @@ pub fn N3Materializer::materialize_quad(
     self.push_vocab(@nquads.owl_sameas)
     let pspan = (start, self.arena.length() - start)
     slice_span(self.arena[:], pspan)
-  } else if (
-      self.data[quad.p.0] == b'"' ||
-      self.data[quad.p.0] == b'?' ||
-      self.data[quad.p.0] == b'[' ||
-      self.data[quad.p.0] == b'{'
-    ) {
+  } else if self.data[quad.p.0] == b'"' ||
+    self.data[quad.p.0] == b'?' ||
+    self.data[quad.p.0] == b'[' ||
+    self.data[quad.p.0] == b'{' {
     // 役10 词位扩展：非词项谓词原文保真直出——字面量/变量谓词按原文重发
     // （cwm 口径）；`[`/`{` 谓词只持开括号 token span，保真以 token 为界
     slice_span(self.data, quad.p)
@@ -933,12 +931,10 @@ fn check_variable_view(view : ArrayView[Byte]) -> Result[Unit, ParseError] {
   }
   for i in 1..<n {
     let c = view[i]
-    let ok = (
-        (c >= b'a' && c <= b'z') ||
-        (c >= b'A' && c <= b'Z') ||
-        (c >= b'0' && c <= b'9') ||
-        c == b'_'
-      )
+    let ok = (c >= b'a' && c <= b'z') ||
+      (c >= b'A' && c <= b'Z') ||
+      (c >= b'0' && c <= b'9') ||
+      c == b'_'
     if !ok {
       return Err(ParseError::ValidationErr("Invalid variable name character"))
     }
@@ -1249,7 +1245,6 @@ fn mat_chain(input : String) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
   mat.materialize_all(quads)
 }
 
-
 ///|
 /// 首个目标字节偏移（测试内动态定位开括号，免硬编码偏移）
 fn off_of(data : Array[Byte], b : Byte) -> Int {
@@ -1288,10 +1283,18 @@ test "物化: 'a' 缩写 → rdf:type，数值三型与布尔 → typed literal"
   )
   let expect : Array[(String, String)] = [
     ("<http://example/i>", "\"42\"^^<http://www.w3.org/2001/XMLSchema#integer>"),
-    ("<http://example/d>", "\"1.5\"^^<http://www.w3.org/2001/XMLSchema#decimal>"),
-    ("<http://example/x>", "\"1.0e3\"^^<http://www.w3.org/2001/XMLSchema#double>"),
-    ("<http://example/b>", "\"true\"^^<http://www.w3.org/2001/XMLSchema#boolean>"),
-    ("<http://example/b>", "\"false\"^^<http://www.w3.org/2001/XMLSchema#boolean>"),
+    (
+      "<http://example/d>", "\"1.5\"^^<http://www.w3.org/2001/XMLSchema#decimal>",
+    ),
+    (
+      "<http://example/x>", "\"1.0e3\"^^<http://www.w3.org/2001/XMLSchema#double>",
+    ),
+    (
+      "<http://example/b>", "\"true\"^^<http://www.w3.org/2001/XMLSchema#boolean>",
+    ),
+    (
+      "<http://example/b>", "\"false\"^^<http://www.w3.org/2001/XMLSchema#boolean>",
+    ),
   ]
   for i in 0..<expect.length() {
     let (pv, ov) = expect[i]
@@ -1583,7 +1586,6 @@ test "役3: 复合末跳集合——单 BNode 身份落连接边（零链）" {
   assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
 }
 
-
 ///|
 test "役5 物化: a 失效——@keywords 未列出 → PrefName 裸名按 DefaultPrefixIRI 展开" {
   let (emits, errors) = mat_chain(
@@ -1611,7 +1613,6 @@ test "役5 物化: a 复活——台账含 a 则 KeywordA 照常展开 rdf:type"
   )
   assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/o>")
 }
-
 
 ///|
 test "役6 物化: 倒装端到端——:a is :p of :b 序列化为 :b :p :a" {
@@ -1641,24 +1642,22 @@ test "役6 物化: 'a' 倒装——KwA 出账 → rdf:type，主宾互换" {
   assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/x>")
 }
 
-
 ///|
 test "役7 物化: 等同端到端——:a = :b 展开谓词 owl:sameAs" {
-  let (emits, errors) = mat_chain(
-    "@prefix : <http://dft/> .\n:a = :b .\n",
-  )
+  let (emits, errors) = mat_chain("@prefix : <http://dft/> .\n:a = :b .\n")
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 1)
   assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/a>")
-  assert_eq(mat_vs(emits[0].predicate), "<http://www.w3.org/2002/07/owl#sameAs>")
+  assert_eq(
+    mat_vs(emits[0].predicate),
+    "<http://www.w3.org/2002/07/owl#sameAs>",
+  )
   assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/b>")
 }
 
 ///|
 test "役7 物化: 逗号连发——双 emit 同展开 owl:sameAs" {
-  let (emits, errors) = mat_chain(
-    "@prefix : <http://dft/> .\n:a = :b, :c .\n",
-  )
+  let (emits, errors) = mat_chain("@prefix : <http://dft/> .\n:a = :b, :c .\n")
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 2)
   assert_eq(
@@ -1673,24 +1672,36 @@ test "役7 物化: 逗号连发——双 emit 同展开 owl:sameAs" {
   assert_eq(mat_vs(mat_obj(emits[1])), "<http://dft/c>")
 }
 
-
 ///|
 test "役8: 注解壳主语物化——体 quad 主语合成 <<锚三元组原文>> TT 壳" {
-  let (emits, errors) = mat_chain("<http://e/s> <http://e/p> <http://e/o> {| <http://e/q> <http://e/z> |} .\n")
+  let (emits, errors) = mat_chain(
+    "<http://e/s> <http://e/p> <http://e/o> {| <http://e/q> <http://e/z> |} .\n",
+  )
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 2)
   // 主 quad：锚主语原样
   assert_eq(mat_vs(mat_subj(emits[0])), "<http://e/s>")
   // 体 quad：主语 = <<<s> <p> <o>>>（锚三元组原文整段，arena 合成）
-  assert_eq(mat_vs(mat_subj(emits[1])), "<<<http://e/s> <http://e/p> <http://e/o>>>")
+  assert_eq(
+    mat_vs(mat_subj(emits[1])),
+    "<<<http://e/s> <http://e/p> <http://e/o>>>",
+  )
   assert_eq(mat_vs(mat_obj(emits[1])), "<http://e/z>")
 }
 
 ///|
 test "役8: 体区多 quad 同壳——逗号连发皆 TT 壳主语" {
-  let (emits, errors) = mat_chain("<http://e/s> <http://e/p> <http://e/o> {| <http://e/q> <http://e/z1>, <http://e/z2> |} .\n")
+  let (emits, errors) = mat_chain(
+    "<http://e/s> <http://e/p> <http://e/o> {| <http://e/q> <http://e/z1>, <http://e/z2> |} .\n",
+  )
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 3)
-  assert_eq(mat_vs(mat_subj(emits[1])), "<<<http://e/s> <http://e/p> <http://e/o>>>")
-  assert_eq(mat_vs(mat_subj(emits[2])), "<<<http://e/s> <http://e/p> <http://e/o>>>")
+  assert_eq(
+    mat_vs(mat_subj(emits[1])),
+    "<<<http://e/s> <http://e/p> <http://e/o>>>",
+  )
+  assert_eq(
+    mat_vs(mat_subj(emits[2])),
+    "<<<http://e/s> <http://e/p> <http://e/o>>>",
+  )
 }

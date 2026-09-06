@@ -51,21 +51,19 @@ async test "N3Tests parser suite: first sweep (print-only)" {
         neg_miss = neg_miss + 1
         debug("NEG-MISS \{path}（负例被全链接受）")
       }
-    } else {
       // pos / eval：解析零错为门槛
-      if perrs.length() > 0 {
-        pos_parse_fail = pos_parse_fail + 1
-        debug("P-FAIL \{path} p=\{perrs.length()}")
-        for err in perrs {
-          debug("  P: \{err}")
-        }
-      } else if merrs.length() > 0 {
-        // 解析零错 + 物化有错 = 延后桶（公式/规则物化），不算解析失败
-        pos_mat_only = pos_mat_only + 1
-        debug("P-OK-MAT \{path} m=\{merrs.length()}")
-      } else {
-        pos_ok = pos_ok + 1
+    } else if perrs.length() > 0 {
+      pos_parse_fail = pos_parse_fail + 1
+      debug("P-FAIL \{path} p=\{perrs.length()}")
+      for err in perrs {
+        debug("  P: \{err}")
       }
+    } else if merrs.length() > 0 {
+      // 解析零错 + 物化有错 = 延后桶（公式/规则物化），不算解析失败
+      pos_mat_only = pos_mat_only + 1
+      debug("P-OK-MAT \{path} m=\{merrs.length()}")
+    } else {
+      pos_ok = pos_ok + 1
     }
   }
   debug(
