@@ -1453,27 +1453,50 @@ fn mat_has_graph(e : @nquads.QuadEmit) -> Bool {
 }
 
 ///|
-test "役3: 路径 ! 直连 ≡ S P O（无中间节点）" {
+test "役3: 主位路径官方形——! 跳附节点，真谓词收口（cwm path1 口径）" {
+  // 官方语料（cwm_syntax/path1.n3）：路径附于节点，后随真谓词 + 宾语
+  // :albert!fam:mother fam:sister :auntieAnne ≡ (albert,!fam:mother→g) + (g,fam:sister,auntieAnne)
   let (emits, errors) = mat_chain(
-    "<http://ex/s> !<http://ex/p> <http://ex/o> .\n",
+    "<http://ex/s> !<http://ex/p> <http://ex/q> <http://ex/o> .\n",
   )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
+  assert_eq(emits.length(), 2)
+  let g1 = mat_vs(mat_obj(emits[0]))
+  assert_true(g1.has_prefix("_:genid"))
   assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
   assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://ex/o>")
+  assert_eq(mat_vs(mat_subj(emits[1])), g1)
+  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
+  assert_eq(mat_vs(mat_obj(emits[1])), "<http://ex/o>")
+  // 旧役3"直连 ≡ S P O"教义已翻案（ADR-011）：无真谓词的直连形官方非法 → 拒绝
+  let (emits2, errors2) = mat_chain(
+    "<http://ex/s> !<http://ex/p> <http://ex/o> .\n",
+  )
+  assert_eq(errors2.length(), 1)
+  assert_eq(emits2.length(), 0)
 }
 
 ///|
-test "役3: 路径 ^ 直连 ≡ O P S（零 fresh 零中转）" {
+test "役3: 主位路径官方形——^ 反跳附节点（cwm path1 口径）" {
+  // :albert^fam:father fam:sister :nieceBertha ≡ (g,fam:father,albert) + (g,fam:sister,nieceBertha)
   let (emits, errors) = mat_chain(
-    "<http://ex/s> ^<http://ex/p> <http://ex/o> .\n",
+    "<http://ex/s> ^<http://ex/p> <http://ex/q> <http://ex/o> .\n",
   )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/o>")
+  assert_eq(emits.length(), 2)
+  let g1 = mat_vs(mat_subj(emits[0]))
+  assert_true(g1.has_prefix("_:genid"))
   assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
   assert_eq(mat_vs(mat_obj(emits[0])), "<http://ex/s>")
+  assert_eq(mat_vs(mat_subj(emits[1])), g1)
+  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
+  assert_eq(mat_vs(mat_obj(emits[1])), "<http://ex/o>")
+  // 直连形（无真谓词）官方非法 → 拒绝
+  let (emits2, errors2) = mat_chain(
+    "<http://ex/s> ^<http://ex/p> <http://ex/o> .\n",
+  )
+  assert_eq(errors2.length(), 1)
+  assert_eq(emits2.length(), 0)
 }
 
 ///|
@@ -1505,33 +1528,50 @@ test "役3: 基动词 !/^ 中转 hop——desugar 双 quad，genid 同体" {
 }
 
 ///|
-test "役3: 裸入口链 !P!Q / !P^Q——hop 方向 = 前 op 旗标，末 op 只翻账" {
-  // S !P!Q O ≡ S P _:1 . _:1 Q O
+test "役3: 主位链官方形——!P!Q 双跳 desugar + 混合方向当步旗标口径" {
+  // 官方语料（cwm_syntax/path2.n3）：:albert!fam:mother :mentor!:inverse :auntieAnne
+  // S !P!Q R O ≡ (S,P,g1) + (g1,Q,g2) + (g2,R,O)
   let (emits, errors) = mat_chain(
-    "<http://ex/s> !<http://ex/p>!<http://ex/q> <http://ex/o> .\n",
+    "<http://ex/s> !<http://ex/p>!<http://ex/q> <http://ex/r> <http://ex/o> .\n",
   )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  let g1 = mat_vs(mat_subj(emits[1]))
-  assert_true(g1.starts_with("_:genid"))
+  assert_eq(emits.length(), 3)
+  let g1 = mat_vs(mat_obj(emits[0]))
+  let g2 = mat_vs(mat_subj(emits[2]))
+  assert_true(g1.has_prefix("_:genid"))
+  assert_true(g2.has_prefix("_:genid"))
+  assert_false(g1 == g2)
   assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
   assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
-  assert_eq(mat_vs(mat_obj(emits[0])), g1)
+  assert_eq(mat_vs(mat_subj(emits[1])), g1)
   assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits[1])), "<http://ex/o>")
-  // S !P^Q O ≡ S P _:1 . O Q _:1——首边方向被 ^ hop 读取时仍是 ! 旗标
+  assert_eq(mat_vs(mat_obj(emits[1])), g2)
+  assert_eq(mat_vs(emits[2].predicate), "<http://ex/r>")
+  assert_eq(mat_vs(mat_obj(emits[2])), "<http://ex/o>")
+  // 混合方向主位链（!P^Q）官方语料未裁决；本机 hop 方向账 = 当步旗标口径：
+  // 首边随末 op（^）反向出账 —— (g1,P,S) + (g2,Q,g1) + (g2,R,O)
   let (emits2, errors2) = mat_chain(
-    "<http://ex/s> !<http://ex/p>^<http://ex/q> <http://ex/o> .\n",
+    "<http://ex/s> !<http://ex/p>^<http://ex/q> <http://ex/r> <http://ex/o> .\n",
   )
   assert_eq(errors2.length(), 0)
-  assert_eq(emits2.length(), 2)
-  let g2 = mat_vs(mat_obj(emits2[0]))
-  assert_true(g2.starts_with("_:genid"))
-  assert_eq(mat_vs(mat_subj(emits2[0])), "<http://ex/s>")
+  assert_eq(emits2.length(), 3)
+  let h1 = mat_vs(mat_subj(emits2[0]))
+  let h2 = mat_vs(mat_subj(emits2[1]))
+  assert_true(h1.has_prefix("_:genid"))
+  assert_true(h2.has_prefix("_:genid"))
+  assert_false(h1 == h2)
   assert_eq(mat_vs(emits2[0].predicate), "<http://ex/p>")
-  assert_eq(mat_vs(mat_subj(emits2[1])), "<http://ex/o>")
+  assert_eq(mat_vs(mat_obj(emits2[0])), "<http://ex/s>")
   assert_eq(mat_vs(emits2[1].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits2[1])), g2)
+  assert_eq(mat_vs(mat_obj(emits2[1])), h1)
+  assert_eq(mat_vs(emits2[2].predicate), "<http://ex/r>")
+  assert_eq(mat_vs(mat_obj(emits2[2])), "<http://ex/o>")
+  // 直连裸链（无真谓词）官方非法 → 拒绝
+  let (emits3, errors3) = mat_chain(
+    "<http://ex/s> !<http://ex/p>!<http://ex/q> <http://ex/o> .\n",
+  )
+  assert_eq(errors3.length(), 1)
+  assert_eq(emits3.length(), 0)
 }
 
 ///|
@@ -1556,34 +1596,58 @@ test "役3: 三跳链——中转节点逐跳 fresh（!p!q!r 双 genid 互异）
 }
 
 ///|
-test "役3: 复合末跳 bnp——借共享帧机械，连接边 Dot 收口" {
-  let (emits, errors) = mat_chain(
+test "役3: 宾位链复合末跳 bnp——连接边 Dot 收口（官方形）" {
+  // 旧钉输入（主位直连 + 复合谓词位）官方非法：路径主语后无真谓词 → 拒绝
+  let (emits0, errors0) = mat_chain(
     "<http://ex/s> !<http://ex/p> [ <http://ex/q> <http://ex/r> ] .\n",
   )
+  assert_eq(errors0.length(), 1)
+  assert_eq(emits0.length(), 0)
+  // 官方形：宾位路径链 S P!Q [R T] ≡ (S,P,g1) + bnp 内部 (g2,R,T) + 连接边 (g1,Q,g2)
+  let (emits, errors) = mat_chain(
+    "<http://ex/s> <http://ex/p>!<http://ex/q> [ <http://ex/r> <http://ex/t> ] .\n",
+  )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  let g1 = mat_vs(mat_subj(emits[0]))
-  assert_true(g1.starts_with("_:genid"))
-  // bnp 内部 quad：(fresh, :q, :r)
-  assert_eq(mat_vs(emits[0].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://ex/r>")
-  // statement 连接边：(s, :p, fresh)——同一 genid（memo 同体）
-  assert_eq(mat_vs(mat_subj(emits[1])), "<http://ex/s>")
-  assert_eq(mat_vs(emits[1].predicate), "<http://ex/p>")
-  assert_eq(mat_vs(mat_obj(emits[1])), g1)
+  assert_eq(emits.length(), 3)
+  let g1 = mat_vs(mat_obj(emits[0]))
+  assert_true(g1.has_prefix("_:genid"))
+  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
+  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
+  let g2 = mat_vs(mat_subj(emits[1]))
+  assert_true(g2.has_prefix("_:genid"))
+  assert_false(g1 == g2)
+  assert_eq(mat_vs(emits[1].predicate), "<http://ex/r>")
+  assert_eq(mat_vs(mat_obj(emits[1])), "<http://ex/t>")
+  // 连接边 Dot 收口：g1 = 路径账 fresh，g2 = bnp 帧 fresh
+  assert_eq(mat_vs(mat_subj(emits[2])), g1)
+  assert_eq(mat_vs(emits[2].predicate), "<http://ex/q>")
+  assert_eq(mat_vs(mat_obj(emits[2])), g2)
 }
 
 ///|
-test "役3: 复合末跳集合——单 BNode 身份落连接边（零链）" {
-  let (emits, errors) = mat_chain(
+test "役3: 宾位链复合末跳集合——单 BNode 身份落连接边（官方形）" {
+  // 主位直连形官方非法 → 拒绝
+  let (emits0, errors0) = mat_chain(
     "<http://ex/s> !<http://ex/p> ( <http://ex/a> <http://ex/b> ) .\n",
   )
+  assert_eq(errors0.length(), 1)
+  assert_eq(emits0.length(), 0)
+  // 官方形：宾位路径链 S P!Q (A B) ≡ (S,P,g1) + (g1,Q,g2)；ADR-003a 集合零链
+  let (emits, errors) = mat_chain(
+    "<http://ex/s> <http://ex/p>!<http://ex/q> ( <http://ex/a> <http://ex/b> ) .\n",
+  )
   assert_eq(errors.length(), 0)
-  // ADR-003a：集合零链 quad，statement 一条，o = ( 身份 fresh
-  assert_eq(emits.length(), 1)
-  assert_true(mat_vs(mat_obj(emits[0])).starts_with("_:genid"))
+  assert_eq(emits.length(), 2)
+  let g1 = mat_vs(mat_obj(emits[0]))
+  assert_true(g1.has_prefix("_:genid"))
   assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
   assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
+  // ADR-003a 集合零链：无内部 quad，quad1 即连接边，g2 落宾位
+  let g2 = mat_vs(mat_obj(emits[1]))
+  assert_true(g2.has_prefix("_:genid"))
+  assert_false(g1 == g2)
+  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
+  assert_eq(mat_vs(mat_subj(emits[1])), g1)
 }
 
 ///|

@@ -178,7 +178,7 @@ pub fn LiteralRef::destruct(
     LiteralRefContent::LanguageTaggedString(value~, language~) =>
       (value, None, Some(language), None)
     LiteralRefContent::DirectionalLanguageTaggedString(
-      value~ ,
+      value~,
       language~,
       direction~
     ) => (value, None, Some(language), Some(direction))
@@ -234,7 +234,7 @@ pub impl Show for LiteralRef with fn to_string(self) {
       f.to_string()
     }
     LiteralRefContent::DirectionalLanguageTaggedString(
-      value~ ,
+      value~,
       language~,
       direction~
     ) => {
