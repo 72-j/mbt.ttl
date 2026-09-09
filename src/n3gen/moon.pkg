@@ -1,0 +1,12 @@
+// n3gen：N3 FSM 声明面词表编译器（v1 表即文件，ADR §5.13 役14）
+// 声明源 n3_base.toml + n3_trans.toml → parse → validate → dump
+// 产物 n3_fsm.toml（IR 兼容）：外层 fsm cmd 直读再生 n3.mbt，管线不动
+import {
+  "hnlyxiaobing/toml",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/encoding/utf8",
+} for "test"
