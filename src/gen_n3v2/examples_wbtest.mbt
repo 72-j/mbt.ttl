@@ -7,7 +7,7 @@
 
 ///|
 async test "examples sweep: bucket N3 sample files (print-only)" {
-  let dir = "src/gen_n3/rdf-tests/examples"
+  let dir = "src/gen_n3v2/rdf-tests/examples"
   let files = @fs.readdir(dir, sort=true).filter(fn(x) { x.has_suffix(".n3") })
   for file in files {
     let data = @fs.read_file("\{dir}/\{file}").binary().to_array()

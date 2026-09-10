@@ -37,6 +37,7 @@ pub(all) struct QuadSpan {
   pk : PredKind
   pver : Int
   bver : Int
+  subj_shell : Bool
 }
 
 pub(all) enum ResetScope {
@@ -87,6 +88,10 @@ pub(all) struct TrigContext {
   mut bases : Array[(Int, Int)]
   mut slot_stack : Array[Slot]
   mut pred_kind : PredKind
+  mut annot_s : (Int, Int)?
+  mut annot_o : (Int, Int)?
+  mut subj_shell : Bool
+  mut annot_close : Bool
 }
 pub fn TrigContext::has_pending(Self) -> Bool
 pub fn TrigContext::new() -> Self
@@ -207,6 +212,7 @@ pub(all) struct TrigPendingQuad {
   pk : PredKind
   pver : Int
   bver : Int
+  subj_shell : Bool
 } derive(Eq)
 
 pub struct TrigSerializer {
@@ -294,7 +300,11 @@ pub trait TrigActions {
   fn enter_graph(Self, TrigContext, (Int, Int)?) -> Result[TrigEffect, TrigActionError]
   fn set_predicate(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
   fn set_object(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn annot_open(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
+  fn annot_body_verb(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn annot_close_silent(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
   fn open_bnode_prop(Self, TrigContext, (Int, Int), Bool, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn annot_end(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
   fn set_prefix_name(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
   fn declare_prefix(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
   fn set_base(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]

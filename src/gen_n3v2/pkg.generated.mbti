@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "thy1016/moonttl/gen_n3"
+package "thy1016/moonttl/gen_n3v2"
 
 import {
   "moonbitlang/core/debug",
@@ -44,10 +44,22 @@ pub(all) struct N3Context {
   mut slot_stack : Array[Slot]
   mut pred_kind : PredKind
   mut variable_name : (Int, Int)?
-  mut path_chain : Array[(Int, Int)]
+  mut path_src : (Int, Int)?
+  mut path_fwd : Bool
+  mut path_pend : (Int, Int)?
+  mut path_tail : (Int, Int)?
   mut rule_side : RuleSide?
   mut iri_upcast : Int
   mut version_lit_ok : Bool
+  mut kw_ledger : Array[(Int, Int)]
+  mut kw_directive_seen : Bool
+  mut kw_a_live : Bool
+  mut is_src : (Int, Int)?
+  mut is_depth : Int
+  mut annot_s : (Int, Int)?
+  mut annot_o : (Int, Int)?
+  mut subj_shell : Bool
+  mut annot_close : Bool
 }
 pub fn N3Context::has_pending(Self) -> Bool
 pub fn N3Context::new() -> Self
@@ -102,7 +114,11 @@ pub(all) enum N3Event {
   N3BracketTripleTerm((Int, Int))
   N3KeywordA((Int, Int))
   N3Variable((Int, Int))
-  N3Equals
+  N3KeywordX((Int, Int))
+  N3Equals((Int, Int))
+  N3Is
+  N3Of
+  N3Has
   N3At
   N3PrefixKw
   N3BaseKw
@@ -123,11 +139,13 @@ pub(all) enum N3Event {
   N3Lparen((Int, Int))
   N3Rparen
   N3Anon((Int, Int))
-  N3Bang
-  N3Caret
-  N3Implies
-  N3ImpliedBy
-  N3Unknown
+  N3Bang((Int, Int))
+  N3Caret((Int, Int))
+  N3Implies((Int, Int))
+  N3ImpliedBy((Int, Int))
+  N3Unknown((Int, Int))
+  N3Id
+  N3Invert
   N3EOF
 }
 pub impl Show for N3Event
@@ -167,6 +185,7 @@ pub(all) struct N3PendingQuad {
   pver : Int
   bver : Int
   iver : Int
+  subj_shell : Bool
 } derive(Eq)
 
 pub struct N3Serializer {
@@ -195,6 +214,7 @@ pub(all) enum N3State {
   N3ExpectBaseIri
   N3ExpectVersionLiteral
   N3ExpectDirectiveEnd
+  N3ExpectKeywordsList
   N3ExpectVerbOrEnd
   N3ExpectVerbOrDot
   N3ExpectVerbRequired
@@ -204,20 +224,49 @@ pub(all) enum N3State {
   N3AnnotExpectObject
   N3AnnotExpectEnd
   N3BnpExpectPredicate
+  N3BnpExpectIdNode
   N3BnpExpectObject
   N3BnpAfterObject
+  N3BnpIdAfterClose
   N3ListExpectElemOrEnd
   N3ListAfterElem
   N3FormulaExpectSubject
   N3FormulaExpectPredicate
   N3FormulaExpectObject
   N3FormulaAfterObject
+  N3PathExpectVerb
+  N3PathAfterStep
+  N3FormulaPathExpectVerb
+  N3FormulaPathAfterStep
+  N3ExpectIsProp
+  N3ExpectIsOf
+  N3BnpExpectIsProp
+  N3BnpExpectIsOf
+  N3FormulaExpectIsProp
+  N3FormulaExpectIsOf
+  N3QuantExpectVar
+  N3QuantExpectVarOrDot
+  N3FormulaDirectiveKind
+  N3FormulaQuantExpectVar
+  N3FormulaQuantExpectVarOrDot
+  N3SubjTrailExpectVerb
+  N3SubjTrailAfterStep
+  N3SubjTrailVerbDone
+  N3SubjTrailExpectVerbFormula
+  N3SubjTrailAfterStepFormula
+  N3SubjTrailVerbDoneFormula
+  N3ListPathExpectVerb
+  N3ListPathAfterStep
+  N3ObjTrailExpectVerb
+  N3ObjTrailAfterStep
 }
 
 pub(all) enum PredKind {
   Normal
   RDFFirst
   RDFRest
+  KwA
+  SameAs
 } derive(Eq)
 
 pub(all) struct QuadSpan {
@@ -229,6 +278,7 @@ pub(all) struct QuadSpan {
   pver : Int
   bver : Int
   iver : Int
+  subj_shell : Bool
 }
 
 pub(all) enum ResetScope {
@@ -245,14 +295,16 @@ pub(all) enum RuleSide {
 
 pub(all) struct Slot {
   typ : SlotType
-  open_span : (Int, Int)
+  mut open_span : (Int, Int)
   subject : (Int, Int)?
   predicate : (Int, Int)?
   graph : (Int, Int)?
-  ret_state : N3State
+  mut ret_state : N3State
   as_subject : Bool
+  as_pred : Bool
   mut prev_node : (Int, Int)?
   mut node_seq : Int
+  mut id_subject : (Int, Int)?
 }
 
 pub(all) enum SlotNodeId {
@@ -293,9 +345,20 @@ pub trait N3Actions {
   fn set_subject(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
   fn set_predicate(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
   fn set_object(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn annot_open(Self, N3Context) -> Result[N3Effect, N3ActionError]
   fn set_prefix_name(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
   fn declare_prefix(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
   fn set_base(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn kw_begin(Self, N3Context) -> Result[N3Effect, N3ActionError]
+  fn declare_keyword(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn is_of(Self, N3Context) -> Result[N3Effect, N3ActionError]
+  fn set_id_subject(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn set_inversion(Self, N3Context) -> Result[N3Effect, N3ActionError]
+  fn set_sameas(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn annot_body_verb(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn close_formula(Self, N3Context) -> Result[N3Effect, N3ActionError]
+  fn open_formula_pred(Self, N3Context, (Int, Int), Bool, N3State) -> Result[N3Effect, N3ActionError]
+  fn open_bnode_pred(Self, N3Context, (Int, Int), Bool, N3State) -> Result[N3Effect, N3ActionError]
   fn open_bnode_prop(Self, N3Context, (Int, Int), Bool, N3State) -> Result[N3Effect, N3ActionError]
   fn list_first(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
   fn list_first_nested(Self, N3Context, (Int, Int), SlotType, N3State) -> Result[N3Effect, N3ActionError]
@@ -303,8 +366,28 @@ pub trait N3Actions {
   fn list_next_nested(Self, N3Context, (Int, Int), SlotType, N3State) -> Result[N3Effect, N3ActionError]
   fn list_nil(Self, N3Context) -> Result[N3Effect, N3ActionError]
   fn open_collection(Self, N3Context, (Int, Int), Bool, N3State) -> Result[N3Effect, N3ActionError]
+  fn path_subj_trail(Self, N3Context, (Int, Int), Bool) -> Result[N3Effect, N3ActionError]
+  fn path_fwd(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn path_bwd(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn path_step(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn path_hop_tail(Self, N3Context, (Int, Int), Bool) -> Result[N3Effect, N3ActionError]
+  fn path_subj_end(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn path_subj_object(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn path_verb_hop(Self, N3Context, (Int, Int), Bool) -> Result[N3Effect, N3ActionError]
   fn open_formula(Self, N3Context, (Int, Int), Bool, N3State) -> Result[N3Effect, N3ActionError]
-  fn close_formula(Self, N3Context) -> Result[N3Effect, N3ActionError]
+  fn path_elem_trail(Self, N3Context, (Int, Int), Bool) -> Result[N3Effect, N3ActionError]
+  fn path_elem_hop(Self, N3Context, (Int, Int), Bool) -> Result[N3Effect, N3ActionError]
+  fn path_elem_end(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn path_elem_end_nested(Self, N3Context, (Int, Int), SlotType, N3State) -> Result[N3Effect, N3ActionError]
+  fn path_elem_close(Self, N3Context) -> Result[N3Effect, N3ActionError]
+  fn path_obj_trail(Self, N3Context, (Int, Int), Bool) -> Result[N3Effect, N3ActionError]
+  fn path_obj_close(Self, N3Context, N3State) -> Result[N3Effect, N3ActionError]
+  fn path_hop_fwd(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn path_hop_bwd(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn path_end(Self, N3Context, (Int, Int)) -> Result[N3Effect, N3ActionError]
+  fn path_end_nested(Self, N3Context, (Int, Int), SlotType, N3State) -> Result[N3Effect, N3ActionError]
+  fn annot_close_silent(Self, N3Context) -> Result[N3Effect, N3ActionError]
+  fn annot_end(Self, N3Context) -> Result[N3Effect, N3ActionError]
   fn open_slot(Self, N3Context, (Int, Int), SlotType, N3State) -> Result[N3Effect, N3ActionError]
   fn pop_bnode_prop(Self, N3Context) -> Result[N3Effect, N3ActionError]
 }

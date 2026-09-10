@@ -294,39 +294,27 @@ pub fn Lexermoon::new(ArrayView[Byte]) -> Self
 pub fn Lexermoon::next(Self) -> Token?
 pub impl LexerSource for Lexermoon
 
-pub(all) struct Literal(LiteralContent) derive(Eq, Hash, @debug.Debug)
-pub fn Literal::datatype(Self) -> NamedNodeRef
-pub fn Literal::destruct(Self) -> (StringView, NamedNodeRef?, String?, BaseDirection?)
-pub fn Literal::direction(Self) -> BaseDirection?
-pub fn Literal::language(Self) -> StringView?
-pub fn Literal::new_directional_language_tagged_literal(String, String, BaseDirection) -> Result[Self, TagParseErr]
-pub fn Literal::new_directional_language_tagged_literal_unchecked(StringView, LanguageTag, BaseDirection) -> Self
-pub fn Literal::new_language_tagged_literal(String, String) -> Result[Self, TagParseErr]
-pub fn Literal::new_language_tagged_literal_unchecked(String, String) -> Self
-pub fn Literal::new_simple_literal(String) -> Self
-pub fn Literal::new_simple_literal_unchecked(String) -> Self
-pub fn Literal::new_typed_literal_unchecked(String, NamedNodeRef) -> LiteralRef
-pub fn Literal::value(Self) -> StringView
-pub impl Show for Literal
-
-pub(all) enum LiteralContent {
-  String(String)
-  LanguageTaggedString(value~ : String, language~ : String)
-  DirectionalLanguageTaggedString(value~ : StringView, language~ : String, direction~ : BaseDirection)
-  TypedLiteral(value~ : String, datatype~ : NamedNodeRef)
-} derive(Eq, Hash, @debug.Debug)
-
 pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Hash, @debug.Debug)
 pub fn LiteralRef::as_value(Self) -> StringView
 pub fn LiteralRef::datatype(Self) -> NamedNodeRef
-pub fn LiteralRef::into_owned(Self) -> Literal
+pub fn LiteralRef::destruct(Self) -> (StringView, NamedNodeRef?, StringView?, BaseDirection?)
+pub fn LiteralRef::direction(Self) -> BaseDirection?
+pub fn LiteralRef::language(Self) -> StringView?
+pub fn LiteralRef::new_directional_language_tagged_literal(String, String, BaseDirection) -> Result[Self, TagParseErr]
+pub fn LiteralRef::new_directional_language_tagged_literal_unchecked(StringView, LanguageTag, BaseDirection) -> Self
+pub fn LiteralRef::new_language_tagged_literal(String, String) -> Result[Self, TagParseErr]
+pub fn LiteralRef::new_language_tagged_literal_unchecked(String, String) -> Self
+pub fn LiteralRef::new_simple_literal(String) -> Self
+pub fn LiteralRef::new_simple_literal_unchecked(String) -> Self
+pub fn LiteralRef::new_typed_literal_unchecked(String, NamedNodeRef) -> Self
+pub fn LiteralRef::value(Self) -> StringView
 pub impl Show for LiteralRef
 
 pub(all) enum LiteralRefContent {
   String(StringView)
-  LanguageTaggedString(value~ : String, language~ : StringView)
+  LanguageTaggedString(value~ : StringView, language~ : StringView)
   DirectionalLanguageTaggedString(value~ : StringView, language~ : StringView, direction~ : BaseDirection)
-  TypedLiteral(value~ : String, datatype~ : NamedNodeRef)
+  TypedLiteral(value~ : StringView, datatype~ : NamedNodeRef)
 } derive(Eq, Hash, @debug.Debug)
 
 pub(all) enum NQuadsActionError {
@@ -343,6 +331,7 @@ pub(all) struct NQuadsContext {
 }
 pub fn NQuadsContext::has_pending(Self) -> Bool
 pub fn NQuadsContext::new() -> Self
+pub fn NQuadsContext::reset(Self, ResetScope) -> Unit
 pub fn NQuadsContext::snapshot(Self) -> NQuadsPendingQuad
 
 pub(all) enum NQuadsEffect {
@@ -407,6 +396,7 @@ pub(all) enum Object {
   TripleTerm(ArrayView[Byte])
   PrefName(ArrayView[Byte])
   Variable(ArrayView[Byte])
+  Formula(ArrayView[Byte])
 } derive(Eq, @debug.Debug)
 pub impl Show for Object
 
@@ -473,6 +463,8 @@ pub(all) enum Subject {
   PrefName(ArrayView[Byte])
   TripleTerm(ArrayView[Byte])
   Variable(ArrayView[Byte])
+  Literal(ArrayView[Byte])
+  Formula(ArrayView[Byte])
 } derive(Eq, @debug.Debug)
 pub impl Show for Subject
 
@@ -525,7 +517,7 @@ pub trait ErrOut {
 
 trait LexerSource
 
-pub trait NQuadsActions {
+pub(open) trait NQuadsActions {
   fn set_subject(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]
   fn set_predicate(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]
   fn set_object(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]

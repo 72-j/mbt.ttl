@@ -153,14 +153,14 @@ async fn run_n3_suite(
 ///|
 async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
   run_n3_suite(
-    "src/gen_n3/rdf-tests/rdf-turtle",
+    "src/gen_n3v2/rdf-tests/rdf-turtle",
     ".ttl",
     "rdf-turtle",
     "http://www.w3.org/2013/TurtleTests/",
     pin=true,
   )
   run_n3_suite(
-    "src/gen_n3/rdf-tests/rdf12/rdf-turtle/syntax",
+    "src/gen_n3v2/rdf-tests/rdf12/rdf-turtle/syntax",
     ".ttl",
     "rdf12-turtle",
     "https://w3c.github.io/rdf-tests/rdf12/rdf-turtle/syntax/",

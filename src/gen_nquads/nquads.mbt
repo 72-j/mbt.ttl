@@ -143,7 +143,7 @@ pub(all) enum NQuadsActionError {
 ///|
 /// Actions trait：actions 提供逻辑，Self 携带运行时数据
 /// 每个方法：(ctx, 事件载荷) → 副作用意图或错误（ctx 为原地写，state 由 step 管理）
-pub trait NQuadsActions {
+pub(open) trait NQuadsActions {
   fn set_subject(Self, NQuadsContext, Span) -> Result[
     NQuadsEffect,
     NQuadsActionError,

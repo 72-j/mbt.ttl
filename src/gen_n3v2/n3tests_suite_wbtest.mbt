@@ -14,7 +14,7 @@
 
 ///|
 async test "N3Tests parser suite: first sweep (print-only)" {
-  let dir = "src/gen_n3/rdf-tests/N3Tests"
+  let dir = "src/gen_n3v2/rdf-tests/N3Tests"
   let base = "https://w3c.github.io/N3/tests/N3Tests/"
   let tsv = @fs.read_file("\{dir}/parser_index.tsv").text()
   let mut neg_ok = 0

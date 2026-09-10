@@ -1,0 +1,5 @@
+import {
+  "moonbitlang/core/quickcheck/splitmix",
+  "moonbit-community/quickcheck_statemachine" @qcs,
+  "thy1016/moonttl/gen_nquads" @nquads,
+}

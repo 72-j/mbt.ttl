@@ -1,6 +1,7 @@
 // n3 v2：新一代 N3 解析器（gen_n3v2，ADR-GEN-N3 §5.15 役16）
 // n3.mbt = n3gen 自 n3v2_base/n3v2_trans 表对 emit 直产（G9 黄金门钉）；
-// 其余 = User 层（种子 = gen_n3 副本，v2 自由演进）；v1 gen_n3 冻结为差分 oracle
+// 其余 = User 层（种子 = gen_n3 副本，v2 自由演进）；v1 gen_n3 已退役（役19，
+// 归档 bak/260910，差分 oracle 史料）——本包为唯一 N3 生产线
 // 词法器复用用户提供的 `lexer_mbt.mbt`（`Token` / `Lexermoon`；Token 与 C 版 Lexerc 同型同宽）
 
 import {
