@@ -50,8 +50,10 @@ fn span_of_event(event : N3Event) -> Span {
     // 役6 倒装引导符（bare，错误兜底位置由词法位置回填）；Has 役11 同款 bare
     | N3Of
     | N3Has
-    | N3Id // 役16 B 桶：id 引导符（bare）
-    | N3Invert // 役16 A 桶：`<-` 倒装引导符（bare）
+    | N3Id
+    // 役16 B 桶：id 引导符（bare）
+    | N3Invert
+    // 役16 A 桶：`<-` 倒装引导符（bare）
     | N3At
     | N3PrefixKw
     | N3BaseKw

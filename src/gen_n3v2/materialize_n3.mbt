@@ -593,7 +593,8 @@ fn literal_body_end(data : ArrayView[Byte], span : Span) -> Int {
 /// 完整 N3 语句面。失配返回 Err（引擎只出 `{` token span，配对由物化层全权
 /// 裁决；ADR-002 公式不透明，整段原文持有不做内部深验）
 fn formula_body_end(
-  data : ArrayView[Byte], open : Int
+  data : ArrayView[Byte],
+  open : Int,
 ) -> Result[Int, ParseError] {
   let mut depth = 0
   let mut i = open
@@ -765,12 +766,9 @@ pub fn N3Materializer::materialize_quad(
         Err(e) => return Err(e)
       }
     } else if (
-      c0 == b'+' ||
-      c0 == b'-' ||
-      c0 == b'.' ||
-      (c0 >= b'0' && c0 <= b'9')
-    ) &&
-    is_numeric_span(self.data, quad.s.0, quad.s.1) {
+        c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')
+      ) &&
+      is_numeric_span(self.data, quad.s.0, quad.s.1) {
       // 数值主语：词形全验后展开为可信构造，免深验（同宾语位口径）
       let nspan = self.expand_number(quad.s)
       @nquads.Subject::Literal(slice_span(self.arena[:], nspan))
@@ -1571,6 +1569,8 @@ fn mat_subj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
     PrefName(v) => v
     // 役8 注解壳主语（<<s p o>> arena 合成）走 TT 臂
     TripleTerm(v) => v
+    // 役17 字面量主语臂（span 干净后字面量可居主位）
+    Literal(v) => v
     _ => mat_empty[:]
   }
 }

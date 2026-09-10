@@ -160,11 +160,21 @@ fn utf8_name_advance(v : ArrayView[Byte], pos : Int, l : Int) -> Int {
 /// 尾部被吞的语句点等结构问题交引擎/校验层判定，词法器不做语法判断。
 /// 后缀门（lists-05 口径）：紧邻字节须 ^^(datatype) 或 @lang 才进后缀扫描；
 /// 其余字节（`)`/`]`/`,`/`;` 等结构符紧贴闭引号）不是后缀，立即收束留给引擎——
-/// 旧"只认空白收束"把 `"a")` 的闭括号吞进词项，集合元素位直接失配
+/// 旧"只认空白收束"把 `"a")` 的闭括号吞进词项，集合元素位直接失配。
+/// 役18（moonttl N3）：单 `^` 须后随第二 `^` 才是 datatype 门——`"lit"^:prop`
+/// 的路径操作符 `^` 旧门误当 `^^` 入扫，连 `:prop` 整段胶进词尾，引擎收不到
+/// Caret 事件路径机器全盲（N3Tests path2/caret_pos 双残差根因）。解胶后
+/// `^` 独立成 token 走引擎路径 desugar（役3 ADR-006 行已在表）
 fn Lexermoon::scan_literal_suffix(self : Lexermoon) -> Unit {
   let v = self.view
   let l = self.len
-  if self.pos >= l || (v[self.pos] != b'^' && v[self.pos] != b'@') {
+  if self.pos >= l {
+    return
+  }
+  let caret_dt = v[self.pos] == b'^' &&
+    self.pos + 1 < l &&
+    v[self.pos + 1] == b'^'
+  if !caret_dt && v[self.pos] != b'@' {
     return
   }
   while self.pos < l &&

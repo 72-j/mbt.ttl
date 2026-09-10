@@ -919,8 +919,13 @@ impl N3Actions for Hooks with fn path_elem_close(_self : Hooks, ctx : N3Context)
 }
 
 ///|
-/// 宾位尾跳收口（Dot/Comma/Semicolon 到位）：终跳边急发，帧 ret_state 按
-/// 收口事件改写（pop 兑现落位 object := 尾 + 返回状态）。
+/// 宾位尾跳收口（Dot/Comma/Semicolon 到位）：终跳边急发 + 外层语句双发，
+/// 帧 ret_state 按收口事件改写。役18 纠偏：旧径只发跳边，Dot 已随本行消费，
+/// pop 落位的外层语句 (帧 s, 帧 p, 终尾) 再无收口行可发——隔离语料槽位脏
+/// 报 "Incomplete triple"，整文件被后续语句覆写静默丢失（path2 14 =
+/// 纯跳边计数）。今帧身份改指终尾（多跳链末节点），序列追加第二条
+/// EmitQuad 于 pop 落位后出账：`, ` 续位各路径各得一语句，`;`/`.` 收口
+/// 各得其所，语义 = S P (O!Q) ≡ S P _:1 . _:1 Q O 全展开。
 impl N3Actions for Hooks with fn path_obj_close(
   _self : Hooks,
   ctx : N3Context,
@@ -947,16 +952,29 @@ impl N3Actions for Hooks with fn path_obj_close(
     ctx.predicate = Some(verb)
     ctx.object = Some(src)
   }
+  /// 延续位语义免费继承（Comma/Semicolon 收口行同款粒度口径）：
+  /// 第二条 EmitQuad 的收拾粒度随收口事件——`,` 保留 s/p 续位、`;` 保留 s、
+  /// `.` 全清。
+  let scope = match ret_state {
+    N3ExpectObject => ResetScope::Object
+    N3ExpectVerbOrEnd => ResetScope::PredObj
+    _ => ResetScope::SPO
+  }
   let fr = match list_top(ctx) {
     Ok(fr) => fr
     Err(e) => return Err(e)
   }
   fr.ret_state = ret_state
+  fr.open_span = tail
   ctx.path_src = None
   ctx.path_tail = None
   ctx.path_pend = None
   Ok(
-    N3Effect::Sequence([N3Effect::EmitQuad(ResetScope::SPO), N3Effect::PopBnp]),
+    N3Effect::Sequence([
+      N3Effect::EmitQuad(ResetScope::SPO),
+      N3Effect::PopBnp,
+      N3Effect::EmitQuad(scope),
+    ]),
   )
 }
 
@@ -1100,10 +1118,10 @@ impl N3Actions for Hooks with fn is_of(_self : Hooks, ctx : N3Context) -> Result
 /// `<-` 倒装引导符（役16 A 桶）：`S <- P O` ≡ `O P S`——复用 is/of 倒装键
 ///（is_src/is_depth；take_pending_quad 出账互换，span 身份键嵌套天然错键不换）。
 /// is/of 在 Of 处落键，`<-` 引导符即落键点；P/O 随后走标准谓词/宾位行。
-impl N3Actions for Hooks with fn set_inversion(
-  _self : Hooks,
-  ctx : N3Context,
-) -> Result[N3Effect, N3ActionError] {
+impl N3Actions for Hooks with fn set_inversion(_self : Hooks, ctx : N3Context) -> Result[
+  N3Effect,
+  N3ActionError,
+] {
   ctx.is_src = ctx.subject
   ctx.is_depth = ctx.slot_stack.length()
   Ok(N3Effect::Continue)

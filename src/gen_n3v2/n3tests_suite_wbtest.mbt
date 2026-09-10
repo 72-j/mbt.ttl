@@ -74,9 +74,13 @@ async test "N3Tests parser suite: first sweep (print-only)" {
   // 的口径分歧；bad_prefix2 = `:bad:o` 空前缀未声明，与套件正例 boolean.n3/
   // decimal.n3 依赖的隐式空前缀绑定直接冲突（套件自身跨传统不一致），役17 随
   // Team Submission 口径入账此缺口。
-  // 役17 物化残差 2（path 家族，役18 扩展步正点位）：path2.n3 谓词位路径
-  // `:mentor!:inverse`、caret_pos.n3 字面量主语 `^:prop`——spec path 解析算法
-  // = 1:N 扩展（fresh bnode 铸造），1:1 槽位链结构外，役18 扩展步清账。
+  // 役17 物化残差 2（path 家族）役18 清账：真根因 = 词法 `^` 门把单 `^` 当
+  // `^^` 门字节，`"lit"^:prop` 整段胶进字面量 span，引擎收不到 Caret 事件。
+  // 解胶后路径 desugar（役3 ADR-006）+ 役18 path_obj_close 双发纠偏（外层
+  // 语句随跳边双发，旧径只发跳边、外层语句被后续语句覆写静默丢失），
+  // path2/caret_pos 翻 clean，物化残差清零（pos_mat_only = 0）。
   assert_eq(pos_parse_fail, 0)
   assert_eq(neg_miss, 3)
+  // 役18 收官钉：物化残差清零闭环
+  assert_eq(pos_mat_only, 0)
 }

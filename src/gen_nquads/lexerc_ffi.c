@@ -133,9 +133,20 @@ static int32_t utf8_name_advance(const uint8_t *v, int32_t pos, int32_t l) {
 }
 
 // 字面量后缀（无脑扫）：^^datatype / @lang 一并扫入，只认空白收束。
-// 尾部被吞的语句点等结构问题交引擎/校验层判定，词法器不做语法判断
+// 尾部被吞的语句点等结构问题交引擎/校验层判定，词法器不做语法判断。
+// 役16（moonttl N3）：右括族 ) ] } 停扫——后缀合法域终结于闭括号；
+// 役18：单 ^ 须后随第二 ^ 才是 datatype 门——"lit"^:prop 的路径操作符
+// 旧门误当 ^^ 入扫整段胶进词尾。与 lexer_mbt.mbt scan_literal_suffix 同步
 static void scan_literal_suffix(Lexer *l) {
-  while (l->pos < l->len && !is_whitespace(l->data[l->pos])) {
+  if (l->pos >= l->len)
+    return;
+  int caret_dt = l->data[l->pos] == '^' && l->pos + 1 < l->len &&
+                 l->data[l->pos + 1] == '^';
+  if (!caret_dt && l->data[l->pos] != '@')
+    return;
+  while (l->pos < l->len && !is_whitespace(l->data[l->pos]) &&
+         l->data[l->pos] != ')' && l->data[l->pos] != ']' &&
+         l->data[l->pos] != '}') {
     l->pos++;
   }
 }

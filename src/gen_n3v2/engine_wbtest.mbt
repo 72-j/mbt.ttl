@@ -1030,3 +1030,45 @@ test "役13: 量化指令——@forAll/@forSome 指令头接表，顶层/公式�
   assert_true(perrs4.length() > 0)
 }
 
+///|
+/// 役18 语义钉：宾位贴路径 `S P O!Q`/`S P O^Q` 全展开（词法 `^` 门解胶 +
+/// path_obj_close 双发纠偏）。desugar：`S P (O!Q) ≡ S P _:1 . _:1 Q O`（ADR-006）。
+/// 路径值 = 多跳链终尾 fresh（open_span 改指终尾）；`,`/`;` 续位语义免费继承
+/// （第二条 EmitQuad 粒度随收口事件）。
+test "役18 宾位贴路径全展开（词法解胶 + path_obj_close 双发）" {
+  // 基本形：跳边 ( _:1, q, "v" ) + 外层语句 ( s, p, _:1 )，双 quad 同一 fresh
+  let (emits, errors) = mat_chain("@prefix : <http://d/> .\n:s :p \"v\"^:q .\n")
+  assert_eq(errors.length(), 0)
+  assert_eq(emits.length(), 2)
+  assert_eq(mat_vs(emits[0].predicate), "<http://d/q>")
+  assert_eq(mat_vs(mat_obj(emits[0])), "\"v\"")
+  // 同一 fresh 身份：语句宾位 = 跳边主语
+  assert_true(mat_vs(mat_subj(emits[0])) == mat_vs(mat_obj(emits[1])))
+  assert_eq(mat_vs(mat_subj(emits[1])), "<http://d/s>")
+  assert_eq(mat_vs(emits[1].predicate), "<http://d/p>")
+  // 多跳链：fresh 链独立（A→B），外层语句归属终尾 B
+  let (emits2, errors2) = mat_chain(
+    "@prefix : <http://d/> .\n@prefix p: <http://p/> .\n:s :p \"v\"^p:one^p:two .\n",
+  )
+  assert_eq(errors2.length(), 0)
+  assert_eq(emits2.length(), 3)
+  assert_true(mat_vs(mat_obj(emits2[1])) == mat_vs(mat_subj(emits2[0])))
+  assert_true(mat_vs(mat_subj(emits2[1])) != mat_vs(mat_subj(emits2[0])))
+  // 外层语句归属终尾
+  assert_true(mat_vs(mat_obj(emits2[2])) == mat_vs(mat_subj(emits2[1])))
+  // `,` 续位：各路径各得一语句（第二条 EmitQuad Object 粒度，s/p 存活续位）
+  let (emits3, errors3) = mat_chain(
+    "@prefix : <http://d/> .\n@prefix s: <http://s/> .\n@prefix lang: <http://lang/> .\n:x s:label \"Help!\"^lang:eng, \"foo\"^lang:fr .\n",
+  )
+  assert_eq(errors3.length(), 0)
+  assert_eq(emits3.length(), 4)
+  assert_true(mat_vs(mat_obj(emits3[1])) != mat_vs(mat_obj(emits3[3])))
+  // `;` 续位：真语句 (:s,:r,:w) 续组完好（PredObj 粒度保 s 存活）
+  let (emits4, errors4) = mat_chain(
+    "@prefix : <http://d/> .\n:s :p \"v\"^:q ; :r :w .\n",
+  )
+  assert_eq(errors4.length(), 0)
+  assert_eq(emits4.length(), 3)
+  assert_eq(mat_vs(emits4[2].predicate), "<http://d/r>")
+  assert_eq(mat_vs(mat_subj(emits4[2])), "<http://d/s>")
+}

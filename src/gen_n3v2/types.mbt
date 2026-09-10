@@ -86,7 +86,7 @@ pub(all) enum SlotType {
 ///   prev_node/node_seq = 集合链上一节点与节点序号（Collection 专用；BnodeProp/Formula 恒 None/0）。
 pub(all) struct Slot {
   typ : SlotType
-  open_span : Span
+  mut open_span : Span // 役18 宾位尾随收口：帧身份改指终尾（多跳链末节点），pop 落位外层语句宾位
   subject : Span?
   predicate : Span?
   graph : Span?
