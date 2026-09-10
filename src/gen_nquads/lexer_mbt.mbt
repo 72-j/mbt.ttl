@@ -171,9 +171,16 @@ fn Lexermoon::scan_literal_suffix(self : Lexermoon) -> Unit {
         v[self.pos] != b' ' &&
         v[self.pos] != b'\t' &&
         v[self.pos] != b'\r' &&
-        v[self.pos] != b'\n' {
+        v[self.pos] != b'\n' &&
+        v[self.pos] != b')' &&
+        v[self.pos] != b']' &&
+        v[self.pos] != b'}' {
     self.pos = self.pos + 1
   }
+  // 役16（moonttl N3）C 桶 xsd：右括族 ) ] } 停扫——后缀合法域 = IRIREF/
+  // PrefName/langtag，闭括号终结它；`"a"^^xsd:int)` 旧扫描连闭括号带后随
+  // 路径符整段吞进词尾。`.`/`,`/`;` 仍吞——引擎 trim_trailing_punct 三瓣
+  // 补偿口径，词法自测 747 故意钉（零空格直连该字节入 span 且标点事件丢失）。
 }
 
 ///|

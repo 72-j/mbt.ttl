@@ -1,7 +1,7 @@
-// n3gen 校验面：v1 门清单（ADR §5.13 役14）
-// 自由文本禁引号/反斜杠（dump 直写不转义）/ 引用全解析 / (from,on) 唯一 /
+// n3gen 校验面：门清单（§5.13 役14 立，§5.14 役15 增 args 词表门）
+// 自由文本禁引号/反斜杠（emit 行注直写不转义）/ 引用全解析 / (from,on) 唯一 /
 // guard_def 白名单（ctx.* 表达式 或 裸字段名）/ assign 左值 ∈ 字段 /
-// actions 按名升序（dump 排序同序 → 源序 = 产物序）/ extras expr self. 门
+// actions 按名升序（表源纪律）/ extras expr self. 门 / action_args 封闭词表
 
 ///|
 /// 码点字典序比较（本工具链 String::compare 为长度优先序，不合名序门语义）
@@ -22,12 +22,12 @@ fn n3_str_cmp(a : String, b : String) -> Int {
 }
 
 ///|
-/// 自由文本门：dump 直写不转义，含 " 或 \ 的值会产出坏 TOML——点名拒绝
+/// 自由文本门：emit 行注直写不转义，含 " 或 \ 的值污染生成注释——点名拒绝
 fn n3_check_plain(s : String, where_ : String) -> Result[Unit, String] {
   for i in 0..<s.length() {
     let v = s[i].to_int()
     if v == 34 || v == 92 {
-      return Err("\{where_}: 自由文本禁含引号/反斜杠（dump 直写不转义）")
+      return Err("\{where_}: 自由文本禁含引号/反斜杠（emit 行注直写不转义）")
     }
   }
   Ok(())
@@ -251,11 +251,11 @@ pub fn n3gen_validate(
       None => ()
     }
   }
-  // actions：名唯一 + 按名升序（dump 排序同序 → 源序 = 产物序）；comment 门
+  // actions：名唯一 + 按名升序（表源纪律）；comment 门
   let mut prev = ""
   for a in base.actions {
     if prev != "" && n3_str_cmp(prev, a.name) > 0 {
-      return Err("actions: 须按名升序声明（\"\{prev}\" > \"\{a.name}\"；dump 排序同序口径）")
+      return Err("actions: 须按名升序声明（\"\{prev}\" > \"\{a.name}\"）")
     }
     if prev == a.name {
       return Err("actions: 重名 \"\{a.name}\"")
@@ -397,6 +397,58 @@ pub fn n3gen_validate(
     return Err(
       "transitions[\{dup_at}]: (from,on) 重复（\{trans[dup_at].from_state} × \{trans[dup_at].on_event}）",
     )
+  }
+  // action_args 封闭词表门（emit 理解力=词表边界，出表即点名拒绝）
+  match n3_check_args_vocab(base, trans) {
+    Err(e) => return Err(e)
+    Ok(_) => ()
+  }
+  Ok(())
+}
+
+///|
+/// action_args 封闭词表门：允许 none/true/false/payload/Some(payload)/
+/// ctx.<字段>（须解析）/state:<状态>（须解析）/<Type>::<值>（形检）七形；
+/// 生成器只做名字限定（§3 守卫转移定案口径），出词表的表达式属手写层
+fn n3_check_args_vocab(
+  base : N3BaseDef,
+  trans : Array[N3TransDef],
+) -> Result[Unit, String] {
+  for i, t in trans {
+    for j, a0 in t.action_args {
+      let a = n3_expr_trim(a0)
+      let ok = if a == "none" ||
+        a == "true" ||
+        a == "false" ||
+        a == "payload" ||
+        a == "Some(payload)" {
+        true
+      } else if a.has_prefix("ctx.") {
+        match n3_find_field(base.fields, n3_expr_trim(a[4:a.length()].to_owned())) {
+          Some(_) => true
+          None => false
+        }
+      } else if a.has_prefix("state:") {
+        let mut hit = false
+        for s in base.states {
+          if s.name == n3_expr_trim(a[6:a.length()].to_owned()) {
+            hit = true
+          }
+        }
+        hit
+      } else if a.contains("::") {
+        // <Type>::<值> 形检：恰一段 "::"，两侧非空（生成器不解析生成码命名空间）
+        let seg = a.split("::").to_array()
+        seg.length() == 2 && seg[0] != "" && seg[1] != ""
+      } else {
+        false
+      }
+      if not(ok) {
+        return Err(
+          "transitions[\{i}] action_args[\{j}]: \"\{a}\" 出封闭词表（允许 none/true/false/payload/Some(payload)/ctx.<字段>/state:<状态>/<Type>::<值>）",
+        )
+      }
+    }
   }
   Ok(())
 }

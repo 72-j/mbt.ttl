@@ -1,0 +1,493 @@
+# ==========================================================
+# N3 FSM 声明面词表 v2 · base 段（gen_n3v2 专表，ADR-GEN-N3 §5.15 役16）
+# 事实源：本文件 + n3v2_trans.toml（同目录）；产物 = ../gen_n3v2/n3.mbt（emit 直产）
+# 种子 = n3_base.toml 副本（2026-09-10）；v2 演进自由改，v1 表对冻结为对照基准
+# 验收门：n3gen dump ≡ 外层 src/rdf/fsm_out/n3_fsm.toml 逐字节（测试钉死）
+# 注释为编辑向导，编译器解析期忽略；字段序自由（dump 侧规范化）
+# ==========================================================
+
+[meta]
+name = "n3_parser"
+dialect = "n3"
+version = "0.1.0"
+prefix = "N3"
+trait_name = "N3"
+style = "mutable"
+
+# ----------------------------------------------------------
+# 方言段：capabilities（prune 消费）+ enums（codegen emit_enums 消费）
+# ----------------------------------------------------------
+
+
+[dialect.n3]
+capabilities = ["prefix", "base", "keyword_a", "triple_term", "bracket_triple_term", "version", "annotation", "reifier", "formula", "variable", "path", "keywords", "is_of", "same_as"]
+
+[[dialect.n3.enums]]
+name = "N3Dialect"
+doc = "方言开关（生成契约不引用，引擎 loop 用）：N3 = 默认扩展；RDFStarOff 暂不开放"
+variants = ["N3", "RDFStarOff"]
+emit = false
+
+[[dialect.n3.enums]]
+name = "PredKind"
+doc = "谓词来源标记（管线同源快照槽）：ADR-003a 集合恒 Normal；RDFFirst/RDFRest 仅为 ADR-003b 显式链物化预留；KwA = 'a' 关键词谓词（役5，引擎归位点裁定活性、set_predicate 消费落账）；SameAs = `=` 等同谓词（役7，token span 占谓词槽、owl:sameAs 出账）"
+variants = ["Normal", "RDFFirst", "RDFRest", "KwA", "SameAs"]
+
+# ----------------------------------------------------------
+# 事件定义（Events）：声明序 = 生成枚举序
+# ----------------------------------------------------------
+
+[[events]]
+name = "Iri"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "BlankNode"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Literal"
+payload = [{ name = "span", type = "Span" }, { name = "lang", type = "Span?" }]
+
+[[events]]
+name = "PrefName"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "TripleTerm"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "BracketTripleTerm"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "KeywordA"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Variable"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "KeywordX"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Equals"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Is"
+
+[[events]]
+name = "Of"
+
+[[events]]
+name = "Has"
+
+[[events]]
+name = "At"
+
+[[events]]
+name = "PrefixKw"
+
+[[events]]
+name = "BaseKw"
+
+[[events]]
+name = "VersionKw"
+
+[[events]]
+name = "Tilde"
+
+[[events]]
+name = "AnnotStart"
+
+[[events]]
+name = "AnnotEnd"
+
+[[events]]
+name = "ForAllKw"
+
+[[events]]
+name = "ForSomeKw"
+
+[[events]]
+name = "KeywordsKw"
+
+[[events]]
+name = "Comma"
+
+[[events]]
+name = "Semicolon"
+
+[[events]]
+name = "Dot"
+
+[[events]]
+name = "Lbrace"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Rbrace"
+
+[[events]]
+name = "Lbracket"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Rbracket"
+
+[[events]]
+name = "Lparen"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Rparen"
+
+[[events]]
+name = "Anon"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Bang"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Caret"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Implies"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "ImpliedBy"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Unknown"
+payload = [{ name = "span", type = "Span" }]
+
+[[events]]
+name = "Id"
+
+[[events]]
+name = "Invert"
+
+[[events]]
+name = "EOF"
+
+# ----------------------------------------------------------
+# 状态定义（States）：is_initial 恰一个
+# ----------------------------------------------------------
+
+[[states]]
+name = "ExpectSubject"
+is_initial = true
+
+[[states]]
+name = "ExpectPredicate"
+
+[[states]]
+name = "ExpectObject"
+
+[[states]]
+name = "ExpectDotOrGraph"
+
+[[states]]
+name = "ExpectDirectiveKind"
+
+[[states]]
+name = "ExpectPrefixName"
+
+[[states]]
+name = "ExpectPrefixIri"
+
+[[states]]
+name = "ExpectBaseIri"
+
+[[states]]
+name = "ExpectVersionLiteral"
+
+[[states]]
+name = "ExpectDirectiveEnd"
+
+[[states]]
+name = "ExpectKeywordsList"
+
+[[states]]
+name = "ExpectVerbOrEnd"
+
+[[states]]
+name = "ExpectVerbOrDot"
+
+[[states]]
+name = "ExpectVerbRequired"
+
+[[states]]
+name = "ExpectTildeEnd"
+
+[[states]]
+name = "AnnotExpectVerb"
+
+[[states]]
+name = "AnnotExpectVerbTail"
+
+[[states]]
+name = "AnnotExpectObject"
+
+[[states]]
+name = "AnnotExpectEnd"
+
+[[states]]
+name = "BnpExpectPredicate"
+
+[[states]]
+name = "BnpExpectIdNode"
+
+[[states]]
+name = "BnpExpectObject"
+
+[[states]]
+name = "BnpAfterObject"
+
+[[states]]
+name = "BnpIdAfterClose"
+
+[[states]]
+name = "ListExpectElemOrEnd"
+
+[[states]]
+name = "ListAfterElem"
+
+[[states]]
+name = "FormulaExpectSubject"
+
+[[states]]
+name = "FormulaExpectPredicate"
+
+[[states]]
+name = "FormulaExpectObject"
+
+[[states]]
+name = "FormulaAfterObject"
+
+[[states]]
+name = "PathExpectVerb"
+
+[[states]]
+name = "PathAfterStep"
+
+[[states]]
+name = "FormulaPathExpectVerb"
+
+[[states]]
+name = "FormulaPathAfterStep"
+
+[[states]]
+name = "ExpectIsProp"
+
+[[states]]
+name = "ExpectIsOf"
+
+[[states]]
+name = "BnpExpectIsProp"
+
+[[states]]
+name = "BnpExpectIsOf"
+
+[[states]]
+name = "FormulaExpectIsProp"
+
+[[states]]
+name = "FormulaExpectIsOf"
+
+[[states]]
+name = "QuantExpectVar"
+
+[[states]]
+name = "QuantExpectVarOrDot"
+
+[[states]]
+name = "FormulaDirectiveKind"
+
+[[states]]
+name = "FormulaQuantExpectVar"
+
+[[states]]
+name = "FormulaQuantExpectVarOrDot"
+
+[[states]]
+name = "SubjTrailExpectVerb"
+
+[[states]]
+name = "SubjTrailAfterStep"
+
+[[states]]
+name = "SubjTrailVerbDone"
+
+[[states]]
+name = "SubjTrailExpectVerbFormula"
+
+[[states]]
+name = "SubjTrailAfterStepFormula"
+
+[[states]]
+name = "SubjTrailVerbDoneFormula"
+
+[[states]]
+name = "ListPathExpectVerb"
+
+[[states]]
+name = "ListPathAfterStep"
+
+[[states]]
+name = "ObjTrailExpectVerb"
+
+[[states]]
+name = "ObjTrailAfterStep"
+
+# ----------------------------------------------------------
+# Effect 定义（Effects）：semantics 驱动 interpret 分组
+# ----------------------------------------------------------
+
+[[effects]]
+name = "Continue"
+semantics = "continue"
+
+[[effects]]
+name = "EmitQuad"
+semantics = "emit"
+payload = [{ name = "scope", type = "ResetScope" }]
+
+[[effects]]
+name = "Reset"
+semantics = "reset"
+payload = [{ name = "scope", type = "ResetScope" }]
+
+[[effects]]
+name = "Done"
+semantics = "stop"
+
+[[effects]]
+name = "Sequence"
+semantics = "sequence"
+payload = [{ name = "effects", type = "Array[N3Effect]" }]
+
+[[effects]]
+name = "PopBnp"
+semantics = "hook"
+
+[[effects]]
+name = "OpenSlot"
+semantics = "hook"
+payload = [{ name = "span", type = "Span" }, { name = "typ", type = "SlotType" }, { name = "ret_state", type = "State" }]
+
+# ----------------------------------------------------------
+# 收拾链（Scope Chains）：每个变体显式列出"清谁"，未列字段一律保留
+# ----------------------------------------------------------
+
+[[scope_chains]]
+enum = "ResetScope"
+variant = "Object"
+resets = ["object"]
+
+[[scope_chains]]
+enum = "ResetScope"
+variant = "PredObj"
+resets = ["predicate", "object"]
+
+[[scope_chains]]
+enum = "ResetScope"
+variant = "SPO"
+resets = ["subject", "predicate", "object"]
+doc = "N3 口径：无图块，g 槽恒默认图"
+
+[[scope_chains]]
+enum = "ResetScope"
+variant = "All"
+resets = ["subject", "predicate", "object", "graph"]
+doc = "N3 语句全清口径"
+
+# ----------------------------------------------------------
+# 声明面动作（Trait Actions）：engine 直调，按名排序
+# ----------------------------------------------------------
+
+[[actions]]
+name = "open_slot"
+params = ["Span", "SlotType", "State"]
+comment = "嵌套元素开帧：弹帧回集合区后兑现 OpenSlot"
+
+[[actions]]
+name = "pop_bnode_prop"
+params = []
+comment = "] 属性列表收口：弹帧恢复外层槽位与返回状态"
+
+# ----------------------------------------------------------
+# 上下文/字段定义（Context）+ 快照附加字段
+# ----------------------------------------------------------
+
+# ==========================================================
+# 7. 上下文/字段定义（Context）
+# ==========================================================
+
+[context]
+frame_fields = ["subject", "predicate"]
+
+fields = [
+  { name = "subject", type = "Span?" },
+  { name = "predicate", type = "Span?" },
+  { name = "object", type = "Span?" },
+  { name = "graph", type = "Span?" },
+  { name = "prefix_name", type = "Span?" },
+  { name = "base", type = "Span?" },
+  { name = "directive_at", type = "Bool", default = "false" },
+  { name = "prefixes", type = "Array[(Span, Span)]", default = "[]" },
+  { name = "bases", type = "Array[Span]", default = "[]" },
+  { name = "slot_stack", type = "Array[Slot]", default = "[]" },
+  { name = "pred_kind", type = "PredKind", default = "Normal" },
+  { name = "variable_name", type = "Span?" },
+  { name = "path_src", type = "Span?" },
+  { name = "path_fwd", type = "Bool", default = "false" },
+  { name = "path_pend", type = "Span?" },
+  { name = "path_tail", type = "Span?" },
+  { name = "rule_side", type = "RuleSide?" },
+  { name = "iri_upcast", type = "Int", default = "0" },
+  { name = "version_lit_ok", type = "Bool", default = "false" },
+  { name = "kw_ledger", type = "Array[Span]", default = "[]" },
+  { name = "kw_directive_seen", type = "Bool", default = "false" },
+  { name = "kw_a_live", type = "Bool", default = "false" },
+  { name = "is_src", type = "Span?" },
+  { name = "is_depth", type = "Int", default = "0" },
+  { name = "annot_s", type = "Span?" },
+  { name = "annot_o", type = "Span?" },
+  { name = "subj_shell", type = "Bool", default = "false" },
+  { name = "annot_close", type = "Bool", default = "false" },
+]
+
+[[context.snapshot_extras]]
+name = "pk"
+type = "PredKind"
+expr = "self.pred_kind"
+
+[[context.snapshot_extras]]
+name = "pver"
+type = "Int"
+expr = "self.prefixes.length()"
+
+[[context.snapshot_extras]]
+name = "bver"
+type = "Int"
+expr = "self.bases.length()"
+
+[[context.snapshot_extras]]
+name = "iver"
+type = "Int"
+expr = "self.iri_upcast"
+
+[[context.snapshot_extras]]
+name = "subj_shell"
+type = "Bool"
+expr = "self.subj_shell"
