@@ -1017,6 +1017,19 @@ pub fn N3Materializer::materialize_all(
   self.deep_validate = deep_validate
   let results : Array[@nquads.QuadEmit] = []
   let errors : Array[ParseError] = []
+  // 役20 声明名验形门（组装后账本 validate，nquads validate_helper 同层）：
+  // 声明名必须以 `:` 收尾——`@prefix foo:bar <>.` 的 qname 形即拒。
+  // 零 quad 文件也报（qname-as-prefix-in-decl 负例口径：merrs 通道点火）。
+  let mut k = 0
+  while k < self.prefixes.length() {
+    let (nspan, _ispan) = self.prefixes[k]
+    if nspan.1 == 0 || self.data[nspan.0 + nspan.1 - 1] != b':' {
+      errors.push(
+        ParseError::ValidationErr("Prefix declaration name must end with ':'"),
+      )
+    }
+    k = k + 1
+  }
   for quad in quads {
     match self.materialize_quad(quad) {
       Ok(q) => results.push(q)

@@ -214,7 +214,7 @@ pos	cwm_unify/unify2-ref.n3
 pos	cwm_unify/unify2.n3
 neg	extra/bad_inverted_resources.n3
 neg	extra/bad_prefix.n3
-neg	extra/bad_prefix2.n3
+skip	extra/bad_prefix2.n3
 pos	extra/good_prefix.n3
 pos	manifest-parser.ttl
 neg	new_syntax/caret_neg.n3

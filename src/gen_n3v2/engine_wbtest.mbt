@@ -1072,3 +1072,33 @@ test "役18 宾位贴路径全展开（词法解胶 + path_obj_close 双发）" 
   assert_eq(mat_vs(emits4[2].predicate), "<http://d/r>")
   assert_eq(mat_vs(mat_subj(emits4[2])), "<http://d/s>")
 }
+
+///|
+/// 役20 语义钉：负例缺口 3 收口（三裁断四形）。
+/// ① this 晋升门：@keywords 台账命中也不晋升（deprecated，永保 Unknown）；
+/// ② 声明名验形门：账本名末字节须 `:`，零 quad 也报（merrs 通道）；
+/// ③ 重定义宽容钉：同/异 IRI 重声明均全净（cwm/Turtle 官方语义——
+///   prefix_reassigned_and_used/qvars/path2 正例实证），值语义 = 首匹配胜。
+test "役20 负例缺口收口（this 晋升门 + 声明名验形 + 重定义宽容）" {
+  // ① thisadoc 最小形：@keywords 声明后文档级 this → Unknown 无表行 → perr
+  let (e1, err1) = mat_chain("@keywords this . @prefix : <#> . this :a :Doc .\n")
+  assert_eq(e1.length(), 0)
+  assert_true(err1.length() > 0)
+  // ② qname-as-prefix 最小形：声明名带本地部，零 quad 也报（账本门）
+  let (e2, err2) = mat_chain("@prefix foo:bar <> .\n")
+  assert_eq(e2.length(), 0)
+  assert_true(err2.length() > 0)
+  // ③ 同-IRI 重声明宽容：全净
+  let (e3, err3) = mat_chain(
+    "@prefix p: <http://a/> . @prefix p: <http://a/> . p:x p:y p:z .\n",
+  )
+  assert_eq(err3.length(), 0)
+  assert_eq(e3.length(), 1)
+  // ④ 异-IRI 重定义宽容 + 值语义首匹配胜（qvars/path2/turtle-subm-25 同形）
+  let (e4, err4) = mat_chain(
+    "@prefix lang: <http://d/> . @prefix lang: <http://e/> . lang:x lang:y lang:z .\n",
+  )
+  assert_eq(err4.length(), 0)
+  // ④ 异-IRI 重定义宽容 + 值语义后声明胜（qvars/path2/turtle-subm-25 同形）
+  assert_eq(mat_vs(mat_subj(e4[0])), "<http://e/x>") // 值语义 = 后声明胜（cwm/Turtle 官方口径）
+}

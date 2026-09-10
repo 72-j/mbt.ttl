@@ -2,6 +2,8 @@
 // 来源：w3c/N3 tests/N3Tests（bak/N3/tests/N3Tests 全量副本的 manifest 引用子集，
 // 唯一 >100KB 的 cwm_other/rdfcore-tests.n3 以 skip 行排除——机器聚合料，parser
 // 裁决价值零，见 parser_index.tsv）。
+//   - bad_prefix2（extra/）：rdft:Rejected——重定义非法规则被 WG 否决，
+//     后者胜是 cwm/Turtle 官方语义（正例重定义实证），役20 起 skip 留账
 // 裁决口径（与 rdf_suite_wbtest.mbt 的 good/bad 契约同构）：
 //   neg  = NegativeSyntax：全链必须至少一错（parse 或 materialize）——
 //          零错 = NEG-MISS（负例被接受，真 bug/缺口）
@@ -69,18 +71,24 @@ async test "N3Tests parser suite: first sweep (print-only)" {
   debug(
     "=== N3Tests parser sweep: neg \{neg_ok}ok/\{neg_miss}miss, pos+eval \{pos_ok}clean \{pos_mat_only}mat-only \{pos_parse_fail}parse-fail ===",
   )
-  // 役16 钉（步5 收口）：解析门槛全绿。负例缺口 3（役17 起）：
-  // thisadoc / qname-as-prefix-in-decl / bad_prefix2——cwm 传统合法、套件判负
-  // 的口径分歧；bad_prefix2 = `:bad:o` 空前缀未声明，与套件正例 boolean.n3/
-  // decimal.n3 依赖的隐式空前缀绑定直接冲突（套件自身跨传统不一致），役17 随
-  // Team Submission 口径入账此缺口。
+  // 役20 负例缺口 3 收口（三案三裁断）：
+  // ① thisadoc——`this` 套件 deprecated（manifest 判负口径），引擎归位点晋升
+  //    门拒之（kw_ledger_hits 门加 is_deprecated_this），永保 Unknown 无表行
+  //    → perr，错误落使用点；② qname-as-prefix-in-decl——声明名带本地部，
+  //    物化器账本验形门（materialize_all 入口，声明名末字节须 `:`）零 quad
+  //    也报 merr；③ bad_prefix2——役17 误诊纠偏：真因是前缀重定义（manifest
+  //    注释），非 `:bad:o` 空前缀（兄弟正例 good_prefix.n3 同 token
+  //    rdft:Approved 铁证）；重定义后者胜是 cwm/Turtle 官方语义（正例
+  //    qvars/path2/prefix_reassigned_and_used 实证），测试本身 rdft:Rejected
+  //    → 索引改 skip 留账，不实现被 WG 否决的规则。
   // 役17 物化残差 2（path 家族）役18 清账：真根因 = 词法 `^` 门把单 `^` 当
   // `^^` 门字节，`"lit"^:prop` 整段胶进字面量 span，引擎收不到 Caret 事件。
   // 解胶后路径 desugar（役3 ADR-006）+ 役18 path_obj_close 双发纠偏（外层
   // 语句随跳边双发，旧径只发跳边、外层语句被后续语句覆写静默丢失），
   // path2/caret_pos 翻 clean，物化残差清零（pos_mat_only = 0）。
   assert_eq(pos_parse_fail, 0)
-  assert_eq(neg_miss, 3)
+  assert_eq(neg_miss, 0) // 役20 收口钉：负例缺口清零
+  assert_eq(neg_ok, 23) // 24 负例 −1 skip（bad_prefix2）
   // 役18 收官钉：物化残差清零闭环
   assert_eq(pos_mat_only, 0)
 }

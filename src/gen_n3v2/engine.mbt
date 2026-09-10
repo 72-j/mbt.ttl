@@ -163,6 +163,27 @@ fn[L : LexerSource] N3Engine::kw_ledger_hits(
 }
 
 ///|
+/// 役20 负例收口：`this` 为套件 deprecated 关键词（manifest "'this' keyword
+/// is deprecated - negative test"）——@keywords 台账命中也拒绝晋升，永远保
+/// Unknown（无表行 → UnexpectedEvent，错误落使用点）。正例 ref 文件全用
+/// @forAll，裸 `this` 零出现，零涟漪。
+fn[L : LexerSource] is_deprecated_this(lexer : L, span : Span) -> Bool {
+  let (off, len) = span
+  if len != 4 {
+    return false
+  }
+  let word = b"this"
+  let mut i = 0
+  while i < 4 {
+    if lexer.byte_at(off + i) != word[i] {
+      return false
+    }
+    i = i + 1
+  }
+  true
+}
+
+///|
 /// 吞边界口径的引擎层修正：七类带 payload 术语事件做尾标点三瓣裁决，
 /// 其余事件原样直通（结构 token 词法干净，无吞并口径）。
 /// 返回 (修正后事件, 待合成事件?)——待合成事件由 loop 在本事件处理完后喂表。
@@ -220,7 +241,8 @@ fn[L : LexerSource] N3Engine::normalize_term_span(
       // 役5：listed 裸词再分类——台账命中即 KeywordX（词性 = 词，决策仍在表
       // 行；未列入台账保 Unknown 兜底，bad-*-05 口径不变）
       self.ctx.kw_a_live = false
-      if self.kw_ledger_hits(s2) {
+      // 役20：`this` 已 deprecated（manifest 判负口径），台账命中也不晋升
+      if self.kw_ledger_hits(s2) && !is_deprecated_this(self.lexer, s2) {
         (N3KeywordX(s2), synth)
       } else {
         (N3Unknown(s2), synth)
