@@ -234,3 +234,41 @@ test "役5: @keywords 指令事件流——Unk/A 混列 + 逗号续（adapter �
     "@ KeywordsKw Unk(10,3) Comma A(15,1) Dot EOF",
   )
 }
+
+///|
+/// 役20 历史债三案手工验证（役16 起 NEG-MISS 三缺口，sweep 钉 neg_miss 3→0）：
+/// ① thisadoc——`this` 晋升门：@keywords 台账命中也不晋升（deprecated），
+///   事件面恒 Unk（旧径此处合成为 KwX），链面 perr 错误落使用点；
+/// ② qname-as-prefix-in-decl——声明名带本地部，物化器账本验形门零 quad 报；
+/// ③ bad_prefix2——役17 误诊翻案：重定义宽容（测试本身 rdft:Rejected，
+///   cwm/Turtle 官方"后者胜"语义，套件索引改 skip 留账），值语义后声明胜。
+test "役20 历史债三案（NEG-MISS 三缺口收口）" {
+  // ① thisadoc：事件面 `this` 保 Unk（off=10 len=4），不晋升 KwX
+  assert_eq(
+    n3_drain("@keywords this ."),
+    "@ KeywordsKw Unk(10,4) Dot EOF",
+  )
+  let (emits1, err1) = mat_chain(
+    "@keywords this . @prefix : <#> . this :a :Doc .\n",
+  )
+  assert_eq(emits1.length(), 0)
+  assert_true(err1.length() > 0)
+  // ② qname-as-prefix-in-decl：`foo:bar` 不以 `:` 收尾，零 quad 文件也报
+  let (emits2, err2) = mat_chain("@prefix foo:bar <> .\n")
+  assert_eq(emits2.length(), 0)
+  assert_eq(err2.length(), 1)
+  match err2[0] {
+    ParseError::ValidationErr(msg) =>
+      assert_eq(msg, "Prefix declaration name must end with ':'")
+    other => abort("want ValidationErr, got \{other}")
+  }
+  // ③ bad_prefix2（原文 + @base 兑现套件 base_fallback 角色）：
+  // 双声明宽容 + `bad:s` 按后声明 worse.org 展开 + `:bad:o` 冒号本地部宽容
+  let (emits3, err3) = mat_chain(
+    "@base <http://d/> .\n@prefix bad: <http://bad.org> .\n@prefix bad: <http://worse.org> .\n\nbad:s :p :bad:o .\n",
+  )
+  assert_eq(err3.length(), 0)
+  assert_eq(emits3.length(), 1)
+  // worse.org 无 #// 收尾 → 拼接直落 worse.orgs（规范拼接语义）；后声明胜已兑现
+  assert_eq(mat_vs(mat_subj(emits3[0])), "<http://worse.orgs>")
+}
