@@ -48,18 +48,24 @@ fn n3_suite_n3_legal(name : String) -> Bool {
   name == "turtle-syntax-bad-n3-extras-06.ttl" ||
   // @forSome/@forAll 量化指令（役13：指令头接表）——Turtle 非法、N3 正典
   name == "turtle-syntax-bad-n3-extras-11.ttl" ||
-  name == "turtle-syntax-bad-n3-extras-12.ttl"
-}
-
-///|
-/// 役10 解析合法、物化延后豁免：解析零错即 good（物化臂 = 已知延后桶——
-/// 字面量主语 @nquads.Subject 无 literal 变体（RDF 主语模型）；`=>` 谓词
-/// mat = 规则谓词 pk 口径延后桶）。verdict = 仅解析零错。
-fn n3_suite_n3_legal_mat_deferred(name : String) -> Bool {
-  // true 作主语：物化主语字面量臂延后
+  name == "turtle-syntax-bad-n3-extras-12.ttl" ||
+  // 役17 物化臂就位（verdict 全净反转，mat_deferred 桶清零退役）：
+  // "hello"/"abc" 字面量主语（主语位 expression 臂）
+  name == "turtle-syntax-bad-struct-04.ttl" ||
+  name == "turtle-syntax-bad-struct-14.ttl" ||
+  // { :a :q :c . } 公式主语（ADR-002 GraphTerm 不透明，mat 层配对扫描）
+  name == "turtle-syntax-bad-n3-extras-01.ttl" ||
+  // :s <= :o . 反向蕴含谓词（log:impliedBy 原文保真，先于 IRI 臂裁决）
+  name == "turtle-syntax-bad-n3-extras-10.ttl" ||
+  // true 作主语（升格自 mat_deferred：布尔主语臂就位）
   name == "turtle-syntax-bad-kw-04.ttl" ||
-  // `:s => :o .` 谓词 `=>` 物化 = 规则谓词 pk 口径（与役4 规则罩 quad 同桶）
-  name == "turtle-syntax-bad-n3-extras-09.ttl"
+  // :s => :o . 规则蕴含谓词（升格自 mat_deferred：`=` raw 臂就位）
+  name == "turtle-syntax-bad-n3-extras-09.ttl" ||
+  // 役17 隐式空前缀绑定：`:a :b :c .` 无 @prefix : 声明——Turtle 非法、
+  // cwm 传统 N3 合法（Team Submission "behaves as though there were a
+  // @prefix : <#> just before the file"）
+  name == "turtle-syntax-bad-prefix-01.ttl" ||
+  name == "turtle-syntax-bad-prefix-02.ttl"
 }
 
 ///|
@@ -73,10 +79,8 @@ fn n3_suite_verdict(
   merrs : Array[ParseError],
   quad_count : Int,
 ) -> Bool {
-  // 役10 两档豁免（先于 bad 裁决）：全净反转 / 仅解析豁免
-  if n3_suite_n3_legal_mat_deferred(name) {
-    perr_count == 0
-  } else if is_bad {
+  // 役17：mat_deferred 两档豁免退役（桶清零，成员全数升格 n3_legal），二元裁定
+  if is_bad {
     perr_count + merrs.length() > 0
   } else {
     perr_count == 0 && merrs.length() == 0 && emits.length() == quad_count

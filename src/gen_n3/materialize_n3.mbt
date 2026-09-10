@@ -1431,6 +1431,7 @@ fn mat_obj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
     TripleTerm(v) => v
     PrefName(v) => v
     Variable(v) => v
+    Formula(v) => v
   }
 }
 

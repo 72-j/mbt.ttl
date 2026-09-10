@@ -5,8 +5,8 @@
 // 裁决口径（与 rdf_suite_wbtest.mbt 的 good/bad 契约同构）：
 //   neg  = NegativeSyntax：全链必须至少一错（parse 或 materialize）——
 //          零错 = NEG-MISS（负例被接受，真 bug/缺口）
-//   pos  = PositiveSyntax：解析必须零错；物化错单列（公式/规则物化 = 延后桶，
-//          不算解析失败）
+//   pos  = PositiveSyntax：解析必须零错；物化错单列（残差 = path 家族，见钉
+//          注释，役18 扩展步清账）
 //   eval = TestN3Eval：推理对照测试，本 runner 只取其语法面，按 pos 口径
 // base：N3 正例大量使用 <#name> 相对 IRI 且无 @base——base_fallback 兑现
 // 官方 harness 口径（base = 套件根 + 文件路径）。
@@ -59,7 +59,7 @@ async test "N3Tests parser suite: first sweep (print-only)" {
         debug("  P: \{err}")
       }
     } else if merrs.length() > 0 {
-      // 解析零错 + 物化有错 = 延后桶（公式/规则物化），不算解析失败
+      // 解析零错 + 物化有错 = 残差桶（役17 后仅 path 家族），不算解析失败
       pos_mat_only = pos_mat_only + 1
       debug("P-OK-MAT \{path} m=\{merrs.length()}")
     } else {
@@ -69,9 +69,14 @@ async test "N3Tests parser suite: first sweep (print-only)" {
   debug(
     "=== N3Tests parser sweep: neg \{neg_ok}ok/\{neg_miss}miss, pos+eval \{pos_ok}clean \{pos_mat_only}mat-only \{pos_parse_fail}parse-fail ===",
   )
-  // 役16 钉（步5 收口）：解析门槛全绿——11 残差（<- 倒装 / [ id X ] id 形 /
-  // path·collection·公式杂项）清零；负例 2 缺口（thisadoc / qname-as-prefix）
-  // 留账，后续役清账时翻转此钉。
+  // 役16 钉（步5 收口）：解析门槛全绿。负例缺口 3（役17 起）：
+  // thisadoc / qname-as-prefix-in-decl / bad_prefix2——cwm 传统合法、套件判负
+  // 的口径分歧；bad_prefix2 = `:bad:o` 空前缀未声明，与套件正例 boolean.n3/
+  // decimal.n3 依赖的隐式空前缀绑定直接冲突（套件自身跨传统不一致），役17 随
+  // Team Submission 口径入账此缺口。
+  // 役17 物化残差 2（path 家族，役18 扩展步正点位）：path2.n3 谓词位路径
+  // `:mentor!:inverse`、caret_pos.n3 字面量主语 `^:prop`——spec path 解析算法
+  // = 1:N 扩展（fresh bnode 铸造），1:1 槽位链结构外，役18 扩展步清账。
   assert_eq(pos_parse_fail, 0)
-  assert_eq(neg_miss, 2)
+  assert_eq(neg_miss, 3)
 }

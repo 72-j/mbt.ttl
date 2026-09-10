@@ -278,7 +278,55 @@ fn N3Materializer::expand_prefname(
 ) -> Result[Span?, ParseError] {
   match self.resolve_prefname(span, pver) {
     Err(e) => Err(e)
-    Ok(None) => Ok(None)
+    Ok(None) => {
+      // 役17 隐式空前缀绑定（原始 N3 Team Submission §Namespaces 口径）：
+      // "The empty prefix "" is by default, bound to "#" -- the local
+      // namespace of the file. The parser behaves as though there were a
+      // @prefix : <#> just before the file." 账本 miss 且词位首字符即 `:`
+      // （空前缀:本地部；役5 无冒号裸词的 colon==0 哨兵不在此列）→ `#` +
+      // 本地部按相对 IRI 走 base 解析（iri_term 相对路同构）。显式 `@prefix
+      // :` 命中账本先行返回，天然覆盖隐式——次序即 "just before the file"。
+      // （现行 N3 CG 规范已删此预绑定；本引擎随套件/cwm 传统，分歧记 spec）
+      let (off, len) = span
+      if len > 0 && self.data[off] == b':' {
+        let base_iri = match self.quad_base(bver) {
+          Ok(b) => b
+          Err(e) => return Err(e)
+        }
+        if base_iri.scheme.length() == 0 {
+          return Err(ParseError::ValidationErr("@base must be absolute"))
+        }
+        // 相对 IRI `#` + 本地部（PN_LOCAL_ESC 解码同 write_prefname_iri；
+        // 字节拼装不过 char——多字节 UTF-8 本地名免双重编码）
+        let tmp : Array[Byte] = []
+        tmp.push(b'#')
+        let mut i = off + 1
+        let stop = off + len
+        while i < stop {
+          let c = self.data[i]
+          if c == b'\\' && i + 1 < stop {
+            tmp.push(self.data[i + 1])
+            i = i + 2
+          } else {
+            tmp.push(c)
+            i = i + 1
+          }
+        }
+        match base_iri.resolve(Bytes::from_array(tmp)[:]) {
+          Ok(resolved) => {
+            let start = self.arena.length()
+            self.push_byte(b'<')
+            self.push_str(resolved.into_string())
+            self.push_byte(b'>')
+            Ok(Some((start, self.arena.length() - start)))
+          }
+          Err(e) =>
+            Err(ParseError::ValidationErr("IRI resolution failed: \{e}"))
+        }
+      } else {
+        Ok(None)
+      }
+    }
     Ok(Some((iri, colon))) => {
       let raw = self.write_prefname_iri(span, colon, iri)
       let view = slice_span(self.arena[:], raw)
@@ -539,6 +587,61 @@ fn literal_body_end(data : ArrayView[Byte], span : Span) -> Int {
 }
 
 ///|
+/// 公式体闭括号位置：`{` 偏移 → 配对 `}` 之后一字节的绝对偏移。
+/// 括号配对跳过字面量（含转义/三引号，借 literal_body_end）/ IRI `<…>` /
+/// 注释 `#…\n` / 规则算子 `<=`（防被 IRI 臂误吞越过闭括号）——公式体内可含
+/// 完整 N3 语句面。失配返回 Err（引擎只出 `{` token span，配对由物化层全权
+/// 裁决；ADR-002 公式不透明，整段原文持有不做内部深验）
+fn formula_body_end(
+  data : ArrayView[Byte], open : Int
+) -> Result[Int, ParseError] {
+  let mut depth = 0
+  let mut i = open
+  while i < data.length() {
+    let b = data[i]
+    if b == b'"' || b == b'\'' {
+      i = literal_body_end(data, (i, data.length() - i))
+      continue
+    }
+    if b == b'<' {
+      // `<=` / `<-` 皆 2 字节操作符先行裁决，否则被下方 IRI 扫描误吞——
+      // `{ :x <-:y :z }` 公式体实测（inverted_properties.n3）
+      if i + 1 < data.length() && (data[i + 1] == b'=' || data[i + 1] == b'-') {
+        i = i + 2
+        continue
+      }
+      i = i + 1
+      while i < data.length() && data[i] != b'>' {
+        i = i + 1
+      }
+      i = i + 1
+      continue
+    }
+    if b == b'#' {
+      while i < data.length() && data[i] != b'\n' {
+        i = i + 1
+      }
+      continue
+    }
+    if b == b'{' {
+      depth = depth + 1
+      i = i + 1
+      continue
+    }
+    if b == b'}' {
+      depth = depth - 1
+      i = i + 1
+      if depth == 0 {
+        return Ok(i)
+      }
+      continue
+    }
+    i = i + 1
+  }
+  Err(ParseError::ValidationErr("Unbalanced formula braces"))
+}
+
+///|
 /// 字面量物化：引号体 + 后缀（@lang / ^^dt）。
 ///   - 无后缀 / @lang / ^^<IRI> → span 原样零拷贝（字节保真）
 ///   - ^^PrefName → 引号体原样 + ^^<展开 IRI>（arena 改写）
@@ -643,6 +746,40 @@ pub fn N3Materializer::materialize_quad(
       // span 即身份）；`!`/`^` 路径中间节点（役3：操作符 span 即身份）。
       // 开括号 offset memo `_:genid<N>`，可信构造免深验
       @nquads.Subject::BNode(self.fresh_bnode(quad.s))
+    } else if c0 == b'"' || c0 == b'\'' {
+      // N3 役10：verb ::= expression，主语位字面量合法——同宾语位口径
+      //（物化 + 深验就地执行）
+      match self.materialize_literal(quad.s, quad.pver) {
+        Ok(v) =>
+          match self.gate_literal(v) {
+            Ok(v) => @nquads.Subject::Literal(v)
+            Err(e) => return Err(e)
+          }
+        Err(e) => return Err(e)
+      }
+    } else if c0 == b'{' {
+      // N3 ADR-002：GraphTerm 公式主语——不透明不断言为真，整段原文持有
+      //（引擎只出 `{` token span，物化层扫描配对 `}` 补全整段；免深验）
+      match formula_body_end(self.data, quad.s.0) {
+        Ok(end) => @nquads.Subject::Formula(self.data[quad.s.0:end])
+        Err(e) => return Err(e)
+      }
+    } else if (
+      c0 == b'+' ||
+      c0 == b'-' ||
+      c0 == b'.' ||
+      (c0 >= b'0' && c0 <= b'9')
+    ) &&
+    is_numeric_span(self.data, quad.s.0, quad.s.1) {
+      // 数值主语：词形全验后展开为可信构造，免深验（同宾语位口径）
+      let nspan = self.expand_number(quad.s)
+      @nquads.Subject::Literal(slice_span(self.arena[:], nspan))
+    } else if quad.s.1 == 4 && self.bool_at(quad.s, "true") {
+      let bspan = self.expand_boolean(quad.s)
+      @nquads.Subject::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
+    } else if quad.s.1 == 5 && self.bool_at(quad.s, "false") {
+      let bspan = self.expand_boolean(quad.s)
+      @nquads.Subject::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
     } else {
       match self.expand_prefname(quad.s, quad.pver, quad.bver) {
         Ok(Some(expanded)) =>
@@ -683,9 +820,18 @@ pub fn N3Materializer::materialize_quad(
   } else if self.data[quad.p.0] == b'"' ||
     self.data[quad.p.0] == b'?' ||
     self.data[quad.p.0] == b'[' ||
-    self.data[quad.p.0] == b'{' {
+    self.data[quad.p.0] == b'{' ||
+    self.data[quad.p.0] == b'=' {
     // 役10 词位扩展：非词项谓词原文保真直出——字面量/变量谓词按原文重发
-    // （cwm 口径）；`[`/`{` 谓词只持开括号 token span，保真以 token 为界
+    // （cwm 口径）；`[`/`{` 谓词只持全 token span，保真以 token 为界。
+    // 役17 增 `=`：规则蕴含 `=>`（N3Implies，全 token span）原文保真直出；
+    // 裸 `=` 走上方 SameAs 臂（owl:sameAs 展开），不落此臂
+    slice_span(self.data, quad.p)
+  } else if quad.p.1 == 2 &&
+    self.data[quad.p.0] == b'<' &&
+    self.data[quad.p.0 + 1] == b'=' {
+    // 役17：规则反向蕴含 `<=`（log:impliedBy）原文保真直出——必须先于
+    // `<` IRI 臂裁决，否则被 iri_term 误吞
     slice_span(self.data, quad.p)
   } else if self.data[quad.p.0] == b'<' {
     match self.iri_term(quad.p, quad.bver) {
@@ -781,6 +927,13 @@ pub fn N3Materializer::materialize_quad(
     } else if quad.o.1 == 5 && self.bool_at(quad.o, "false") {
       let bspan = self.expand_boolean(quad.o)
       @nquads.Object::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
+    } else if c0 == b'{' {
+      // N3 ADR-002：公式宾语——不透明 GraphTerm，整段原文持有（引擎只出
+      // `{` token span，物化层扫描配对 `}` 补全；免深验）
+      match formula_body_end(self.data, quad.o.0) {
+        Ok(end) => @nquads.Object::Formula(self.data[quad.o.0:end])
+        Err(e) => return Err(e)
+      }
     } else {
       match self.expand_prefname(quad.o, quad.pver, quad.bver) {
         Ok(Some(expanded)) =>
@@ -1431,6 +1584,7 @@ fn mat_obj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
     TripleTerm(v) => v
     PrefName(v) => v
     Variable(v) => v
+    Formula(v) => v
   }
 }
 

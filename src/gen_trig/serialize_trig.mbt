@@ -91,12 +91,26 @@ fn append_terms(
           (0, 0),
         ),
       )
-    // Turtle/TriG 无变量（N3 专属词项，方言不产出）：透传会写出上层语言
-    // 语法，报错钉住不变量
+    // Turtle/TriG 无变量/字面量主语/公式（N3 方言专属，方言不产出）：透传会
+    // 写出上层语言语法，报错钉住不变量
     Variable(_) =>
       return Err(
         ParseError::SyntaxErr(
           "Variables are not valid in serialized output",
+          (0, 0),
+        ),
+      )
+    Literal(_) =>
+      return Err(
+        ParseError::SyntaxErr(
+          "Literal subjects are not valid in serialized output",
+          (0, 0),
+        ),
+      )
+    Formula(_) =>
+      return Err(
+        ParseError::SyntaxErr(
+          "Formulas are not valid in serialized output",
           (0, 0),
         ),
       )
@@ -121,6 +135,15 @@ fn append_terms(
       return Err(
         ParseError::SyntaxErr(
           "Variables are not valid in serialized output",
+          (0, 0),
+        ),
+      )
+    // Turtle/TriG 无公式词项（N3 方言专属，ADR-002）：透传会写出上层语言
+    // 语法，报错钉住不变量
+    Formula(_) =>
+      return Err(
+        ParseError::SyntaxErr(
+          "Formulas are not valid in serialized output",
           (0, 0),
         ),
       )

@@ -46,6 +46,10 @@ pub(all) enum Subject {
   TripleTerm(ArrayView[Byte]) // << s p o >>（RDF 1.2 引用三元组壳，整段保真）
   Variable(ArrayView[Byte]) // ?x（N3 ADR-004：只记身份，名与位置即全部语义；
   // nquads/trig 方言不产出，序列化侧防御拒臂钉住）
+  Literal(ArrayView[Byte]) // "x"@en/数值/布尔（N3 役10：verb ::= expression
+  // 主语位字面量；nquads/trig 方言不产出，序列化侧防御拒臂钉住）
+  Formula(ArrayView[Byte]) // { ... }（N3 ADR-002：GraphTerm 不透明不断言为真，
+  // 整段原文持有；nquads/trig 方言不产出，序列化侧防御拒臂钉住）
 } derive(Debug, Eq)
 
 ///|
@@ -57,6 +61,8 @@ pub(all) enum Object {
   TripleTerm(ArrayView[Byte]) // << … >> 裸壳 / <<( … )>> 括号壳，整段原文持有（字节保真）
   PrefName(ArrayView[Byte])
   Variable(ArrayView[Byte]) // ?x（N3 专属，同 Subject 侧口径）
+  Formula(ArrayView[Byte]) // { ... }（N3 ADR-002：GraphTerm 不透明，整段原文持有；
+  // nquads/trig 方言不产出，序列化侧防御拒臂钉住）
 } derive(Debug, Eq)
 
 ///|
@@ -99,6 +105,8 @@ pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> 
     Subject::PrefName(span) => logger.write_string("(\{span.length()})")
     Subject::TripleTerm(span) => logger.write_string("(\{span.length()})")
     Subject::Variable(span) => logger.write_string("?\{span.length()}")
+    Subject::Literal(span) => logger.write_string("(\{span.length()})")
+    Subject::Formula(span) => logger.write_string("(\{span.length()})")
   }
 
   logger.write_string(", ")
@@ -122,6 +130,7 @@ pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> 
     Object::Literal(span) | Object::TripleTerm(span) | Object::PrefName(span) =>
       logger.write_string("(\{span.length()})")
     Object::Variable(span) => logger.write_string("?\{span.length()}")
+    Object::Formula(span) => logger.write_string("(\{span.length()})")
   }
 
   // 图名 ← 这里可能没有输出
@@ -156,6 +165,8 @@ pub impl Show for Subject with fn output(self : Subject, logger : &Logger) -> Un
     Subject::PrefName(span) => logger.write_string("(\{span.length()})")
     Subject::TripleTerm(span) => logger.write_string("(\{span.length()})")
     Subject::Variable(span) => logger.write_string("?\{span.length()}")
+    Subject::Literal(span) => logger.write_string("(\{span.length()})")
+    Subject::Formula(span) => logger.write_string("(\{span.length()})")
   }
 }
 
@@ -174,6 +185,7 @@ pub impl Show for Object with fn output(self : Object, logger : &Logger) -> Unit
     Object::Literal(span) => logger.write_string("(\{span.length()})")
     Object::TripleTerm(span) => logger.write_string("(\{span.length()})")
     Object::PrefName(span) => logger.write_string("(\{span.length()})")
+    Object::Formula(span) => logger.write_string("(\{span.length()})")
     Object::Variable(span) => logger.write_string("?\{span.length()}")
   }
 }

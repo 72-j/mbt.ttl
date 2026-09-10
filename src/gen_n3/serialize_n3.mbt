@@ -49,6 +49,10 @@ fn n3_append_terms(
     // 变量 `?x`（ADR-004：只记身份）整段原文回写——名与位置即全部语义，
     // round-trip 不变量
     Variable(v) => n3_ser_span(v, buf)
+    // N3 役10：verb ::= expression，主语位字面量合法——整段原文回写
+    Literal(v) => n3_ser_span(v, buf)
+    // N3 ADR-002：GraphTerm 公式主语整段原文回写（不透明，不断言为真）
+    Formula(v) => n3_ser_span(v, buf)
   }
   buf.write_char(' ')
   n3_ser_span(quad.predicate, buf)
@@ -67,6 +71,8 @@ fn n3_append_terms(
         ),
       )
     Variable(v) => n3_ser_span(v, buf)
+    // N3 ADR-002：公式宾语整段原文回写（round-trip 不变量）
+    Formula(v) => n3_ser_span(v, buf)
   }
   Ok(())
 }

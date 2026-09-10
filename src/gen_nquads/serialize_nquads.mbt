@@ -122,6 +122,22 @@ fn Serializer::append_subject(
           (0, 0),
         ),
       )
+    // N-Triples/N-Quads 无字面量主语/公式词项（N3 方言专属）：
+    // 方言不产出，透传会写出上层语言语法，报错钉住不变量
+    Subject::Literal(_) =>
+      Err(
+        ParseError::SyntaxErr(
+          "Literal subjects are not valid in N-Triples/N-Quads",
+          (0, 0),
+        ),
+      )
+    Subject::Formula(_) =>
+      Err(
+        ParseError::SyntaxErr(
+          "Formulas are not valid in N-Triples/N-Quads",
+          (0, 0),
+        ),
+      )
   }
 }
 
@@ -161,6 +177,15 @@ fn Serializer::append_object(
       Err(
         ParseError::SyntaxErr(
           "Variables are not valid in N-Triples/N-Quads",
+          (0, 0),
+        ),
+      )
+    // N-Triples/N-Quads 无公式词项（N3 方言专属，ADR-002 GraphTerm 不透明）：
+    // 方言不产出，透传会写出上层语言语法，报错钉住不变量
+    Object::Formula(_) =>
+      Err(
+        ParseError::SyntaxErr(
+          "Formulas are not valid in N-Triples/N-Quads",
           (0, 0),
         ),
       )
