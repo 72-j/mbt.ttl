@@ -274,7 +274,9 @@ pub struct N3Engine[L] {
   hooks : Hooks
   ctx : N3Context // mutable 契约：ctx 原地推进（reset/step 原地写）
   dialect : N3Dialect // 方言开关（N3 默认扩展；RDFStarOff 暂不开放，预留构造位）
-  mut last_error : Span? // 最近一次错误位置（行号由上层按 data 统计）
+  error_spans : Array[Span] // 役23 R-05 错误累积（原 last_error 单槽只留最后
+  // 一条）：recover 结构错逐条 push，上层 parse_next 按 drain 转报——错误序
+  // = 语句序（行号由上层按 data 统计）
   mut pending : N3Event? // 恢复推回的单 token（预留：恢复前界机制的兑现位）
 }
 
@@ -290,7 +292,7 @@ pub fn[L : LexerSource] N3Engine::new(
     hooks: Hooks::new(),
     ctx: N3Context::new(),
     dialect,
-    last_error: None,
+    error_spans: [],
     pending: None,
   }
   engine.begin_record()
@@ -317,9 +319,10 @@ fn ctx_span(ctx : N3Context) -> Span {
 }
 
 ///|
-/// 记录错误位置（行号不在此统计：engine 不持有 data，由 SliceParser 计）
+/// 记录错误位置（役23 R-05 累积化：结构错逐条 push，错误序 = 产生序 = 语句序；
+/// 行号不在此统计：engine 不持有 data，由 SliceParser 计）
 fn[L] N3Engine::record_error(self : N3Engine[L], span : Span) -> Unit {
-  self.last_error = Some(span)
+  self.error_spans.push(span)
 }
 
 ///|
@@ -367,10 +370,18 @@ impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn recover(
   span : Span,
 ) -> Unit {
   self.record_error(span)
+  self.recover_cleanup()
+}
+
+///|
+/// 恢复清理半边（役23 R-05：BusinessFailed 臂同走——业务错经 return 通道
+/// 报出，不入 error_spans；复位后 parse_all 可继续解析后续语句，引擎不再
+/// 带病停机）。UnexpectedEvent 与 BusinessFailed 的恢复语义自此同径。
+fn[L : LexerSource] N3Engine::recover_cleanup(self : N3Engine[L]) -> Unit {
   self.ctx.slot_stack.clear()
   self.ctx.pred_kind = Normal
-  self.ctx.is_src = None // 役6：倒装交换键随错回收
-  self.ctx.annot_s = None // 役8：注解壳账随错回收
+  self.ctx.is_src = None // 役6：倒装交换键随错恢复回收
+  self.ctx.annot_s = None // 役8：注解壳账随错恢复回收
   self.ctx.annot_o = None
   self.ctx.subj_shell = false
   self.ctx.annot_close = false
@@ -590,8 +601,14 @@ pub fn[L : LexerSource] N3Engine::next(
         self.recover(span)
         continue
       }
-      Err(N3ActionError::BusinessFailed(message)) =>
-        return Some(Err(self.on_business_failed(message)))
+      Err(N3ActionError::BusinessFailed(message)) => {
+        // 役23 R-05：业务错经 return 通道报出后，恢复清理（同 UnexpectedEvent
+        // 的 skip-to-Dot 复位径）——parse_all 继续解析后续语句，引擎不再
+        // 带病停机；错误本身不入 error_spans（不与 return 通道重复）
+        let err = self.on_business_failed(message)
+        self.recover_cleanup()
+        return Some(Err(err))
+      }
     }
   }
 }

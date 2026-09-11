@@ -684,6 +684,24 @@ pub fn N3Materializer::materialize_quad(
   self : N3Materializer,
   quad : QuadSpan,
 ) -> Result[@nquads.QuadEmit, ParseError] {
+  // 役23 R-06：nil 标记验形门（零长 span = 空集合 rdf:nil in-band 标记，
+  // 唯一构造点 pop_bnode_prop——offset 恒指 `(` 开括号原文位；offset 处
+  // 非 `(` 的事故零长 span 报错，不再静默变 rdf:nil。边缘：data[0]=='('
+  // 且事故 span=(0,0) 会误认——真根除需 out-of-band 载体，API 改不取）
+  if quad.s.1 == 0 && self.data[quad.s.0] != b'(' {
+    return Err(
+      ParseError::ValidationErr(
+        "Zero-length subject span is not a valid nil marker",
+      ),
+    )
+  }
+  if quad.o.1 == 0 && self.data[quad.o.0] != b'(' {
+    return Err(
+      ParseError::ValidationErr(
+        "Zero-length object span is not a valid nil marker",
+      ),
+    )
+  }
   // 主语位：Iri / BNode / fresh 结构 / PrefName（TT 壳臂为防御位：N3 表无
   // 主语位壳行）。融合深验在词项构造点就地执行
   let subject : @nquads.Subject = if quad.subj_shell {

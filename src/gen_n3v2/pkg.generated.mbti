@@ -98,7 +98,7 @@ pub struct N3Engine[L] {
   hooks : Hooks
   ctx : N3Context
   dialect : N3Dialect
-  mut last_error : (Int, Int)?
+  error_spans : Array[(Int, Int)]
   mut pending : N3Event?
 }
 pub fn N3Engine::from_bytes(Array[Byte], dialect? : N3Dialect) -> Self[N3LexerAdapter]

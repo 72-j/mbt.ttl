@@ -126,7 +126,8 @@ impl N3Actions for Hooks with fn open_bnode_prop(
 
 ///|
 /// 区域栈：弹栈 action——恢复外层 s/p/g，区域身份落入目标槽（as_subject 定槽位），
-/// 返回状态兑现帧携带的决策（state 由表间接管理的唯一例外）。
+/// 返回状态兑现帧携带的决策（役23 R-01：id 特例前移刻帧后，此处无条件读
+/// fr.ret_state——actions 层 ctx.state 直写唯一机制位，归位清单 [R-03-1]）。
 /// Bnp 帧与 Collection 帧共用本动作（Formula 帧同径：身份 = { span，无 nil 特判）；目标裁决：
 ///     （零长 span = 物化层 rdf:nil 识别位；ADR-003a"无 rdf:nil 发射"指不发
 ///     rest 链尾 quad，值位 nil 标记保留）
@@ -148,7 +149,8 @@ impl N3Actions for Hooks with fn pop_bnode_prop(_self : Hooks, ctx : N3Context) 
         Some(x) => x
         None =>
           if fr.typ is SlotType::Collection && fr.node_seq == 0 {
-            // 空集合收口：无元素 = rdf:nil（Span(open.0, 0) 长度 0 标记，物化层识别）
+            // 空集合收口：无元素 = rdf:nil（Span(open.0, 0) 零长 in-band 标记，
+            // 全仓唯一构造点；物化层 nil 验形门校验 data[offset]=='('，役23 R-06）
             (fr.open_span.0, 0)
           } else {
             // `[]` fresh / 非空集合单一 BNode：开括号 span 即身份（ADR-003a）
@@ -163,14 +165,11 @@ impl N3Actions for Hooks with fn pop_bnode_prop(_self : Hooks, ctx : N3Context) 
       } else {
         ctx.object = Some(target)
       }
-      ctx.state = if fr.id_subject is Some(_) && fr.as_subject {
-        // 役16 B 桶：主位 id 形收口专用态——] 处 PredObj 已随 :X 出账完毕，
-        // 语句完结；ret_state(ExpectVerbOrDot) 的 Dot 行会再发不完整 SPO，
-        // 故改指无出账闭合行（object 位 id 形不受影响：身份落 o 槽续外层）
-        N3BnpIdAfterClose
-      } else {
-        fr.ret_state
-      }
+      // 役23 R-01：state 兑现统一 = 帧携带返回态（OpenSlot ret 同机制）。
+      // id 形特例已前移 set_id_subject 刻帧（役16 B 桶语义注释随迁），此处
+      // 无条件读帧——本行是 actions 层 ctx.state 直写唯一机制位（归位清单
+      // [R-03-1]，spec §5）
+      ctx.state = fr.ret_state
       Ok(N3Effect::Continue)
     }
     None =>
@@ -189,7 +188,18 @@ impl N3Actions for Hooks with fn set_id_subject(
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
   match ctx.slot_stack.last() {
-    Some(fr) => fr.id_subject = Some(payload)
+    Some(fr) => {
+      fr.id_subject = Some(payload)
+      // 役23 R-01：id 特例前移登记点——主位 id 形的收口态在刻帧时定，pop
+      // 兑现统一读帧，分叉判断不留在兑现点（帧携带 ret_state 先例：役14
+      // path_obj_close 按事件改写）。役16 B 桶语义：] 处 PredObj 已随 :X
+      // 出账完毕，语句完结；ret_state(ExpectVerbOrDot) 的 Dot 行会再发
+      // 不完整 SPO，故改指无出账闭合行 N3BnpIdAfterClose（object 位 id 形
+      // 身份落 o 槽续外层，不受影响）
+      if fr.as_subject {
+        fr.ret_state = N3BnpIdAfterClose
+      }
+    }
     None => () // 表只在 bnp 状态接 Id 行，空栈不可达；防御位
   }
   ctx.subject = Some(payload)
@@ -511,7 +521,9 @@ impl N3Actions for Hooks with fn path_end_nested(
   if !ctx.path_fwd {
     // 拒绝落点：state 已随行进到嵌套态——原地拨回 ExpectDotOrGraph，
     // 后续流走 UnexpectedEvent 正规恢复（skip-to-Dot），不出垃圾内部
-    // quad（BusinessFailed 本身不 resync，context 带病续跑）
+    // quad（BusinessFailed 本身不 resync，context 带病续跑）。
+    // 役23 R-03 归位清单 [R-03-2]：同 (from,on) 行内按链形（path_fwd）
+    // 异判，静态表行表达不了（spec §5）
     ctx.path_src = None
     ctx.path_pend = None
     ctx.state = N3ExpectDotOrGraph
@@ -699,6 +711,9 @@ impl N3Actions for Hooks with fn path_subj_end(
     // 终原子非终跳而是真宾语——落位 (尾, 押步动词, 原子)；state 拨回
     // ExpectDotOrGraph（行 to 态 SubjTrailVerbDone 供主位链流，动词位链流
     // 到宾即语句完形——state 随链形改写，pop 例外同款）。
+    // 役23 R-03 归位清单 [R-03-3]：两链形在 SubjTrailAfterStep 汇合
+    // （谓词链 path_step 每步同入），同 (from,on) 行内按链形（path_src）
+    // 分派，静态表行表达不了（spec §5）。
     None => {
       let r = N3Actions::path_subj_object(_self, ctx, verb)
       ctx.state = N3ExpectDotOrGraph

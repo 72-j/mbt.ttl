@@ -1104,3 +1104,127 @@ test "役20 负例缺口收口（this 晋升门 + 声明名验形 + 重定义宽
   // ④ 异-IRI 重定义宽容 + 值语义后声明胜（qvars/path2/turtle-subm-25 同形）
   assert_eq(mat_vs(mat_subj(e4[0])), "<http://e/x>") // 值语义 = 后声明胜（cwm/Turtle 官方口径）
 }
+
+// ===== 役24（R-05 错误累积 + R-06 nil 显式化）=====
+
+///|
+/// 役24 R-05：双坏语句逐条落账（原 last_error 单槽只报最后一条——本钉
+/// 是 R-05 的核心行为翻案钉）
+test "R-05: two broken statements yield two errors in statement order" {
+  let input = ", .\n, .\n"
+  let data = bytes_of(input)
+  let parser = N3SliceParser::new(N3Engine::from_bytes(data), data[:])
+  let (quads, errors) = parser.parse_all()
+  assert_eq(quads.length(), 0)
+  assert_eq(errors.length(), 2)
+  match errors[0] {
+    ParseError::StructSyntaxErr(_, l0, s0) =>
+      match errors[1] {
+        ParseError::StructSyntaxErr(_, l1, s1) => {
+          // span 递增 = 语句序（第一条 Comma offset 0，第二条 offset 2）
+          assert_eq(l0, 0)
+          assert_eq(l1, 1)
+          // Comma 无载荷 → span 取 lexer.pos() 零长回填（pos 1 / 5）
+          assert_eq(s0, (1, 0))
+          assert_eq(s1, (5, 0))
+        }
+        _ => assert_eq("second", "not-struct")
+      }
+    _ => assert_eq("first", "not-struct")
+  }
+}
+
+///|
+/// 役24 R-05：BusinessFailed 复位续解——反向链终于复合节点报错后，引擎
+/// 恢复清理，后续语句照常出账（原行为：引擎带病停机，后续全丢）
+test "R-05: business failure recovers and later statements still emit" {
+  let input = "<a> <b> ^<q>[ <r> <s> ] <c> .\n<d> <e> <f> .\n"
+  let data = bytes_of(input)
+  let parser = N3SliceParser::new(N3Engine::from_bytes(data), data[:])
+  let (quads, errors) = parser.parse_all()
+  assert_eq(errors.length(), 1)
+  assert_eq(errors[0].message(), "Reverse path cannot end at a composite node")
+  // quads[0] = 报错语句的路径跳边（合法出账）；quads[1] = 后续语句（复位续解实证）
+  assert_eq(quads.length(), 2)
+  assert_eq(view_str(data[:], quads[1].s), "<d>")
+}
+
+///|
+/// 役24 R-05：混合两型错误文件序——结构错（UnexpectedEvent）在前、业务错
+/// 居中、后续正常语句照出，errors 数组内序 = 文件语句序
+test "R-05: mixed error kinds keep statement order" {
+  let input = ", .\n<a> <b> ^<q>[ <r> <s> ] <c> .\n, .\n<d> <e> <f> .\n"
+  let data = bytes_of(input)
+  let parser = N3SliceParser::new(N3Engine::from_bytes(data), data[:])
+  let (quads, errors) = parser.parse_all()
+  assert_eq(errors.length(), 3)
+  assert_eq(errors[0].message(), "Structure error")
+  assert_eq(errors[1].message(), "Reverse path cannot end at a composite node")
+  assert_eq(errors[2].message(), "Structure error")
+  // quads[0] = 报错语句的路径跳边；quads[1] = 后续语句
+  assert_eq(quads.length(), 2)
+  assert_eq(view_str(data[:], quads[1].s), "<d>")
+}
+
+///|
+/// 役24 R-06：事故零长 span 物化报错（原行为：静默变 rdf:nil）——offset
+/// 处非 `(` 即拒绝，nil 验形门活体
+test "R-06: zero-length span at non-lparen offset is rejected" {
+  let input = "<a> <b> <c> ."
+  let data = bytes_of(input)
+  let mat = N3Materializer::new(
+    data,
+    [],
+    base_fallback=Some("http://example.org/"),
+  )
+  // 人为事故 span：s=(2,0)——offset 2 处是 'a' 非 `(`；p/o 取原文字面 IRI
+  let quad : QuadSpan = {
+    s: (2, 0),
+    p: (4, 5),
+    o: (10, 5),
+    g: None,
+    pk: Normal,
+    pver: 0,
+    bver: 0,
+    iver: 0,
+    subj_shell: false,
+  }
+  let (_, merrs) = mat.materialize_all([quad])
+  assert_eq(merrs.length(), 1)
+  assert_eq(
+    merrs[0].message(),
+    "Zero-length subject span is not a valid nil marker",
+  )
+}
+
+///|
+/// 役24 R-06：合法 nil 标记照常——空集合全链仍出 rdf:nil（验形门零误伤）
+test "R-06: empty collection still yields rdf:nil through the gate" {
+  let input = "<a> <b> ( ) .\n"
+  let data = bytes_of(input)
+  let parser = N3SliceParser::new(N3Engine::from_bytes(data), data[:])
+  let (quads, perrs) = parser.parse_all()
+  assert_eq(perrs.length(), 0)
+  let mat = N3Materializer::new(
+    data,
+    parser.engine.ctx.prefixes,
+    bases=parser.engine.ctx.bases,
+    base_fallback=Some("http://example.org/"),
+  )
+  let (emits, merrs) = mat.materialize_all(quads)
+  assert_eq(merrs.length(), 0)
+  let mut nil_seen = false
+  for q in emits {
+    match q.object {
+      // nil 臂产物 = 词表 IRI（原文含尖括号 <>）——view 转字符串后比对
+      @nquads.Object::Iri(v) => {
+        let s = view_str(v, (0, v.length()))
+        if s.has_suffix("rdf-syntax-ns#nil>") {
+          nil_seen = true
+        }
+      }
+      _ => ()
+    }
+  }
+  assert_true(nil_seen)
+}

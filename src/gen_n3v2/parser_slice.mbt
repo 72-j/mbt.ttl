@@ -46,6 +46,18 @@ fn[L] N3SliceParser::line_before(self : N3SliceParser[L], offset : Int) -> Int {
 }
 
 ///|
+/// 引擎结构错排空（役23 R-05：error_spans 累积 → 行号化 ParseError 转入
+/// errors 数组后清空——drain 点 = 每次 parse_next 入口 + 终态清尾，多坏
+/// 语句逐条落账不再只报最后一条）
+fn[L] N3SliceParser::drain_engine_errors(self : N3SliceParser[L]) -> Unit {
+  for span in self.engine.error_spans {
+    let line = self.line_before(span.0)
+    self.errors.push(ParseError::StructSyntaxErr("Structure error", line, span))
+  }
+  self.engine.error_spans.clear()
+}
+
+///|
 /// PrefName 存在性检查：prefix 必须在声明账本中（从尾向前扫 = 后声明覆盖）。
 /// "no colon" 的裸词在此拒绝（裸词不是合法词项）。
 fn prefix_declared(
@@ -545,21 +557,19 @@ fn[L] N3SliceParser::assemble(
 pub fn[L : LexerSource] N3SliceParser::parse_next(
   self : N3SliceParser[L],
 ) -> Result[QuadSpan, ParseError]? {
+  // 役23 R-05：上一轮积累的引擎结构错先转报（错误序 = 语句序，drain 后清）
+  self.drain_engine_errors()
   match self.engine.next() {
     None => {
-      // 检查最后是否有未处理的错误
-      match self.engine.last_error {
-        Some(span) => {
-          let line = self.line_before(span.0)
-          self.errors.push(
-            ParseError::StructSyntaxErr("Structure error", line, span),
-          )
-        }
-        None => ()
-      }
+      // 终态清尾：finish_at_end 的不完整语句错误走 return 通道不入数组
+      self.drain_engine_errors()
       None
     }
-    Some(Err(e)) => Some(Err(e))
+    Some(Err(e)) => {
+      // 役23 R-05：业务错上报前先转报其前积累的结构错（跨型错误也保文件序）
+      self.drain_engine_errors()
+      Some(Err(e))
+    }
     Some(Ok(pending)) => {
       // 空 fresh 结构独立成句（`[] .`）：主槽 fresh + 谓/宾全空 = 空属性列表
       // 断言零三元组，静默跳过。只认 `[`：`(...)` 集合独立成句非法，必须进组装报错
