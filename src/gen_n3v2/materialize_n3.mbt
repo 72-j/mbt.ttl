@@ -10,7 +10,7 @@
 //     rdf:nil 词表 IRI（长度 0 臂，s/o 两槽同）。
 //   - pk 臂（RDFFirst/RDFRest 合成谓词）保留为 ADR-003b 显式链预留位：N3 引擎
 //     pk 恒 Normal，当前死臂；QuadSpan.pk 文档钉死的 003b 落点。
-//   - iver 槽不参与物化（ADR-003b 显式链账本版本，接表后作回扫上界）。
+//   - iri_version 槽不参与物化（ADR-003b 显式链账本版本，接表后作回扫上界）。
 //   - 图名臂保留为防御位：N3 无图块语法，quad.g 恒 None（表无图事件）。
 // 不变量（trig 同宪法）：
 //   - QuadEmit 的 view 或指原 data（未改写项，零拷贝）或指 arena（展开项）
@@ -29,7 +29,7 @@ pub struct N3Materializer {
   base_fallback : String? // 外部 base（套件 runner 注入 test-URI 口径；doc @base 优先）
   scalar_only_escapes : Bool // RDF 1.2 方言开关：字面量 \u/\U 代理全禁（1.1 成对合法）
   mut fallback_parsed : @nquads.Iri? // 外部 fallback base 解析 memo（成功才记）
-  base_memo : Map[Int, @nquads.Iri] // bver → 折叠后的生效 base（链前缀稳定，append-only）
+  base_memo : Map[Int, @nquads.Iri] // base_version → 折叠后的生效 base（链前缀稳定，append-only）
   mut deep_validate : Bool // 深验融合开关（materialize_all 参数落位，materialize_quad 单入口读）
   fresh_ids : Map[Span, Span] // fresh 节点 memo：开括号全 span → arena 内 `_:genid<N>` span
   arena : Array[Byte] // 展开字节缓冲（PrefName/'a'/数值/布尔/^^PrefName/相对 IRI 落这里）
@@ -37,7 +37,7 @@ pub struct N3Materializer {
 
 ///|
 /// 构造：prefixes 传引擎 ctx.prefixes 的引用（同一账本，后声明覆盖先声明）。
-/// bases 传 ctx.bases。每条 quad 的生效 base 由其 bver 折叠链得出（中途换 base
+/// bases 传 ctx.bases。每条 quad 的生效 base 由其 base_version 折叠链得出（中途换 base
 /// 不污染历史 quad）；base_fallback 供无 @base 覆盖段
 pub fn N3Materializer::new(
   data : ArrayView[Byte],
@@ -152,7 +152,7 @@ fn view_has_scheme(view : ArrayView[Byte]) -> Bool {
 fn N3Materializer::resolve_prefname(
   self : N3Materializer,
   span : Span,
-  pver : Int,
+  prefix_version : Int,
 ) -> Result[(Span, Int)?, ParseError] {
   let (off, len) = span
   let mut colon = -1
@@ -196,12 +196,12 @@ fn N3Materializer::resolve_prefname(
       i = i + 1
     }
   }
-  // 账本查找（单次；从尾向前扫 = 后声明覆盖先声明；上界 pver = 发射时点账本长
+  // 账本查找（单次；从尾向前扫 = 后声明覆盖先声明；上界 prefix_version = 发射时点账本长
   //——per-quad 快照：重声明前的 quad 只见老声明，中途改写不污染历史）。
   // 声明 token 自带尾冒号（"ex:" / 空前缀 ":"），归一化剥掉再比；空前缀展开
   // IRI = DefaultPrefixIRI
   let plen = self.prefixes.length()
-  let mut j = (if pver < plen { pver } else { plen }) - 1
+  let mut j = (if prefix_version < plen { prefix_version } else { plen }) - 1
   while j >= 0 {
     let (name, iri) = self.prefixes[j]
     let dn_len = if name.1 > 0 && self.data[name.0 + name.1 - 1] == b':' {
@@ -273,10 +273,10 @@ fn N3Materializer::write_prefname_iri(
 fn N3Materializer::expand_prefname(
   self : N3Materializer,
   span : Span,
-  pver : Int,
-  bver : Int,
+  prefix_version : Int,
+  base_version : Int,
 ) -> Result[Span?, ParseError] {
-  match self.resolve_prefname(span, pver) {
+  match self.resolve_prefname(span, prefix_version) {
     Err(e) => Err(e)
     Ok(None) => {
       // 役17 隐式空前缀绑定（原始 N3 Team Submission §Namespaces 口径）：
@@ -289,7 +289,7 @@ fn N3Materializer::expand_prefname(
       // （现行 N3 CG 规范已删此预绑定；本引擎随套件/cwm 传统，分歧记 spec）
       let (off, len) = span
       if len > 0 && self.data[off] == b':' {
-        let base_iri = match self.quad_base(bver) {
+        let base_iri = match self.quad_base(base_version) {
           Ok(b) => b
           Err(e) => return Err(e)
         }
@@ -333,8 +333,8 @@ fn N3Materializer::expand_prefname(
       if view_has_scheme(view[1:view.length() - 1]) {
         Ok(Some(raw))
       } else {
-        // 相对展开：按该 quad 的生效 base（bver 折叠链 → fallback）解析
-        let base_iri = match self.quad_base(bver) {
+        // 相对展开：按该 quad 的生效 base（base_version 折叠链 → fallback）解析
+        let base_iri = match self.quad_base(base_version) {
           Ok(b) => b
           Err(e) => return Err(e)
         }
@@ -364,7 +364,7 @@ fn N3Materializer::expand_prefname(
 fn N3Materializer::iri_term(
   self : N3Materializer,
   span : Span,
-  bver : Int,
+  base_version : Int,
 ) -> Result[ArrayView[Byte], ParseError] {
   let view = slice_span(self.data, span)
   let len = view.length()
@@ -377,8 +377,8 @@ fn N3Materializer::iri_term(
   if view_has_scheme(view[1:len - 1]) {
     return Ok(view) // 绝对：零拷贝保真
   }
-  // 相对：按该 quad 的生效 base（bver 折叠链 → fallback）解析
-  let base_iri = match self.quad_base(bver) {
+  // 相对：按该 quad 的生效 base（base_version 折叠链 → fallback）解析
+  let base_iri = match self.quad_base(base_version) {
     Ok(b) => b
     Err(e) => return Err(e)
   }
@@ -420,23 +420,23 @@ fn N3Materializer::fallback_base(
 }
 
 ///|
-/// per-quad base：按 bver 折叠 base 链（bases[0..bver]）——绝对 @base 重置
+/// per-quad base：按 base_version 折叠 base 链（bases[0..base_version]）——绝对 @base 重置
 /// 累计值，相对 @base 对累计值（链空落 fallback）按 RFC 3986 5.2 合并。链
-/// append-only → 前缀稳定，bver 为键 memo。Err = 链上有坏声明（不 memo）；
+/// append-only → 前缀稳定，base_version 为键 memo。Err = 链上有坏声明（不 memo）；
 /// Ok(None) = 该 quad 无生效 @base（调用方落 fallback_base 口径）
 fn N3Materializer::base_at(
   self : N3Materializer,
-  bver : Int,
+  base_version : Int,
 ) -> Result[@nquads.Iri?, ParseError] {
-  if bver == 0 {
+  if base_version == 0 {
     return Ok(None)
   }
-  match self.base_memo.get(bver) {
+  match self.base_memo.get(base_version) {
     Some(b) => return Ok(Some(b))
     None => ()
   }
   let mut acc : @nquads.Iri? = None
-  for i in 0..<bver {
+  for i in 0..<base_version {
     let sp = self.bases[i]
     let view = slice_span(self.data, sp)
     let blen = view.length()
@@ -476,7 +476,7 @@ fn N3Materializer::base_at(
   }
   match acc {
     Some(b) => {
-      self.base_memo[bver] = b
+      self.base_memo[base_version] = b
       Ok(Some(b))
     }
     None => Ok(None)
@@ -484,13 +484,13 @@ fn N3Materializer::base_at(
 }
 
 ///|
-/// 该 quad 的生效 base（bver 链折叠 → fallback）；两者皆无则 Err——相对词项
+/// 该 quad 的生效 base（base_version 链折叠 → fallback）；两者皆无则 Err——相对词项
 /// 无处解析。结果恒绝对
 fn N3Materializer::quad_base(
   self : N3Materializer,
-  bver : Int,
+  base_version : Int,
 ) -> Result[@nquads.Iri, ParseError] {
-  let b = match self.base_at(bver) {
+  let b = match self.base_at(base_version) {
     Ok(b) => b
     Err(e) => return Err(e)
   }
@@ -652,7 +652,7 @@ fn formula_body_end(
 fn N3Materializer::materialize_literal(
   self : N3Materializer,
   span : Span,
-  pver : Int,
+  prefix_version : Int,
 ) -> Result[ArrayView[Byte], ParseError] {
   let (off, len) = span
   let body_end = literal_body_end(self.data, span)
@@ -661,7 +661,7 @@ fn N3Materializer::materialize_literal(
     self.data[body_end + 1] == b'^' &&
     self.data[body_end + 2] != b'<' {
     let dt_span : Span = (body_end + 2, off + len - (body_end + 2))
-    match self.resolve_prefname(dt_span, pver) {
+    match self.resolve_prefname(dt_span, prefix_version) {
       Err(e) => Err(e)
       Ok(None) => Ok(slice_span(self.data, span)) // 未声明：保真兜底，槽位深验拒
       Ok(Some((iri, colon))) => {
@@ -737,7 +737,7 @@ pub fn N3Materializer::materialize_quad(
           Err(e) => return Err(e)
         }
       } else {
-        match self.iri_term(quad.s, quad.bver) {
+        match self.iri_term(quad.s, quad.base_version) {
           Ok(v) =>
             match self.gate_iri(v) {
               Ok(v) => @nquads.Subject::Iri(v)
@@ -768,7 +768,7 @@ pub fn N3Materializer::materialize_quad(
     } else if c0 == b'"' || c0 == b'\'' {
       // N3 役10：verb ::= expression，主语位字面量合法——同宾语位口径
       //（物化 + 深验就地执行）
-      match self.materialize_literal(quad.s, quad.pver) {
+      match self.materialize_literal(quad.s, quad.prefix_version) {
         Ok(v) =>
           match self.gate_literal(v) {
             Ok(v) => @nquads.Subject::Literal(v)
@@ -797,7 +797,8 @@ pub fn N3Materializer::materialize_quad(
       let bspan = self.expand_boolean(quad.s)
       @nquads.Subject::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
     } else {
-      match self.expand_prefname(quad.s, quad.pver, quad.bver) {
+      match
+        self.expand_prefname(quad.s, quad.prefix_version, quad.base_version) {
         Ok(Some(expanded)) =>
           match self.gate_iri(slice_span(self.arena[:], expanded)) {
             Ok(v) => @nquads.Subject::Iri(v)
@@ -850,7 +851,7 @@ pub fn N3Materializer::materialize_quad(
     // `<` IRI 臂裁决，否则被 iri_term 误吞
     slice_span(self.data, quad.p)
   } else if self.data[quad.p.0] == b'<' {
-    match self.iri_term(quad.p, quad.bver) {
+    match self.iri_term(quad.p, quad.base_version) {
       Ok(v) =>
         match self.gate_iri(v) {
           Ok(v) => v
@@ -859,7 +860,7 @@ pub fn N3Materializer::materialize_quad(
       Err(e) => return Err(e)
     }
   } else {
-    match self.expand_prefname(quad.p, quad.pver, quad.bver) {
+    match self.expand_prefname(quad.p, quad.prefix_version, quad.base_version) {
       Ok(Some(expanded)) =>
         match self.gate_iri(slice_span(self.arena[:], expanded)) {
           Ok(v) => v
@@ -896,7 +897,7 @@ pub fn N3Materializer::materialize_quad(
           Err(e) => return Err(e)
         }
       } else {
-        match self.iri_term(quad.o, quad.bver) {
+        match self.iri_term(quad.o, quad.base_version) {
           Ok(v) =>
             match self.gate_iri(v) {
               Ok(v) => @nquads.Object::Iri(v)
@@ -923,7 +924,7 @@ pub fn N3Materializer::materialize_quad(
       // fresh 结构节点：`[]` fresh / 集合单一 BNode / 路径中间节点（役3 同身份）
       @nquads.Object::BNode(self.fresh_bnode(quad.o))
     } else if c0 == b'"' || c0 == b'\'' {
-      match self.materialize_literal(quad.o, quad.pver) {
+      match self.materialize_literal(quad.o, quad.prefix_version) {
         Ok(v) =>
           match self.gate_literal(v) {
             Ok(v) => @nquads.Object::Literal(v)
@@ -951,7 +952,8 @@ pub fn N3Materializer::materialize_quad(
         Err(e) => return Err(e)
       }
     } else {
-      match self.expand_prefname(quad.o, quad.pver, quad.bver) {
+      match
+        self.expand_prefname(quad.o, quad.prefix_version, quad.base_version) {
         Ok(Some(expanded)) =>
           match self.gate_iri(slice_span(self.arena[:], expanded)) {
             Ok(v) => @nquads.Object::Iri(v)
@@ -969,7 +971,7 @@ pub fn N3Materializer::materialize_quad(
     Some(g) => {
       let c0 = self.data[g.0]
       if c0 == b'<' {
-        match self.iri_term(g, quad.bver) {
+        match self.iri_term(g, quad.base_version) {
           Ok(v) =>
             match self.gate_iri(v) {
               Ok(v) => @nquads.GraphName::Iri(v)
@@ -987,7 +989,7 @@ pub fn N3Materializer::materialize_quad(
         // 防御位照接（trig 同款：表保证图名位不产 fresh）
         @nquads.GraphName::BNode(self.fresh_bnode(g))
       } else {
-        match self.expand_prefname(g, quad.pver, quad.bver) {
+        match self.expand_prefname(g, quad.prefix_version, quad.base_version) {
           Ok(Some(expanded)) =>
             match self.gate_iri(slice_span(self.arena[:], expanded)) {
               Ok(v) => @nquads.GraphName::Iri(v)
@@ -1393,546 +1395,4 @@ fn N3Materializer::fresh_bnode(
   let memo = (start, self.arena.length() - start)
   self.fresh_ids[span] = memo
   slice_span(self.arena[:], memo)
-}
-
-// ===== 物化器测试辅助（包内私有；inline test 直接可见） =====
-
-///|
-fn mat_bytes(input : String) -> Array[Byte] {
-  @utf8.encode(input).to_array()
-}
-
-///|
-/// view → String（与序列化器同口径：decode_lossy，严禁逐字节 to_char 拼多字节）
-fn mat_vs(v : ArrayView[Byte]) -> String {
-  @utf8.decode_lossy(Bytes::from_array(v))
-}
-
-///|
-/// 全链路：解析 → 物化。data 由本函数持有（view 生命周期 = 调用方作用域）
-fn mat_chain(input : String) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
-  let data = mat_bytes(input)
-  let engine = N3Engine::from_bytes(data)
-  let sec = data[:]
-  let slice = N3SliceParser::new(engine, sec, lenient=true)
-  let (quads, errors) = slice.parse_all()
-  if errors.length() > 0 {
-    return ([], errors)
-  }
-  let mat = N3Materializer::new(
-    sec,
-    slice.engine.ctx.prefixes,
-    bases=slice.engine.ctx.bases,
-  )
-  mat.materialize_all(quads)
-}
-
-///|
-/// 首个目标字节偏移（测试内动态定位开括号，免硬编码偏移）
-fn off_of(data : Array[Byte], b : Byte) -> Int {
-  for i in 0..<data.length() {
-    if data[i] == b {
-      return i
-    }
-  }
-  -1
-}
-
-///|
-test "物化: PrefName/DefaultPrefixIRI 均展开为全 IRI" {
-  let (emits, errors) = mat_chain(
-    "@prefix ex: <http://example/> .\n@prefix : <http://dft/> .\nex:s ex:p ex:o .\n:s2 :p2 :o2 .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://example/s>")
-  assert_eq(mat_vs(emits[0].predicate), "<http://example/p>")
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://example/o>")
-  assert_eq(mat_vs(mat_subj(emits[1])), "<http://dft/s2>")
-  assert_eq(mat_vs(emits[1].predicate), "<http://dft/p2>")
-}
-
-///|
-test "物化: 'a' 缩写 → rdf:type，数值三型与布尔 → typed literal" {
-  let (emits, errors) = mat_chain(
-    "@prefix ex: <http://example/> .\nex:s a ex:C .\nex:n ex:i 42 ; ex:d 1.5 ; ex:x 1.0e3 ; ex:b true, false .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 6)
-  assert_eq(
-    mat_vs(emits[0].predicate),
-    "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
-  )
-  let expect : Array[(String, String)] = [
-    ("<http://example/i>", "\"42\"^^<http://www.w3.org/2001/XMLSchema#integer>"),
-    (
-      "<http://example/d>", "\"1.5\"^^<http://www.w3.org/2001/XMLSchema#decimal>",
-    ),
-    (
-      "<http://example/x>", "\"1.0e3\"^^<http://www.w3.org/2001/XMLSchema#double>",
-    ),
-    (
-      "<http://example/b>", "\"true\"^^<http://www.w3.org/2001/XMLSchema#boolean>",
-    ),
-    (
-      "<http://example/b>", "\"false\"^^<http://www.w3.org/2001/XMLSchema#boolean>",
-    ),
-  ]
-  for i in 0..<expect.length() {
-    let (pv, ov) = expect[i]
-    assert_eq(mat_vs(emits[i + 1].predicate), pv)
-    assert_eq(mat_vs(mat_obj(emits[i + 1])), ov)
-  }
-}
-
-///|
-test "物化: 字面量后缀 —— @lang 保真 / ^^PrefName 展开 / ^^<IRI> 保真" {
-  let (emits, errors) = mat_chain(
-    "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix ex: <http://example/> .\nex:s ex:p \"lit\"@en-US .\nex:s ex:p \"x\"^^xsd:int .\nex:s ex:p \"y\"^^<http://d.example/dt> .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 3)
-  assert_eq(mat_vs(mat_obj(emits[0])), "\"lit\"@en-US")
-  assert_eq(
-    mat_vs(mat_obj(emits[1])),
-    "\"x\"^^<http://www.w3.org/2001/XMLSchema#int>",
-  )
-  assert_eq(mat_vs(mat_obj(emits[2])), "\"y\"^^<http://d.example/dt>")
-}
-
-///|
-test "物化: TT 壳宾位整段保真" {
-  let (emits, errors) = mat_chain(
-    "@prefix ex: <http://example/> .\nex:s ex:p << <http://a> <http://b> <http://c> >> .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  assert_eq(mat_vs(mat_obj(emits[0])), "<< <http://a> <http://b> <http://c> >>")
-}
-
-///|
-test "物化: 集合单一 BNode 零链（ADR-003a）" {
-  let input = "@prefix ex: <http://example/> .\nex:s ex:p ( 1 2 ) .\n"
-  let data = mat_bytes(input)
-  let sec = data[:]
-  let slice = N3SliceParser::new(N3Engine::from_bytes(data), sec, lenient=true)
-  let (quads, errors) = slice.parse_all()
-  assert_eq(errors.length(), 0)
-  // 元素 1、2 不产 quad：语句四元组即全部
-  assert_eq(quads.length(), 1)
-  let mat = N3Materializer::new(
-    sec,
-    slice.engine.ctx.prefixes,
-    bases=slice.engine.ctx.bases,
-  )
-  let (emits, merrs) = mat.materialize_all(quads)
-  assert_eq(merrs.length(), 0)
-  assert_eq(emits.length(), 1)
-  // 单一 BNode = `(` 自身 span → genid{off}
-  assert_eq(mat_vs(mat_obj(emits[0])), "_:genid\{off_of(data, b'(')}")
-}
-
-///|
-test "物化: 空集合 -> rdf:nil（ADR-003a pop nil 标记）" {
-  let input = "@prefix ex: <http://example/> .\nex:s ex:p ( ) .\n"
-  let data = mat_bytes(input)
-  let sec = data[:]
-  let slice = N3SliceParser::new(N3Engine::from_bytes(data), sec, lenient=true)
-  let (quads, errors) = slice.parse_all()
-  assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 1)
-  let mat = N3Materializer::new(
-    sec,
-    slice.engine.ctx.prefixes,
-    bases=slice.engine.ctx.bases,
-  )
-  let (emits, merrs) = mat.materialize_all(quads)
-  assert_eq(merrs.length(), 0)
-  assert_eq(emits.length(), 1)
-  assert_eq(
-    mat_vs(mat_obj(emits[0])),
-    "<http://www.w3.org/1999/02/22-rdf-syntax-ns#nil>",
-  )
-}
-
-///|
-test "物化: bnp fresh 身份共享（内部 quad 主语 = 语句宾语）" {
-  let input = "@prefix ex: <http://example/> .\nex:s ex:p [ ex:q ex:z ] .\n"
-  let data = mat_bytes(input)
-  let sec = data[:]
-  let slice = N3SliceParser::new(N3Engine::from_bytes(data), sec, lenient=true)
-  let (quads, errors) = slice.parse_all()
-  assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 2)
-  let mat = N3Materializer::new(
-    sec,
-    slice.engine.ctx.prefixes,
-    bases=slice.engine.ctx.bases,
-  )
-  let (emits, merrs) = mat.materialize_all(quads)
-  assert_eq(merrs.length(), 0)
-  assert_eq(emits.length(), 2)
-  let id = "_:genid\{off_of(data, b'[')}"
-  assert_eq(mat_vs(mat_subj(emits[0])), id)
-  assert_eq(mat_vs(mat_obj(emits[1])), id)
-}
-
-///|
-test "物化: @base 相对 IRI 解析" {
-  let (emits, errors) = mat_chain(
-    "@base <http://base/> .\n<rel> <http://p> <x#f> .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://base/rel>")
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://base/x#f>")
-}
-
-///|
-let mat_empty : Array[Byte] = []
-
-///|
-/// 枚举载荷抽取（断言用）：变体不符返回空视图，断言自然爆
-fn mat_subj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
-  match e.subject {
-    Iri(v) => v
-    BNode(v) => v
-    PrefName(v) => v
-    // 役8 注解壳主语（<<s p o>> arena 合成）走 TT 臂
-    TripleTerm(v) => v
-    // 役17 字面量主语臂（span 干净后字面量可居主位）
-    Literal(v) => v
-    _ => mat_empty[:]
-  }
-}
-
-///|
-fn mat_obj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
-  match e.object {
-    Iri(v) => v
-    BNode(v) => v
-    Literal(v) => v
-    TripleTerm(v) => v
-    PrefName(v) => v
-    Variable(v) => v
-    Formula(v) => v
-  }
-}
-
-///|
-test "役3: 主位路径官方形——! 跳附节点，真谓词收口（cwm path1 口径）" {
-  // 官方语料（cwm_syntax/path1.n3）：路径附于节点，后随真谓词 + 宾语
-  // :albert!fam:mother fam:sister :auntieAnne ≡ (albert,!fam:mother→g) + (g,fam:sister,auntieAnne)
-  let (emits, errors) = mat_chain(
-    "<http://ex/s> !<http://ex/p> <http://ex/q> <http://ex/o> .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  let g1 = mat_vs(mat_obj(emits[0]))
-  assert_true(g1.has_prefix("_:genid"))
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
-  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
-  assert_eq(mat_vs(mat_subj(emits[1])), g1)
-  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits[1])), "<http://ex/o>")
-  // 旧役3"直连 ≡ S P O"教义已翻案（ADR-011）：无真谓词的直连形官方非法 → 拒绝
-  let (emits2, errors2) = mat_chain(
-    "<http://ex/s> !<http://ex/p> <http://ex/o> .\n",
-  )
-  assert_eq(errors2.length(), 1)
-  assert_eq(emits2.length(), 0)
-}
-
-///|
-test "役3: 主位路径官方形——^ 反跳附节点（cwm path1 口径）" {
-  // :albert^fam:father fam:sister :nieceBertha ≡ (g,fam:father,albert) + (g,fam:sister,nieceBertha)
-  let (emits, errors) = mat_chain(
-    "<http://ex/s> ^<http://ex/p> <http://ex/q> <http://ex/o> .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  let g1 = mat_vs(mat_subj(emits[0]))
-  assert_true(g1.has_prefix("_:genid"))
-  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://ex/s>")
-  assert_eq(mat_vs(mat_subj(emits[1])), g1)
-  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits[1])), "<http://ex/o>")
-  // 直连形（无真谓词）官方非法 → 拒绝
-  let (emits2, errors2) = mat_chain(
-    "<http://ex/s> ^<http://ex/p> <http://ex/o> .\n",
-  )
-  assert_eq(errors2.length(), 1)
-  assert_eq(emits2.length(), 0)
-}
-
-///|
-test "役3: 基动词 !/^ 中转 hop——desugar 双 quad，genid 同体" {
-  // S P!Q O ≡ S P _:1 . _:1 Q O
-  let (emits, errors) = mat_chain(
-    "<http://ex/s> <http://ex/p>!<http://ex/q> <http://ex/o> .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  let g1 = mat_vs(mat_obj(emits[0]))
-  assert_true(g1.has_prefix("_:genid"))
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
-  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
-  assert_eq(mat_vs(mat_subj(emits[1])), g1)
-  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits[1])), "<http://ex/o>")
-  // S P^Q O ≡ S P _:1 . O Q _:1（基跳恒正向；^ 只辖其后一步）
-  let (emits2, errors2) = mat_chain(
-    "<http://ex/s> <http://ex/p>^<http://ex/q> <http://ex/o> .\n",
-  )
-  assert_eq(errors2.length(), 0)
-  assert_eq(emits2.length(), 2)
-  let g2 = mat_vs(mat_obj(emits2[0]))
-  assert_true(g2.has_prefix("_:genid"))
-  assert_eq(mat_vs(mat_subj(emits2[1])), "<http://ex/o>")
-  assert_eq(mat_vs(emits2[1].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits2[1])), g2)
-}
-
-///|
-test "役3: 主位链官方形——!P!Q 双跳 desugar + 混合方向当步旗标口径" {
-  // 官方语料（cwm_syntax/path2.n3）：:albert!fam:mother :mentor!:inverse :auntieAnne
-  // S !P!Q R O ≡ (S,P,g1) + (g1,Q,g2) + (g2,R,O)
-  let (emits, errors) = mat_chain(
-    "<http://ex/s> !<http://ex/p>!<http://ex/q> <http://ex/r> <http://ex/o> .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 3)
-  let g1 = mat_vs(mat_obj(emits[0]))
-  let g2 = mat_vs(mat_subj(emits[2]))
-  assert_true(g1.has_prefix("_:genid"))
-  assert_true(g2.has_prefix("_:genid"))
-  assert_false(g1 == g2)
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
-  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
-  assert_eq(mat_vs(mat_subj(emits[1])), g1)
-  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits[1])), g2)
-  assert_eq(mat_vs(emits[2].predicate), "<http://ex/r>")
-  assert_eq(mat_vs(mat_obj(emits[2])), "<http://ex/o>")
-  // 混合方向主位链（!P^Q）官方语料未裁决；本机 hop 方向账 = 当步旗标口径：
-  // 首边随末 op（^）反向出账 —— (g1,P,S) + (g2,Q,g1) + (g2,R,O)
-  let (emits2, errors2) = mat_chain(
-    "<http://ex/s> !<http://ex/p>^<http://ex/q> <http://ex/r> <http://ex/o> .\n",
-  )
-  assert_eq(errors2.length(), 0)
-  assert_eq(emits2.length(), 3)
-  let h1 = mat_vs(mat_subj(emits2[0]))
-  let h2 = mat_vs(mat_subj(emits2[1]))
-  assert_true(h1.has_prefix("_:genid"))
-  assert_true(h2.has_prefix("_:genid"))
-  assert_false(h1 == h2)
-  assert_eq(mat_vs(emits2[0].predicate), "<http://ex/p>")
-  assert_eq(mat_vs(mat_obj(emits2[0])), "<http://ex/s>")
-  assert_eq(mat_vs(emits2[1].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits2[1])), h1)
-  assert_eq(mat_vs(emits2[2].predicate), "<http://ex/r>")
-  assert_eq(mat_vs(mat_obj(emits2[2])), "<http://ex/o>")
-  // 直连裸链（无真谓词）官方非法 → 拒绝
-  let (emits3, errors3) = mat_chain(
-    "<http://ex/s> !<http://ex/p>!<http://ex/q> <http://ex/o> .\n",
-  )
-  assert_eq(errors3.length(), 1)
-  assert_eq(emits3.length(), 0)
-}
-
-///|
-test "役3: 三跳链——中转节点逐跳 fresh（!p!q!r 双 genid 互异）" {
-  let (emits, errors) = mat_chain(
-    "<http://ex/s> <http://ex/p>!<http://ex/q>!<http://ex/r> <http://ex/o> .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 3)
-  let g1 = mat_vs(mat_obj(emits[0]))
-  let g2 = mat_vs(mat_subj(emits[2]))
-  assert_true(g1.has_prefix("_:genid"))
-  assert_true(g2.has_prefix("_:genid"))
-  assert_false(g1 == g2)
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
-  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
-  assert_eq(mat_vs(mat_subj(emits[1])), g1)
-  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits[1])), g2)
-  assert_eq(mat_vs(emits[2].predicate), "<http://ex/r>")
-  assert_eq(mat_vs(mat_obj(emits[2])), "<http://ex/o>")
-}
-
-///|
-test "役3: 宾位链复合末跳 bnp——连接边 Dot 收口（官方形）" {
-  // 旧钉输入（主位直连 + 复合谓词位）官方非法：路径主语后无真谓词 → 拒绝
-  let (emits0, errors0) = mat_chain(
-    "<http://ex/s> !<http://ex/p> [ <http://ex/q> <http://ex/r> ] .\n",
-  )
-  assert_eq(errors0.length(), 1)
-  assert_eq(emits0.length(), 0)
-  // 官方形：宾位路径链 S P!Q [R T] ≡ (S,P,g1) + bnp 内部 (g2,R,T) + 连接边 (g1,Q,g2)
-  let (emits, errors) = mat_chain(
-    "<http://ex/s> <http://ex/p>!<http://ex/q> [ <http://ex/r> <http://ex/t> ] .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 3)
-  let g1 = mat_vs(mat_obj(emits[0]))
-  assert_true(g1.has_prefix("_:genid"))
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
-  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
-  let g2 = mat_vs(mat_subj(emits[1]))
-  assert_true(g2.has_prefix("_:genid"))
-  assert_false(g1 == g2)
-  assert_eq(mat_vs(emits[1].predicate), "<http://ex/r>")
-  assert_eq(mat_vs(mat_obj(emits[1])), "<http://ex/t>")
-  // 连接边 Dot 收口：g1 = 路径账 fresh，g2 = bnp 帧 fresh
-  assert_eq(mat_vs(mat_subj(emits[2])), g1)
-  assert_eq(mat_vs(emits[2].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_obj(emits[2])), g2)
-}
-
-///|
-test "役3: 宾位链复合末跳集合——单 BNode 身份落连接边（官方形）" {
-  // 主位直连形官方非法 → 拒绝
-  let (emits0, errors0) = mat_chain(
-    "<http://ex/s> !<http://ex/p> ( <http://ex/a> <http://ex/b> ) .\n",
-  )
-  assert_eq(errors0.length(), 1)
-  assert_eq(emits0.length(), 0)
-  // 官方形：宾位路径链 S P!Q (A B) ≡ (S,P,g1) + (g1,Q,g2)；ADR-003a 集合零链
-  let (emits, errors) = mat_chain(
-    "<http://ex/s> <http://ex/p>!<http://ex/q> ( <http://ex/a> <http://ex/b> ) .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  let g1 = mat_vs(mat_obj(emits[0]))
-  assert_true(g1.has_prefix("_:genid"))
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
-  assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
-  // ADR-003a 集合零链：无内部 quad，quad1 即连接边，g2 落宾位
-  let g2 = mat_vs(mat_obj(emits[1]))
-  assert_true(g2.has_prefix("_:genid"))
-  assert_false(g1 == g2)
-  assert_eq(mat_vs(emits[1].predicate), "<http://ex/q>")
-  assert_eq(mat_vs(mat_subj(emits[1])), g1)
-}
-
-///|
-test "役5 物化: a 失效——@keywords 未列出 → PrefName 裸名按 DefaultPrefixIRI 展开" {
-  let (emits, errors) = mat_chain(
-    "@prefix : <http://dft/> .\n@keywords foo .\n:s a :o .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/s>")
-  // a 失格 = 冒号无前缀 PrefName → 默认前缀展开（非 rdf:type）
-  assert_eq(mat_vs(emits[0].predicate), "<http://dft/a>")
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/o>")
-}
-
-///|
-test "役5 物化: a 复活——台账含 a 则 KeywordA 照常展开 rdf:type" {
-  let (emits, errors) = mat_chain(
-    "@prefix : <http://dft/> .\n@keywords a .\n:s a :o .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/s>")
-  assert_eq(
-    mat_vs(emits[0].predicate),
-    "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
-  )
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/o>")
-}
-
-///|
-test "役6 物化: 倒装端到端——:a is :p of :b 序列化为 :b :p :a" {
-  let (emits, errors) = mat_chain(
-    "@prefix : <http://dft/> .\n:a is :p of :b .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  // 语义序出账（引擎发射点已互换，物化层零感知）
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/b>")
-  assert_eq(mat_vs(emits[0].predicate), "<http://dft/p>")
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/a>")
-}
-
-///|
-test "役6 物化: 'a' 倒装——KwA 出账 → rdf:type，主宾互换" {
-  let (emits, errors) = mat_chain(
-    "@prefix : <http://dft/> .\n:x is a of :y .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/y>")
-  assert_eq(
-    mat_vs(emits[0].predicate),
-    "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
-  )
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/x>")
-}
-
-///|
-test "役7 物化: 等同端到端——:a = :b 展开谓词 owl:sameAs" {
-  let (emits, errors) = mat_chain("@prefix : <http://dft/> .\n:a = :b .\n")
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://dft/a>")
-  assert_eq(
-    mat_vs(emits[0].predicate),
-    "<http://www.w3.org/2002/07/owl#sameAs>",
-  )
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/b>")
-}
-
-///|
-test "役7 物化: 逗号连发——双 emit 同展开 owl:sameAs" {
-  let (emits, errors) = mat_chain("@prefix : <http://dft/> .\n:a = :b, :c .\n")
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  assert_eq(
-    mat_vs(emits[0].predicate),
-    "<http://www.w3.org/2002/07/owl#sameAs>",
-  )
-  assert_eq(
-    mat_vs(emits[1].predicate),
-    "<http://www.w3.org/2002/07/owl#sameAs>",
-  )
-  assert_eq(mat_vs(mat_obj(emits[0])), "<http://dft/b>")
-  assert_eq(mat_vs(mat_obj(emits[1])), "<http://dft/c>")
-}
-
-///|
-test "役8: 注解壳主语物化——体 quad 主语合成 <<锚三元组原文>> TT 壳" {
-  let (emits, errors) = mat_chain(
-    "<http://e/s> <http://e/p> <http://e/o> {| <http://e/q> <http://e/z> |} .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  // 主 quad：锚主语原样
-  assert_eq(mat_vs(mat_subj(emits[0])), "<http://e/s>")
-  // 体 quad：主语 = <<<s> <p> <o>>>（锚三元组原文整段，arena 合成）
-  assert_eq(
-    mat_vs(mat_subj(emits[1])),
-    "<<<http://e/s> <http://e/p> <http://e/o>>>",
-  )
-  assert_eq(mat_vs(mat_obj(emits[1])), "<http://e/z>")
-}
-
-///|
-test "役8: 体区多 quad 同壳——逗号连发皆 TT 壳主语" {
-  let (emits, errors) = mat_chain(
-    "<http://e/s> <http://e/p> <http://e/o> {| <http://e/q> <http://e/z1>, <http://e/z2> |} .\n",
-  )
-  assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 3)
-  assert_eq(
-    mat_vs(mat_subj(emits[1])),
-    "<<<http://e/s> <http://e/p> <http://e/o>>>",
-  )
-  assert_eq(
-    mat_vs(mat_subj(emits[2])),
-    "<<<http://e/s> <http://e/p> <http://e/o>>>",
-  )
 }

@@ -1,4 +1,4 @@
-// ===== 用户补充：Actions 实现（mutable 契约，与 trig Hooks 同构） =====
+// ===== 用户补充：Actions 实现（mutable 契约，与 trig N3ActionsImpl 同构） =====
 // 口径（与 n3.mbt 头注 / trig actions.mbt 同宪法）：
 //   - action 只写槽位/账本，返回意图；永不重置 ctx，也拿不到数据视图
 //   - 与 trig 的语义差全部落在本文件（表形状同源，ADR-003a）：
@@ -11,16 +11,16 @@
 
 ///|
 /// Actions 的缺省实现载体（单载体：step 的 actions 面）
-pub struct Hooks {}
+struct N3ActionsImpl {}
 
 ///|
-pub fn Hooks::new() -> Hooks {
-  Hooks::{ }
+fn N3ActionsImpl::new() -> N3ActionsImpl {
+  N3ActionsImpl::{ }
 }
 
 ///|
-impl N3Actions for Hooks with fn set_subject(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn set_subject(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -29,8 +29,8 @@ impl N3Actions for Hooks with fn set_subject(
 }
 
 ///|
-impl N3Actions for Hooks with fn set_predicate(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn set_predicate(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -43,8 +43,8 @@ impl N3Actions for Hooks with fn set_predicate(
 }
 
 ///|
-impl N3Actions for Hooks with fn set_object(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn set_object(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -53,8 +53,8 @@ impl N3Actions for Hooks with fn set_object(
 }
 
 ///|
-impl N3Actions for Hooks with fn set_prefix_name(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn set_prefix_name(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -63,8 +63,8 @@ impl N3Actions for Hooks with fn set_prefix_name(
 }
 
 ///|
-impl N3Actions for Hooks with fn declare_prefix(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn declare_prefix(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   iri : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -83,13 +83,13 @@ impl N3Actions for Hooks with fn declare_prefix(
 }
 
 ///|
-impl N3Actions for Hooks with fn set_base(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn set_base(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   iri : Span,
 ) -> Result[N3Effect, N3ActionError] {
   ctx.base = Some(iri)
-  // base 链：append-only（物化层按 bver 折叠出该 quad 的生效 base）；
+  // base 链：append-only（物化层按 base_version 折叠出该 quad 的生效 base）；
   // ctx.base 单槽保留 = 最新声明（与 trig ★1 同口径）
   ctx.bases.push(iri)
   Ok(N3Effect::Continue)
@@ -99,8 +99,8 @@ impl N3Actions for Hooks with fn set_base(
 /// 区域栈：压栈 action——外层槽位快照入帧（s/p/g + ret_state；ret_state 是
 /// 开括号转移行定夺的决策，帧只携带），fresh 节点占 s 槽，谓词清空。
 /// `[]` 主/宾两位共用本动作（as_subject 定弹栈落位）。
-impl N3Actions for Hooks with fn open_bnode_prop(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn open_bnode_prop(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   open_span : Span,
   as_subject : Bool,
@@ -127,40 +127,40 @@ impl N3Actions for Hooks with fn open_bnode_prop(
 ///|
 /// 区域栈：弹栈 action——恢复外层 s/p/g，区域身份落入目标槽（as_subject 定槽位），
 /// 返回状态兑现帧携带的决策（役23 R-01：id 特例前移刻帧后，此处无条件读
-/// fr.ret_state——actions 层 ctx.state 直写唯一机制位，归位清单 [R-03-1]）。
+/// frame.ret_state——actions 层 ctx.state 直写唯一机制位，归位清单 [R-03-1]）。
 /// Bnp 帧与 Collection 帧共用本动作（Formula 帧同径：身份 = { span，无 nil 特判）；目标裁决：
 ///     （零长 span = 物化层 rdf:nil 识别位；ADR-003a"无 rdf:nil 发射"指不发
 ///     rest 链尾 quad，值位 nil 标记保留）
-///   - 非空集合：单一 BNode = fr.open_span（开括号即身份，ADR-003a 不展开链）
-///   - `[]`：fresh BNode = fr.open_span
+///   - 非空集合：单一 BNode = frame.open_span（开括号即身份，ADR-003a 不展开链）
+///   - `[]`：fresh BNode = frame.open_span
 /// 序上恒在 EmitQuad 之后：emit 先 snapshot 后收拾，恢复值取自帧不受 PredObj 收拾波及
-impl N3Actions for Hooks with fn pop_bnode_prop(_self : Hooks, ctx : N3Context) -> Result[
-  N3Effect,
-  N3ActionError,
-] {
+impl N3Actions for N3ActionsImpl with fn pop_bnode_prop(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
   match ctx.slot_stack.pop() {
-    Some(fr) => {
-      ctx.subject = fr.subject
-      ctx.predicate = fr.predicate
-      ctx.graph = fr.graph
+    Some(frame) => {
+      ctx.subject = frame.subject
+      ctx.predicate = frame.predicate
+      ctx.graph = frame.graph
       // 役16 B 桶：`[ id :X p o ]` 语义锚——帧携 id_subject 时属性表施加于
       // 该 IRI（语义 ≡ :x p o），fresh 开括号身份让位；无 id 走原径
-      let target = match fr.id_subject {
+      let target = match frame.id_subject {
         Some(x) => x
         None =>
-          if fr.typ is SlotType::Collection && fr.node_seq == 0 {
+          if frame.typ is SlotType::Collection && frame.node_seq == 0 {
             // 空集合收口：无元素 = rdf:nil（Span(open.0, 0) 零长 in-band 标记，
             // 全仓唯一构造点；物化层 nil 验形门校验 data[offset]=='('，役23 R-06）
-            (fr.open_span.0, 0)
+            (frame.open_span.0, 0)
           } else {
             // `[]` fresh / 非空集合单一 BNode：开括号 span 即身份（ADR-003a）
-            fr.open_span
+            frame.open_span
           }
       }
       // 役10 三向：公式谓词位帧（as_pred）身份落 p 槽；主/宾位随 as_subject
-      if fr.as_pred {
+      if frame.as_pred {
         ctx.predicate = Some(target)
-      } else if fr.as_subject {
+      } else if frame.as_subject {
         ctx.subject = Some(target)
       } else {
         ctx.object = Some(target)
@@ -169,7 +169,7 @@ impl N3Actions for Hooks with fn pop_bnode_prop(_self : Hooks, ctx : N3Context) 
       // id 形特例已前移 set_id_subject 刻帧（役16 B 桶语义注释随迁），此处
       // 无条件读帧——本行是 actions 层 ctx.state 直写唯一机制位（归位清单
       // [R-03-1]，spec §5）
-      ctx.state = fr.ret_state
+      ctx.state = frame.ret_state
       Ok(N3Effect::Continue)
     }
     None =>
@@ -182,22 +182,22 @@ impl N3Actions for Hooks with fn pop_bnode_prop(_self : Hooks, ctx : N3Context) 
 /// 役16 B 桶 iriPropertyList：`[ id :X p o ]`——id 事件化（is/of/has 同款），
 /// 后随 PrefName 落帧 id_subject（pop 落位权威，盖写 fresh 开括号身份），
 /// 兼刻下占 s 槽（属性施加于该 IRI）；p 清空候动词。
-impl N3Actions for Hooks with fn set_id_subject(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn set_id_subject(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
   match ctx.slot_stack.last() {
-    Some(fr) => {
-      fr.id_subject = Some(payload)
+    Some(frame) => {
+      frame.id_subject = Some(payload)
       // 役23 R-01：id 特例前移登记点——主位 id 形的收口态在刻帧时定，pop
       // 兑现统一读帧，分叉判断不留在兑现点（帧携带 ret_state 先例：役14
       // path_obj_close 按事件改写）。役16 B 桶语义：] 处 PredObj 已随 :X
       // 出账完毕，语句完结；ret_state(ExpectVerbOrDot) 的 Dot 行会再发
       // 不完整 SPO，故改指无出账闭合行 N3BnpIdAfterClose（object 位 id 形
       // 身份落 o 槽续外层，不受影响）
-      if fr.as_subject {
-        fr.ret_state = N3BnpIdAfterClose
+      if frame.as_subject {
+        frame.ret_state = N3BnpIdAfterClose
       }
     }
     None => () // 表只在 bnp 状态接 Id 行，空栈不可达；防御位
@@ -211,8 +211,8 @@ impl N3Actions for Hooks with fn set_id_subject(
 /// 集合区域栈：开集合 action——Collection 帧压栈，外层 s/p/g 快照入帧。
 /// 与 trig 的差异：s 槽即刻落单一 BNode（ADR-003a：开括号即身份，非 trig 链头
 /// TBD 的 None）——元素不入 s 槽，记账走帧字段（见 list_first）。
-impl N3Actions for Hooks with fn open_collection(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn open_collection(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   open_span : Span,
   as_subject : Bool,
@@ -239,8 +239,8 @@ impl N3Actions for Hooks with fn open_collection(
 ///|
 /// OpenSlot 意图兑现 action（嵌套元素开帧，`[`/`(` 作集合元素）：按 typ 压对应帧。
 /// as_subject 恒 false（嵌套开帧只发生元素位，主位开帧走直连行）
-impl N3Actions for Hooks with fn open_slot(
-  self : Hooks,
+impl N3Actions for N3ActionsImpl with fn open_slot(
+  self : N3ActionsImpl,
   ctx : N3Context,
   open_span : Span,
   typ : SlotType,
@@ -260,8 +260,8 @@ impl N3Actions for Hooks with fn open_slot(
 /// 公式区域栈：开公式 action（ADR-002：不透明图项，内容不断言）——外层槽位
 /// 快照入帧（s/p/g + ret_state；身份 = { span，pop 时按 as_subject 落位），
 /// 内层从新主语起（s/p 清空——与 Bnp 占 s 槽的语义分野）。
-impl N3Actions for Hooks with fn open_formula(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn open_formula(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   open_span : Span,
   as_subject : Bool,
@@ -293,8 +293,8 @@ impl N3Actions for Hooks with fn open_formula(
 /// 公式谓词位入口（役10）：帧携 as_pred——弹栈身份落外层谓词槽（bad-preds-formula
 /// 正典 `:e { :f :g :h } :i .`）。入帧快照/内层清空与 open_formula 全同，仅
 /// as_pred 置位；ret_state 由行定夺（各区宾态）。
-impl N3Actions for Hooks with fn open_formula_pred(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn open_formula_pred(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   open_span : Span,
   _as_subject : Bool,
@@ -322,8 +322,8 @@ impl N3Actions for Hooks with fn open_formula_pred(
 /// 区域栈：`[]` 谓词位入口（役11，anon-prop 正典）——同 open_formula_pred 教义，
 /// 帧携 as_pred=true（pop 三向支役10 已建）；内容 = fresh 主语属性表
 ///（subject 装 fresh，同 open_bnode_prop），帧型 BnodeProp。
-impl N3Actions for Hooks with fn open_bnode_pred(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn open_bnode_pred(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   open_span : Span,
   _as_subject : Bool,
@@ -348,10 +348,10 @@ impl N3Actions for Hooks with fn open_bnode_pred(
 }
 
 ///|
-impl N3Actions for Hooks with fn close_formula(_self : Hooks, ctx : N3Context) -> Result[
-  N3Effect,
-  N3ActionError,
-] {
+impl N3Actions for N3ActionsImpl with fn close_formula(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
   let _ = ctx
   Ok(N3Effect::PopBnp)
 }
@@ -400,8 +400,8 @@ fn path_hop_resolve(
 ///|
 /// 路径入口 `!`：立正跳旗标。基动词在场（`S P!…`）= bang 证明非末跳，
 /// 基跳急兑现（fresh = 操作符 span）；裸入口（`S !P O`）源 = 主语。
-impl N3Actions for Hooks with fn path_fwd(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_fwd(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   op : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -423,8 +423,8 @@ impl N3Actions for Hooks with fn path_fwd(
 ///|
 /// 路径入口 `^`：立反跳旗标；基跳兑现同 path_fwd（基动词恒正跳——
 /// `^` 只管辖它后面的步）。
-impl N3Actions for Hooks with fn path_bwd(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_bwd(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   op : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -445,8 +445,8 @@ impl N3Actions for Hooks with fn path_bwd(
 
 ///|
 /// 路径步进：押步动词入账（方向取旗标；Iri/PrefName 两行落此）。
-impl N3Actions for Hooks with fn path_step(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_step(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   verb : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -456,8 +456,8 @@ impl N3Actions for Hooks with fn path_step(
 
 ///|
 /// 路径中跳 `!`：押步急兑现（fresh = 本操作符 span），立正跳旗标。
-impl N3Actions for Hooks with fn path_hop_fwd(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_hop_fwd(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   op : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -466,8 +466,8 @@ impl N3Actions for Hooks with fn path_hop_fwd(
 
 ///|
 /// 路径中跳 `^`：押步急兑现，立反跳旗标。
-impl N3Actions for Hooks with fn path_hop_bwd(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_hop_bwd(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   op : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -479,8 +479,8 @@ impl N3Actions for Hooks with fn path_hop_bwd(
 /// 路径账清——发射交既有收口行（Dot → EmitQuad(SPO) / Comma → Object 粒度
 /// / Semicolon → PredObj 粒度），延续位语义（`,` 每宾一发、`;` 换谓词）
 /// 全部免费继承。
-impl N3Actions for Hooks with fn path_end(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_end(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   obj : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -511,8 +511,8 @@ impl N3Actions for Hooks with fn path_end(
 /// pop 恢复后收口行发连接边 (源, 押步动词, fresh帧身份)），再借共享帧
 /// 机械开嵌套（open_slot 按 typ 分派）。反跳拒：pop 机械 object 槽不帧管，
 /// 反跳连接边 (fresh, 动词, 源) 无处落位——诚实报错非静默错装。
-impl N3Actions for Hooks with fn path_end_nested(
-  self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_end_nested(
+  self : N3ActionsImpl,
   ctx : N3Context,
   open_span : Span,
   typ : SlotType,
@@ -596,8 +596,8 @@ fn path_tail_hop_resolve(
 ///|
 /// 主位尾随入口/首跳 `!`/`^`：源 = 主语槽（statement 主语 = 终跳 fresh，
 /// path_subj_object 落位），尾 = 本操作符 span；主位槽不动。
-impl N3Actions for Hooks with fn path_subj_trail(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_subj_trail(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   op : Span,
   fwd : Bool,
@@ -613,8 +613,8 @@ impl N3Actions for Hooks with fn path_subj_trail(
 /// 宾位尾随入口 `N!P`/`N^P`（`"v"^lang:eng` 形）：statement s/p 快照入帧
 ///（open_span = 尾 span——pop 落位 object := 尾白得），statement 宾位改尾；
 /// 源 = 原宾位节点。
-impl N3Actions for Hooks with fn path_obj_trail(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_obj_trail(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   op : Span,
   fwd : Bool,
@@ -647,17 +647,17 @@ impl N3Actions for Hooks with fn path_obj_trail(
 ///|
 /// 元素位尾随入口 `( N!P … )`：源 = 帧 prev_node（当前元素），元素随行改
 /// 尾（若路径就此收口，元素 = 尾 fresh）。
-impl N3Actions for Hooks with fn path_elem_trail(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_elem_trail(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   op : Span,
   fwd : Bool,
 ) -> Result[N3Effect, N3ActionError] {
-  let fr = match list_top(ctx) {
-    Ok(fr) => fr
+  let frame = match list_top(ctx) {
+    Ok(frame) => frame
     Err(e) => return Err(e)
   }
-  let node = match fr.prev_node {
+  let node = match frame.prev_node {
     Some(node) => node
     None => return Err(N3ActionError::BusinessFailed("List element missing"))
   }
@@ -665,14 +665,14 @@ impl N3Actions for Hooks with fn path_elem_trail(
   ctx.path_tail = Some(op)
   ctx.path_pend = None
   ctx.path_fwd = fwd
-  fr.prev_node = Some(op)
+  frame.prev_node = Some(op)
   Ok(N3Effect::Continue)
 }
 
 ///|
 /// 主位/宾位中跳 `!`/`^`：押步急兑现（共享机械）。
-impl N3Actions for Hooks with fn path_hop_tail(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_hop_tail(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   op : Span,
   fwd : Bool,
@@ -682,15 +682,15 @@ impl N3Actions for Hooks with fn path_hop_tail(
 
 ///|
 /// 元素位中跳：共享兑现 + 帧 prev_node 随尾换新（元素恒 = 当前尾）。
-impl N3Actions for Hooks with fn path_elem_hop(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_elem_hop(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   op : Span,
   fwd : Bool,
 ) -> Result[N3Effect, N3ActionError] {
   let r = path_tail_hop_resolve(ctx, op, fwd)
   match list_top(ctx) {
-    Ok(fr) => fr.prev_node = ctx.path_tail
+    Ok(frame) => frame.prev_node = ctx.path_tail
     Err(_) => ()
   }
   r
@@ -700,8 +700,8 @@ impl N3Actions for Hooks with fn path_elem_hop(
 /// 主位尾跳收束（真谓词到位）：终跳边急发，真谓词押回账（path_subj_object
 /// 落位）——发射与回装分行动作（单效果墙：EmitQuad 快照后收拾，回装值
 /// 全在字段账不受波及）。
-impl N3Actions for Hooks with fn path_subj_end(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_subj_end(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   verb : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -745,8 +745,8 @@ impl N3Actions for Hooks with fn path_subj_end(
 ///|
 /// 主位尾随 statement 回装：主语 = 尾 fresh，谓词 = 押回的真谓词（pk 账
 /// 兑现——`a` 缩写横跨尾跳保留活性），宾语 = 本原子；路径账清。
-impl N3Actions for Hooks with fn path_subj_object(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_subj_object(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   obj : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -774,8 +774,8 @@ impl N3Actions for Hooks with fn path_subj_object(
 /// (新 fresh, 押步, 尾)），尾接棒新 op span、押步清、源位不动（主位链账
 /// 不回头）；后随原子经 path_verb_hop 后源位恒 None，终原子由
 /// path_subj_end 源缺回退 path_subj_object 落位。
-impl N3Actions for Hooks with fn path_verb_hop(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_verb_hop(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   op : Span,
   fwd : Bool,
@@ -806,8 +806,8 @@ impl N3Actions for Hooks with fn path_verb_hop(
 ///|
 /// 元素位尾跳后接下一元素：终跳边急发 + 元素记账（list_next 同体一体行动
 /// 作——本原子即下一元素）。
-impl N3Actions for Hooks with fn path_elem_end(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_elem_end(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   elem : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -832,23 +832,21 @@ impl N3Actions for Hooks with fn path_elem_end(
     ctx.predicate = Some(verb)
     ctx.object = Some(src)
   }
-  let fr = match list_top(ctx) {
-    Ok(fr) => fr
+  let frame = match list_top(ctx) {
+    Ok(frame) => frame
     Err(e) => return Err(e)
   }
-  fr.node_seq = fr.node_seq + 1
-  fr.prev_node = Some(elem)
-  ctx.path_src = None
-  ctx.path_tail = None
-  ctx.path_pend = None
+  frame.node_seq = frame.node_seq + 1
+  frame.prev_node = Some(elem)
+  ctx.clear_path()
   Ok(N3Effect::EmitQuad(ResetScope::SPO))
 }
 
 ///|
 /// 元素位尾跳后接嵌套元素（`[`/`(`）：先开帧（open_slot 占 s 槽）后装边
 /// 槽发射——序不可倒（开帧的 s/p 占位即被边快照覆写）。
-impl N3Actions for Hooks with fn path_elem_end_nested(
-  self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_elem_end_nested(
+  self : N3ActionsImpl,
   ctx : N3Context,
   elem : Span,
   typ : SlotType,
@@ -879,25 +877,23 @@ impl N3Actions for Hooks with fn path_elem_end_nested(
     ctx.predicate = Some(verb)
     ctx.object = Some(src)
   }
-  let fr = match list_top(ctx) {
-    Ok(fr) => fr
+  let frame = match list_top(ctx) {
+    Ok(frame) => frame
     Err(e) => return Err(e)
   }
-  fr.node_seq = fr.node_seq + 1
-  fr.prev_node = Some(elem)
-  ctx.path_src = None
-  ctx.path_tail = None
-  ctx.path_pend = None
+  frame.node_seq = frame.node_seq + 1
+  frame.prev_node = Some(elem)
+  ctx.clear_path()
   Ok(N3Effect::EmitQuad(ResetScope::SPO))
 }
 
 ///|
 /// 元素位尾跳收口（步后即 `)`）：终跳边急发 + 元素 := 尾 fresh，PopBnp 兑现
 /// 收口——Sequence 序 = emit 先 snapshot 后收拾、帧恢复随其后（既有口径）。
-impl N3Actions for Hooks with fn path_elem_close(_self : Hooks, ctx : N3Context) -> Result[
-  N3Effect,
-  N3ActionError,
-] {
+impl N3Actions for N3ActionsImpl with fn path_elem_close(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
   let src = match ctx.path_src {
     Some(src) => src
     None => return Err(N3ActionError::BusinessFailed("Path source missing"))
@@ -919,15 +915,13 @@ impl N3Actions for Hooks with fn path_elem_close(_self : Hooks, ctx : N3Context)
     ctx.predicate = Some(verb)
     ctx.object = Some(src)
   }
-  let fr = match list_top(ctx) {
-    Ok(fr) => fr
+  let frame = match list_top(ctx) {
+    Ok(frame) => frame
     Err(e) => return Err(e)
   }
-  fr.prev_node = Some(tail)
-  fr.node_seq = fr.node_seq + 1
-  ctx.path_src = None
-  ctx.path_tail = None
-  ctx.path_pend = None
+  frame.prev_node = Some(tail)
+  frame.node_seq = frame.node_seq + 1
+  ctx.clear_path()
   Ok(
     N3Effect::Sequence([N3Effect::EmitQuad(ResetScope::SPO), N3Effect::PopBnp]),
   )
@@ -941,8 +935,8 @@ impl N3Actions for Hooks with fn path_elem_close(_self : Hooks, ctx : N3Context)
 /// 纯跳边计数）。今帧身份改指终尾（多跳链末节点），序列追加第二条
 /// EmitQuad 于 pop 落位后出账：`, ` 续位各路径各得一语句，`;`/`.` 收口
 /// 各得其所，语义 = S P (O!Q) ≡ S P _:1 . _:1 Q O 全展开。
-impl N3Actions for Hooks with fn path_obj_close(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn path_obj_close(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   ret_state : N3State,
 ) -> Result[N3Effect, N3ActionError] {
@@ -975,15 +969,13 @@ impl N3Actions for Hooks with fn path_obj_close(
     N3ExpectVerbOrEnd => ResetScope::PredObj
     _ => ResetScope::SPO
   }
-  let fr = match list_top(ctx) {
-    Ok(fr) => fr
+  let frame = match list_top(ctx) {
+    Ok(frame) => frame
     Err(e) => return Err(e)
   }
-  fr.ret_state = ret_state
-  fr.open_span = tail
-  ctx.path_src = None
-  ctx.path_tail = None
-  ctx.path_pend = None
+  frame.ret_state = ret_state
+  frame.open_span = tail
+  ctx.clear_path()
   Ok(
     N3Effect::Sequence([
       N3Effect::EmitQuad(ResetScope::SPO),
@@ -1007,71 +999,71 @@ fn list_top(ctx : N3Context) -> Result[Slot, N3ActionError] {
 /// 不发链 quad、不动 ctx 槽位、pred_kind 恒 Normal。
 /// statement 语义 = 外层收口经 pop 落位单一 BNode；元素暂存帧中（003b/后续
 /// ADR 升级时免重布线）。
-impl N3Actions for Hooks with fn list_first(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn list_first(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   elem : Span,
 ) -> Result[N3Effect, N3ActionError] {
-  let fr = match list_top(ctx) {
-    Ok(fr) => fr
+  let frame = match list_top(ctx) {
+    Ok(frame) => frame
     Err(e) => return Err(e)
   }
-  fr.node_seq = 1
-  fr.prev_node = Some(elem)
+  frame.node_seq = 1
+  frame.prev_node = Some(elem)
   Ok(N3Effect::Continue)
 }
 
 ///|
 /// 首元素为嵌套结构（`[`/`(`）：记账同 list_first → OpenSlot 兑现开帧
 ///（N3 无链发射，trig 的 EmitQuad 先行序在此退化为裸 OpenSlot）
-impl N3Actions for Hooks with fn list_first_nested(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn list_first_nested(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   elem : Span,
   typ : SlotType,
   ret_state : N3State,
 ) -> Result[N3Effect, N3ActionError] {
-  let fr = match list_top(ctx) {
-    Ok(fr) => fr
+  let frame = match list_top(ctx) {
+    Ok(frame) => frame
     Err(e) => return Err(e)
   }
-  fr.node_seq = 1
-  fr.prev_node = Some(elem)
+  frame.node_seq = 1
+  frame.prev_node = Some(elem)
   Ok(N3Effect::OpenSlot(elem, typ, ret_state))
 }
 
 ///|
 /// 后续元素（ADR-003a）：记账入帧（node_seq +1，prev_node 换新），
 /// 不发 rest 链、不动 ctx 槽位。
-impl N3Actions for Hooks with fn list_next(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn list_next(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   elem : Span,
 ) -> Result[N3Effect, N3ActionError] {
-  let fr = match list_top(ctx) {
-    Ok(fr) => fr
+  let frame = match list_top(ctx) {
+    Ok(frame) => frame
     Err(e) => return Err(e)
   }
-  fr.node_seq = fr.node_seq + 1
-  fr.prev_node = Some(elem)
+  frame.node_seq = frame.node_seq + 1
+  frame.prev_node = Some(elem)
   Ok(N3Effect::Continue)
 }
 
 ///|
 /// 后续元素为嵌套结构：记账同 list_next → OpenSlot 兑现开帧
-impl N3Actions for Hooks with fn list_next_nested(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn list_next_nested(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   elem : Span,
   typ : SlotType,
   ret_state : N3State,
 ) -> Result[N3Effect, N3ActionError] {
-  let fr = match list_top(ctx) {
-    Ok(fr) => fr
+  let frame = match list_top(ctx) {
+    Ok(frame) => frame
     Err(e) => return Err(e)
   }
-  fr.node_seq = fr.node_seq + 1
-  fr.prev_node = Some(elem)
+  frame.node_seq = frame.node_seq + 1
+  frame.prev_node = Some(elem)
   Ok(N3Effect::OpenSlot(elem, typ, ret_state))
 }
 
@@ -1079,10 +1071,10 @@ impl N3Actions for Hooks with fn list_next_nested(
 /// 集合收口（尾元素后 `)`，ADR-003a）：无 rdf:rest rdf:nil 尾 quad（trig 的
 /// 发射臂退役）——弹栈交 PopBnp，落位（非空 = 单一 BNode / 空 = nil 标记）
 /// 与返回状态兑现在 pop_bnode_prop。
-impl N3Actions for Hooks with fn list_nil(_self : Hooks, ctx : N3Context) -> Result[
-  N3Effect,
-  N3ActionError,
-] {
+impl N3Actions for N3ActionsImpl with fn list_nil(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
   let _ = ctx // 槽位不动：决策全在 pop（帧携带）；保留形参对齐 trait 形状
   Ok(N3Effect::PopBnp)
 }
@@ -1092,10 +1084,10 @@ impl N3Actions for Hooks with fn list_nil(_self : Hooks, ctx : N3Context) -> Res
 
 ///|
 /// @keywords 入口：清台账 + seen 置位（旧 listed 词即刻失格，含 `a`）
-impl N3Actions for Hooks with fn kw_begin(_self : Hooks, ctx : N3Context) -> Result[
-  N3Effect,
-  N3ActionError,
-] {
+impl N3Actions for N3ActionsImpl with fn kw_begin(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
   ctx.kw_ledger.clear()
   ctx.kw_directive_seen = true
   Ok(N3Effect::Continue)
@@ -1104,8 +1096,8 @@ impl N3Actions for Hooks with fn kw_begin(_self : Hooks, ctx : N3Context) -> Res
 ///|
 /// @keywords 收词：词 span 入台账（listed 词主/谓/宾全位可用——引擎归位点
 /// 嗅探 Unknown→KeywordX；`a` 复活 = 台账含 a，KeywordA 嗅探放行）
-impl N3Actions for Hooks with fn declare_keyword(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn declare_keyword(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   word : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -1120,10 +1112,10 @@ impl N3Actions for Hooks with fn declare_keyword(
 ///|
 /// of 收倒装头：主语 token span 入 is_src 作交换键 + 槽深入 is_depth 定清账界
 ///（span 全局唯一 ⇒ 嵌套 bnp/集合内层 fresh 主语天然错键不换）
-impl N3Actions for Hooks with fn is_of(_self : Hooks, ctx : N3Context) -> Result[
-  N3Effect,
-  N3ActionError,
-] {
+impl N3Actions for N3ActionsImpl with fn is_of(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
   ctx.is_src = ctx.subject
   ctx.is_depth = ctx.slot_stack.length()
   Ok(N3Effect::Continue)
@@ -1133,10 +1125,10 @@ impl N3Actions for Hooks with fn is_of(_self : Hooks, ctx : N3Context) -> Result
 /// `<-` 倒装引导符（役16 A 桶）：`S <- P O` ≡ `O P S`——复用 is/of 倒装键
 ///（is_src/is_depth；take_pending_quad 出账互换，span 身份键嵌套天然错键不换）。
 /// is/of 在 Of 处落键，`<-` 引导符即落键点；P/O 随后走标准谓词/宾位行。
-impl N3Actions for Hooks with fn set_inversion(_self : Hooks, ctx : N3Context) -> Result[
-  N3Effect,
-  N3ActionError,
-] {
+impl N3Actions for N3ActionsImpl with fn set_inversion(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
   ctx.is_src = ctx.subject
   ctx.is_depth = ctx.slot_stack.length()
   Ok(N3Effect::Continue)
@@ -1147,8 +1139,8 @@ impl N3Actions for Hooks with fn set_inversion(_self : Hooks, ctx : N3Context) -
 
 ///|
 /// `=` 谓词：= token span 占谓词槽 + pk=SameAs（物化层展开 owl:sameAs）
-impl N3Actions for Hooks with fn set_sameas(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn set_sameas(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -1160,10 +1152,10 @@ impl N3Actions for Hooks with fn set_sameas(
 ///|
 /// 注解开壳（役8）：抄录锚 s/o 入壳账（槽位不动、不发射不收拾——发射意图
 /// 由动作返回值承载：主 quad 仍锚主语预发射，快照发生时壳账尚无旗 = 锚身出账）
-impl N3Actions for Hooks with fn annot_open(_self : Hooks, ctx : N3Context) -> Result[
-  N3Effect,
-  N3ActionError,
-] {
+impl N3Actions for N3ActionsImpl with fn annot_open(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
   ctx.annot_s = ctx.subject
   ctx.annot_o = ctx.object
   ctx.subj_shell = false
@@ -1176,8 +1168,8 @@ impl N3Actions for Hooks with fn annot_open(_self : Hooks, ctx : N3Context) -> R
 ///|
 /// 注解体动词（役8）：首动词开体区旗（交换在引擎发射点 take：键 = subj ==
 /// annot_s），谓词槽位照 set_predicate 口径（kw_a_live 兑现落 pk）
-impl N3Actions for Hooks with fn annot_body_verb(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn annot_body_verb(
+  _self : N3ActionsImpl,
   ctx : N3Context,
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
@@ -1191,10 +1183,10 @@ impl N3Actions for Hooks with fn annot_body_verb(
 ///|
 /// 注解收口（役8）：置收口旗 + 返回末体 quad 发射——take 消费旗（壳交换先
 /// 兑现在本 quad 上）后还原清账；槽位经 PredObj 粒度保锚主语，`;` 续锚直落
-impl N3Actions for Hooks with fn annot_end(_self : Hooks, ctx : N3Context) -> Result[
-  N3Effect,
-  N3ActionError,
-] {
+impl N3Actions for N3ActionsImpl with fn annot_end(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+) -> Result[N3Effect, N3ActionError] {
   ctx.annot_close = true
   Ok(N3Effect::EmitQuad(ResetScope::PredObj))
 }
@@ -1202,8 +1194,8 @@ impl N3Actions for Hooks with fn annot_end(_self : Hooks, ctx : N3Context) -> Re
 ///|
 /// 注解静默收口（役8）：体尾分号后 |}——末体 quad 已随分号行出账（壳交换
 /// 已兑现），直清壳账零发射
-impl N3Actions for Hooks with fn annot_close_silent(
-  _self : Hooks,
+impl N3Actions for N3ActionsImpl with fn annot_close_silent(
+  _self : N3ActionsImpl,
   ctx : N3Context,
 ) -> Result[N3Effect, N3ActionError] {
   ctx.annot_close = false

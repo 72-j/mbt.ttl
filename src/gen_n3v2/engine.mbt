@@ -271,13 +271,13 @@ fn[L : LexerSource] N3Engine::pull(self : N3Engine[L]) -> N3Event? {
 /// 词法器可插拔：L = N3LexerAdapter（当前唯一实现）
 pub struct N3Engine[L] {
   lexer : L
-  hooks : Hooks
-  ctx : N3Context // mutable 契约：ctx 原地推进（reset/step 原地写）
+  priv actions : N3ActionsImpl
+  priv ctx : N3Context // mutable 契约：ctx 原地推进（reset/step 原地写）
   dialect : N3Dialect // 方言开关（N3 默认扩展；RDFStarOff 暂不开放，预留构造位）
-  error_spans : Array[Span] // 役23 R-05 错误累积（原 last_error 单槽只留最后
+  priv error_spans : Array[Span] // 役23 R-05 错误累积（原 last_error 单槽只留最后
   // 一条）：recover 结构错逐条 push，上层 parse_next 按 drain 转报——错误序
   // = 语句序（行号由上层按 data 统计）
-  mut pending : N3Event? // 恢复推回的单 token（预留：恢复前界机制的兑现位）
+  priv mut pending : N3Event? // 恢复推回的单 token（预留：恢复前界机制的兑现位）
 }
 
 ///|
@@ -289,7 +289,7 @@ pub fn[L : LexerSource] N3Engine::new(
 ) -> N3Engine[L] {
   let engine = N3Engine::{
     lexer,
-    hooks: Hooks::new(),
+    actions: N3ActionsImpl::new(),
     ctx: N3Context::new(),
     dialect,
     error_spans: [],
@@ -354,10 +354,7 @@ impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn begin_record(
   self.ctx.slot_stack.clear()
   self.ctx.pred_kind = Normal
   self.ctx.state = N3ExpectSubject
-  self.ctx.annot_s = None
-  self.ctx.annot_o = None
-  self.ctx.subj_shell = false
-  self.ctx.annot_close = false
+  self.ctx.clear_annotation()
 }
 
 ///|
@@ -381,10 +378,7 @@ fn[L : LexerSource] N3Engine::recover_cleanup(self : N3Engine[L]) -> Unit {
   self.ctx.slot_stack.clear()
   self.ctx.pred_kind = Normal
   self.ctx.is_src = None // 役6：倒装交换键随错恢复回收
-  self.ctx.annot_s = None // 役8：注解壳账随错恢复回收
-  self.ctx.annot_o = None
-  self.ctx.subj_shell = false
-  self.ctx.annot_close = false
+  self.ctx.clear_annotation()
   self.consume_to_recover_point()
 }
 
@@ -483,15 +477,33 @@ fn N3Context::settle_inversion(self : N3Context, scope : ResetScope) -> Unit {
 }
 
 ///|
+/// 组清·注解壳账（役28 R-13）：四件套一组回收——壳账（annot_s/annot_o）与
+/// 壳位旗（subj_shell/annot_close）同生共灭，清账成组防漏。消费点三处：
+/// settle_annotation 收口半边、begin_record 全量重置、recover_cleanup 随错回收。
+fn N3Context::clear_annotation(self : N3Context) -> Unit {
+  self.annot_s = None
+  self.annot_o = None
+  self.subj_shell = false
+  self.annot_close = false
+}
+
+///|
+/// 组清·路径账（役28 R-13）：路径三槽一组回收（src/tail/pend）。方向位
+/// path_fwd 不入组——单点翻转语义（方向判定用），非路径残留。消费点：
+/// 集合链收口 / 多跳路径落位的发射点（EmitQuad/Sequence 前）。
+fn N3Context::clear_path(self : N3Context) -> Unit {
+  self.path_src = None
+  self.path_tail = None
+  self.path_pend = None
+}
+
+///|
 /// 注解壳账收口半边（役8；役22 下沉 ctx 级）：末体 quad 出账点（take）或
 /// 公式罩内压位点消费 annot_close 旗——还原即清账（收口行 PredObj 粒度本就
 /// 保锚主语在槽，`;` 续锚直落现状；体区旗/壳账四件套齐清，防旗漏后语句）
 fn N3Context::settle_annotation(self : N3Context) -> Unit {
   if self.annot_close {
-    self.annot_close = false
-    self.subj_shell = false
-    self.annot_s = None
-    self.annot_o = None
+    self.clear_annotation()
   }
 }
 
@@ -537,12 +549,12 @@ fn N3Context::take_pending(
 ///|
 /// 役22 接活：引擎 handler 覆盖——PopBnp 意图兑现机械在 action（弹栈恢复，
 /// 帧携带返回状态），经 on_* 注入位进 interpret；其余成员全用套装默认
-///（handle_* 无操作观测、snapshot/apply_scope 归位 ctx、interpret 唯一解释器）
+///（handle_* 无操作观测、apply_scope 归位 ctx、interpret 唯一解释器）
 impl[L] N3EffectHandler for N3Engine[L] with fn on_pop_bnp(
   self : N3Engine[L],
   ctx : N3Context,
 ) -> Unit {
-  let _ = N3Actions::pop_bnode_prop(self.hooks, ctx)
+  let _ = N3Actions::pop_bnode_prop(self.actions, ctx)
 }
 
 ///|
@@ -554,7 +566,7 @@ impl[L] N3EffectHandler for N3Engine[L] with fn on_open_slot(
   typ : SlotType,
   ret_state : N3State,
 ) -> Unit {
-  let _ = N3Actions::open_slot(self.hooks, ctx, span, typ, ret_state)
+  let _ = N3Actions::open_slot(self.actions, ctx, span, typ, ret_state)
 }
 
 ///|
@@ -585,7 +597,7 @@ pub fn[L : LexerSource] N3Engine::next(
         }
       }
     }
-    match step(self.ctx, event, self.hooks) {
+    match step(self.ctx, event, self.actions) {
       Ok(effect) =>
         // 役22：解释在 interpret（套装默认体），此处只兑现 loop 控制流
         match N3EffectHandler::interpret(self, self.ctx, effect) {

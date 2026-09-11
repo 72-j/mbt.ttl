@@ -44,7 +44,7 @@ N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态�
 
 ## 术语
 
-Span（`(offset,len)` 对）/ 槽（`Slot`，bnp/集合/公式帧）/ 快照四槽（`pk`/`pver`/`bver`/`iver`）
+Span（`(offset,len)` 对）/ 槽（`Slot`，bnp/集合/公式帧）/ 快照四槽（`pk`/`prefix_version`/`base_version`/`iri_version`）
 / PrefName（`prefix:local` 局部名，输出端展开为全 IRI 不回写）/ TT（`<<...>>` TripleTerm 壳）。
 全卷：`spec.md` §术语、`guides/n3/README.md` §1。
 

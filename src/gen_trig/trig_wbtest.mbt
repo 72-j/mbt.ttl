@@ -743,8 +743,8 @@ test "★3 回收: @ 风格指令名零空格直连冒号拆分（minimal-whites
 
 ///|
 test "★1 per-quad 快照: 中途换 base / 前缀重声明不污染历史 quad" {
-  // quad1 发射时点 bver=0（无 @base）→ 走 fallback（mat_chain 无 fallback →
-  // 相对词项报错）；quad2 发射时点 bver=1 → 按 chain[0..1] 折叠出 ns base。
+  // quad1 发射时点 base_version=0（无 @base）→ 走 fallback（mat_chain 无 fallback →
+  // 相对词项报错）；quad2 发射时点 base_version=1 → 按 chain[0..1] 折叠出 ns base。
   // 绝对词项不受任何 base 影响，两 quad 均保真——差异在相对词项的改写：
   // 把 quad1 放 @base 声明前且词项全相对 = 报错路径，放声明后 = 改写路径
   let (_emits, errors) = mat_chain(
@@ -758,8 +758,8 @@ test "★1 per-quad 快照: 中途换 base / 前缀重声明不污染历史 quad
   assert_eq(errors2.length(), 0)
   assert_eq(emits2.length(), 1)
   assert_eq(mat_vs(mat_subj(emits2[0])), "<http://example.org/ns/a1>")
-  // 前缀重声明：quad1 发射时 pver=1（老 ns），quad2 pver=2（新 ns）——
-  // 物化回扫上界 pver 保证 ex: 在 quad1 展开为老 ns
+  // 前缀重声明：quad1 发射时 prefix_version=1（老 ns），quad2 prefix_version=2（新 ns）——
+  // 物化回扫上界 prefix_version 保证 ex: 在 quad1 展开为老 ns
   let (emits3, errors3) = mat_chain(
     "@prefix ex: <http://old/> .\nex:a ex:b ex:c .\n@prefix ex: <http://new/> .\nex:a ex:b ex:c .\n",
   )
@@ -786,7 +786,7 @@ test "★1 base 链: 相对 @base 折叠 + 相对前缀声明随 base 改写（s
   assert_eq(mat_vs(emits[1].predicate), "<http://example.org/ns/foo/b3>")
   assert_eq(mat_vs(mat_obj(emits[1])), "<http://example.org/ns/foo/c3>")
   // 相对前缀声明（@prefix : <bar#>）：声明 IRI 本身相对，按发射时点 base 改写；
-  // 中途重声明（绝对 ns2#）后新 quad 走新 ns（pver 上界口径）
+  // 中途重声明（绝对 ns2#）后新 quad 走新 ns（prefix_version 上界口径）
   let (emits2, errors2) = mat_chain(
     "@base <http://example.org/ns/foo/> .\n@prefix : <bar#> .\n:a4 :b4 :c4 .\n@prefix : <http://example.org/ns2#> .\n:a5 :b5 :c5 .\n",
   )

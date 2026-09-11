@@ -465,8 +465,8 @@ fn[L] TrigSliceParser::assemble(
         o,
         g: pending.graph,
         pk: pending.pk,
-        pver: pending.pver,
-        bver: pending.bver,
+        prefix_version: pending.prefix_version,
+        base_version: pending.base_version,
         subj_shell: pending.subj_shell,
       })
     }
@@ -482,8 +482,8 @@ fn[L] TrigSliceParser::assemble(
               o: to,
               g: pending.graph,
               pk: pending.pk,
-              pver: pending.pver,
-              bver: pending.bver,
+              prefix_version: pending.prefix_version,
+              base_version: pending.base_version,
               subj_shell: false,
             })
           } else {
@@ -514,8 +514,8 @@ fn[L] TrigSliceParser::assemble(
               o: to,
               g: pending.graph,
               pk: pending.pk,
-              pver: pending.pver,
-              bver: pending.bver,
+              prefix_version: pending.prefix_version,
+              base_version: pending.base_version,
               subj_shell: false,
             })
           }

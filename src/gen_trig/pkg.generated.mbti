@@ -35,8 +35,8 @@ pub(all) struct QuadSpan {
   o : (Int, Int)
   g : (Int, Int)?
   pk : PredKind
-  pver : Int
-  bver : Int
+  prefix_version : Int
+  base_version : Int
   subj_shell : Bool
 }
 
@@ -210,8 +210,8 @@ pub(all) struct TrigPendingQuad {
   obj : (Int, Int)?
   graph : (Int, Int)?
   pk : PredKind
-  pver : Int
-  bver : Int
+  prefix_version : Int
+  base_version : Int
   subj_shell : Bool
 } derive(Eq)
 

@@ -2,8 +2,8 @@
 // 组装机械唯一地点：N3PendingQuad 快照 → QuadSpan；验证在组装之后（view 直查）。
 // 与 trig 的差异（均有据可查）：
 //   - TT 壳独立成句臂已补（rdf12 syntax-basic-04/05/06 驱动，trig 同款拆壳递归
-//     验证；iver 快照槽随行）；`[] .` 空属性列表静默跳过臂保留（parse_next）。
-//   - QuadSpan 载 iver：ADR-003b 显式链账本版本槽（快照四槽对齐 N3PendingQuad）。
+//     验证；iri_version 快照槽随行）；`[] .` 空属性列表静默跳过臂保留（parse_next）。
+//   - QuadSpan 载 iri_version：ADR-003b 显式链账本版本槽（快照四槽对齐 N3PendingQuad）。
 // 验证面（骨架口径，@nquads validate_helper 深度对齐归 4E-6）：
 //   - 缺槽检测（s/p/o 必须齐）
 //   - IRI 轻校验（<> 包裹非空）
@@ -487,9 +487,9 @@ fn[L] N3SliceParser::assemble(
         o,
         g: pending.graph,
         pk: pending.pk,
-        pver: pending.pver,
-        bver: pending.bver,
-        iver: pending.iver,
+        prefix_version: pending.prefix_version,
+        base_version: pending.base_version,
+        iri_version: pending.iri_version,
         subj_shell: pending.subj_shell,
       })
     }
@@ -531,9 +531,9 @@ fn[L] N3SliceParser::assemble(
           o: to,
           g: pending.graph,
           pk: pending.pk,
-          pver: pending.pver,
-          bver: pending.bver,
-          iver: pending.iver,
+          prefix_version: pending.prefix_version,
+          base_version: pending.base_version,
+          iri_version: pending.iri_version,
           subj_shell: false,
         })
       } else {
@@ -615,12 +615,4 @@ pub fn[L : LexerSource] N3SliceParser::parse_all(
     }
   }
   (quads, errors)
-}
-
-///|
-/// 便捷入口（trig_parser 同位；4E-1 顺延至此——入口需 SliceParser 编译耦合同场）
-pub fn n3_parser(data : Array[Byte]) -> (Array[QuadSpan], Array[ParseError]) {
-  let engine = N3Engine::from_bytes(data)
-  let parser = N3SliceParser::new(engine, data[:])
-  parser.parse_all()
 }

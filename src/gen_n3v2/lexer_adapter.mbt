@@ -18,17 +18,17 @@
 // 跨 token 决策仍零语法味：ANON/变量都是词法产生式，语法决策全留转移表。
 
 ///|
-pub(all) struct N3LexerAdapter {
+pub struct N3LexerAdapter {
   inner : Lexermoon
   data : ArrayView[Byte]
   mut eof_seen : Bool // N3EOF 只合法送达一次；其后 None=枯竭兜底
-  mut pending : N3Event? // @ 指令冒号半边 / ? 变量 peek 失配回存事件（单槽，先入后兑）
+  priv mut pending : N3Event? // @ 指令冒号半边 / ? 变量 peek 失配回存事件（单槽，先入后兑）
   mut anon_swallow : Bool // N3Anon 合并后待吞的 `]`
 }
 
 ///|
 /// 构造：与 Lexermoon::new 同 view 口径
-pub fn N3LexerAdapter::new(view : ArrayView[Byte]) -> N3LexerAdapter {
+fn N3LexerAdapter::new(view : ArrayView[Byte]) -> N3LexerAdapter {
   {
     inner: Lexermoon::new(view),
     data: view,
@@ -336,7 +336,7 @@ fn eq_ignore_case(data : ArrayView[Byte], off : Int, kw : Bytes) -> Bool {
 
 ///|
 /// LexerSource 实现：逐 token 分类；N3EOF 合法送达一次，其后 None=枯竭
-pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N3Event? {
+impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N3Event? {
   // 拆分/回存槽先兑现：@ 指令冒号半边、? 变量 peek 失配回存事件
   match self.pending {
     Some(ev) => {
@@ -351,7 +351,7 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
     self.anon_swallow = false
     match self.inner.next() {
       Some(Token::Unknown((o2, l2))) if l2 == 1 && self.data[o2] == b']' => ()
-      _ => return Some(N3Event::N3Unknown((self.pos(), 0)))
+      _ => return Some(N3Event::N3Unknown((LexerSource::pos(self), 0)))
     }
   }
   match self.inner.next() {
@@ -466,12 +466,12 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
 }
 
 ///|
-pub impl LexerSource for N3LexerAdapter with fn pos(self : N3LexerAdapter) -> Int {
+impl LexerSource for N3LexerAdapter with fn pos(self : N3LexerAdapter) -> Int {
   self.inner.current_pos()
 }
 
 ///|
-pub impl LexerSource for N3LexerAdapter with fn byte_at(
+impl LexerSource for N3LexerAdapter with fn byte_at(
   self : N3LexerAdapter,
   offset : Int,
 ) -> Byte {

@@ -5,7 +5,6 @@
 // 词法器复用用户提供的 `lexer_mbt.mbt`（`Token` / `Lexermoon`；Token 与 C 版 Lexerc 同型同宽）
 
 import {
-  "moonbitlang/core/debug",
   // "moonbitlang/core/array",
   "moonbitlang/core/encoding/utf8",
   "thy1016/moonttl/gen_nquads" @nquads,

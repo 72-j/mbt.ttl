@@ -63,7 +63,7 @@ pub(all) enum N3Event {
 }
 
 ///|
-pub(all) enum N3State {
+priv enum N3State {
   N3ExpectSubject
   N3ExpectPredicate
   N3ExpectObject
@@ -124,16 +124,16 @@ pub(all) enum N3State {
 ///|
 /// 重置粒度：每个变体显式列出"清谁"，未列字段一律保留（防错误重置）。
 /// 粒度不回头写 state —— state 由转移表的 to= 负责，两者正交。
-pub(all) enum ResetScope {
+priv enum ResetScope {
   Object // 清 object；保留 subject/predicate/graph
   PredObj // 清 predicate/object；保留 subject/graph
   SPO // 清 subject/predicate/object；保留 graph（N3 口径：无图块，g 槽恒默认图）
   All // 清 subject/predicate/object/graph（N3 语句全清口径）
-} derive(Debug)
+}
 
 ///|
 /// Effect 枚举：状态机可能产生的副作用（纯数据）
-pub(all) enum N3Effect {
+priv enum N3Effect {
   Continue
   EmitQuad(ResetScope)
   Reset(ResetScope)
@@ -145,7 +145,7 @@ pub(all) enum N3Effect {
 
 ///|
 /// FSM 运行时上下文：ctx 提供状态（state）与业务数据（其余字段）
-pub(all) struct N3Context {
+priv struct N3Context {
   mut state : N3State
   emit_queue : Array[N3PendingQuad] // Sequence 多发队列（役22 下沉 ctx）：interpret FIFO 入队、next() 顶部排空
   mut subject : Span?
@@ -178,7 +178,7 @@ pub(all) struct N3Context {
 
 ///|
 /// 状态机初始上下文
-pub fn N3Context::new() -> N3Context {
+fn N3Context::new() -> N3Context {
   {
     state: N3ExpectSubject,
     emit_queue: [],
@@ -213,7 +213,7 @@ pub fn N3Context::new() -> N3Context {
 
 ///|
 /// 原地重置：按 scope 清槽位，未列字段一律保留（粒度语义见 ResetScope）
-pub fn N3Context::reset(self : N3Context, scope : ResetScope) -> Unit {
+fn N3Context::reset(self : N3Context, scope : ResetScope) -> Unit {
   match scope {
     ResetScope::Object => self.object = None
     ResetScope::PredObj => {
@@ -244,15 +244,15 @@ pub(all) struct N3PendingQuad {
   obj : Span?
   graph : Span?
   pk : PredKind
-  pver : Int
-  bver : Int
-  iver : Int
+  prefix_version : Int
+  base_version : Int
+  iri_version : Int
   subj_shell : Bool
 } derive(Eq)
 
 ///|
 /// 发射槽位脏净判定：任一发射槽非空即有待发射残留（loop 的 EOF 收尾判据）
-pub fn N3Context::has_pending(self : N3Context) -> Bool {
+fn N3Context::has_pending(self : N3Context) -> Bool {
   self.subject is Some(_) ||
   self.predicate is Some(_) ||
   self.object is Some(_) ||
@@ -261,16 +261,16 @@ pub fn N3Context::has_pending(self : N3Context) -> Bool {
 
 ///|
 /// 发射槽位快照：ctx → 发射边界载荷（loop 模板发射点调用，字段映射随 ctx 生成）
-pub fn N3Context::snapshot(self : N3Context) -> N3PendingQuad {
+fn N3Context::snapshot(self : N3Context) -> N3PendingQuad {
   {
     subj: self.subject,
     pred: self.predicate,
     obj: self.object,
     graph: self.graph,
     pk: self.pred_kind,
-    pver: self.prefixes.length(),
-    bver: self.bases.length(),
-    iver: self.iri_upcast,
+    prefix_version: self.prefixes.length(),
+    base_version: self.bases.length(),
+    iri_version: self.iri_upcast,
     subj_shell: self.subj_shell,
   }
 }
@@ -279,7 +279,7 @@ pub fn N3Context::snapshot(self : N3Context) -> N3PendingQuad {
 /// 第三条业务面：LoopPolicy —— 主循环模板的领域钩子（生成契约，Engine 提供实现）。
 /// 循环骨架是固定模板（engine：入口/终止 → step 步进 → Effect 分发 → 错误降级），
 /// 领域知识（入口重置/行恢复/EOF 判脏/失败映射）全部收敛到本 trait。
-pub trait N3LoopPolicy {
+priv trait N3LoopPolicy {
   fn begin_record(Self) -> Unit
   fn recover(Self, Span) -> Unit
   fn finish_at_end(Self) -> Result[N3PendingQuad, ParseError]?
@@ -288,7 +288,7 @@ pub trait N3LoopPolicy {
 
 ///|
 /// Action 执行或状态转移阶段的错误
-pub(all) enum N3ActionError {
+priv enum N3ActionError {
   UnexpectedEvent(N3State, N3Event) // 状态机引擎抛出：当前状态未定义该事件的转移
   BusinessFailed(String) // 用户业务逻辑抛出：Action 执行失败（如解析格式错误）
 }
@@ -296,7 +296,7 @@ pub(all) enum N3ActionError {
 ///|
 /// Actions trait：actions 提供逻辑，Self 携带运行时数据
 /// 每个方法：(ctx, 事件载荷) → 副作用意图或错误（ctx 为原地写，state 由 step 管理）
-pub trait N3Actions {
+priv trait N3Actions {
   fn set_subject(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn set_predicate(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn set_object(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
@@ -398,7 +398,7 @@ pub trait N3Actions {
 ///|
 /// FSM Driver（mutable）：接收事件，原地推进 ctx，返回副作用意图或错误
 /// ctx 提供状态（mut，state 由本函数独占写入），event 提供数据，actions 提供逻辑
-pub fn[A : N3Actions] step(
+fn[A : N3Actions] step(
   ctx : N3Context,
   event : N3Event,
   actions : A,
@@ -2031,7 +2031,7 @@ pub fn[A : N3Actions] step(
 
 ///|
 /// 副作用执行阶段的错误（第二层）
-pub(all) enum N3EffectError {
+priv enum N3EffectError {
   SinkFailed(String) // 下游写入失败（可恢复）
   Fatal(String) // 致命错误，需要终止状态机
 }
@@ -2039,9 +2039,9 @@ pub(all) enum N3EffectError {
 ///|
 /// 第二层 EffectHandler（役22 接活定案·题1=A 全控）：interpret = 唯一效果
 /// 解释器（engine.next 只做 取事件 → step → interpret → 上抛）；handle_* =
-/// 观测/容灾挂点（默认无操作，覆盖即挂切面，零语义副作用）；snapshot/
+/// 观测/容灾挂点（默认无操作，覆盖即挂切面，零语义副作用）
 /// apply_scope 归位 N3Context，on_pop_bnp/on_open_slot 由引擎注入动作机械
-pub trait N3EffectHandler {
+priv trait N3EffectHandler {
   // —— 观测/容灾挂点：意图级通知，先于机械（Result 为容灾通道预留）——
   fn handle_emit_quad(Self, ResetScope) -> Result[Unit, N3EffectError] = _
   fn handle_reset(Self, ResetScope) -> Result[Unit, N3EffectError] = _
@@ -2052,7 +2052,6 @@ pub trait N3EffectHandler {
     N3EffectError,
   ] = _
   // —— 组装机械归位：默认直调 N3Context；on_* 由引擎覆盖注入动作 ——
-  fn snapshot(Self, ctx : N3Context) -> N3PendingQuad = _
   fn apply_scope(Self, ctx : N3Context, scope : ResetScope) -> Unit = _
   fn on_pop_bnp(Self, ctx : N3Context) -> Unit = _
   fn on_open_slot(
@@ -2098,16 +2097,10 @@ impl N3EffectHandler with fn handle_open_slot(_self, _span, _typ, _ret_state) {
 
 ///|
 /// 单个效果的解释结果（loop 级控制流意图）
-pub(all) enum N3EffectOutcome {
+priv enum N3EffectOutcome {
   KeepGoing // 无产出，继续循环
   YieldQuad(N3PendingQuad) // 上抛一个组装好的 pending quad
   Stop // 终止循环
-}
-
-///|
-/// snapshot 模板默认：归位 N3Context::snapshot（发射槽位打包，不再再实现）
-impl N3EffectHandler with fn snapshot(_self, ctx) {
-  ctx.snapshot()
 }
 
 ///|

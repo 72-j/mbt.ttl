@@ -185,8 +185,8 @@ pub(all) struct TrigPendingQuad {
   obj : Span?
   graph : Span?
   pk : PredKind
-  pver : Int
-  bver : Int
+  prefix_version : Int
+  base_version : Int
   subj_shell : Bool
 } derive(Eq)
 
@@ -210,8 +210,8 @@ pub fn TrigContext::snapshot(self : TrigContext) -> TrigPendingQuad {
     obj: self.object,
     graph: self.graph,
     pk,
-    pver: self.prefixes.length(),
-    bver: self.bases.length(),
+    prefix_version: self.prefixes.length(),
+    base_version: self.bases.length(),
     subj_shell: self.subj_shell,
   }
 }

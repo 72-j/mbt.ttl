@@ -79,7 +79,7 @@ impl TrigActions for Hooks with fn set_base(
   iri : Span,
 ) -> Result[TrigEffect, TrigActionError] {
   ctx.base = Some(iri)
-  // ★1 base 链：append-only（物化层按 bver 折叠出该 quad 的生效 base）；
+  // ★1 base 链：append-only（物化层按 base_version 折叠出该 quad 的生效 base）；
   // ctx.base 单槽保留 = 最新声明（构造器不再读它，仅簿记兼容）
   ctx.bases.push(iri)
   Ok(TrigEffect::Continue)

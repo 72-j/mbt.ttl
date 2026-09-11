@@ -10,11 +10,8 @@ fn bytes_of(input : String) -> Array[Byte] {
 ///|
 fn view_str(data : ArrayView[Byte], span : (Int, Int)) -> String {
   let (off, len) = span
-  let buf = StringBuilder()
-  for i in 0..<len {
-    buf.write_char(data[off + i].to_char())
-  }
-  buf.to_string()
+  // decode_lossy 同序列化器口径——严禁逐字节 to_char 拼多字节（役27a 与 mat_vs 归一）
+  @utf8.decode_lossy(Bytes::from_array(data[off:off + len]))
 }
 
 ///|
@@ -131,13 +128,13 @@ test "骨架: EOF 判脏 + 自排水" {
 }
 
 ///|
-test "骨架: @prefix 账本 pver" {
+test "骨架: @prefix 账本 prefix_version" {
   let input = "@prefix : <http://ex/> .\n:s :p :o .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
   assert_eq(errors.length(), 0)
   assert_eq(quads.length(), 1)
-  assert_eq(quads[0].pver, 1)
+  assert_eq(quads[0].prefix_version, 1)
 }
 
 ///|
@@ -162,7 +159,7 @@ test "切片: 端到端 n3_parser（前缀 + 集合宾位）" {
   // 集合单一 BNode = `(` span（开括号即身份）
   let o = quads[0].o
   assert_eq(o.1, 1)
-  assert_eq(quads[0].pver, 1)
+  assert_eq(quads[0].prefix_version, 1)
   assert_true(quads[0].g is None)
 }
 
@@ -329,8 +326,8 @@ test "役2: 集合元素变量 + bnp 宾位变量" {
 
 ///|
 test "役2: 全链路 round-trip——变量字节保真回写" {
-  // 绝对 IRI：mat_chain 无 base_fallback（相对 IRI 落 base-bad 桶）
-  let (emits, errors) = mat_chain("?s <http://p> ?o .\n")
+  // 绝对 IRI：parse_materialize 无 base_fallback（相对 IRI 落 base-bad 桶）
+  let (emits, errors) = parse_materialize("?s <http://p> ?o .\n")
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 1)
   match N3Serializer::new().serialize(emits) {
@@ -1037,40 +1034,42 @@ test "役13: 量化指令——@forAll/@forSome 指令头接表，顶层/公式�
 /// （第二条 EmitQuad 粒度随收口事件）。
 test "役18 宾位贴路径全展开（词法解胶 + path_obj_close 双发）" {
   // 基本形：跳边 ( _:1, q, "v" ) + 外层语句 ( s, p, _:1 )，双 quad 同一 fresh
-  let (emits, errors) = mat_chain("@prefix : <http://d/> .\n:s :p \"v\"^:q .\n")
+  let (emits, errors) = parse_materialize(
+    "@prefix : <http://d/> .\n:s :p \"v\"^:q .\n",
+  )
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 2)
-  assert_eq(mat_vs(emits[0].predicate), "<http://d/q>")
-  assert_eq(mat_vs(mat_obj(emits[0])), "\"v\"")
+  assert_eq(emit_predicate(emits[0]), "<http://d/q>")
+  assert_eq(emit_object(emits[0]), "\"v\"")
   // 同一 fresh 身份：语句宾位 = 跳边主语
-  assert_true(mat_vs(mat_subj(emits[0])) == mat_vs(mat_obj(emits[1])))
-  assert_eq(mat_vs(mat_subj(emits[1])), "<http://d/s>")
-  assert_eq(mat_vs(emits[1].predicate), "<http://d/p>")
+  assert_true(emit_subject(emits[0]) == emit_object(emits[1]))
+  assert_eq(emit_subject(emits[1]), "<http://d/s>")
+  assert_eq(emit_predicate(emits[1]), "<http://d/p>")
   // 多跳链：fresh 链独立（A→B），外层语句归属终尾 B
-  let (emits2, errors2) = mat_chain(
+  let (emits2, errors2) = parse_materialize(
     "@prefix : <http://d/> .\n@prefix p: <http://p/> .\n:s :p \"v\"^p:one^p:two .\n",
   )
   assert_eq(errors2.length(), 0)
   assert_eq(emits2.length(), 3)
-  assert_true(mat_vs(mat_obj(emits2[1])) == mat_vs(mat_subj(emits2[0])))
-  assert_true(mat_vs(mat_subj(emits2[1])) != mat_vs(mat_subj(emits2[0])))
+  assert_true(emit_object(emits2[1]) == emit_subject(emits2[0]))
+  assert_true(emit_subject(emits2[1]) != emit_subject(emits2[0]))
   // 外层语句归属终尾
-  assert_true(mat_vs(mat_obj(emits2[2])) == mat_vs(mat_subj(emits2[1])))
+  assert_true(emit_object(emits2[2]) == emit_subject(emits2[1]))
   // `,` 续位：各路径各得一语句（第二条 EmitQuad Object 粒度，s/p 存活续位）
-  let (emits3, errors3) = mat_chain(
+  let (emits3, errors3) = parse_materialize(
     "@prefix : <http://d/> .\n@prefix s: <http://s/> .\n@prefix lang: <http://lang/> .\n:x s:label \"Help!\"^lang:eng, \"foo\"^lang:fr .\n",
   )
   assert_eq(errors3.length(), 0)
   assert_eq(emits3.length(), 4)
-  assert_true(mat_vs(mat_obj(emits3[1])) != mat_vs(mat_obj(emits3[3])))
+  assert_true(emit_object(emits3[1]) != emit_object(emits3[3]))
   // `;` 续位：真语句 (:s,:r,:w) 续组完好（PredObj 粒度保 s 存活）
-  let (emits4, errors4) = mat_chain(
+  let (emits4, errors4) = parse_materialize(
     "@prefix : <http://d/> .\n:s :p \"v\"^:q ; :r :w .\n",
   )
   assert_eq(errors4.length(), 0)
   assert_eq(emits4.length(), 3)
-  assert_eq(mat_vs(emits4[2].predicate), "<http://d/r>")
-  assert_eq(mat_vs(mat_subj(emits4[2])), "<http://d/s>")
+  assert_eq(emit_predicate(emits4[2]), "<http://d/r>")
+  assert_eq(emit_subject(emits4[2]), "<http://d/s>")
 }
 
 ///|
@@ -1081,28 +1080,28 @@ test "役18 宾位贴路径全展开（词法解胶 + path_obj_close 双发）" 
 ///   prefix_reassigned_and_used/qvars/path2 正例实证），值语义 = 首匹配胜。
 test "役20 负例缺口收口（this 晋升门 + 声明名验形 + 重定义宽容）" {
   // ① thisadoc 最小形：@keywords 声明后文档级 this → Unknown 无表行 → perr
-  let (e1, err1) = mat_chain(
+  let (e1, err1) = parse_materialize(
     "@keywords this . @prefix : <#> . this :a :Doc .\n",
   )
   assert_eq(e1.length(), 0)
   assert_true(err1.length() > 0)
   // ② qname-as-prefix 最小形：声明名带本地部，零 quad 也报（账本门）
-  let (e2, err2) = mat_chain("@prefix foo:bar <> .\n")
+  let (e2, err2) = parse_materialize("@prefix foo:bar <> .\n")
   assert_eq(e2.length(), 0)
   assert_true(err2.length() > 0)
   // ③ 同-IRI 重声明宽容：全净
-  let (e3, err3) = mat_chain(
+  let (e3, err3) = parse_materialize(
     "@prefix p: <http://a/> . @prefix p: <http://a/> . p:x p:y p:z .\n",
   )
   assert_eq(err3.length(), 0)
   assert_eq(e3.length(), 1)
   // ④ 异-IRI 重定义宽容 + 值语义首匹配胜（qvars/path2/turtle-subm-25 同形）
-  let (e4, err4) = mat_chain(
+  let (e4, err4) = parse_materialize(
     "@prefix lang: <http://d/> . @prefix lang: <http://e/> . lang:x lang:y lang:z .\n",
   )
   assert_eq(err4.length(), 0)
   // ④ 异-IRI 重定义宽容 + 值语义后声明胜（qvars/path2/turtle-subm-25 同形）
-  assert_eq(mat_vs(mat_subj(e4[0])), "<http://e/x>") // 值语义 = 后声明胜（cwm/Turtle 官方口径）
+  assert_eq(emit_subject(e4[0]), "<http://e/x>") // 值语义 = 后声明胜（cwm/Turtle 官方口径）
 }
 
 // ===== 役24（R-05 错误累积 + R-06 nil 显式化）=====
@@ -1184,9 +1183,9 @@ test "R-06: zero-length span at non-lparen offset is rejected" {
     o: (10, 5),
     g: None,
     pk: Normal,
-    pver: 0,
-    bver: 0,
-    iver: 0,
+    prefix_version: 0,
+    base_version: 0,
+    iri_version: 0,
     subj_shell: false,
   }
   let (_, merrs) = mat.materialize_all([quad])
@@ -1227,4 +1226,12 @@ test "R-06: empty collection still yields rdf:nil through the gate" {
     }
   }
   assert_true(nil_seen)
+}
+
+///|
+/// 便捷入口（原 parser_slice 生产件，役28 R-08 随收窄移驻白盒测试面）
+fn n3_parser(data : Array[Byte]) -> (Array[QuadSpan], Array[ParseError]) {
+  let engine = N3Engine::from_bytes(data)
+  let parser = N3SliceParser::new(engine, data[:])
+  parser.parse_all()
 }

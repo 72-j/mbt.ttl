@@ -40,7 +40,7 @@ pub struct TrigMaterializer {
   base_fallback : String? // 外部 base（套件 runner 注入 test-URI 口径；doc @base 优先）
   scalar_only_escapes : Bool // RDF 1.2 方言开关：字面量 \u/\U 代理全禁（1.1 成对合法）
   mut fallback_parsed : @nquads.Iri? // 外部 fallback base 解析 memo（成功才记）
-  base_memo : Map[Int, @nquads.Iri] // bver → 折叠后的生效 base（链前缀稳定，append-only）
+  base_memo : Map[Int, @nquads.Iri] // base_version → 折叠后的生效 base（链前缀稳定，append-only）
   mut deep_validate : Bool // 深验融合开关（materialize_all 参数落位，materialize_quad 单入口读）
   fresh_ids : Map[Span, Span] // ★3 fresh 节点 memo：开括号全 span → arena 内 `_:genid<N>` span（链节点同 offset 不同长度，键含长度）
   arena : Array[Byte] // 展开字节缓冲（PrefName/'a'/数值/布尔/^^PrefName/相对 IRI 落这里）
@@ -50,7 +50,7 @@ pub struct TrigMaterializer {
 /// 构造：prefixes 传引擎 ctx.prefixes 的引用（同一账本，后声明覆盖先声明），
 /// 生命周期由调用方保证：parse_all 返回之后传入、物化期间保持只读、借用不持有。
 /// bases 传 ctx.bases（★1 base 链，同一账本）。物化器不再吃单槽 base——每条
-/// quad 的生效 base 由其 bver 折叠链得出（中途换 base 不污染历史 quad）；
+/// quad 的生效 base 由其 base_version 折叠链得出（中途换 base 不污染历史 quad）；
 /// base_fallback 供无 @base 覆盖段（套件正例按 test-URI 解析相对 IRI）
 pub fn TrigMaterializer::new(
   data : ArrayView[Byte],
@@ -166,7 +166,7 @@ fn view_has_scheme(view : ArrayView[Byte]) -> Bool {
 fn TrigMaterializer::resolve_prefname(
   self : TrigMaterializer,
   span : Span,
-  pver : Int,
+  prefix_version : Int,
 ) -> Result[(Span, Int)?, ParseError] {
   let (off, len) = span
   let mut colon = -1
@@ -208,12 +208,12 @@ fn TrigMaterializer::resolve_prefname(
       i = i + 1
     }
   }
-  // 账本查找（单次；从尾向前扫 = 后声明覆盖先声明；上界 pver = 发射时点账本长
+  // 账本查找（单次；从尾向前扫 = 后声明覆盖先声明；上界 prefix_version = 发射时点账本长
   //——★1 per-quad 快照：重声明前的 quad 只见老声明，中途改写不污染历史）。
   // 声明 token 自带尾冒号（"ex:" / 空前缀 ":"），归一化剥掉再比；空前缀展开
   // IRI = DefaultPrefixIRI
   let plen = self.prefixes.length()
-  let mut j = (if pver < plen { pver } else { plen }) - 1
+  let mut j = (if prefix_version < plen { prefix_version } else { plen }) - 1
   while j >= 0 {
     let (name, iri) = self.prefixes[j]
     let dn_len = if name.1 > 0 && self.data[name.0 + name.1 - 1] == b':' {
@@ -281,10 +281,10 @@ fn TrigMaterializer::write_prefname_iri(
 fn TrigMaterializer::expand_prefname(
   self : TrigMaterializer,
   span : Span,
-  pver : Int,
-  bver : Int,
+  prefix_version : Int,
+  base_version : Int,
 ) -> Result[Span?, ParseError] {
-  match self.resolve_prefname(span, pver) {
+  match self.resolve_prefname(span, prefix_version) {
     Err(e) => Err(e)
     Ok(None) => Ok(None)
     Ok(Some((iri, colon))) => {
@@ -293,8 +293,8 @@ fn TrigMaterializer::expand_prefname(
       if view_has_scheme(view[1:view.length() - 1]) {
         Ok(Some(raw))
       } else {
-        // 相对展开：按该 quad 的生效 base（bver 折叠链 → fallback）解析
-        let base_iri = match self.quad_base(bver) {
+        // 相对展开：按该 quad 的生效 base（base_version 折叠链 → fallback）解析
+        let base_iri = match self.quad_base(base_version) {
           Ok(b) => b
           Err(e) => return Err(e)
         }
@@ -325,7 +325,7 @@ fn TrigMaterializer::expand_prefname(
 fn TrigMaterializer::iri_term(
   self : TrigMaterializer,
   span : Span,
-  bver : Int,
+  base_version : Int,
 ) -> Result[ArrayView[Byte], ParseError] {
   let view = slice_span(self.data, span)
   let len = view.length()
@@ -340,8 +340,8 @@ fn TrigMaterializer::iri_term(
   if view_has_scheme(view[1:len - 1]) {
     return Ok(view) // 绝对：零拷贝保真
   }
-  // 相对：按该 quad 的生效 base（bver 折叠链 → fallback）解析
-  let base_iri = match self.quad_base(bver) {
+  // 相对：按该 quad 的生效 base（base_version 折叠链 → fallback）解析
+  let base_iri = match self.quad_base(base_version) {
     Ok(b) => b
     Err(e) => return Err(e)
   }
@@ -384,24 +384,24 @@ fn TrigMaterializer::fallback_base(
 }
 
 ///|
-/// ★1 per-quad base：按 bver 折叠 base 链（bases[0..bver]）——绝对 @base 重置
+/// ★1 per-quad base：按 base_version 折叠 base 链（bases[0..base_version]）——绝对 @base 重置
 /// 累计值，相对 @base 对累计值（链空落 fallback）按 RFC 3986 5.2 合并（Turtle 1.1
 /// 口径：@base 自身按在 scope base 解析，subm-27 链式依赖此语义）。链 append-only
-/// → 前缀稳定，bver 为键 memo。Err = 链上有坏声明（不 memo，逐 quad 重报）；
-/// Ok(None) = 该 quad 无生效 @base（bver=0，调用方落 fallback_base 口径）
+/// → 前缀稳定，base_version 为键 memo。Err = 链上有坏声明（不 memo，逐 quad 重报）；
+/// Ok(None) = 该 quad 无生效 @base（base_version=0，调用方落 fallback_base 口径）
 fn TrigMaterializer::base_at(
   self : TrigMaterializer,
-  bver : Int,
+  base_version : Int,
 ) -> Result[@nquads.Iri?, ParseError] {
-  if bver == 0 {
+  if base_version == 0 {
     return Ok(None)
   }
-  match self.base_memo.get(bver) {
+  match self.base_memo.get(base_version) {
     Some(b) => return Ok(Some(b))
     None => ()
   }
   let mut acc : @nquads.Iri? = None
-  for i in 0..<bver {
+  for i in 0..<base_version {
     let sp = self.bases[i]
     let view = slice_span(self.data, sp)
     let blen = view.length()
@@ -441,7 +441,7 @@ fn TrigMaterializer::base_at(
   }
   match acc {
     Some(b) => {
-      self.base_memo[bver] = b
+      self.base_memo[base_version] = b
       Ok(Some(b))
     }
     None => Ok(None)
@@ -449,13 +449,13 @@ fn TrigMaterializer::base_at(
 }
 
 ///|
-/// 该 quad 的生效 base（bver 链折叠 → fallback）；两者皆无则 Err——相对词项
+/// 该 quad 的生效 base（base_version 链折叠 → fallback）；两者皆无则 Err——相对词项
 /// 无处解析。结果恒绝对（链项经 scheme 嗅探 + parse，fallback 解析自带 scheme）
 fn TrigMaterializer::quad_base(
   self : TrigMaterializer,
-  bver : Int,
+  base_version : Int,
 ) -> Result[@nquads.Iri, ParseError] {
-  let b = match self.base_at(bver) {
+  let b = match self.base_at(base_version) {
     Ok(b) => b
     Err(e) => return Err(e)
   }
@@ -568,7 +568,7 @@ fn literal_body_end(data : ArrayView[Byte], span : Span) -> Int {
 fn TrigMaterializer::materialize_literal(
   self : TrigMaterializer,
   span : Span,
-  pver : Int,
+  prefix_version : Int,
 ) -> Result[ArrayView[Byte], ParseError] {
   let (off, len) = span
   let body_end = literal_body_end(self.data, span)
@@ -577,7 +577,7 @@ fn TrigMaterializer::materialize_literal(
     self.data[body_end + 1] == b'^' &&
     self.data[body_end + 2] != b'<' {
     let dt_span : Span = (body_end + 2, off + len - (body_end + 2))
-    match self.resolve_prefname(dt_span, pver) {
+    match self.resolve_prefname(dt_span, prefix_version) {
       Err(e) => Err(e)
       Ok(None) => Ok(slice_span(self.data, span)) // 未声明：保真兜底，槽位深验拒
       Ok(Some((iri, colon))) => {
@@ -633,7 +633,7 @@ pub fn TrigMaterializer::materialize_quad(
           Err(e) => return Err(e)
         }
       } else {
-        match self.iri_term(quad.s, quad.bver) {
+        match self.iri_term(quad.s, quad.base_version) {
           Ok(v) =>
             match self.gate_iri(v) {
               Ok(v) => @nquads.Subject::Iri(v)
@@ -652,7 +652,8 @@ pub fn TrigMaterializer::materialize_quad(
       // ★3 fresh 结构节点：开括号 offset memo `_:genid<N>`，可信构造免深验
       @nquads.Subject::BNode(self.fresh_bnode(quad.s))
     } else {
-      match self.expand_prefname(quad.s, quad.pver, quad.bver) {
+      match
+        self.expand_prefname(quad.s, quad.prefix_version, quad.base_version) {
         Ok(Some(expanded)) =>
           match self.gate_iri(slice_span(self.arena[:], expanded)) {
             Ok(v) => @nquads.Subject::Iri(v)
@@ -681,7 +682,7 @@ pub fn TrigMaterializer::materialize_quad(
     let pspan = (start, self.arena.length() - start)
     slice_span(self.arena[:], pspan) // 词表构造可信，免深验
   } else if self.data[quad.p.0] == b'<' {
-    match self.iri_term(quad.p, quad.bver) {
+    match self.iri_term(quad.p, quad.base_version) {
       Ok(v) =>
         match self.gate_iri(v) {
           Ok(v) => v
@@ -690,7 +691,7 @@ pub fn TrigMaterializer::materialize_quad(
       Err(e) => return Err(e)
     }
   } else {
-    match self.expand_prefname(quad.p, quad.pver, quad.bver) {
+    match self.expand_prefname(quad.p, quad.prefix_version, quad.base_version) {
       Ok(Some(expanded)) =>
         match self.gate_iri(slice_span(self.arena[:], expanded)) {
           Ok(v) => v
@@ -726,7 +727,7 @@ pub fn TrigMaterializer::materialize_quad(
           Err(e) => return Err(e)
         }
       } else {
-        match self.iri_term(quad.o, quad.bver) {
+        match self.iri_term(quad.o, quad.base_version) {
           Ok(v) =>
             match self.gate_iri(v) {
               Ok(v) => @nquads.Object::Iri(v)
@@ -745,7 +746,7 @@ pub fn TrigMaterializer::materialize_quad(
       // ★3 fresh 结构节点：开括号 offset memo `_:genid<N>`，可信构造免深验
       @nquads.Object::BNode(self.fresh_bnode(quad.o))
     } else if c0 == b'"' || c0 == b'\'' {
-      match self.materialize_literal(quad.o, quad.pver) {
+      match self.materialize_literal(quad.o, quad.prefix_version) {
         Ok(v) =>
           match self.gate_literal(v) {
             Ok(v) => @nquads.Object::Literal(v)
@@ -766,7 +767,8 @@ pub fn TrigMaterializer::materialize_quad(
       let bspan = self.expand_boolean(quad.o)
       @nquads.Object::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
     } else {
-      match self.expand_prefname(quad.o, quad.pver, quad.bver) {
+      match
+        self.expand_prefname(quad.o, quad.prefix_version, quad.base_version) {
         Ok(Some(expanded)) =>
           match self.gate_iri(slice_span(self.arena[:], expanded)) {
             Ok(v) => @nquads.Object::Iri(v)
@@ -784,7 +786,7 @@ pub fn TrigMaterializer::materialize_quad(
     Some(g) => {
       let c0 = self.data[g.0]
       if c0 == b'<' {
-        match self.iri_term(g, quad.bver) {
+        match self.iri_term(g, quad.base_version) {
           Ok(v) =>
             match self.gate_iri(v) {
               Ok(v) => @nquads.GraphName::Iri(v)
@@ -803,7 +805,7 @@ pub fn TrigMaterializer::materialize_quad(
         // BlankNode 三事件；防御位照接）
         @nquads.GraphName::BNode(self.fresh_bnode(g))
       } else {
-        match self.expand_prefname(g, quad.pver, quad.bver) {
+        match self.expand_prefname(g, quad.prefix_version, quad.base_version) {
           Ok(Some(expanded)) =>
             match self.gate_iri(slice_span(self.arena[:], expanded)) {
               Ok(v) => @nquads.GraphName::Iri(v)
