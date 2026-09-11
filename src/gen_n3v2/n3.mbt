@@ -159,12 +159,10 @@ pub(all) struct N3Context {
   mut bases : Array[Span]
   mut slot_stack : Array[Slot]
   mut pred_kind : PredKind
-  mut variable_name : Span?
   mut path_src : Span?
   mut path_fwd : Bool
   mut path_pend : Span?
   mut path_tail : Span?
-  mut rule_side : RuleSide?
   mut iri_upcast : Int
   mut version_lit_ok : Bool
   mut kw_ledger : Array[Span]
@@ -195,12 +193,10 @@ pub fn N3Context::new() -> N3Context {
     bases: [],
     slot_stack: [],
     pred_kind: Normal,
-    variable_name: None,
     path_src: None,
     path_fwd: false,
     path_pend: None,
     path_tail: None,
-    rule_side: None,
     iri_upcast: 0,
     version_lit_ok: false,
     kw_ledger: [],

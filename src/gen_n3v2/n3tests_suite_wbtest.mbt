@@ -37,7 +37,7 @@ async test "N3Tests parser suite: first sweep (print-only)" {
     let kind = parts[0]
     let path = parts[1]
     if kind == "skip" {
-      skip_names.push(path.to_string())
+      skip_names.push(path.to_owned())
       continue
     }
     if kind != "neg" && kind != "pos" && kind != "eval" {

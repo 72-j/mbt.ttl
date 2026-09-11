@@ -44,12 +44,10 @@ pub(all) struct N3Context {
   mut bases : Array[(Int, Int)]
   mut slot_stack : Array[Slot]
   mut pred_kind : PredKind
-  mut variable_name : (Int, Int)?
   mut path_src : (Int, Int)?
   mut path_fwd : Bool
   mut path_pend : (Int, Int)?
   mut path_tail : (Int, Int)?
-  mut rule_side : RuleSide?
   mut iri_upcast : Int
   mut version_lit_ok : Bool
   mut kw_ledger : Array[(Int, Int)]
@@ -287,11 +285,6 @@ pub(all) enum ResetScope {
   SPO
   All
 } derive(@debug.Debug)
-
-pub(all) enum RuleSide {
-  Body
-  Head
-} derive(Eq)
 
 pub(all) struct Slot {
   typ : SlotType

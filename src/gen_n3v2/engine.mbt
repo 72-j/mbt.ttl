@@ -538,7 +538,7 @@ fn N3Context::take_pending(
 /// 役22 接活：引擎 handler 覆盖——PopBnp 意图兑现机械在 action（弹栈恢复，
 /// 帧携带返回状态），经 on_* 注入位进 interpret；其余成员全用套装默认
 ///（handle_* 无操作观测、snapshot/apply_scope 归位 ctx、interpret 唯一解释器）
-impl[L : LexerSource] N3EffectHandler for N3Engine[L] with fn on_pop_bnp(
+impl[L] N3EffectHandler for N3Engine[L] with fn on_pop_bnp(
   self : N3Engine[L],
   ctx : N3Context,
 ) -> Unit {
@@ -547,7 +547,7 @@ impl[L : LexerSource] N3EffectHandler for N3Engine[L] with fn on_pop_bnp(
 
 ///|
 /// OpenSlot 意图兑现：嵌套元素开帧，机械在 action（帧携带返回状态）
-impl[L : LexerSource] N3EffectHandler for N3Engine[L] with fn on_open_slot(
+impl[L] N3EffectHandler for N3Engine[L] with fn on_open_slot(
   self : N3Engine[L],
   ctx : N3Context,
   span : Span,
@@ -588,7 +588,7 @@ pub fn[L : LexerSource] N3Engine::next(
     match step(self.ctx, event, self.hooks) {
       Ok(effect) =>
         // 役22：解释在 interpret（套装默认体），此处只兑现 loop 控制流
-        match self.interpret(self.ctx, effect) {
+        match N3EffectHandler::interpret(self, self.ctx, effect) {
           KeepGoing => continue
           YieldQuad(quad) => return Some(Ok(quad))
           Stop => return None

@@ -1620,24 +1620,6 @@ fn mat_obj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
 }
 
 ///|
-fn mat_graph(e : @nquads.QuadEmit) -> ArrayView[Byte] {
-  match e.graph {
-    Iri(v) => v
-    BNode(v) => v
-    None => mat_empty[:]
-  }
-}
-
-///|
-/// 判定图名位是否为默认图（None 变体）
-fn mat_has_graph(e : @nquads.QuadEmit) -> Bool {
-  match e.graph {
-    None => false
-    _ => true
-  }
-}
-
-///|
 test "役3: 主位路径官方形——! 跳附节点，真谓词收口（cwm path1 口径）" {
   // 官方语料（cwm_syntax/path1.n3）：路径附于节点，后随真谓词 + 宾语
   // :albert!fam:mother fam:sister :auntieAnne ≡ (albert,!fam:mother→g) + (g,fam:sister,auntieAnne)
@@ -1693,7 +1675,7 @@ test "役3: 基动词 !/^ 中转 hop——desugar 双 quad，genid 同体" {
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 2)
   let g1 = mat_vs(mat_obj(emits[0]))
-  assert_true(g1.starts_with("_:genid"))
+  assert_true(g1.has_prefix("_:genid"))
   assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
   assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")
   assert_eq(mat_vs(mat_subj(emits[1])), g1)
@@ -1706,7 +1688,7 @@ test "役3: 基动词 !/^ 中转 hop——desugar 双 quad，genid 同体" {
   assert_eq(errors2.length(), 0)
   assert_eq(emits2.length(), 2)
   let g2 = mat_vs(mat_obj(emits2[0]))
-  assert_true(g2.starts_with("_:genid"))
+  assert_true(g2.has_prefix("_:genid"))
   assert_eq(mat_vs(mat_subj(emits2[1])), "<http://ex/o>")
   assert_eq(mat_vs(emits2[1].predicate), "<http://ex/q>")
   assert_eq(mat_vs(mat_obj(emits2[1])), g2)
@@ -1768,8 +1750,8 @@ test "役3: 三跳链——中转节点逐跳 fresh（!p!q!r 双 genid 互异）
   assert_eq(emits.length(), 3)
   let g1 = mat_vs(mat_obj(emits[0]))
   let g2 = mat_vs(mat_subj(emits[2]))
-  assert_true(g1.starts_with("_:genid"))
-  assert_true(g2.starts_with("_:genid"))
+  assert_true(g1.has_prefix("_:genid"))
+  assert_true(g2.has_prefix("_:genid"))
   assert_false(g1 == g2)
   assert_eq(mat_vs(mat_subj(emits[0])), "<http://ex/s>")
   assert_eq(mat_vs(emits[0].predicate), "<http://ex/p>")

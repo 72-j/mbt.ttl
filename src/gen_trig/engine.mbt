@@ -501,7 +501,7 @@ pub fn trig_parser(
 /// 锚宾语终点的原文连续区间，物化层据此合成 <<原文>> TT 壳。
 /// 错键支强制旗落假：subj_shell 是 ctx 直引 extra，不落旗内层 quad 无条件继承
 /// 壳旗被误包（役8 教训）。
-fn[L : LexerSource] TrigEngine::settle_shell(
+fn[L] TrigEngine::settle_shell(
   self : TrigEngine[L],
   pending : TrigPendingQuad,
 ) -> TrigPendingQuad {
@@ -521,7 +521,7 @@ fn[L : LexerSource] TrigEngine::settle_shell(
 ///|
 /// 役9 收口旗消费：annot_close 置真时清壳账（发射位快照之后、reset 之前调用；
 /// PredObj reset 保锚主语在槽——`|} ; …` 续锚口径）
-fn[L : LexerSource] TrigEngine::settle_annotation(self : TrigEngine[L]) -> Unit {
+fn[L] TrigEngine::settle_annotation(self : TrigEngine[L]) -> Unit {
   if self.ctx.annot_close {
     self.ctx.annot_close = false
     self.ctx.subj_shell = false

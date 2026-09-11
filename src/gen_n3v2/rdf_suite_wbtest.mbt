@@ -72,7 +72,6 @@ fn n3_suite_n3_legal(name : String) -> Bool {
 /// Unified verdict: parse errors + materializer errors (incl. deep gates) merged;
 /// good files additionally require emits.length == quads.length
 fn n3_suite_verdict(
-  name : String,
   is_bad : Bool,
   perr_count : Int,
   emits : Array[@nquads.QuadEmit],
@@ -138,7 +137,6 @@ async fn run_n3_suite(
     )
     let (emits, merrs) = mat.materialize_all(quads)
     let ok = n3_suite_verdict(
-      file,
       is_bad,
       perrs.length(),
       emits,

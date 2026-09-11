@@ -10,6 +10,7 @@
 //   Context → Model   （只保留语义槽位；状态镜像为 ModelState）
 
 // 引擎 Actions trait 的包内别名（引擎侧需 pub(open) 才能跨包实现，见 system.mbt）
+
 ///|
 using @nquads {trait NQuadsActions}
 

@@ -1,6 +1,6 @@
 # N3 用户指南
 
-本文面向使用 `gen_n3` 包解析、物化与序列化 N3 数据的开发者与集成者。文档聚焦三件事：N3 格式本身、N3 与 Turtle/TriG/N-Quads 的关系，以及 `gen_n3` 的对外 API。
+本文面向使用 `gen_n3v2` 包解析、物化与序列化 N3 数据的开发者与集成者。文档聚焦三件事：N3 格式本身、N3 与 Turtle/TriG/N-Quads 的关系，以及 `gen_n3v2` 的对外 API。
 
 ---
 
@@ -104,7 +104,7 @@ N3 实现层通常把公式视为“不直接断言为真但参与规则推理�
 
 ## 2. 架构说明
 
-`gen_n3` 采用与 `gen_trig` 一致的生成契约分层：生成状态机 + 用户实现层 + 调度模板。
+`gen_n3v2` 采用与 `gen_trig` 一致的生成契约分层：生成状态机（表源再生）+ 用户实现层 + 调度模板。
 
 ### 2.1 分层职责
 
@@ -128,15 +128,15 @@ N3 实现层通常把公式视为“不直接断言为真但参与规则推理�
 典型入口：
 
 ```moonbit
-let engine = @gen_n3.N3Engine::from_bytes(data, dialect=@gen_n3.N3Dialect::N3)
-let slice = @gen_n3.SliceParser::new(engine, data[:])
+let engine = @gen_n3v2.N3Engine::from_bytes(data, dialect=@gen_n3v2.N3Dialect::N3)
+let slice = @gen_n3v2.N3SliceParser::new(engine, data[:])
 ```
 
 ### 2.3 生成状态机核心
 
 - `step()` 写入 `N3Context` 并根据转移表决定下一步。
-- `N3Context` 新增：`prefixes / bases / slot_stack / pred_kind / variable_name / rule_side / iri_upcast / version_lit_ok`。
-- 循环模板解释 `N3Effect`，新增 `Reset` / `Sequence` / `PopBnp` / `OpenSlot`，用于公式进入退出、属性列表收尾、集合链管理。
+- `N3Context` 持有指令/槽位/路径/关键词台账各轴：`prefixes / bases / slot_stack / pred_kind / path_src / path_fwd / path_pend / path_tail / iri_upcast / version_lit_ok` 等。
+- 循环模板解释 `N3Effect`（`Continue / EmitQuad / Reset / Done / Sequence / PopBnp / OpenSlot`），覆盖公式进入退出、属性列表收尾、集合链管理。
 
 ### 2.4 切片组装与物化分工
 
@@ -155,15 +155,20 @@ let slice = @gen_n3.SliceParser::new(engine, data[:])
 
 ```moonbit
 let input : Array[Byte] = ...
-let engine = @gen_n3.N3Engine::from_bytes(input, dialect=@gen_n3.N3Dialect::N3)
-let slice = @gen_n3.SliceParser::new(engine, input[:])
+let engine = @gen_n3v2.N3Engine::from_bytes(input, dialect=@gen_n3v2.N3Dialect::N3)
+let slice = @gen_n3v2.N3SliceParser::new(engine, input[:])
 let (quads, errors) = slice.parse_all()
 ```
 
 ### 3.2 物化（第一遍）
 
 ```moonbit
-let (emits, materialize_errors) = @gen_n3.materialize_all(quad_spans)
+let mat = @gen_n3v2.N3Materializer::new(
+  input[:],
+  slice.engine.ctx.prefixes,
+  bases=slice.engine.ctx.bases,
+)
+let (emits, materialize_errors) = mat.materialize_all(quads)
 ```
 
 物化后得到的是「已降到 RDF 视图」的 QuadEmit：
@@ -185,7 +190,7 @@ let (emits, materialize_errors) = @gen_n3.materialize_all(quad_spans)
 
 - `N3` 是 `Turtle` 的超集：支持公式、规则、变量、路径、集合。
 - `N3` 包含 `TriG` 的图块概念（以公式表达），但语义上“不强制断言图内为真”。
-- 当前 `gen_n3` 以四元组管线输出；公式与规则面可在物化层展开为普通 Quad 集合。
+- 当前 `gen_n3v2` 以四元组管线输出；公式与规则面可在物化层展开为普通 Quad 集合。
 
 ---
 
@@ -199,8 +204,8 @@ fn main {
     #|{ :Alice :likes :Bob }
     #|  => { :Bob :friendOf :Alice } .
   let data = @utf8.encode(content).to_array()
-  let engine = @gen_n3.N3Engine::from_bytes(data, dialect=@gen_n3.N3Dialect::N3)
-  let slice = @gen_n3.SliceParser::new(engine, data[:])
+  let engine = @gen_n3v2.N3Engine::from_bytes(data, dialect=@gen_n3v2.N3Dialect::N3)
+  let slice = @gen_n3v2.N3SliceParser::new(engine, data[:])
   let (quads, errors) = slice.parse_all()
   println("parsed \{quads.length()} quads, \{errors.length()} errors")
 }
@@ -238,7 +243,7 @@ fn main {
 
 ## 7. 约定与稳定性说明
 
-- `N3Dialect` 对外接口稳定；事件与效果枚举保持作者不变。
+- `N3Dialect` 对外接口稳定；事件与效果枚举保持不变。
 - `N3ActionError` / `N3EffectError` 用于内部回收。
 - 外部优先使用 `parse_all` / `parse_next` / `materialize_all`。
 
@@ -254,7 +259,7 @@ fn main {
    默认不直接断言；物化层可根据需求选择展开或保留。
 
 3. 变量 `?x` 的生命周期如何？  
-   `?x` 在规则前提/结论范围内有效；当前 `gen_n3` 不做规则执行，只负责语法与物化。
+   `?x` 在规则前提/结论范围内有效；当前 `gen_n3v2` 不做规则执行，只负责语法与物化。
 
 4. `math:`, `log:` 等内置谓词如何表示？  
    作为普通 IRI 或前缀写法出现在谓语位，下游可识别并评估。

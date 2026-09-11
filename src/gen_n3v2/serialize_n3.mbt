@@ -81,7 +81,7 @@ fn n3_append_terms(
 /// 序列化 quad 集合为语句串。布局：每语句一行 `s p o .\n`。
 /// 图名位出现即报错（N3 无图语法，不变量破坏不得静默降级）
 pub fn N3Serializer::serialize(
-  self : N3Serializer,
+  _self : N3Serializer,
   quads : Array[@nquads.QuadEmit],
 ) -> Result[String, ParseError] {
   let buf = StringBuilder()

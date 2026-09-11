@@ -26,12 +26,7 @@ pub(all) enum N3Dialect {
 /// 谓词来源标记（管线同源快照槽，随 quad 带出）。
 /// N3 按 ADR-003a：集合语法 ( ... ) 展开为单一 BNode，无合成链——恒 Normal；
 /// RDFFirst/RDFRest 变体仅为 ADR-003b 显式链物化预留。
-/// 布局与 trig ★3 四快照槽同源（pk/pver/bver/iver）。
-// pub(all) enum PredKind {
-//   Normal
-//   RDFFirst
-//   RDFRest
-// } derive(Eq)
+/// 布局与 trig ★3 四快照槽同源（pk/pver/bver/iver）。枚举本体生成器发射（n3.mbt）。
 
 ///|
 /// IRI 版本提升标记（ADR-003b 显式链专用）：文档显式书写 rdf:first/rdf:rest
@@ -105,14 +100,6 @@ pub(all) struct Slot {
 pub(all) enum SlotNodeId {
   SlotNodeId(Int)
 }
-
-///|
-/// 规则侧标记（ADR-005：`=>` / `<=` 只作内置谓词标识保留，不推理）。
-/// Body = 前件（`=>` 左侧 / `<=` 右侧）；Head = 后件，对偶。
-pub(all) enum RuleSide {
-  Body
-  Head
-} derive(Eq)
 
 ///|
 pub impl ErrOut for ParseError with fn message(self : ParseError) -> String {
