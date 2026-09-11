@@ -786,14 +786,11 @@ pub fn N3Materializer::materialize_quad(
     } else if (
         c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')
       ) &&
-      is_numeric_span(self.data, quad.s.0, quad.s.1) {
+      @nquads.is_numeric_span(self.data, quad.s.0, quad.s.1) {
       // 数值主语：词形全验后展开为可信构造，免深验（同宾语位口径）
       let nspan = self.expand_number(quad.s)
       @nquads.Subject::Literal(slice_span(self.arena[:], nspan))
-    } else if quad.s.1 == 4 && self.bool_at(quad.s, "true") {
-      let bspan = self.expand_boolean(quad.s)
-      @nquads.Subject::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
-    } else if quad.s.1 == 5 && self.bool_at(quad.s, "false") {
+    } else if @nquads.is_boolean_word(self.data, quad.s.0, quad.s.1) {
       let bspan = self.expand_boolean(quad.s)
       @nquads.Subject::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
     } else {
@@ -886,7 +883,7 @@ pub fn N3Materializer::materialize_quad(
     let is_num = (
         c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')
       ) &&
-      is_numeric_span(self.data, quad.o.0, quad.o.1)
+      @nquads.is_numeric_span(self.data, quad.o.0, quad.o.1)
     if c0 == b'<' {
       if quad.o.1 > 1 && self.data[quad.o.0 + 1] == b'<' {
         // 引用三元组壳（N3 宾位合法）：整段原文持有，字节保真；壳内 term-kind
@@ -938,10 +935,7 @@ pub fn N3Materializer::materialize_quad(
       // 展开追加后越界被 slice_span 钳成空视图
       let nspan = self.expand_number(quad.o)
       @nquads.Object::Literal(slice_span(self.arena[:], nspan))
-    } else if quad.o.1 == 4 && self.bool_at(quad.o, "true") {
-      let bspan = self.expand_boolean(quad.o)
-      @nquads.Object::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
-    } else if quad.o.1 == 5 && self.bool_at(quad.o, "false") {
+    } else if @nquads.is_boolean_word(self.data, quad.o.0, quad.o.1) {
       let bspan = self.expand_boolean(quad.o)
       @nquads.Object::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
     } else if c0 == b'{' {
@@ -1005,24 +999,6 @@ pub fn N3Materializer::materialize_quad(
     }
   }
   Ok({ subject, predicate, object, graph, })
-}
-
-///|
-/// 布尔词比对（span 原字节 vs ASCII 串，零分配）
-fn N3Materializer::bool_at(
-  self : N3Materializer,
-  span : Span,
-  word : String,
-) -> Bool {
-  if span.1 != word.length() {
-    return false
-  }
-  for i in 0..<word.length() {
-    if self.data[span.0 + i] != word[i].to_byte() {
-      return false
-    }
-  }
-  true
 }
 
 ///|

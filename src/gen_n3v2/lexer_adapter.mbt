@@ -1,14 +1,25 @@
 // ===== 词法适配层：Token → N3Event 逐 token 机械分类 =====
-// 克隆 trig lexer_adapter 骨架（同构函数族），N3 增量三件：
-//   ?x 变量 peek-merge：`?` 后零空格邻接无冒号 PrefName 合成 N3Variable
-//     （gen.md §4.2：裸 ? 语法错误、??x 不非法吞词——merge 只认邻接；
-//     peek 失配的 token 转事件入 pending 槽先入后兑，不丢 token）；
-//   langtag 词法期拆分：Literal token span 整段含 @lang（探针实测 Lit(6,6)
-//     覆盖 "x"@en）。以收引号锚定后嗅 @langtag——Lexermoon 吞边界口径下
-//     span 可能胖一字（零空格后随 ,/. 被吞），收引号锚定不受扰；拆不出
-//     （三引号含 lone-quote、内容 @、裸 @）退化为整段折文本，物化层权威拆分；
-//     ^^dt 折文本不拆（物化层拆口径，与集合解耦）；
-//   [] ANON peek-merge（trig 战役①同款）。
+// ★ 补偿点单点台账（役29 R-04）：Lexermoon 吞边界/整词出词口径下，词法
+//   边界修正全仓六处——五处在本文件，一处在引擎。一次词法口径变动必查此单：
+//   ① [] ANON peek-merge（本文件 next，trig 战役①同款）：`[` 后零空格窥
+//     `]` 合成 N3Anon（span 贯通），吞槽兑现吃 scanner 必扫出的 `]`；
+//   ② ?x 变量 peek-merge（本文件 next，gen.md §4.2）：`?` 后零空格邻接
+//     无冒号 PrefName 合成 N3Variable；失配 token 入 pending 先入后兑；
+//   ③ @ 指令零空格拆分（本文件 next）：`@prefix:`/`@base:` 整词扫出
+//     `kw:`（冒号是名字字符），@ 邻接拆关键词事件 + 冒号半边 pending；
+//   ④ `<-` 拆字（本文件 next，役16 A 桶）：IRI 宽容出词三形态拆
+//     Invert + 余量 pending（`<- `/`<-:p`/`<-<-p>`）；
+//   ⑤ langtag 词法期拆分（本文件 split_langtag）：Literal span 整段含
+//     @lang，收引号锚定嗅 @（span 可能胖一字，锚定不受扰）；拆不出折文本
+//     ——物化层权威拆分兜底；^^dt 折文本不拆；
+//   ⑥ 尾标点三瓣（engine.mbt trim_trailing_punct）：语句 ./,/; 被吞进
+//     词尾，引擎剥离 + 合成事件回灌转移表（一词两事件不进表——1事件→1
+//     转移模型不动）。
+//   钉面（动 Lexermoon 口径先跑三面）：n3_wbtest（①–⑤ 事件流）/
+//   engine_wbtest 骨架 Comma·Semicolon 合成件（⑥）/ lexerc_parity_wbtest
+//   （Lexermoon≡C 共享电池，已知分歧形态不入电池）。
+//   数值/布尔复核 = @nquads.is_numeric_span / is_boolean_word（役29 R-15
+//   单一实现，gen_nquads/numeric.mbt——adapter/校验/物化三面同源）。
 // 分类面：数值整段一词 → N3Literal；双字节 => <= → Implies/ImpliedBy；
 //   单字节 { } [ ] ( ) @ = ! ^ → 结构/路径事件（N3 无 ~/{| |}/graph/version，
 //   落 Unknown）；@forAll/@forSome/@keywords @ 邻接精确拼写 → *Kw（N3 正牌）；
@@ -69,7 +80,7 @@ fn token_to_n3_event(data : ArrayView[Byte], token : Token) -> N3Event {
 ///（span 口径：物化层展开 typed literal）；双字节 => <= → 蕴含事件；
 /// 单字节结构字符 { } [ ] ( ) @ = ! ^ 各自成事件；其余保持 Unknown（表外垃圾）
 fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
-  if is_numeric_span(data, span.0, span.1) {
+  if @nquads.is_numeric_span(data, span.0, span.1) {
     return N3Event::N3Literal(span, None)
   }
   if span.1 == 2 {
@@ -128,36 +139,14 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
 }
 
 ///|
-/// 数值形态复核（词法整段扫描口径：[+-]?([0-9]+('.'[0-9]*)? | '.'[0-9]+)([eE][+-]?[0-9]+)?）：
-/// 首字节 数字/+/−/.，至少一个数字，其余仅 . e E + -
-fn is_numeric_span(data : ArrayView[Byte], off : Int, len : Int) -> Bool {
-  let c0 = data[off]
-  if !(c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')) {
-    return false
-  }
-  let mut has_digit = false
-  for i in 0..<len {
-    let c = data[off + i]
-    if c >= b'0' && c <= b'9' {
-      has_digit = true
-    } else if !(c == b'.' || c == b'e' || c == b'E' || c == b'+' || c == b'-') {
-      return false
-    }
-  }
-  has_digit
-}
-
-///|
 /// PrefName 内容分类：'a' 缩写 / 指令关键词 / N3 量化指令 / 裸 is·of（役6 事件化）/ 普通前缀名。
 /// 只对完整 span 内容精确判别："a:x"、"prefix:" 这类不会误分类。
 fn classify_prefname(data : ArrayView[Byte], span : Span) -> N3Event {
   let (off, len) = span
   if len == 1 && data[off] == b'a' {
     N3Event::N3KeywordA(span)
-  } else if len == 4 && eq_lower(data, off, b"true") {
-    // 布尔字面量（小写精确；物化层展开 xsd:boolean）
-    N3Event::N3Literal(span, None)
-  } else if len == 5 && eq_lower(data, off, b"false") {
+  } else if @nquads.is_boolean_word(data, off, len) {
+    // 布尔字面量（小写精确；物化层展开 xsd:boolean）——R-15 共享判定
     N3Event::N3Literal(span, None)
   } else if len == 7 && eq_ignore_case(data, off, b"version") {
     // RDF 1.2 VERSION directive keyword (case-insensitive; global reserved word,

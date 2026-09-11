@@ -307,27 +307,14 @@ fn validate_term(
     return None
   }
   // 数值/布尔字面量（span 口径，轻量验证）：物化层展开 typed literal，无前缀依赖。
-  // 数值族（含前导点 `.1`/符号 `-.2e3`）统一交 is_numeric_span 复核（词法同口径）
+  // 数值族（含前导点 `.1`/符号 `-.2e3`）统一交 is_numeric_span 复核（词法同口径）；
+  // 布尔词同源（役29 R-15：识别件独此一份，gen_nquads/numeric.mbt）
   if c0 == b'.' || c0 == b'+' || c0 == b'-' || (c0 >= b'0' && c0 <= b'9') {
-    if is_numeric_span(data, span.0, span.1) {
+    if @nquads.is_numeric_span(data, span.0, span.1) {
       return None
     }
   }
-  if (
-      n == 4 &&
-      view[0] == b't' &&
-      view[1] == b'r' &&
-      view[2] == b'u' &&
-      view[3] == b'e'
-    ) ||
-    (
-      n == 5 &&
-      view[0] == b'f' &&
-      view[1] == b'a' &&
-      view[2] == b'l' &&
-      view[3] == b's' &&
-      view[4] == b'e'
-    ) {
+  if @nquads.is_boolean_word(data, span.0, span.1) {
     return None
   }
   // PrefName / 'a' 缩写

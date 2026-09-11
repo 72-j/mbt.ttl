@@ -8,6 +8,10 @@ import {
 // Values
 pub fn is_banned_langstring_iri(ArrayView[Byte]) -> Bool
 
+pub fn is_boolean_word(ArrayView[Byte], Int, Int) -> Bool
+
+pub fn is_numeric_span(ArrayView[Byte], Int, Int) -> Bool
+
 pub fn materialize_all(Array[QuadSpan]) -> (Array[QuadEmit], Array[ParseError])
 
 pub let owl_sameas : NamedNodeRef

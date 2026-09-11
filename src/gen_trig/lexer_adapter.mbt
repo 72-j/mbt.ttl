@@ -64,7 +64,7 @@ fn token_to_trig_event(data : ArrayView[Byte], token : Token) -> TrigEvent {
 ///（span 口径：物化层展开 typed literal）；单字节结构字符 { } [ ] ( ) @ 各自成事件；
 /// 其余保持 Unknown（表外垃圾）
 fn classify_structural(data : ArrayView[Byte], span : Span) -> TrigEvent {
-  if is_numeric_span(data, span.0, span.1) {
+  if @nquads.is_numeric_span(data, span.0, span.1) {
     return TrigEvent::TrigLiteral(span)
   }
   if span.1 == 2 {
@@ -118,45 +118,14 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> TrigEvent {
 }
 
 ///|
-/// 数值形态复核（词法整段扫描口径：[+-]?([0-9]+('.'[0-9]*)? | '.'[0-9]+)([eE][+-]?[0-9]+)?）：
-/// 首字节 数字/+/−/.，至少一个数字，其余仅 . e E + -
-fn is_numeric_span(data : ArrayView[Byte], off : Int, len : Int) -> Bool {
-  let c0 = data[off]
-  if !(c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')) {
-    return false
-  }
-  let mut has_digit = false
-  for i in 0..<len {
-    let c = data[off + i]
-    if c >= b'0' && c <= b'9' {
-      has_digit = true
-    } else if !(c == b'.' || c == b'e' || c == b'E' || c == b'+' || c == b'-') {
-      return false
-    }
-  }
-  has_digit
-}
-
-///|
 /// PrefName 内容分类：'a' 缩写 / 指令关键词（大小写不敏感）/ 普通前缀名。
 /// 只对完整 span 内容精确判别："a:x"、"prefix:" 这类不会误分类。
 fn classify_prefname(data : ArrayView[Byte], span : Span) -> TrigEvent {
   let (off, len) = span
   if len == 1 && data[off] == b'a' {
     TrigEvent::TrigKeywordA(span)
-  } else if len == 4 &&
-    data[off] == b't' &&
-    data[off + 1] == b'r' &&
-    data[off + 2] == b'u' &&
-    data[off + 3] == b'e' {
-    // 布尔字面量（小写精确；物化层展开 xsd:boolean）
-    TrigEvent::TrigLiteral(span)
-  } else if len == 5 &&
-    data[off] == b'f' &&
-    data[off + 1] == b'a' &&
-    data[off + 2] == b'l' &&
-    data[off + 3] == b's' &&
-    data[off + 4] == b'e' {
+  } else if @nquads.is_boolean_word(data, off, len) {
+    // 布尔字面量（小写精确；物化层展开 xsd:boolean）——役29 R-15 共享判定
     TrigEvent::TrigLiteral(span)
   } else if len == 5 && eq_ignore_case(data, off, b"graph") {
     // SPARQL 风格 GRAPH 关键字（大小写不敏感；裸词 "graph" 本就非法，无误分类面）

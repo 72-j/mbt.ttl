@@ -188,6 +188,7 @@ fn[L : LexerSource] is_deprecated_this(lexer : L, span : Span) -> Bool {
 /// 吞边界口径的引擎层修正：七类带 payload 术语事件做尾标点三瓣裁决，
 /// 其余事件原样直通（结构 token 词法干净，无吞并口径）。
 /// 返回 (修正后事件, 待合成事件?)——待合成事件由 loop 在本事件处理完后喂表。
+/// （补偿点台账⑥：全单见 lexer_adapter.mbt 头注，役29 R-04。）
 fn[L : LexerSource] N3Engine::normalize_term_span(
   self : N3Engine[L],
   event : N3Event,
