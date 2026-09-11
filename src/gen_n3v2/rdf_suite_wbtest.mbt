@@ -100,12 +100,15 @@ async fn run_n3_suite(
   suite_base : String,
   pin? : Bool = false,
   scalar_only? : Bool = false, // RDF 1.2: surrogate escapes banned outright (pairs too)
+  expect_pass? : Int = -1, // 役25 绝对计数钉（-1 不钉）：files 漂移即红
+  expect_strict_gap? : Int = -1, // 影子扫描缺口基线（-1 不钉；清零后升格主判定）
 ) -> Unit {
   let files = @fs.readdir(test_dir, sort=true).filter(fn(x) {
     x.has_suffix(suffix) && !x.has_prefix("manifest")
   })
   let mut passed = 0
   let mut failed = 0
+  let mut strict_gap = 0 // 影子缺口：宽容零错而严格翻脸的 good 文件（C-07 实证位）
   for file in files {
     let is_bad = n3_suite_is_bad(file) && !n3_suite_n3_legal(file)
     let data = @fs.read_file("\{test_dir}/\{file}").binary().to_array()
@@ -113,6 +116,19 @@ async fn run_n3_suite(
     let engine = N3Engine::from_bytes(data)
     let slice = N3SliceParser::new(engine, sec, lenient=true)
     let (quads, perrs) = slice.parse_all()
+    // 影子扫描（役25 R-07 双判·题6=A）：lenient=false 严格组装校验同文件重跑。
+    // 主判定链仍走宽容口径（套件数字不变硬约束）；影子只暴露被 lenient 掩盖
+    // 的校验层缺口（mat 层四门不受 lenient 影响，影子面恒在 parse 层）——
+    // 基线钉冻结，真缺口清零后把 expect_strict_gap 升 0 并考虑升格主判定
+    let slice_s = N3SliceParser::new(N3Engine::from_bytes(data), sec)
+    let (_, perrs_s) = slice_s.parse_all()
+    if !is_bad && perrs.length() == 0 && perrs_s.length() > 0 {
+      strict_gap = strict_gap + 1
+      debug("STRICT-GAP \{label}/\{file}")
+      for err in perrs_s {
+        debug("  S: \{err}")
+      }
+    }
     let mat = N3Materializer::new(
       sec,
       slice.engine.ctx.prefixes,
@@ -142,11 +158,21 @@ async fn run_n3_suite(
       }
     }
   }
-  debug("=== \{label}: \{passed}/\{passed + failed} (failed \{failed}) ===")
+  debug(
+    "=== \{label}: \{passed}/\{passed + failed} (failed \{failed}, strict-gap \{strict_gap}) ===",
+  )
   if pin {
     // closure pin: zero failures, full-set coverage
     assert_eq(failed, 0)
     assert_eq(passed + failed, files.length())
+  }
+  // 役25 绝对计数钉：closure 钉是自洽恒真式（新增 good 文件不红），清单冻结
+  // 靠绝对数——加文件/删文件/翻面全部立即红
+  if expect_pass >= 0 {
+    assert_eq(passed, expect_pass)
+  }
+  if expect_strict_gap >= 0 {
+    assert_eq(strict_gap, expect_strict_gap)
   }
 }
 
@@ -158,6 +184,8 @@ async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
     "rdf-turtle",
     "http://www.w3.org/2013/TurtleTests/",
     pin=true,
+    expect_pass=316,
+    expect_strict_gap=5, // 影子基线（2026-09-11）：Undeclared prefix 族 ×4 + `<=` raw 谓词 ×1
   )
   run_n3_suite(
     "src/gen_n3v2/rdf-tests/rdf12/rdf-turtle/syntax",
@@ -166,5 +194,7 @@ async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
     "https://w3c.github.io/rdf-tests/rdf12/rdf-turtle/syntax/",
     pin=true,
     scalar_only=true,
+    expect_pass=75,
+    expect_strict_gap=0, // 影子零缺口（rdf12 语料无未声明前缀/操作符谓词）
   )
 }

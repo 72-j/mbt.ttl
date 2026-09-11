@@ -24,21 +24,43 @@ async test "N3Tests parser suite: first sweep (print-only)" {
   let mut pos_ok = 0
   let mut pos_parse_fail = 0
   let mut pos_mat_only = 0
+  let mut strict_gap = 0 // 影子缺口（役25 双判）：宽容零错而严格翻脸的 pos/eval
+  let skip_names : Array[String] = [] // skip 名单（役25 名单冻结钉）
+  let mut lines_total = 0 // tsv 非空行（闭合钉分母）
+  let mut unknown_kind = 0 // kind 词表外静默落 pos 桶的行（恒钉 0）
   for line in tsv.split("\n") {
     if line.is_empty() {
       continue
     }
+    lines_total = lines_total + 1
     let parts : Array[StringView] = line.split("\t").collect()
     let kind = parts[0]
     let path = parts[1]
     if kind == "skip" {
+      skip_names.push(path.to_string())
       continue
+    }
+    if kind != "neg" && kind != "pos" && kind != "eval" {
+      unknown_kind = unknown_kind + 1
+      debug("UNKNOWN-KIND \{path} kind=\{kind}")
     }
     let data = @fs.read_file("\{dir}/\{path}").binary().to_array()
     let sec = data[:]
     let engine = N3Engine::from_bytes(data)
     let slice = N3SliceParser::new(engine, sec, lenient=true)
     let (quads, perrs) = slice.parse_all()
+    // 影子扫描（役25 R-07 双判·题6=A）：严格组装校验重跑，主判定链口径不变
+    if kind != "neg" && perrs.length() == 0 {
+      let slice_s = N3SliceParser::new(N3Engine::from_bytes(data), sec)
+      let (_, perrs_s) = slice_s.parse_all()
+      if perrs_s.length() > 0 {
+        strict_gap = strict_gap + 1
+        debug("STRICT-GAP \{path}")
+        for err in perrs_s {
+          debug("  S: \{err}")
+        }
+      }
+    }
     let mat = N3Materializer::new(
       sec,
       slice.engine.ctx.prefixes,
@@ -69,7 +91,7 @@ async test "N3Tests parser suite: first sweep (print-only)" {
     }
   }
   debug(
-    "=== N3Tests parser sweep: neg \{neg_ok}ok/\{neg_miss}miss, pos+eval \{pos_ok}clean \{pos_mat_only}mat-only \{pos_parse_fail}parse-fail ===",
+    "=== N3Tests parser sweep: neg \{neg_ok}ok/\{neg_miss}miss, pos+eval \{pos_ok}clean \{pos_mat_only}mat-only \{pos_parse_fail}parse-fail, strict-gap \{strict_gap} ===",
   )
   // 役20 负例缺口 3 收口（三案三裁断）：
   // ① thisadoc——`this` 套件 deprecated（manifest 判负口径），引擎归位点晋升
@@ -91,4 +113,27 @@ async test "N3Tests parser suite: first sweep (print-only)" {
   assert_eq(neg_ok, 23) // 24 负例 −1 skip（bad_prefix2）
   // 役18 收官钉：物化残差清零闭环
   assert_eq(pos_mat_only, 0)
+  // 役25 证据面钉：绝对计数 + 名单冻结 + 桶闭合
+  assert_eq(pos_ok, 205) // 190 pos + 15 eval 全净
+  assert_eq(skip_names, [
+    "cwm_other/rdfcore-tests.n3", // >100KB 机器聚合料，parser 裁决价值零
+     "extra/bad_prefix2.n3", // rdft:Rejected（役20 翻案 skip 留账）
+  ])
+  assert_eq(unknown_kind, 0) // kind 词表外行静默落 pos 桶——词表扩容须显式改钉
+  assert_eq(
+    neg_ok +
+    neg_miss +
+    pos_ok +
+    pos_mat_only +
+    pos_parse_fail +
+    skip_names.length(),
+    lines_total,
+  ) // 桶闭合：tsv 每行恰落一桶（或 skip），drift 即红
+  // 影子基线钉（役25 双判·2026-09-11）：205 正/eval 里 136 文件宽容零错而严格
+  // 组装校验翻脸——绝对主因 validate_prefname "前缀必须先声明" 门 vs N3/cwm
+  // 生态事实（内建前缀 log:/string:/... 预绑定 + 隐式空前缀，官方正例
+  // good_prefix.n3 也翻）；次因 `<=` raw 谓词（ADR-005 操作符=谓词身份）被
+  // validate_pred 拒。两族均系真缺口，另立小役修口（R-07 风险节纪律：不为绿
+  // 回退 lenient）——基线冻结，缺口收窄也须显式翻新本钉
+  assert_eq(strict_gap, 123)
 }
