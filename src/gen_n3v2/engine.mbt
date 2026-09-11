@@ -1,7 +1,8 @@
 // ===== 用户补充：N3 主循环引擎（薄机械层，trig engine.mbt 同模板） =====
 // 职责切分（与 trig/nquads engine.mbt 同宪法）：
-//   - 本文件只做状态机机械：驱动 step、按 Effect 意图执行（发射 snapshot+按
-//     scope 重置、PopBnp/OpenSlot 意图兑现）、错误恢复、EOF 判脏收尾。
+//   - 本文件只做状态机机械：取事件（synth 回灌 / EOF 判脏收尾）→ step →
+//     效果交 interpret 解释上抛（役22 接活·题1=A：解释器 = n3.mbt 套装
+//     默认体，本文件只兑现 loop 控制流 KeepGoing/YieldQuad/Stop）、错误恢复。
 //   - 切片组装/验证/物化全部上移 SliceParser；层间只传 span 快照（N3PendingQuad）。
 //   - 与 trig 模板的差异点（均有据可查）：
 //     1) 无图块/注解/VERSION 族：recover 只停 Dot（N3 无 Rbrace 前界语义，
@@ -10,8 +11,8 @@
 //        下 langtag/数值零空格后随 `,`/`.`/`;` 字节入 span 且标点事件丢失
 //        （词法自测 747 行钉死；trig 只 trim dot，N3 objectList/predicateObjectList
 //        必踩）——trim_trailing_punct 三瓣裁决 + synth 事件回灌转移表。
-//     3) Sequence 串列：顺序解释（BnpAfterObject+Rbracket =
-//        [EmitQuad(PredObj), PopBnp]）；集合族无链发射（ADR-003a），串列更薄。
+//     3) Sequence 串列：interpret 顺序解释（ADR-003a：现行表仅单发序列
+//        [EmitQuad(PredObj), PopBnp]，单缓冲直返；多发回归 emit_queue 预留位）。
 //     4) EOF 判脏自排水：同 trig（无 per-next 反向复位点，finish 自清防无限重报）。
 
 ///|
@@ -275,7 +276,6 @@ pub struct N3Engine[L] {
   dialect : N3Dialect // 方言开关（N3 默认扩展；RDFStarOff 暂不开放，预留构造位）
   mut last_error : Span? // 最近一次错误位置（行号由上层按 data 统计）
   mut pending : N3Event? // 恢复推回的单 token（预留：恢复前界机制的兑现位）
-  emit_queue : Array[N3PendingQuad] // Sequence 多发射队列：FIFO，next() 顶部优先排空
 }
 
 ///|
@@ -292,7 +292,6 @@ pub fn[L : LexerSource] N3Engine::new(
     dialect,
     last_error: None,
     pending: None,
-    emit_queue: [],
   }
   engine.begin_record()
   engine
@@ -324,12 +323,14 @@ fn[L] N3Engine::record_error(self : N3Engine[L], span : Span) -> Unit {
 }
 
 ///|
-/// ADR-002 引擎不变量：slot_stack 存在 Formula 帧 = 处在公式内容区。
-/// 罩内 EmitQuad 意图降级为纯收拾（只 reset 不 snapshot 上抛）——公式
-/// 状态自身零 EmitQuad 行（决策在表），此为共享区域行（Bnp/集合收口
-/// Sequence、Comma/Semicolon 穿罩复用）的单点压制位，机械归模板。
-fn under_formula(ctx : N3Context) -> Bool {
-  for f in ctx.slot_stack {
+
+///|
+/// ADR-002 引擎不变量（役22 下沉 ctx 级）：slot_stack 存在 Formula 帧 =
+/// 处在公式内容区。罩内 EmitQuad 意图降级为纯收拾（interpret 的压制位）——
+/// 公式状态自身零 EmitQuad 行（决策在表），此为共享区域行（Bnp/集合收口
+/// Sequence、Comma/Semicolon 穿罩复用）的单点压制位。
+fn N3Context::under_formula(self : N3Context) -> Bool {
+  for f in self.slot_stack {
     if f.typ is SlotType::Formula {
       return true
     }
@@ -461,82 +462,101 @@ extend N3Engine with N3LoopPolicy::{
 }
 
 ///|
-/// is/of 倒装清账半边（役6）：非 Object 粒度且槽深与登记时齐平 = 语句级推进
-///（分号续谓词 / Dot 收口 / 罩内同层收拾）——交换键归零；嵌套内层发射（槽深
-/// 更深）不动外层账，倒装宾位的嵌套结构出账后外层照常互换。
-fn[L : LexerSource] N3Engine::settle_inversion(
-  self : N3Engine[L],
-  scope : ResetScope,
-) -> Unit {
-  if !(scope is ResetScope::Object) &&
-    self.ctx.slot_stack.length() == self.ctx.is_depth {
-    self.ctx.is_src = None
+/// is/of 倒装清账半边（役6；役22 下沉 ctx 级）：非 Object 粒度且槽深与登记
+/// 时齐平 = 语句级推进（分号续谓词 / Dot 收口 / 罩内同层收拾）——交换键归零；
+/// 嵌套内层发射（槽深更深）不动外层账，倒装宾位的嵌套结构出账后外层照常互换。
+fn N3Context::settle_inversion(self : N3Context, scope : ResetScope) -> Unit {
+  if !(scope is ResetScope::Object) && self.slot_stack.length() == self.is_depth {
+    self.is_src = None
   }
 }
 
 ///|
-/// 注解壳账收口半边（役8）：末体 quad 出账点（take）或公式罩内压位点消费
-/// annot_close 旗——还原即清账（收口行 PredObj 粒度本就保锚主语在槽，`;` 续锚
-/// 直落现状；体区旗/壳账四件套齐清，防旗漏后语句）
-fn[L : LexerSource] N3Engine::settle_annotation(self : N3Engine[L]) -> Unit {
-  if self.ctx.annot_close {
-    self.ctx.annot_close = false
-    self.ctx.subj_shell = false
-    self.ctx.annot_s = None
-    self.ctx.annot_o = None
+/// 注解壳账收口半边（役8；役22 下沉 ctx 级）：末体 quad 出账点（take）或
+/// 公式罩内压位点消费 annot_close 旗——还原即清账（收口行 PredObj 粒度本就
+/// 保锚主语在槽，`;` 续锚直落现状；体区旗/壳账四件套齐清，防旗漏后语句）
+fn N3Context::settle_annotation(self : N3Context) -> Unit {
+  if self.annot_close {
+    self.annot_close = false
+    self.subj_shell = false
+    self.annot_s = None
+    self.annot_o = None
   }
 }
 
 ///|
-/// 发射出账机械（役6 收口）：快照打包槽位 span；倒装交换键在场且挂起主语即
-/// 倒装主语 → 主宾互换（`X is P of Y` grammar 序槽位、语义序 `Y P X` 出账
-/// ——span 全局唯一 ⇒ 嵌套 bnp/集合内层 fresh 主语天然错键不换）；随后按
-/// scope 粒度重置并走清账半边（逗号 Object 粒度保键连换）。
-fn[L : LexerSource] N3Engine::take_pending_quad(
-  self : N3Engine[L],
+/// 发射出账机械（役6 收口；役22 下沉 ctx 级 take_pending，interpret 与引擎
+/// 共用同一入口）：快照打包槽位 span；倒装交换键在场且挂起主语即倒装主语 →
+/// 主宾互换（`X is P of Y` grammar 序槽位、语义序 `Y P X` 出账——span 全局
+/// 唯一 ⇒ 嵌套 bnp/集合内层 fresh 主语天然错键不换）；随后按 scope 粒度重置
+/// 并走清账半边（逗号 Object 粒度保键连换）。
+fn N3Context::take_pending(
+  self : N3Context,
   scope : ResetScope,
 ) -> N3PendingQuad {
-  let pending = self.ctx.snapshot()
+  let pending = self.snapshot()
   // 役8 注解壳交换：体区旗在场且挂起主语 == 锚主语（span 身份键，嵌套内层
   // fresh 主语错键不换）→ 主语改指壳 span（锚 s 起点至锚 o 终点的连续原文，
   // 物化层合成 <<原文>> TT 壳）；先壳交换后倒装交换，两键互斥不叠加
-  let pending = if self.ctx.subj_shell && pending.subj == self.ctx.annot_s {
-    match (self.ctx.annot_s, self.ctx.annot_o) {
+  let pending = if self.subj_shell && pending.subj == self.annot_s {
+    match (self.annot_s, self.annot_o) {
       (Some(s), Some(o)) =>
         // 命中：主语改指壳 span + 壳旗随账（extra 直引已真，显式保真）
         { ..pending, subj: Some((s.0, o.0 + o.1 - s.0)), subj_shell: true, }
       (_, _) => pending
     }
-  } else if self.ctx.subj_shell {
+  } else if self.subj_shell {
     // 错键不换（嵌套 bnp/集合内层 fresh 主语，役6 同款）：壳旗强制落假——
     // extra 直引自 ctx 会把体区旗漏挂到内层 quad 上
     { ..pending, subj_shell: false, }
   } else {
     pending
   }
-  let pending = if self.ctx.is_src is Some(_) && pending.subj == self.ctx.is_src {
+  let pending = if self.is_src is Some(_) && pending.subj == self.is_src {
     { ..pending, subj: pending.obj, obj: pending.subj, }
   } else {
     pending
   }
   self.settle_inversion(scope)
   self.settle_annotation()
-  self.ctx.reset(scope)
+  self.reset(scope)
   pending
 }
 
 ///|
-/// 主循环（生成器固定模板 = 纯控制流分发器）：
-/// 入口/终止 → step 步进 → Effect 分发 → 错误降级，四节点零领域逻辑。
-/// 与 trig 模板的差异：无 EnterGraph/ExitGraph/ListStep 臂（N3 无图块，
-/// 集合族 ADR-003a 无链推进）；扩 Comma/Semicolon synth 事件。
+/// 役22 接活：引擎 handler 覆盖——PopBnp 意图兑现机械在 action（弹栈恢复，
+/// 帧携带返回状态），经 on_* 注入位进 interpret；其余成员全用套装默认
+///（handle_* 无操作观测、snapshot/apply_scope 归位 ctx、interpret 唯一解释器）
+impl[L : LexerSource] N3EffectHandler for N3Engine[L] with fn on_pop_bnp(
+  self : N3Engine[L],
+  ctx : N3Context,
+) -> Unit {
+  let _ = N3Actions::pop_bnode_prop(self.hooks, ctx)
+}
+
+///|
+/// OpenSlot 意图兑现：嵌套元素开帧，机械在 action（帧携带返回状态）
+impl[L : LexerSource] N3EffectHandler for N3Engine[L] with fn on_open_slot(
+  self : N3Engine[L],
+  ctx : N3Context,
+  span : Span,
+  typ : SlotType,
+  ret_state : N3State,
+) -> Unit {
+  let _ = N3Actions::open_slot(self.hooks, ctx, span, typ, ret_state)
+}
+
+///|
+/// 主循环（役22 接活·题1=A 全控 = 纯控制流）：取事件（synth 回灌 / EOF 判脏
+/// 收尾）→ step 步进 → interpret 解释上抛 → 错误降级。效果语义全数移驻
+/// interpret（n3.mbt 套装默认体），此处零领域逻辑。
 pub fn[L : LexerSource] N3Engine::next(
   self : N3Engine[L],
 ) -> Result[N3PendingQuad, ParseError]? {
-  // 发射队列优先排空：Sequence 内多条 EmitQuad 逐条回吐（parse_next 再进 next()
-  // 时从队列续取，事件流不丢不重）
-  if self.emit_queue.length() > 0 {
-    return Some(Ok(self.emit_queue.remove(0)))
+  // 发射队列优先排空：Sequence 多发（役18 path_obj_close 三发）时 interpret
+  // 入队队首即返，余者逐次 next() 顶部续取（emit_queue 下沉 ctx）
+  if self.ctx.emit_queue.length() > 0 {
+    return Some(Ok(self.ctx.emit_queue.remove(0)))
   }
   let mut synth : N3Event? = None
   for ;; {
@@ -555,71 +575,13 @@ pub fn[L : LexerSource] N3Engine::next(
       }
     }
     match step(self.ctx, event, self.hooks) {
-      Ok(N3Effect::Continue) => continue
-      Ok(N3Effect::PopBnp) => {
-        // 弹栈恢复：`]` 空形式/空集合收口的裸意图，恢复机械在 action（帧携带返回状态）
-        let _ = N3Actions::pop_bnode_prop(self.hooks, self.ctx)
-        continue
-      }
-      Ok(N3Effect::OpenSlot(sp, typ, ret)) => {
-        // 嵌套元素开帧：意图兑现机械在 action
-        let _ = N3Actions::open_slot(self.hooks, self.ctx, sp, typ, ret)
-        continue
-      }
-      Ok(N3Effect::Reset(scope)) => {
-        // 纯收拾意图：不发射，仅按粒度重置槽位
-        self.ctx.reset(scope)
-        continue
-      }
-      Ok(N3Effect::EmitQuad(scope)) => {
-        if under_formula(self.ctx) {
-          // ADR-002：公式帧罩内发射意图 = 内容不断言——只收拾不上抛
-          //（同层倒装账随壳消费：settle 清账半边，防 stale 键出罩）
-          self.settle_inversion(scope)
-          self.settle_annotation()
-          self.ctx.reset(scope)
-          continue
+      Ok(effect) =>
+        // 役22：解释在 interpret（套装默认体），此处只兑现 loop 控制流
+        match self.interpret(self.ctx, effect) {
+          KeepGoing => continue
+          YieldQuad(quad) => return Some(Ok(quad))
+          Stop => return None
         }
-        // 发射：take 打包槽位 span（倒装键在场 = 主宾互换，役6），按 scope
-        // 粒度重置后上抛
-        let pending = self.take_pending_quad(scope)
-        return Some(Ok(pending))
-      }
-      Ok(N3Effect::Sequence(effects)) => {
-        // 意图串列：顺序解释；EmitQuad 逐条入队（BnpAfterObject+Rbracket =
-        // [EmitQuad(PredObj), PopBnp]：emit 先 snapshot 后收拾，恢复值来自帧），
-        // 循环后队首上抛
-        for effect in effects {
-          match effect {
-            N3Effect::EmitQuad(scope) =>
-              if under_formula(self.ctx) {
-                // ADR-002：公式帧罩内发射意图 = 内容不断言——只收拾不上抛
-                //（同层倒装账随壳消费，防 stale 键出罩）
-                self.settle_inversion(scope)
-                self.settle_annotation()
-                self.ctx.reset(scope)
-              } else {
-                let item = self.take_pending_quad(scope)
-                self.emit_queue.push(item)
-              }
-            N3Effect::Reset(scope) => self.ctx.reset(scope)
-            N3Effect::PopBnp => {
-              // 意图兑现：`]` 收口序列的弹栈恢复，机械在 action
-              let _ = N3Actions::pop_bnode_prop(self.hooks, self.ctx)
-            }
-            N3Effect::OpenSlot(sp, typ, ret) => {
-              let _ = N3Actions::open_slot(self.hooks, self.ctx, sp, typ, ret)
-            }
-            N3Effect::Done => break
-            N3Effect::Continue | N3Effect::Sequence(_) => ()
-          }
-        }
-        if self.emit_queue.length() > 0 {
-          return Some(Ok(self.emit_queue.remove(0)))
-        }
-        continue
-      }
-      Ok(N3Effect::Done) => return None
       Err(N3ActionError::UnexpectedEvent(_, event)) => {
         // 无转移兜底：取事件载荷位置（缺失则词法位置）；恢复策略在 LoopPolicy
         synth = None // 恢复消费整段，待发 synth 事件一并作废

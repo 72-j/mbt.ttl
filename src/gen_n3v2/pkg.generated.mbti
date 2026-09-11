@@ -32,6 +32,7 @@ pub(all) enum N3ActionError {
 
 pub(all) struct N3Context {
   mut state : N3State
+  emit_queue : Array[N3PendingQuad]
   mut subject : (Int, Int)?
   mut predicate : (Int, Int)?
   mut object : (Int, Int)?
@@ -99,7 +100,6 @@ pub struct N3Engine[L] {
   dialect : N3Dialect
   mut last_error : (Int, Int)?
   mut pending : N3Event?
-  emit_queue : Array[N3PendingQuad]
 }
 pub fn N3Engine::from_bytes(Array[Byte], dialect? : N3Dialect) -> Self[N3LexerAdapter]
 pub fn[L : LexerSource] N3Engine::new(L, dialect? : N3Dialect) -> Self[L]
@@ -393,20 +393,16 @@ pub trait N3Actions {
 }
 
 pub trait N3EffectHandler {
-  fn handle_continue(Self) -> Result[Unit, N3EffectError]
   fn handle_emit_quad(Self, ResetScope) -> Result[Unit, N3EffectError]
   fn handle_reset(Self, ResetScope) -> Result[Unit, N3EffectError]
-  fn handle_done(Self) -> Result[Unit, N3EffectError]
   fn handle_sequence(Self, Array[N3Effect]) -> Result[Unit, N3EffectError]
   fn handle_pop_bnp(Self) -> Result[Unit, N3EffectError]
   fn handle_open_slot(Self, (Int, Int), SlotType, N3State) -> Result[Unit, N3EffectError]
   fn snapshot(Self, N3Context) -> N3PendingQuad
   fn apply_scope(Self, N3Context, ResetScope) -> Unit
-  fn on_exit_graph(Self) -> Unit
   fn on_pop_bnp(Self, N3Context) -> Unit
   fn on_open_slot(Self, N3Context, (Int, Int), SlotType, N3State) -> Unit
   fn interpret(Self, N3Context, N3Effect) -> N3EffectOutcome
-  fn dispatch(Self, N3Effect) -> Result[Unit, N3EffectError]
 }
 
 pub trait N3LoopPolicy {

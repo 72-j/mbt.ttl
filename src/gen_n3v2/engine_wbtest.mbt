@@ -1081,7 +1081,9 @@ test "役18 宾位贴路径全展开（词法解胶 + path_obj_close 双发）" 
 ///   prefix_reassigned_and_used/qvars/path2 正例实证），值语义 = 首匹配胜。
 test "役20 负例缺口收口（this 晋升门 + 声明名验形 + 重定义宽容）" {
   // ① thisadoc 最小形：@keywords 声明后文档级 this → Unknown 无表行 → perr
-  let (e1, err1) = mat_chain("@keywords this . @prefix : <#> . this :a :Doc .\n")
+  let (e1, err1) = mat_chain(
+    "@keywords this . @prefix : <#> . this :a :Doc .\n",
+  )
   assert_eq(e1.length(), 0)
   assert_true(err1.length() > 0)
   // ② qname-as-prefix 最小形：声明名带本地部，零 quad 也报（账本门）

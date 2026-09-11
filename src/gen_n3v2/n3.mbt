@@ -147,6 +147,7 @@ pub(all) enum N3Effect {
 /// FSM 运行时上下文：ctx 提供状态（state）与业务数据（其余字段）
 pub(all) struct N3Context {
   mut state : N3State
+  emit_queue : Array[N3PendingQuad] // Sequence 多发队列（役22 下沉 ctx）：interpret FIFO 入队、next() 顶部排空
   mut subject : Span?
   mut predicate : Span?
   mut object : Span?
@@ -182,6 +183,7 @@ pub(all) struct N3Context {
 pub fn N3Context::new() -> N3Context {
   {
     state: N3ExpectSubject,
+    emit_queue: [],
     subject: None,
     predicate: None,
     object: None,
@@ -2039,24 +2041,23 @@ pub(all) enum N3EffectError {
 }
 
 ///|
-/// 第二层 EffectHandler：真正的 match effect 发生在 step 外部
-/// handle_* 模板方法默认 Ok(())；dispatch 默认解构意图并分发
-/// 用户 impl 覆盖需要的 handle_*，通常无需覆盖 dispatch
+/// 第二层 EffectHandler（役22 接活定案·题1=A 全控）：interpret = 唯一效果
+/// 解释器（engine.next 只做 取事件 → step → interpret → 上抛）；handle_* =
+/// 观测/容灾挂点（默认无操作，覆盖即挂切面，零语义副作用）；snapshot/
+/// apply_scope 归位 N3Context，on_pop_bnp/on_open_slot 由引擎注入动作机械
 pub trait N3EffectHandler {
-  fn handle_continue(Self) -> Result[Unit, N3EffectError] = _
+  // —— 观测/容灾挂点：意图级通知，先于机械（Result 为容灾通道预留）——
   fn handle_emit_quad(Self, ResetScope) -> Result[Unit, N3EffectError] = _
   fn handle_reset(Self, ResetScope) -> Result[Unit, N3EffectError] = _
-  fn handle_done(Self) -> Result[Unit, N3EffectError] = _
   fn handle_sequence(Self, Array[N3Effect]) -> Result[Unit, N3EffectError] = _
   fn handle_pop_bnp(Self) -> Result[Unit, N3EffectError] = _
   fn handle_open_slot(Self, Span, SlotType, N3State) -> Result[
     Unit,
     N3EffectError,
   ] = _
-  // —— 用户补充面：组装机械（业务落点，必须实现）——
-  fn snapshot(Self, ctx : N3Context) -> N3PendingQuad
+  // —— 组装机械归位：默认直调 N3Context；on_* 由引擎覆盖注入动作 ——
+  fn snapshot(Self, ctx : N3Context) -> N3PendingQuad = _
   fn apply_scope(Self, ctx : N3Context, scope : ResetScope) -> Unit = _
-  fn on_exit_graph(Self) -> Unit = _
   fn on_pop_bnp(Self, ctx : N3Context) -> Unit = _
   fn on_open_slot(
     Self,
@@ -2065,49 +2066,36 @@ pub trait N3EffectHandler {
     typ : SlotType,
     ret_state : N3State,
   ) -> Unit = _
-  // —— 模板面：interpret 默认实现（TrigEngine::next 解释序同源抽取）——
+  // —— 唯一解释器：效果 → loop 控制流（KeepGoing/YieldQuad/Stop）——
   fn interpret(Self, ctx : N3Context, effect : N3Effect) -> N3EffectOutcome = _
-  fn dispatch(Self, effect : N3Effect) -> Result[Unit, N3EffectError] = _
 }
 
 ///|
-/// handle_continue 模板默认：无操作
-impl N3EffectHandler with fn handle_continue(_self) {
-  Ok(())
-}
-
-///|
-/// handle_emit_quad 模板默认：无操作
+/// handle_emit_quad 模板默认：无操作（观测位）
 impl N3EffectHandler with fn handle_emit_quad(_self, _scope) {
   Ok(())
 }
 
 ///|
-/// handle_reset 模板默认：无操作
+/// handle_reset 模板默认：无操作（观测位）
 impl N3EffectHandler with fn handle_reset(_self, _scope) {
   Ok(())
 }
 
 ///|
-/// handle_done 模板默认：无操作
-impl N3EffectHandler with fn handle_done(_self) {
-  Ok(())
-}
-
-///|
-/// handle_sequence 模板默认：无操作
+/// handle_sequence 模板默认：无操作（观测位）
 impl N3EffectHandler with fn handle_sequence(_self, _effects) {
   Ok(())
 }
 
 ///|
-/// handle_pop_bnp 模板默认：无操作
+/// handle_pop_bnp 模板默认：无操作（观测位）
 impl N3EffectHandler with fn handle_pop_bnp(_self) {
   Ok(())
 }
 
 ///|
-/// handle_open_slot 模板默认：无操作
+/// handle_open_slot 模板默认：无操作（观测位）
 impl N3EffectHandler with fn handle_open_slot(_self, _span, _typ, _ret_state) {
   Ok(())
 }
@@ -2121,100 +2109,92 @@ pub(all) enum N3EffectOutcome {
 }
 
 ///|
-/// on_exit_graph 模板默认：Sequence 内嵌退图（无帧机械时无操作）
-impl N3EffectHandler with fn on_exit_graph(_self) {
-  ()
+/// snapshot 模板默认：归位 N3Context::snapshot（发射槽位打包，不再再实现）
+impl N3EffectHandler with fn snapshot(_self, ctx) {
+  ctx.snapshot()
 }
 
 ///|
-/// on_pop_bnp 模板默认：Sequence 内嵌钩子（无帧机械时无操作）
+/// apply_scope 模板默认：归位 N3Context::reset（粒度清槽唯一实现，C-02 合一）
+impl N3EffectHandler with fn apply_scope(_self, ctx, scope) {
+  ctx.reset(scope)
+}
+
+///|
+/// on_pop_bnp 模板默认：无机械（引擎覆盖注入 pop_bnode_prop 动作）
 impl N3EffectHandler with fn on_pop_bnp(_self, _ctx) {
   ()
 }
 
 ///|
-/// on_open_slot 模板默认：Sequence 内嵌钩子（无帧机械时无操作）
+/// on_open_slot 模板默认：无机械（引擎覆盖注入 open_slot 动作）
 impl N3EffectHandler with fn on_open_slot(_self, _ctx, _span, _typ, _ret_state) {
   ()
 }
 
 ///|
-/// apply_scope 模板默认：[[scope_chains]] 展开的收拾链
-/// （逐字段清槽，粒度不碰 state——state 由转移表 to= 负责）
-impl N3EffectHandler with fn apply_scope(_self, ctx, scope) {
-  match scope {
-    ResetScope::Object => ctx.object = None
-    ResetScope::PredObj => {
-      ctx.predicate = None
-      ctx.object = None
-    }
-    ResetScope::SPO => {
-      ctx.subject = None
-      ctx.predicate = None
-      ctx.object = None
-    }
-    ResetScope::All => {
-      ctx.subject = None
-      ctx.predicate = None
-      ctx.object = None
-      ctx.graph = None
-    }
-  }
-}
-
-///|
-/// interpret 模板默认：TrigEngine::next 解释序的同源抽取。
-/// 臂按语义分组发射；用户补充 snapshot / apply_scope 后即得完整解释器
+/// interpret 模板默认：唯一效果解释器（役22 接活——engine.next 的效果语义
+/// 全数移驻于此）。机械经 ctx 级 take_pending/under_formula 与 on_* 注入点
+/// 完成；handle_* 先通知后机械（默认无操作，行为零变化）
 impl N3EffectHandler with fn interpret(self, ctx, effect) {
   match effect {
     N3Effect::Continue => KeepGoing
-    N3Effect::PopBnp | N3Effect::OpenSlot(_, _, _) => KeepGoing
+    N3Effect::PopBnp => {
+      // 弹栈恢复：`]` 空形式/空集合收口裸意图，机械在 action（帧携带返回态）
+      let _ = self.handle_pop_bnp()
+      self.on_pop_bnp(ctx)
+      KeepGoing
+    }
+    N3Effect::OpenSlot(span, typ, ret) => {
+      // 嵌套元素开帧：机械在 action
+      let _ = self.handle_open_slot(span, typ, ret)
+      self.on_open_slot(ctx, span, typ, ret)
+      KeepGoing
+    }
     N3Effect::Reset(scope) => {
+      // 纯收拾意图：不发射，仅按粒度清槽
+      let _ = self.handle_reset(scope)
       self.apply_scope(ctx, scope)
       KeepGoing
     }
     N3Effect::EmitQuad(scope) => {
-      let pending = self.snapshot(ctx)
-      self.apply_scope(ctx, scope)
-      YieldQuad(pending)
+      let _ = self.handle_emit_quad(scope)
+      // ADR-002：公式帧罩内发射意图 = 内容不断言——只收拾不上抛（take 的
+      // 交换/清账/重置副作用照常，快照弃）；罩外发射 = take 出账上抛
+      if ctx.under_formula() {
+        let _ = ctx.take_pending(scope)
+        KeepGoing
+      } else {
+        YieldQuad(ctx.take_pending(scope))
+      }
     }
     N3Effect::Sequence(effects) => {
-      // 意图串列：顺序解释；emit 组装暂存后继续执行余下意图
-      let mut pending : N3PendingQuad? = None
+      // 意图串列：顺序解释，罩外 EmitQuad 逐条入队（役18：path_obj_close =
+      // [EmitQuad(SPO), PopBnp, EmitQuad(scope)] 三发真实存在）——队首即返、
+      // 余者由 next() 顶部排空（emit_queue 下沉 ctx，与旧引擎同构）
+      let _ = self.handle_sequence(effects)
       for sub in effects {
         match sub {
-          N3Effect::EmitQuad(scope) => {
-            pending = Some(self.snapshot(ctx))
-            self.apply_scope(ctx, scope)
-          }
+          N3Effect::EmitQuad(scope) =>
+            if ctx.under_formula() {
+              let _ = ctx.take_pending(scope)
+            } else {
+              ctx.emit_queue.push(ctx.take_pending(scope))
+            }
           N3Effect::Reset(scope) => self.apply_scope(ctx, scope)
           N3Effect::PopBnp => self.on_pop_bnp(ctx)
-          N3Effect::OpenSlot(span, typ, ret_state) =>
-            self.on_open_slot(ctx, span, typ, ret_state)
+          N3Effect::OpenSlot(span, typ, ret) =>
+            self.on_open_slot(ctx, span, typ, ret)
           N3Effect::Done => break
-          _ => ()
+          N3Effect::Continue | N3Effect::Sequence(_) => ()
         }
       }
-      match pending {
-        Some(q) => YieldQuad(q)
-        None => KeepGoing
+      if ctx.emit_queue.length() > 0 {
+        YieldQuad(ctx.emit_queue.remove(0))
+      } else {
+        KeepGoing
       }
     }
     N3Effect::Done => Stop
-  }
-}
-
-///|
-/// dispatch 模板默认：match effect 并分发到 handle_*
-impl N3EffectHandler with fn dispatch(self, effect) {
-  match effect {
-    Continue => self.handle_continue()
-    EmitQuad(scope) => self.handle_emit_quad(scope)
-    Reset(scope) => self.handle_reset(scope)
-    Done => self.handle_done()
-    Sequence(effects) => self.handle_sequence(effects)
-    PopBnp => self.handle_pop_bnp()
-    OpenSlot(span, typ, ret_state) =>
-      self.handle_open_slot(span, typ, ret_state)
   }
 }

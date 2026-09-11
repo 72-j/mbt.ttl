@@ -244,10 +244,7 @@ test "役5: @keywords 指令事件流——Unk/A 混列 + 逗号续（adapter �
 ///   cwm/Turtle 官方"后者胜"语义，套件索引改 skip 留账），值语义后声明胜。
 test "役20 历史债三案（NEG-MISS 三缺口收口）" {
   // ① thisadoc：事件面 `this` 保 Unk（off=10 len=4），不晋升 KwX
-  assert_eq(
-    n3_drain("@keywords this ."),
-    "@ KeywordsKw Unk(10,4) Dot EOF",
-  )
+  assert_eq(n3_drain("@keywords this ."), "@ KeywordsKw Unk(10,4) Dot EOF")
   let (emits1, err1) = mat_chain(
     "@keywords this . @prefix : <#> . this :a :Doc .\n",
   )
