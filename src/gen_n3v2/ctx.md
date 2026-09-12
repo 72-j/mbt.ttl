@@ -341,14 +341,25 @@ EffectHandler（效果面）
   （settle_inversion 已是现成组方法）——零成组清账现场不设空转方法（役23 投机面判据）。
 - B 留账：`[[context.groups]]` 表分节（外层仓生成器 + G 门同改）独立役再做。
 
-### R-14 状态爆炸治理 `[立案]`
+### R-14 状态爆炸治理 `[✅ 完成·役30（30a–30f）]`
 
 - 目标：加特性不再乘性改表。
-- 锚点：`n3v2_base.toml` states 段（55 态，含 `FormulaX`/`QuantX`/`SubjTrailX`/`ListPathX` 交叉族）；
-  外层仓 `src/fsm/analyze.mbt`（可达性/分析素材）、`src/fsm/construct.mbt`、`src/fsm/fuse.mbt`。
-- 动作：A) 生成器按子 FSM 自动组合交叉状态；B) 混合架构（语句核心表驱动 + `{}`/`()`/`[]` 子自动机）。
-- 验收：新增一个特性只增"子自动机 + 接线"，不手列交叉态；G1–G9 仍绿。
-- 风险：动生成器影响 n3gen 之外的 trig/gen_md（同 emit 家族），⚠ 立项前先盘依赖面。
+- 锚点：`n3v2_base.toml`（`[[submachines]]` / `[[submachine_instances]]` / states 段）；
+  `n3v2_trans.toml`（标记行）；外层仓 `src/rdf/n3gen/compose.mbt`（求积）、`validate.mbt`（G10/G11）、
+  `n3gen_test.mbt`（G12/G13）。
+- 动作（已落）：**A 方案——构建期 compose**（ADR-30）；B 否决（三条硬理由）；C 吸收为门。
+  30a 量化基座（spec §10）→ 30b 选型（ADR-30）→ 30c 量化探针（`quant` 机器 + 两实例）→
+  30d 全量迁移（机器 9 族 / 段 57 / 实例 10 / 标记 59，零手列交叉族，G9 逐字节等价）→
+  30e G10 装配门（compose 前）+ G11 归役31 → 30f 回灌（本卷 / `ARCHITECTURE.md` / spec §10.6 /
+  `world/macro-spec.spec.md`）。
+- 验收：`moon test src/rdf/n3gen` 12/12、`src/rdf` 20/20、子仓 gen_n3v2 116/116、gen_trig 80/80；
+  新增特性只需"子机声明 + 接线"。
+- 风险（原记已纠正）：~~emit 家族被 trig/gen_md 共用~~ —— 实测三条生成链彼此独立（n3v2=n3gen 自含；
+  trig=domain_to_ir→fsm_out→src/fsm/cmd；md=src/gen_md/gen），役30 只动 `src/rdf/n3gen/`。
+- **已钳制（2026-09-12 役31 step5）**：`n3_g11_strict = true`，可达性发现（不可达态 / 死态）由"打印告警"
+  升为 `Err` **阻断构建**；前置实测满足（30c/30d + 四套件跑满、构建输出零 `G11(warn)`）；
+  探针：幽灵态 `G11ProbeGhost` → `moon test src/rdf/n3gen` 11/12 红（报 `G11: 不可达态 [G11ProbeGhost]`），
+  删除后 12/12 绿且产物 md5 零漂移；回退路径 = 改回 `false` 并在 `validate.mbt` 开关注释注明原因。
 
 ### R-15 数值/布尔单一实现 `[✅ 定案·役29]`
 

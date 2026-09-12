@@ -241,12 +241,12 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 | R-11 | **测试归位**：`materialize_n3.mbt`/`serialize_n3.mbt` 的内联 test 移入 `_wbtest.mbt`；`mat_*` 辅助抽到测试支持文件 | 建议 | 新建 `materialize_n3_wbtest.mbt` 等 | 生产文件只剩实现；`moon test` 计数不减 | C-11 |
 | R-12 | **文档三件**：新增 `gen_n3v2/ARCHITECTURE.md`（一页：五层图 + 生成链 + 不变量 + 术语表 + 预留位清单）；修 `guides/n3` 的 `@gen_n3`/`SliceParser`；ADR 补役21 条目（提交 `7630bf2`，或注明归 `src/rdf` 卷） | 建议 | 三处 md | 文档与 `.mbti`/代码名一致 | C-12 |
 | R-13 | **ctx 分组**：组清方法形式落地（题5=A，表平铺生成器零改）——`clear_annotation`（四件套；settle/begin_record/recover 三消费点）+ `clear_path`（src/tail/pend 三槽；四发射点）；keywords/directive 零成组清账不立项；字段分节 B 留账 | **✅ 已落地（役28，ADR-28）** | engine.mbt ctx 方法区 + actions.mbt | 清账清单按组表达；116/116；0 warning | C-13、I-6 |
-| R-14 | **状态爆炸治理（生成器侧）**：由子 FSM 自动组合交叉状态，替代手列 55 态；或混合架构（语句核心表驱动 + 递归结构子自动机）。量化基座已落 §10（役30a）：交叉族 36 态/232 行，求积上限 61% | 立案 | `src/fsm` + `src/rdf/n3gen` | 新增特性不再乘性改表 | C-14、§10 |
+| R-14 | **状态爆炸治理（生成器侧）**：由子 FSM 自动组合交叉状态，替代手列 55 态；或混合架构（语句核心表驱动 + 递归结构子自动机）。量化基座已落 §10（役30a）：交叉族 36 态/232 行，求积上限 61%。**裁决（ADR-30）= A 构建期 compose**（B 混合架构否决：字节等价红线/三面重写/行数不省；C 吸收为门 G10）；落地= 30c 探针 → 30d 全量迁移（机器 9 族 / 段 57 / 实例 10 / 标记 59，**零手列交叉族**）→ 30e G10 装配门 → 30f 回灌；声明面见 §10.6 | **✅ 已落地（役30 30a–30f）** | `src/rdf/n3gen/{compose,validate,emit}.mbt` + `n3v2_{base,trans}.toml` | 新增特性只需"子机声明 + 接线"；G9 逐字节等价贯穿迁移；12/12 + 20/20 + 116/116 + 80/80 | C-14、§10、§10.6 |
 | R-15 | **单一实现**：数值/布尔识别合并为共享 helper（adapter/校验/物化同源） | **✅ 已落地（役29，ADR-29）**：`gen_nquads/numeric.mbt`（`is_numeric_span` + `is_boolean_word`，两包公共依赖故落此；账面原建议 n3v2 types.mbt 不成立——trig 有字节孪生件）；n3v2/trig 八消费点三面收编；`bool_at` ×2 删除；展开件 expand_* 留驻各物化层 | gen_nquads/numeric.mbt + 两包 adapter/parser_slice/materialize 六件 | `rg "has_digit" src` 全仓单点；数值/布尔正负例套件不变（357/316/75） | C-15 |
 | R-16 | **影子缺口修口**：N3/cwm 内建前缀预绑定（或校验层方言豁免）+ `<=`/`=>` raw 谓词 validate_pred 白名单；清零后影子钉升 0 并考虑升格主判定 | 立案（役25） | parser_slice validate_* | strict-gap 5/0/123/13 → 0/0/0/0；校验层进主判定链 | C-16、C-17 |
 
 **依赖序（执行建议，与 `todo.md` §4 战役路线一致）**：R-07（可并行）∥ R-02 →（R-03 / R-01）→
-（R-05 / R-06）→（R-09 / R-12）→（R-10 / R-11）→（R-13 / R-08）；R-04 / R-14 / R-15 另役。
+（R-05 / R-06）→（R-09 / R-12）→（R-10 / R-11）→（R-13 / R-08）；R-04 / R-14 / R-15 另役（**R-14 ✅ 役30**、R-15 ✅ 役29、R-04 长期半 [立案]）。
 理由：R-02 决定"效果面"落点，R-01/R-03 决定"表权威"，两者不改，后面的清理会建在双事实源上。
 
 ---
@@ -326,11 +326,6 @@ print("TOTAL", sum(cs.values()), sum(ct.values()))
 EOF
 ```
 
-**交叉族口径**（与 todo 事实确认表一致）：交叉族态 **36/55 = 65%**（`Formula*` 11、`Bnp*` 7、
-`SubjTrail*` 6、`Annot*` 4、`Quant*` 2、`Path*` 2、`ListPath*` 2、`List*` 2）；交叉族转移
-**232/384 = 60%**（上列前七族行之和，`Quant*` 顶层 3 行为本体接线行不计入）。最热从态：
-`FormulaExpectPredicate` 与 `ExpectPredicate` 各 18 行——谓词位是最大乘性热点。
-
 ### 10.2 机制 × 语境窗矩阵（态数，按名可复算）
 
 | 机制 | 顶层 | bnp `[…]` | 公式 `{…}` | 集合 `(…)` | 注解 `{| |}` | 态计 |
@@ -404,11 +399,58 @@ git show b39136c:src/n3gen/n3v2_trans.toml | grep -c '^\[\[transitions\]\]'  # 3
 
 ---
 
+### 10.6 组合声明面（compose schema；役30c/30d/30f）
+
+```toml
+# —— n3v2_base.toml ——
+[[submachines]]                # 子机模板：一机器由若干段组成
+machine = "listpath_window"    # 机器名（族窗）
+segment = "s0"                 # 段名（段内行序 = 展开序）
+rows = [                       # 行内可写 $占位符（bind 代入）
+ {from = "ListPathExpectVerb", on = "Iri", to = "ListPathAfterStep", action = "path_step"}
+]
+
+[[submachine_instances]]       # 实例：机器 × 绑定
+machine = "listpath_window"
+name    = "listpath_window"    # 实例名（标记行用它）
+bind    = { }                  # 占位符 → 字面量；键集必须与模板占位符严格相等
+
+# —— n3v2_trans.toml ——
+[[transitions]]
+machine = "listpath_window.s0" # 标记行：原位请求展开（实例.段）
+```
+
+**语义与纪律**：
+
+- 展开 = **纯 IR→IR**、**原位**、**保序**（段内行序）⇒ 产物必须与原手列**逐字节相同**（G9 判据）；
+- 段序即原 `trans` 行序；实例可复用到多处（`quant` 机器 4 段 → `quant_top` / `quant_formula` 两实例）；
+- 族**入口行**仍留核心块（如 `ExpectDotOrGraph/Bang|Caret → ObjTrailExpectVerb`），子机只收**族内行**；
+- 门：G10（死段/死实例，compose 前）+ G12（未知实例/占位符/bind 未消费）+ G9（字节等价）；
+- 终局（2026-09-12）：机器 9 / 段 57 / 实例 10 / 标记 59；`trans` 非标记行只剩核心态与顶层特性入口。
+
+**G10 族声明装配门（30e / ADR-30）**：判据 = **死段**（`[[submachines]]` 段无任何赋给该机器的实例标记接线）
++ **死实例**（`[[submachine_instances]]` 实例从未被标记引用）；**调用点 = `n3gen_build` 的 compose 之前**
+（标记行 `machine = "<实例>.<段>"` 在 compose 展开后即被消费，validate 阶段见不到它们）。
+不重设的门：实例/机器/段的**存在性**归 `n3gen_compose`；**求积唯一性**（展开后 `(from,on)` 不重复）
+由既有唯一性门（compose 之后）覆盖。现状：段 57 / 实例 10 / 标记 59，死段 0、死实例 0。
+
+**30d 全量迁移完成（2026-09-12）**：交叉族已全部改为**子机模板求积**——机器 9 族 / 段 57
+（`quant` 4 段 / `bnp_window` 12 / `list_window` 5 / `annot_window` 5 / `path_window` 3 /
+`subjtrail_window` 1 / `formula_window` 19）+ 本轮补齐的 `listpath_window` 5 段 / `objtrail_window` 3 段；
+实例 10 个、标记行 59 个。`n3v2_trans.toml` 的非标记行**只剩核心态与顶层特性入口**
+（Expect* 核心 + 顶层 is/of + `@keywords` 声明面）——**零手列交叉族**；
+求积产物与原手列 384 行**逐字节相同**（G9 判据）。
+
+**交叉族口径**（与 todo 事实确认表一致）：交叉族态 **36/55 = 65%**（`Formula*` 11、`Bnp*` 7、
+`SubjTrail*` 6、`Annot*` 4、`Quant*` 2、`Path*` 2、`ListPath*` 2、`List*` 2）；交叉族转移
+**232/384 = 60%**（上列前七族行之和，`Quant*` 顶层 3 行为本体接线行不计入）。最热从态：
+`FormulaExpectPredicate` 与 `ExpectPredicate` 各 18 行——谓词位是最大乘性热点。
+
 ## 11. 演进序（P 级映射）
 
 - **P0（低风险高收益）**：R-02（定案）、R-03、R-05、R-07、R-09。
 - **P1（结构性）**：R-01、R-06、R-08、R-10、R-11、R-12、R-13——✅ 全清（役23-28）。
-- **P2（长期）**：R-04（长期方言感知词法器）、R-14。
+- **P2（长期）**：R-04（长期方言感知词法器，短期补偿点已落役29）、~~R-14~~（**✅ 役30，30a–30f 收官**）。
 
 另记（非整改、需知情）：生成本包的包名仍为 `gen_n3v2`（`pkg.generated.mbti` 头），
 用户指南写 `gen_n3`——R-12 一并处理；外层仓 `src/fsm/codegen.mbt`、`prune.mbt` 有未提交改动（役21 收尾）。
@@ -485,6 +527,16 @@ G11 报 `死态 [ExpectTildeEnd]`；在同一探针态下声明 `terminal_states
 - **step4 探针（验收留痕）**：删 `ExpectTildeEnd` 7 条出行 → 打印
   `G11(warn): 死态 [ExpectTildeEnd]…`，**构建不阻断**（唯一红是 G9 字节对拍，因行被删）；
   还原 → `moon test src/rdf/n3gen` **12/12**。
+
+**钳制（step5 落地，2026-09-12）——G11 已生效为错误级**：
+
+- 开关 `n3_g11_strict = true`（`validate.mbt` 顶部；回退路径 = 改回 `false` 并在同处注明原因与役次）。
+- **钳制前置（已实测满足）**：首版警告级跑满役30c/30d 全量迁移（机器 9 族 / 段 57 / 实例 10 / 标记 59）
+  与四套件，构建输出**无 `G11(warn)` 行**（零发现 = 零假报）。
+- **step5 探针（验收留痕）**：在表源加一个无入边幽灵态 `G11ProbeGhost` →
+  `moon test src/rdf/n3gen` **11/12 红**，失败信息即 `G11: 不可达态 [G11ProbeGhost]`
+  （错误级 `Err`，不再是打印告警）；删除幽灵态 → **12/12 绿**，`n3v2_out.gen` md5 与探针前一致
+  （`66a876c6…`，产物零漂移）。
 
 **源件关系**：`src/fsm/analyze.mbt` 仅借 BFS 骨架——其"只按表边建边"的输入假设**被 ADR-31 否决**
 （该源件当前无调用者，且未建模手写写入态）。

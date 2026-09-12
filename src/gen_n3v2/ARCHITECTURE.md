@@ -18,15 +18,32 @@ N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态�
 数据流：`Lexermoon → N3LexerAdapter → N3Engine.next → step(表) → N3Effect → interpret
 → N3PendingQuad → assemble/validate → QuadSpan → N3Materializer → QuadEmit → N3Serializer`。
 
-## 生成链（黄金门 G9）
+## 生成链（parse → **compose** → validate → emit；黄金门 G9）
 
 ```
 外层仓 src/rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
-  → n3gen_build（parse → validate G1–G8 → emit）→ n3v2_out.gen
+  → n3gen_build（parse → G10 装配门 → **compose 求积** → validate G1–G9/G11–G13 → emit）→ n3v2_out.gen
   → cp src/ttl/src/gen_n3v2/n3.mbt（G9 逐字节对拍 + 强幂等）
 ```
 
 表变 → 再生 → cp；手编 `n3.mbt` 会被 G9 判红。生成器测试 `moon test src/rdf/n3gen`。
+
+**compose（役30c/30d，ADR-30 方案 A）**：交叉族不再手列，改为**声明面 + 构建期求积**——
+
+- 表源声明：`[[submachines]]`（`machine` / `segment` / `rows`，行内可写 `$占位符`）+ `[[submachine_instances]]`
+  （`machine` / `name` / `bind = { 占位符 = 值 }`）；
+- `trans` 用**标记行** `machine = "<实例>.<段>"` 在原位请求展开（`$占位符` 按 instance 的 `bind` 代入）；
+- 展开是**纯 IR→IR**、**保序**（段内行序 = 原手列行序）⇒ 产物与原手列 **384 行逐字节相同**（G9 判据）；
+- 终局表形态（2026-09-12）：机器 9 族 / 段 57 / 实例 10 / 标记 59；`trans` 非标记行只剩核心态与顶层特性入口。
+
+**门清单（与 G1–G9 并列的新增门）**：
+
+| 门 | 判据 | 调用点 |
+|---|---|---|
+| **G10 族声明装配门** | 死段（段无标记接线）/ 死实例（实例无标记引用） | `n3gen_build`，**compose 之前**（标记 compose 后即消失） |
+| **G11 可达性门** | 三源可达（表边 ∪ 表行 `state:` ∪ `[[state_entries]]` 锚点）+ 死态（未声明 `terminal_states` 时） | `validate`（门序末位）；**警告级**，`n3_g11_strict=false` |
+| **G12 compose 负例门** | 未知实例 / 未知占位符 / bind 键未消费 | 测试（`n3gen_test.mbt`） |
+| **G13 锚点登记门** | `state_entries` 的 anchor「文件存在 + 行号在界 + 行含语义关键字」 | 测试（防登记漂移 ⇒ G11 假绿） |
 
 ## 不变量（I-1..I-9，详 spec §3）
 
