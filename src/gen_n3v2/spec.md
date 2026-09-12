@@ -146,18 +146,18 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 
 | 编号 | 位置 | 触发 | 为何表内表达不了 |
 |---|---|---|---|
-| [R-03-1] | `actions.mbt:171`（pop_bnode_prop） | 区域弹栈兑现 | **机制位**：state 兑现统一读 `fr.ret_state`（帧携带，OpenSlot ret 同机制）；id 形特例已前移 set_id_subject 刻帧（役23 R-01）。帧值运行时才定，表行 `to=` 是常量——帧携带是表能表达"动态返回态"的唯一通道 |
-| [R-03-2] | `actions.mbt:528`（path_end_nested 拒绝臂） | 反向链 `^` 终于复合节点 | 同 (from,on) 行内按链形（`ctx.path_fwd`）异判；表行 guard 的 else 臂 = UnexpectedEvent（不 fallback 下一行），行分裂不可行——两链形同 from 态 |
-| [R-03-3] | `actions.mbt:718`（path_subj_end None 臂） | 动词位链终原子 | 同 [R-03-2]：主位/谓词两链形在 SubjTrailAfterStep 汇合（谓词链 path_step 每步同入，表行实证），按 `ctx.path_src` 分派 |
+| [R-03-1] | `actions.mbt:172`（pop_bnode_prop） | 区域弹栈兑现 | **机制位**：state 兑现统一读 `fr.ret_state`（帧携带，OpenSlot ret 同机制）；id 形特例已前移 set_id_subject 刻帧（役23 R-01）。帧值运行时才定，表行 `to=` 是常量——帧携带是表能表达"动态返回态"的唯一通道 |
+| [R-03-2] | `actions.mbt:529`（path_end_nested 拒绝臂） | 反向链 `^` 终于复合节点 | 同 (from,on) 行内按链形（`ctx.path_fwd`）异判；表行 guard 的 else 臂 = UnexpectedEvent（不 fallback 下一行），行分裂不可行——两链形同 from 态 |
+| [R-03-3] | `actions.mbt:719`（path_subj_end None 臂） | 动词位链终原子 | 同 [R-03-2]：主位/谓词两链形在 SubjTrailAfterStep 汇合（谓词链 path_step 每步同入，表行实证），按 `ctx.path_src` 分派 |
 
 **B. 引擎归位点（normalize_term_span 家族）**
 
 | 编号 | 位置 | 触发 | 为何表内表达不了 |
 |---|---|---|---|
-| [R-03-4] | `engine.mbt:83` trim_trailing_punct | 词尾吞标点（七类 payload 事件） | ① span 子手术（剥尾字节）非表能力；② 一词两事件（剥离 + 合成 Dot/Comma/Semicolon 回灌）破坏表 1 事件→1 转移模型。根源 C-04，根治 R-04（词法收口） |
-| [R-03-5] | `engine.mbt:104` is_version_lit_form | VERSION 指令字面量形态 | guard 只通 `ctx.` 前缀（本节首条制度）；嗅探写旗标、**决策在表行 guard**——合规机制形态，非破例（登记以正名分） |
-| [R-03-6] | `engine.mbt:220` KeywordA 臂 | @keywords 后未列出的裸 `a` | **事件重分类**（KeywordA→PrefName）发生在表上游：表按事件种类查行，无法"把 A 事件当 PrefName 行处理"；裁决需台账字节比对 + 声明区 state——字节比对是词法操作（guard 只通 ctx），state 依赖可表行化但重分类本身出表模型。kw_a_live 熄火为横切记账（七类谓词事件同做），上表 = 48 行重复 |
-| [R-03-7] | `engine.mbt:246` Unknown 晋升臂 | 台账命中裸词 + `this` 门 | 同 [R-03-6] 事件重分类（Unknown→KeywordX）；`this` 硬编码 = 套件裁决常数（役20，manifest 判负口径，WG 否决的规则不实现），非语言规则故无表行 |
+| [R-03-4] | `engine.mbt:84` trim_trailing_punct | 词尾吞标点（七类 payload 事件） | ① span 子手术（剥尾字节）非表能力；② 一词两事件（剥离 + 合成 Dot/Comma/Semicolon 回灌）破坏表 1 事件→1 转移模型。根源 C-04，根治 R-04（词法收口） |
+| [R-03-5] | `engine.mbt:105` is_version_lit_form | VERSION 指令字面量形态 | guard 只通 `ctx.` 前缀（本节首条制度）；嗅探写旗标、**决策在表行 guard**——合规机制形态，非破例（登记以正名分） |
+| [R-03-6] | `engine.mbt:225` KeywordA 臂 | @keywords 后未列出的裸 `a` | **事件重分类**（KeywordA→PrefName）发生在表上游：表按事件种类查行，无法"把 A 事件当 PrefName 行处理"；裁决需台账字节比对 + 声明区 state——字节比对是词法操作（guard 只通 ctx），state 依赖可表行化但重分类本身出表模型。kw_a_live 熄火为横切记账（七类谓词事件同做），上表 = 48 行重复 |
+| [R-03-7] | `engine.mbt:241` Unknown 晋升臂 | 台账命中裸词 + `this` 门 | 同 [R-03-6] 事件重分类（Unknown→KeywordX）；`this` 硬编码 = 套件裁决常数（役20，manifest 判负口径，WG 否决的规则不实现），非语言规则故无表行 |
 
 **C. 关键词真相收敛裁决（C-03 写实修正）**
 
@@ -201,20 +201,20 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 
 | 编号 | 事实（写实） | 证据锚点 | 后果 | 性质 |
 |---|---|---|---|---|
-| C-01 | 状态双权威：action 直写 `ctx.state`，与表 `to=` 并存。**役23 R-01 收敛**：3 处条件分叉 → 1 处无条件机制位（pop 读 `fr.ret_state`，id 特例前移刻帧）+ 2 处破例（链形异判，表静态行表达不了）；全部入册 §5.1 清单 | `actions.mbt:171/528/718`；清单 §5.1-A | 运行时数据依赖出表模型是 FSM 边界本质——破例恒可数、每条有"为何"，可达性分析按清单扣除 | [债]→**[设计]（役23 收敛后）** |
-| C-02 | 效果语义双实现：`engine.next` 手写解释器 vs 生成面 `interpret/dispatch/handle_*`；`apply_scope` 与 `ctx.reset` 同逻辑两写 | `engine.mbt:533`↔`n3.mbt:2168`；`n3.mbt:2144`↔`n3.mbt:218` | 两处语义可漂移；② 面切点（观测/降级）形同虚设 | [债]（**用户定案保留 ② 面**） |
-| C-03 | 引擎归位点做词法/语法重分类：`KeywordA→PrefName` 依 `ctx.state`/台账改判；`this` 4 字节常量硬编码 | `engine.mbt:220/246`；清单 §5.1-B | **役23 写实修正**：原"关键词真相散在三处（含物化 bool_at）"系误诊——bool_at 是布尔字面量（C-15），三处实为正交分层（保留词/文档台账/消费行），各自单一数据源（§5.1-C） | [制度]（guard 只通 ctx 的下游；事件重分类出表模型） |
+| C-01 | 状态双权威：action 直写 `ctx.state`，与表 `to=` 并存。**役23 R-01 收敛**：3 处条件分叉 → 1 处无条件机制位（pop 读 `fr.ret_state`，id 特例前移刻帧）+ 2 处破例（链形异判，表静态行表达不了）；全部入册 §5.1 清单 | `actions.mbt:172/529/719`；清单 §5.1-A | 运行时数据依赖出表模型是 FSM 边界本质——破例恒可数、每条有"为何"，可达性分析按清单扣除 | [债]→**[设计]（役23 收敛后）** |
+| C-02 | 效果语义双实现：~~`engine.next` 手写解释器 vs 生成面 `interpret/handle_*`；`apply_scope` 与 `ctx.reset` 两写~~ **役22 接活**：`interpret` = 唯一解释器，`engine.next` 只做控制流，`apply_scope` 调用 `N3Context::reset`（`dispatch` 已删除） | `engine.mbt:577`↔`n3.mbt:2128`；`n3.mbt:2108`↔`n3.mbt:216` | ~~两处语义可漂移；② 面切点形同虚设~~ ② 面成真实挂点（观测/降级可挂） | [债]→**已收口（役22，ADR-22）** |
+| C-03 | 引擎归位点做词法/语法重分类：`KeywordA→PrefName` 依 `ctx.state`/台账改判；`this` 4 字节常量硬编码 | `engine.mbt:225/241`；清单 §5.1-B | **役23 写实修正**：原"关键词真相散在三处（含物化 bool_at）"系误诊——bool_at 是布尔字面量（C-15），三处实为正交分层（保留词/文档台账/消费行），各自单一数据源（§5.1-C） | [制度]（guard 只通 ctx 的下游；事件重分类出表模型） |
 | C-04 | 词法边界欠账：adapter 五处手术（`[]` 合并 / `?x` peek / `@kw:` 拆字 / `<-` 拆字 / langtag 拆）+ 引擎尾标点合成 `Dot/Comma/Semicolon` | `lexer_adapter.mbt` 头注台账（役29 单点化，六点地图 + 钉面清单）；`engine.mbt:84` | ~~一次词法口径变动须四处同步、补偿点散装无单~~ 台账单点 + 识别件 R-15 单点（役29）；长期方言感知词法器仍立案 | [债]→**短期已收口（役29）** |
 | C-05 | 错误通道二制：~~`last_error` 单槽~~ **役24 整改**：`error_spans` 累积数组 + BusinessFailed 复位续解 + drain 三点（入口/Some(Err)/终态）——多坏语句逐条落账且文件序 | `engine.mbt`（字段/recover_cleanup）；`parser_slice.mbt`（drain_engine_errors） | ~~多坏语句只报最后一条、业务错带病停机~~ 双通道语义对齐 | [债]→**已清偿（役24）** |
 | C-06 | 零长 span（`len == 0`）重载为 `rdf:nil` 标记——**役24 验形门收口**：in-band 通道保留（API 不变），物化层双门 `data[offset]=='('` 校验，事故零长 ValidationErr | `materialize_n3.mbt`（materialize_quad 入口）；构造点 `actions.mbt` pop_bnode_prop（唯一） | ~~事故静默变 nil~~ 合法标记可验形、事故报错 | [债]→**已收口（役24）** |
-| C-07 | 证据面缺口：三 runner 全 `lenient=true`（旁路 `validate_term`）；N3Tests 有断言无桶闭合；examples print-only | `rdf_suite_wbtest.mbt:114`、`n3tests_suite_wbtest.mbt:40`、`examples_wbtest.mbt:16` | 316/75/205 这些数字不覆盖校验层；文件清单漂移不报警 | [债] |
+| C-07 | 证据面缺口：~~三 runner 全 `lenient=true`（旁路 `validate_term`）；N3Tests 有断言无桶闭合；examples print-only~~ **役25 双判落地**：主判定链 + 影子扫描（严格 `lenient=false`）并行；N3Tests skip 名单钉；examples 升格 pinned（A=13/B=0/C=0 + 桶闭合断言） | `rdf_suite_wbtest.mbt:116/118`、`n3tests_suite_wbtest.mbt:50`、`examples_wbtest.mbt:9` | ~~316/75/205 不覆盖校验层；清单漂移不报警~~ 影子缺口被量化冻结（5/0/123/13）⇒ 可作 R-16 的修口基线 | [债]→**已收口（役25，ADR-23）** |
 | C-08 | 公共面过宽：`.mbti` 暴露 `N3Context`（29 mut 字段）、`N3Actions`（48 方法）、`N3EffectHandler`、`N3LoopPolicy`、`N3Engine` | `pkg.generated.mbti` 全量 38 个 `pub` 项 | 内部重构 = 破坏性 API 变更；公共面无法收敛 | [债]→**已收口（役28，题2=B）** |
-| C-09 | 死字段/死 helper/警告：`variable_name`/`rule_side` 永不被读；`iri_upcast` 只写不自增；`mat_graph`/`mat_has_graph` 未用；`bench` 导入未用；4×`starts_with`、`serialize_n3.mbt:84` 未用 `self`、`engine.mbt:467/481` 多余 trait bound | 编译 11 warning | 阅读噪声；表声明字段与实现脱钩 | [债] |
+| C-09 | 死字段/死 helper/警告：`variable_name`/`rule_side` 永不被读；~~`iri_upcast` 只写不自增~~（**写实修正：活机制**，表源 expr + iver 快照消费）；`mat_graph`/`mat_has_graph` 未用；`bench` 导入未用；4×`starts_with`、未用 `self`、2 处多余 trait bound | 役26 实测：编译 11 warning（本包） | ~~阅读噪声~~ **役26 全模块 30 条清零**（17 unused_package / 3 trait bound / 6 deprecated / 4 unused_value）；死字段走表源再生删 | [债]→**已收口（役26，ADR-26）** |
 | C-10 | 命名与宪法冲突：`pver/bver/iver`（应为 `prefix_version/base_version/iri_version`）、`fr`、`mat_*`、`Hooks`（实为 action 语义实现体） | `types.mbt:50`（QuadSpan）、`actions.mbt:14` | 违反"名字自带语义"；跨包重命名是原子变更 | [债] |
-| C-11 | 测试位置：`materialize_n3.mbt` 内联 23 个 test + 约 500 行测试辅助；`serialize_n3.mbt` 内联 4 个 | `materialize_n3.mbt:1380` 起 | 与"测试进 `_test`/`_wbtest`"约定不符；生产文件被辅助污染 | [债] |
-| C-12 | 文档漂移：`guides/n3/README.md` 11 处仍写 `@gen_n3`/`SliceParser`；`syntax.md` 旧分层；ADR 最后为 ADR-20 而代码已到役21；无稳定架构页 | `guides/n3/README.md:3`、`syntax.md:49`；`adr.md`；提交 `7630bf2` | 新人按文档接不上代码 | [债] |
+| C-11 | 测试位置：~~`materialize_n3.mbt` 内联 23 个 test + 约 500 行辅助；`serialize_n3.mbt` 内联 4 个~~ **役27a 归位**：27 test 迁 `materialize_n3_wbtest.mbt`(538 行) / `serialize_n3_wbtest.mbt`(64 行)，生产件纯实现（1396/101 行） | 两新件；`grep '^test '` = 0 | ~~生产文件被辅助污染~~ 归位后 `.mbti` 零 diff（纯私有面） | [债]→**已收口（役27a，ADR-27）** |
+| C-12 | 文档漂移：~~`guides/n3/README.md` 11 处仍写 `@gen_n3`/`SliceParser`；`syntax.md` 旧分层；无稳定架构页~~ **役26 文档三件**：新增 `ARCHITECTURE.md` 一页；guides 实名化（`@gen_n3v2` / `N3SliceParser` / API 实形）；`adr.md` 卷首补役21 跨卷注记 | `ARCHITECTURE.md`；`guides/n3/*`；提交 `7630bf2` | ~~新人按文档接不上代码~~ 文档与 `.mbti`/代码实名一致 | [债]→**已收口（役26，ADR-26）** |
 | C-13 | ctx 大对象：29 字段混 6 个特性轴（directive/prefix+base、slot_stack、path、inversion、annotation、keywords）+ 3 个死字段 | `n3.mbt:140-170`；`n3v2_base.toml:440-468` | reset 语义复杂、子系统的"联动清槽"靠人记 | [债] |
-| C-14 | 状态爆炸：55 状态含 `FormulaX`/`QuantX`/`SubjTrailX`/`ListPathX` 交叉族（手列） | `n3v2_base.toml` states 段 | 加特性 = 状态数乘性增长，错误面同步放大 | [设计]/[债] |
+| C-14 | 状态爆炸：55 状态含 `FormulaX`/`QuantX`/`SubjTrailX`/`ListPathX` 交叉族（~~手列~~） | `n3v2_base.toml` states 段；声明面 `[[submachines]]` / `[[submachine_instances]]` | ~~加特性 = 状态数乘性增长~~ **役30 构建期 compose 求积**：机器 9 / 段 57 / 实例 10 / 标记 59，零手列交叉族；新增特性只加"子机声明 + 接线" | [设计]/[债]→**已收口（役30，ADR-30）** |
 | C-15 | 数值/布尔识别两套：`is_numeric_span`（adapter/校验）与 `expand_number`+`bool_at`（物化）——**役29 收编**：识别件独此一份 `gen_nquads/numeric.mbt`（`is_numeric_span` + `is_boolean_word`），八消费点三面（adapter/校验/物化，两包）限定名收编；`bool_at` ×2 删除；展开件（expand_*）留驻各物化层（arena 发射非识别） | `gen_nquads/numeric.mbt`（唯一权威）；消费点全图见各 adapter/parser_slice/materialize | ~~同一规则两处实现，易漂移~~ `has_digit` 全仓单点 | [债]→**已清偿（役29）** |
 | C-16 | 前缀预绑定缺位：validate_prefname 拒未声明前缀，N3/cwm 内建前缀（log:/string:/...）不声明即用，官方正例 good_prefix.n3 也翻 | 役25 影子扫描 486 处 STRICT-GAP | 宽容主链正确性靠 lenient 跳过校验维持，校验层无法升格 | [债]（役25 立项） |
 | C-17 | `<=` raw 谓词被 validate_pred 拒（ADR-005 操作符=谓词身份 vs "IRI must be wrapped in <>"） | 役25 影子扫描 extras-10（`=>` 同构未露头） | 操作符谓词语义与组装校验冲突 | [债]（役25 立项） |
@@ -236,10 +236,10 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 | R-06 | **nil 标记验形**：~~显式标记~~ API 不变约束下 in-band 通道保留，物化层验形双门（`len==0 && data[offset]!='('` → ValidationErr）；构造点唯一（pop_bnode_prop） | **✅ 已落地（役24，ADR-25）** | materialize_n3.mbt + actions.mbt 注释 | 人为事故零长 span 报错（钉）；空集合 rdf:nil 照常（钉） | C-06 |
 | R-07 | **证据面补齐**：三 runner 双判（主判定链 + 影子扫描）；绝对计数钉（316/75/205/13）；N3Tests skip 名单 + 桶闭合；examples 升格 pinned | **✅ 已落地（役25，ADR-23）** | 三个 `*_suite_wbtest.mbt` | 加/删文件即红（演练过）；影子缺口基线冻结（5/0/123/13） | C-07、C-16、C-17 |
 | R-08 | **公共面收窄**：FSM 机械全降包内（生成件经 emit.mbt 模板 `priv` 化再生；用户层 `N3ActionsImpl`/Slot 族手降；`N3Engine`/`N3LexerAdapter` 字段级 `priv`）；mbti 只留入口（Engine/SliceParser/Materializer/Serializer）+ 数据面（QuadSpan/N3PendingQuad/PredKind/N3Event/N3Dialect/LexerSource/ErrOut）；题2=B（零外部消费者 + 扩展面外部本不可达） | **✅ 已落地（役28，ADR-28）** | emit.mbt + lexer_adapter/actions/types + `moon info` 对 diff | mbti `pub` 55→29 行；0 warning；329/329 | C-08 |
-| R-09 | **清账**：删死字段/死 helper/未用导入；修 4×`starts_with`、未用 `self`、2 处多余 trait bound | 建议 | 见 ctx.md R-09 锚点表 | `moon check` 0 warning | C-09 |
+| R-09 | **清账**：删死字段/死 helper/未用导入；修 4×`starts_with`、未用 `self`、2 处多余 trait bound | **✅ 已落地（役26，ADR-26）**（全模块 30 条清零） | 见 `ctx.md` 4.1 行 | `moon check` 0 warning | C-09 |
 | R-10 | **重命名**（原子）：`pver/bver/iver → prefix_version/base_version/iri_version`；`fr → frame`；`Hooks → N3ActionsImpl`（或去 trait 化）；`mat_*` 测试辅助随测试归位改名 | **✅ 已落地（役27a fr + 役28 余项，经表源再生）** | 本包 types/materialize/parser_slice/tests + `.mbti` 同笔 | `moon info` diff 只含预期重命名 | C-10 |
-| R-11 | **测试归位**：`materialize_n3.mbt`/`serialize_n3.mbt` 的内联 test 移入 `_wbtest.mbt`；`mat_*` 辅助抽到测试支持文件 | 建议 | 新建 `materialize_n3_wbtest.mbt` 等 | 生产文件只剩实现；`moon test` 计数不减 | C-11 |
-| R-12 | **文档三件**：新增 `gen_n3v2/ARCHITECTURE.md`（一页：五层图 + 生成链 + 不变量 + 术语表 + 预留位清单）；修 `guides/n3` 的 `@gen_n3`/`SliceParser`；ADR 补役21 条目（提交 `7630bf2`，或注明归 `src/rdf` 卷） | 建议 | 三处 md | 文档与 `.mbti`/代码名一致 | C-12 |
+| R-11 | **测试归位**：`materialize_n3.mbt`/`serialize_n3.mbt` 的内联 test 移入 `_wbtest.mbt`；`mat_*` 辅助抽到测试支持文件 | **✅ 已落地（役27a，ADR-27）** | 新建 `materialize_n3_wbtest.mbt` / `serialize_n3_wbtest.mbt` | 生产文件只剩实现（`grep '^test '` = 0）；116/116；mbti 零 diff | C-11 |
+| R-12 | **文档三件**：新增 `gen_n3v2/ARCHITECTURE.md`（一页：五层图 + 生成链 + 不变量 + 术语表 + 预留位清单）；修 `guides/n3` 的 `@gen_n3`/`SliceParser`；ADR 补役21 条目（提交 `7630bf2`，或注明归 `src/rdf` 卷） | **✅ 已落地（役26，ADR-26）** | 三处 md | 文档与 `.mbti`/代码名一致（`rg "@gen_n3\b" src/ttl/guides` = 0） | C-12 |
 | R-13 | **ctx 分组**：组清方法形式落地（题5=A，表平铺生成器零改）——`clear_annotation`（四件套；settle/begin_record/recover 三消费点）+ `clear_path`（src/tail/pend 三槽；四发射点）；keywords/directive 零成组清账不立项；字段分节 B 留账 | **✅ 已落地（役28，ADR-28）** | engine.mbt ctx 方法区 + actions.mbt | 清账清单按组表达；116/116；0 warning | C-13、I-6 |
 | R-14 | **状态爆炸治理（生成器侧）**：由子 FSM 自动组合交叉状态，替代手列 55 态；或混合架构（语句核心表驱动 + 递归结构子自动机）。量化基座已落 §10（役30a）：交叉族 36 态/232 行，求积上限 61%。**裁决（ADR-30）= A 构建期 compose**（B 混合架构否决：字节等价红线/三面重写/行数不省；C 吸收为门 G10）；落地= 30c 探针 → 30d 全量迁移（机器 9 族 / 段 57 / 实例 10 / 标记 59，**零手列交叉族**）→ 30e G10 装配门 → 30f 回灌；声明面见 §10.6 | **✅ 已落地（役30 30a–30f）** | `src/rdf/n3gen/{compose,validate,emit}.mbt` + `n3v2_{base,trans}.toml` | 新增特性只需"子机声明 + 接线"；G9 逐字节等价贯穿迁移；12/12 + 20/20 + 116/116 + 80/80 | C-14、§10、§10.6 |
 | R-15 | **单一实现**：数值/布尔识别合并为共享 helper（adapter/校验/物化同源） | **✅ 已落地（役29，ADR-29）**：`gen_nquads/numeric.mbt`（`is_numeric_span` + `is_boolean_word`，两包公共依赖故落此；账面原建议 n3v2 types.mbt 不成立——trig 有字节孪生件）；n3v2/trig 八消费点三面收编；`bool_at` ×2 删除；展开件 expand_* 留驻各物化层 | gen_nquads/numeric.mbt + 两包 adapter/parser_slice/materialize 六件 | `rg "has_digit" src` 全仓单点；数值/布尔正负例套件不变（357/316/75） | C-15 |
@@ -256,15 +256,15 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 ```sh
 # 包内（嵌套仓）
 cd /home/thy/moonttl/src/ttl
-moon check src/gen_n3v2          # 目标：0 error / 0 warning（当前 12：4×starts_with、
-                                 # mat_* 2、interpret 隐式提升（役22 已知）、trait bound、
-                                 # to_owned、bench、name、self——R-09 清）
-moon test src/gen_n3v2           # 目标：≥111/111（当前 116/116，役24 +5 钉）
-moon info && moon fmt            # .mbti diff 必须只含预期项
+moon check src/gen_n3v2          # 0 error / 0 warning（役26 起强制，已达标）
+moon test src/gen_n3v2           # 116/116（只增不减）
+moon test                        # 329/329（模块：n3v2 116 + trig 80 + nquads 124 + 其余）
+moon info && moon fmt            # .mbti diff 只含预期项（当前 166 行 / 29 pub）
 
 # 生成链（外层仓）
 cd /home/thy/moonttl
-moon test src/rdf/n3gen          # G1–G9；G9 = 黄金门 + 强幂等
+moon test src/rdf/n3gen          # 12/12（G1–G9 生成门 + G12 compose 负例 + G13 锚点漂移 + 纯函数单测）
+moon test src/rdf                # 20/20（含 trig 三层表源对照）
 ```
 
 套件判据（当前，役25 双判钉后）：rdf-turtle 316/316（pin，strict-gap 5）、rdf12-turtle 75/75
@@ -299,7 +299,7 @@ grep -c '^\[\[transitions\]\]' n3v2_trans.toml   # 384 转移行
 | Formula | 11 | 75 | 6.8 | 公式 `{…}` 窗：核心 4 + is/of 2 + 量化 3 + 路径 2 |
 | SubjTrail | 6 | 39 | 6.5 | 路径×主位：顶层 3 + 公式 3 |
 | Bnp | 7 | 34 | 4.9 | bnp `[…]` 窗：核心 3 + is/of 2 + id 2 |
-| Annot | 4 | 27 | 6.8 | 注解体 `{| |}` 窗（特性本体） |
+| Annot | 4 | 27 | 6.8 | 注解体 `{\| \|}` 窗（特性本体） |
 | List | 2 | 27 | 13.5 | 集合 `(…)` 窗本体 |
 | Path | 2 | 15 | 7.5 | 路径×宾位·顶层 |
 | ListPath | 2 | 15 | 7.5 | 路径×集合窗 |
@@ -328,7 +328,7 @@ EOF
 
 ### 10.2 机制 × 语境窗矩阵（态数，按名可复算）
 
-| 机制 | 顶层 | bnp `[…]` | 公式 `{…}` | 集合 `(…)` | 注解 `{| |}` | 态计 |
+| 机制 | 顶层 | bnp `[…]` | 公式 `{…}` | 集合 `(…)` | 注解 `{\| \|}` | 态计 |
 |---|---|---|---|---|---|---|
 | 指令（@prefix/@base/@version/@keywords） | 7 | — | 1（指令头） | — | — | 8 |
 | 语句核心（主/谓/宾/动词链） | 7 | 3 | 4 | — | — | 14 |
