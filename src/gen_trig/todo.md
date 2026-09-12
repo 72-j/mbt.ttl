@@ -387,6 +387,17 @@ moon info && moon fmt          # .mbti diff 逐行审；fmt 幂等
 
 ### T10 产物黄金门（R-T2）— P0，前置：无（**第一役：无门不改生成物**）
 
+> **前置修复 ✅ 2026-09-12（外仓）**：`moon test src/rdf` 的
+> `trig 对照：手工 trig_domain.toml ≡ 词表生成` 红了（`trig_domain_toml_gen.mbt:215`
+> `domain_config_matches`，由 `1152ca8` 引入）——根因 = 役28 改名 `pver/bver/prefix_version` 时
+> **第 4 层（词表生成器）漏笔**：`domain/trig_domain.toml`、`domain2/trig_*`、`fsm_out/trig_fsm.toml`
+> 三层已同笔，`trig_domain_toml_gen.mbt` 的 `trig_domain_config()` 仍吐 `pver`/`bver`。
+> 修法：该函数两处 `name` 改 `prefix_version` / `base_version`（+ 注释）。
+> 验收：`moon test src/rdf` **20/20**（原 19/20）；子仓 `moon test src/gen_trig` 80/80、
+> `moon test src/gen_n3v2` 116/116 不受扰。
+> 旁注（未改，已标冻结）：`n3_domain_toml_gen.mbt` + `domain/n3_domain.toml` 仍是旧的
+> `pver/bver/iver`，但两层自洽（v1 冻结 oracle）——该文件头已加"命名冻结说明"，勿顺手改名。
+
 - 范围：`src/fsm/cmd/main.mbt`（再生入口）+ `src/rdf/trig_domain_toml_gen.mbt`（门位）。
 - step：① 探针——摸 `fsm/cmd` 再生路径与"是否可 pin ts"（`trig.mbt:4` 现为墙钟值）；② 若不可 pin → 加 ts 参数（**先探针后动**，外仓 `src/fsm` 全测试兜底）；③ 加门：重生成 ≡ check-in `trig.mbt` **逐字节** + **强幂等**（重复生成零字节移动）。
 - 交付：`trig.mbt` 可复现、门绿、人工对齐注释（`domain_to_ir.mbt:15/52/257/407/2717`）改为指向门。

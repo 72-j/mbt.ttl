@@ -314,7 +314,7 @@ moon info && moon fmt          # .mbti diff 逐行审
 
 ---
 
-### 役31 可达性门收口（G11；判据 = ADR-31）— P0（**门级前置**），前置：无
+### 役31 可达性门收口（G11；判据 = ADR-31）**[✅ step1–4 完成 2026-09-12]** — P0（**门级前置**），前置：无
 
 **为什么独立成役**：G11 不依赖 compose（A 方案）即可成立（ADR-30 明言"两门独立必做"）；
 但它需要一个**独立定案的判据**（ADR-31）与一次**实测校准**（现状表跑一遍），
@@ -361,6 +361,13 @@ moon info && moon fmt          # .mbti diff 逐行审
    `死态 [ExpectTildeEnd]`；同态声明 `terminal_states = ["ExpectTildeEnd"]` → 报警消失；还原 → **11/11**。
 4. **分级落地**：首版**警告级**（打印不 pin）→ 对现状表跑一次，若"不可达"集合 ⊆ 登记锚点集（即无新增假报）
    → 再钳为**错误级**并入 G 门（G11 生效）。
+   **✅ 2026-09-12 完成（题：推荐2 = 按 ADR-31 先警告级）**：G11 拆两层——
+   `n3_reachability_report(...)` **纯函数**（无夹具单测：三源命中 / 死态 / terminal 豁免 / 空源全不可达）
+   + `n3_check_reachable` 包装；**形检仍错误级**（登记/终止态名字 typo 直接拒），
+   **可达性发现降为警告级**（打印 `G11(warn): …`，不阻断），钳制开关 `let n3_g11_strict : Bool = false`
+   （跑满 30c/30d 无假报后翻 true）。
+   **探针实证**：删 `ExpectTildeEnd` 7 条出行 → 打印告警且**构建不阻断**（唯一红是 G9 字节对拍，因行被删）；
+   还原 → **12/12**。现状表零发现（无假报），满足 ADR-31 的钳制前置之一。
 
 **交付**：G11 判据（代码 + 登记册）；`moon test src/rdf/n3gen` 恢复 **10/10**（含 G12 compose 负例）；
 `src/fsm/analyze.mbt` 的移植关系在注释里写实（移植 BFS 骨架、**不移植**输入假设；标注其当前无调用者）。
@@ -395,7 +402,7 @@ moon info && moon fmt          # .mbti diff 逐行审
 | **P1-5** | ctx 分组 + 公共面收窄（**含 27b 改名**） | 役28 **✅** | R-13 / R-08 / R-10 ✅ | 役22–24 + 役27a ✅ | 题5=A 落地 / 题2=B 落地 |
 | **P2-1** | 词法收口 + 单一实现 | 役29 **✅** | R-04 短期 ✅（长期 [立案]）/ R-15 ✅ | 盘依赖面 ✅ | 零 Lexermoon 接触 |
 | **P2-2** | 状态爆炸治理（**拆 30a 建模 / 30b 选型 / 30c 探针 / 30d 迁移 / 30e 门 / 30f 回灌**） | 役30 | R-14 | 立项 ✅（2026-09-12 勘察） | 题7 选型 / 题8 探针族 / 题9 等价判据 / 题10 可达门 |
-| **P0-0b** | 可达性门 G11 收口（判据 ADR-31；**门级前置**） | 役31 | R-14（门部分） | — | 题11 锚点登记落点 |
+| **P0-0b** | 可达性门 G11 收口（判据 ADR-31；**门级前置**） | 役31 **✅** | R-14（门部分）✅ | — | 题11 已落地（登记落表源）；钳制待触发 |
 
 推荐执行序：**役31（门级前置）→ 役30a → 30b →（题7 裁断）→ 30c → 30d → 30e（G10）→ 30f**
 
@@ -415,6 +422,8 @@ moon info && moon fmt          # .mbti diff 逐行审
 | 2026-09-11 | **役29** | R-15 数值/布尔单一实现 + R-04 短期补偿点单点台账 | parity 零差（对比 72 段 mismatch=0）、nquads 124/124（89+29+27+72）、trig 357/357、n3v2 116/116、模块 329/329、0 warning、fmt 幂等、nquads mbti +2 行 | 识别件独一份落 gen_nquads/numeric.mbt（trig 字节孪生件实证 → 跨包单点；账面 n3v2 types.mbt 建议不成立）；is_boolean_word 收编六处、bool_at ×2 删、expand_* 留驻物化层；台账头注六点地图 + 钉面清单 + engine 回指；不移 trim（七臂旗标交织）、C 冻结不动；长期方言感知词法器留账 |
 | 2026-09-12 | **役30a/30b** | R-14 量化基座（`spec.md` §10）+ 选型（`adr.md` ADR-30：A 构建期 compose 主轴 / B 否决 / C 吸收为门 + 兜底） | spec §10：55 态 / 384 行；交叉族 36 态（65%）/ 232 行（60%）；边际成本 ≈ +10 态 +50~80 行 / 窗。ADR-30 三条硬理由否决 B（字节等价红线 / 三面重写 / 行数不省） | **G11 判据修正（用户指正 2026-09-12）**：`src/fsm/analyze.mbt` 只按 `from→to` 表边建边、且**当前无任何调用者**；直接移植会假红 n3v2 **6 例**（模板占位 5 + 手写锚点 `N3BnpIdAfterClose` 1）、trig **1 例**（`ExpectVerbRequired`）→ 判据改为「三源可达（表边 ∪ 表行 `state:` 参数 ∪ 手写锚点登记）+ 模板展开先行 + `terminal_states` 声明 + 首版警告级」，详见 §役30e |
 | 2026-09-12 | **役31 立案** | G11 可达性门收口（判据 = `adr.md` ADR-31） | 实测：首版 G11（`validate.mbt:479` 只按 `from→to` 建边）使 n3gen 门 **9/10 红**——`G11: 不可达态 [ExpectVerbRequired, BnpIdAfterClose]`，二者均表外入口（表行 `state:` 参数 ×51 处 / 手写 `frame.ret_state` 改写下 `actions.mbt:200`）；另 5 个量化态属模板占位行（`$var`）；移植源 `analyze.mbt` 只按已展开 IR 建边、警告级、**无调用者** | ADR-31 起草：可达源三源（表边 ∪ 表行 `state:` ∪ 手写锚点登记）+ 两前置（模板先展开 / `terminal_states` 可选）+ 首版警告级后钳错误级；役31 step1–4 见 §4；**判据未修好前 G11 不 pin、compose 改动不入库** |
-| 2026-09-12 | **役31 step1** | G11 补两源（表行 `state:` + 手写锚点登记） | `moon test src/rdf/n3gen` **10/10**（原 9/10 红，`[ExpectVerbRequired, BnpIdAfterClose]` 两假红消失）；子仓 116/116 不变；产物零改（G9 幂等） | 改动面：`n3gen/{types,parse,validate}.mbt` + `n3v2_base.toml` 新增可选段 `[[state_entries]]`（1 条登记：`BnpIdAfterClose` ← `actions.mbt:200`）；判据入 `spec.md` §12。**旁证（非本役引入）**：外仓 `moon test src/rdf` 有 1 个既有红——`trig 对照：手工 trig_domain.toml ≡ 词表生成`（`trig_domain_toml_gen.mbt:215` **`domain_config_matches`**），已用 HEAD 只读 worktree 复现 ⇒ 由 `1152ca8`（役28 "trig 三层表源同笔"）引入，根因 = 三层 TOML 的 config 层漂移（字节层 `fsm_out/trig_fsm.toml` 三腿仍绿） |
+| 2026-09-12 | **役31 step1** | G11 补两源（表行 `state:` + 手写锚点登记） | `moon test src/rdf/n3gen` **10/10**（原 9/10 红，`[ExpectVerbRequired, BnpIdAfterClose]` 两假红消失）；子仓 116/116 不变；产物零改（G9 幂等） | 改动面：`n3gen/{types,parse,validate}.mbt` + `n3v2_base.toml` 新增可选段 `[[state_entries]]`（1 条登记：`BnpIdAfterClose` ← `actions.mbt:200`）；判据入 `spec.md` §12。**旁证（非本役引入，2026-09-12 已修）**：外仓 `moon test src/rdf` 曾有 1 个既有红——`trig 对照：手工 trig_domain.toml ≡ 词表生成`（`trig_domain_toml_gen.mbt:215` **`domain_config_matches`**），已用 HEAD 只读 worktree 复现 ⇒ 由 `1152ca8`（役28 "trig 三层表源同笔"）引入，根因 = 三层 TOML 的 config 层漂移（字节层 `fsm_out/trig_fsm.toml` 三腿仍绿） |
 | 2026-09-12 | **役31 step2** | 锚点登记册 + G13 锚点漂移门 | `moon test src/rdf/n3gen` **11/11**（G1–G13；新增 G13）；子仓 116/116 不变；探针：anchor 行号改错 → G13 红并点名（`ANCHOR-DRIFT …:530`），复原 → 绿 | 登记册 3 条落表源（`BnpIdAfterClose`←`:200`；`ExpectDotOrGraph`←`:529`/`:719`）；口径：登记用**表侧名**（无 `N3` 前缀），填生成名会被 G11 以"登记了未声明态"咬住（实证）；`spec.md` §12 同步（两门 + 登记册 + 非种子两点 `:172`/`:976`） |
 | 2026-09-12 | **役31 step3** | 两前置：模板先展开（已在位）+ `terminal_states` 可选键与死态判据 | `moon test src/rdf/n3gen` **11/11**；子仓 116/116；探针：删 `ExpectTildeEnd` 7 条出行 → G11 报 `死态 [ExpectTildeEnd]（可达、无出边、未声明 terminal_states）`；同态声明 `terminal_states=["ExpectTildeEnd"]` → 报警消失；还原 → 绿 | 前置 A 零改动（compose 已在 validate 之前 + 显式未展开门）；前置 B 落 `[meta] terminal_states`（可选、缺省空）+ G11 死态判据 + 名字形检；**现状表零死态**（该键为前置保留）；判据入 `spec.md` §12；探针期间 G9 先落件导致 `.gen` 被重写，已还原并复核 |
+| 2026-09-12 | **役31 step4** | 分级落地（推荐2：警告级 + 钳制开关） | `moon test src/rdf/n3gen` **12/12**（+纯函数单测）；子仓 116/116；探针：删 7 条出行 → 打印 `G11(warn): 死态 [ExpectTildeEnd]…` 且**不阻断构建**（唯一红 = G9 字节对拍），还原 → 绿 | G11 拆为「纯报告函数 + 包装（形检错误级 / 可达性警告级）」；钳制开关 `n3_g11_strict=false`；单测覆盖三源/死态/豁免/空源；判据入 `spec.md` §12；**役31 收官**（钳制为待触发项） |
+| 2026-09-12 | **trig 修复（外仓）** | `moon test src/rdf` trig 对照红 → 20/20 | 根因 = 役28 `pver/bver → prefix_version/base_version` 改名漏第 4 层（词表生成器 `trig_domain_toml_gen.mbt` 的 `trig_domain_config()`）；修 2 处 `name` + 注释；验收：外仓 20/20、子仓 trig 80/80、n3v2 116/116 | 旁注：`n3_domain_toml_gen.mbt`/`domain/n3_domain.toml` 旧名属 **v1 冻结 oracle**（自洽），已在文件头加"命名冻结说明"，勿顺手改名 |

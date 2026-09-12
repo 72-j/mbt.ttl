@@ -472,5 +472,19 @@ terminal_states = ["<干净终局态>", ...]   # 可选；缺省 = 空 = 旧口�
 G11 报 `死态 [ExpectTildeEnd]`；在同一探针态下声明 `terminal_states = ["ExpectTildeEnd"]` →
 死态报警消失（豁免生效）；还原 → `moon test src/rdf/n3gen` **11/11**。
 
+**分级（step4 落地，ADR-31 §3）——警告级 + 显式钳制开关**：
+
+- 实现拆两层：`n3_reachability_report(state_names, seeds, terminals, trans) -> (不可达, 死态)`
+  **纯函数**（无 TOML 夹具即可单测）+ `n3_check_reachable` 包装（形检 / 种子装配 / 分级）。
+- **形检 = 错误级**（配置 typo 直接拒）：登记 state 未声明、`anchor` 非 `file:line`、`terminal_states` 未声明态。
+- **可达性发现 = 警告级**（首版）：命中时打印
+  `G11(warn): …（ADR-31 首版警告级；无假报后翻 n3_g11_strict=true 钳为错误级）`，**不阻断构建/生成**。
+- **钳制开关**：`let n3_g11_strict : Bool = false`（`validate.mbt` 顶部）；
+  跑满 30c/30d 与四套件**无假报**后翻 `true` → 同一发现改走 `Err`（阻断）。
+- **单测**（`validate.mbt` 内联，零夹具）：三源种子命中 / 死态判定 / `terminal_states` 豁免 / 空源全不可达。
+- **step4 探针（验收留痕）**：删 `ExpectTildeEnd` 7 条出行 → 打印
+  `G11(warn): 死态 [ExpectTildeEnd]…`，**构建不阻断**（唯一红是 G9 字节对拍，因行被删）；
+  还原 → `moon test src/rdf/n3gen` **12/12**。
+
 **源件关系**：`src/fsm/analyze.mbt` 仅借 BFS 骨架——其"只按表边建边"的输入假设**被 ADR-31 否决**
 （该源件当前无调用者，且未建模手写写入态）。
