@@ -485,3 +485,48 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 
 **验收**：本 ADR 落卷；30c 探针 G9 字节等价或触发兜底条款；30d 每族一步 G9 + 329/329；
 30e 后 G1–G11 全绿；终态"新增特性只增子机声明 + 接线、零手列交叉态"。
+
+## ADR-31：可达性判据（三源模型）与 G11 分级——✅ 2026-09-12
+
+**背景（用户指正 → 实测坐实）**：ADR-30 写"G11 可达性门（…移植外层 `src/fsm/analyze.mbt`）"，
+其隐含假设 = **可达性可由表边（`from → to`）完全表达**。首版按此实现（`src/rdf/n3gen/validate.mbt:479` 起，
+只按 `trans` 的 `from/to` 建邻接表 + 自初始态 BFS），**n3gen 门当场红（9/10）**，报两个"不可达态"：
+
+- `ExpectVerbRequired` —— **表行参数入口**：由 `action_args` 的 `state:ExpectVerbRequired` 携带
+  （现表内 `state:` 参数 **51 处 / 12 个不同态**）→ `open_collection` 入帧 → `actions.mbt:172`
+  （`ctx.state = frame.ret_state`）兑现；
+- `BnpIdAfterClose` —— **手写锚点入口**：`actions.mbt:200`（`set_id_subject` 写 `frame.ret_state = N3BnpIdAfterClose`）
+  → 同点兑现；表内只有出边（`n3v2_trans.toml:550`）。
+
+另有一类危险源：**模板占位行**（`n3v2_base.toml` `{from = "$directive", on = "ForAllKw", to = "$var"},`，9 处含 `$`）
+——5 个量化态（`QuantExpectVar` / `QuantExpectVarOrDot` / `FormulaDirectiveKind` / `FormulaQuantExpectVar` /
+`FormulaQuantExpectVarOrDot`）只能经**展开后**的真名进入；建边顺序若颠倒即假红。
+
+**移植源的事实核对**：`src/fsm/analyze.mbt` 只从 `rules`（已展开 IR 行）建边，**没有**"手写写入态"概念；
+它是**警告级**打印（`print_analysis_warnings` 不阻断）+ 靠 `meta.terminal_states` 兜底 dead 判定；
+且**当前无任何调用者**（`grep -rn 'analyze_fsm_paths|print_analysis_warnings' src/` 除自身与测试零命中）。
+⇒ 可移植其 **BFS/报告骨架**，**不可移植其输入假设**。
+
+**决策**：
+
+1. **可达源三源**（缺一即假红）：
+   ① `to =` 表边（**含模板 `$param` 展开后的真名**）；
+   ② 表行 **`state:X` 参数**（`action_args` → `OpenSlot` / `open_collection` → 帧 → `actions.mbt:172` 兑现）；
+   ③ **手写锚点登记**：`ctx.state = …` 直写与 `frame.ret_state = …` 改写共 **4 点**
+      （`actions.mbt:172` / `:200` / `:529` / `:719` / `:976`），逐条登记 `state ← 写入点 file:line + 一句语义`
+      （与役23 R-01 的 `[R-03-N]` 锚同源，**禁止锚点只活在代码注释里**）。
+2. **两前置**：A 模板 `$param` **先展开再建边**；B `terminal_states` **可选声明**（否则"无出边"误判 dead）。
+3. **分级**：三源之外才报"真不可达"；G11 首版落 **警告级**（不 pin 失败），
+   跑满 30c/30d 与四套件无假报后**钳为错误级**并入 G 门。
+4. **取代句**：本 ADR 取代 ADR-30 中"G11 只移植 analyze.mbt"的判据表述；ADR-30 的**选型结论（A 主轴）不变**。
+
+**后果**：
+
+- 正面：G11 由"假红"变"真绿"；锚点登记制把"表外入口"从隐性知识变为显性数据（役23 R-01 的机制位终于有账）。
+- 负面/维护面：锚点登记需与代码行号保持同步（漂移 ⇒ 门假绿）——建议登记条目带 `file:line` 并在门内做"行存在 + 语义关键字"轻校验。
+- 待观察：compose 求积若自动注入新入口态，需并入第 ②/③ 源（重评估条件）。
+
+**重评估条件**：出现第三类入口（生成期注入的 `ret_state`）；锚点登记漂移；`terminal_states` 语义变化。
+
+**关联**：ADR-30（选型，判据句被本 ADR 取代）；役31（本判据的落地役）；`spec.md` §10；
+`todo.md` §役30e（G11 移交）/§役31（役定义）。
