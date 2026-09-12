@@ -412,3 +412,65 @@ git show b39136c:src/n3gen/n3v2_trans.toml | grep -c '^\[\[transitions\]\]'  # 3
 
 另记（非整改、需知情）：生成本包的包名仍为 `gen_n3v2`（`pkg.generated.mbti` 头），
 用户指南写 `gen_n3`——R-12 一并处理；外层仓 `src/fsm/codegen.mbt`、`prune.mbt` 有未提交改动（役21 收尾）。
+
+## 12. 可达性判据与表外入口登记（役31 / ADR-31）
+
+**可达源三源**（G11 判据；缺一即假红）：
+
+1. **表边** `to = "X"`（compose 已把子机模板 `$param` 展开为真名）；
+2. **表行 `state:X` 参数**（`action_args` 携带的开帧 `ret_state` → 入帧 → 运行时经
+   `ctx.state = frame.ret_state` 兑现；n3v2 侧 `actions.mbt:172`）；
+3. **`[[state_entries]]` 手写锚点登记**（可选段，缺省 = 空）：
+
+```toml
+[[state_entries]]
+state  = "BnpIdAfterClose"                       # 必须是已声明态
+anchor = "src/ttl/src/gen_n3v2/actions.mbt:200"  # file:line（首版只形检）
+note   = "set_id_subject 改写 frame.ret_state；pop_bnode_prop(:172) 兑现"
+```
+
+**门位**（两门）：
+
+- **G11 可达性门**：`src/rdf/n3gen/validate.mbt` 的 `n3_check_reachable`（门序末位）；
+  三源之外才报"真不可达"；guard 按无条件边保守近似。
+- **G13 锚点登记门**（役31 step2）：`src/rdf/n3gen/n3gen_test.mbt`——
+  对每条登记做「文件存在 + 行号在界内 + 该行含 `ctx.state` / `frame.ret_state` / 该条目 state 名」轻校验，
+  防**登记漂移**（登记说"这里写 state"，那行已改作他用而 G11 仍假绿）。探针：改错任一 anchor 行号 → G13 必红。
+
+**当前登记册**（3 条）：
+
+| state（**表侧名**） | anchor | 性质 |
+|---|---|---|
+| `BnpIdAfterClose` | `actions.mbt:200` | 唯一表外入口（`frame.ret_state` 写状态字面量） |
+| `ExpectDotOrGraph` | `actions.mbt:529` | 直写既有态（表边亦可达；登记用于防写点漂移） |
+| `ExpectDotOrGraph` | `actions.mbt:719` | 同上 |
+
+⚠ **命名口径**：登记册用**表侧名**（无 `N3` 前缀，如 `ExpectDotOrGraph`），
+而代码里是生成名（`N3ExpectDotOrGraph`）——首版误填生成名时 G11 当场以
+"登记了未声明态"咬住（2026-09-12 实证）。
+
+另有两点**不是种子**，但属同一机制位，登记册 note 中说明即可：
+`actions.mbt:172`（`ctx.state = frame.ret_state` 帧兑现）、`actions.mbt:976`（`frame.ret_state = ret_state` 参数透传）。
+
+**`terminal_states`（可选 meta 键；ADR-31 前置 B）**：
+
+```toml
+[meta]
+terminal_states = ["<干净终局态>", ...]   # 可选；缺省 = 空 = 旧口径
+```
+
+- **死态判据**：`可达 ∧ 无出边 ∧ 未声明为终止态` → 报 `G11: 死态 [...]（可达、无出边、未声明 terminal_states）`；
+- 名字必须**已声明**（形检，防 typo 让豁免失效）；
+- **现状（2026-09-12 实测）**：当前表**零死态**，未声明也不报——该键作为前置保留；
+- 制度位对应 `src/fsm/analyze.mbt` 的 `dead_states`（其 `terminal_states` 兜底同义）。
+
+**顺序前置（ADR-31 前置 A）**：模板 `$param` 必须**先展开再建边**——由 `n3gen_build` 的固定顺序
+`parse → compose → validate → emit`（`emit.mbt:1287/1291`）保证；`validate.mbt` 另有显式门
+"子机标记未展开（须先过 n3gen_compose）"。
+
+**step3 探针（验收留痕）**：删掉 `ExpectTildeEnd` 的 7 条出行 →
+G11 报 `死态 [ExpectTildeEnd]`；在同一探针态下声明 `terminal_states = ["ExpectTildeEnd"]` →
+死态报警消失（豁免生效）；还原 → `moon test src/rdf/n3gen` **11/11**。
+
+**源件关系**：`src/fsm/analyze.mbt` 仅借 BFS 骨架——其"只按表边建边"的输入假设**被 ADR-31 否决**
+（该源件当前无调用者，且未建模手写写入态）。
