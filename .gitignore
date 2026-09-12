@@ -27,3 +27,7 @@ pseudocode.md
 spec.md
 ctx.md
 todo.md
+
+# ---- 文档卷入库（2026-09-12；只放开模块文档卷，不放开 .bak/生成件）----
+!src/gen_n3v2/*.md
+!src/gen_trig/*.md

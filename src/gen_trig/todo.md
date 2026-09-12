@@ -351,3 +351,111 @@ recover + finish_at_end 两处。④ mat_subj 补 TripleTerm 直通臂（役8 �
 续锚/嵌套 bnp 错键旗落假/静默收口/TT 独立主语回归/~ 驻留位 + 物化 2 钉
 ——原文保真 `<<:s :p :o>>` 直出、图块区图名随行）+ gen_n3 104/104 +
 gen_nquads 124/124 + 套件 316/75/36 + 幂等（二次再生 body 稳定）。
+
+---
+
+# 6 战役路线（T10 → T17）——2026-09-12 立卷（与 gen_n3v2 役22–30 同源方法论）
+
+> **卷面现状**：本文件当前**同时承载**宪法（§1）与规格（§2）——按 `bangto/world/const.md`
+> §5.2（`ctx`/`todo` 不承载红线与结构事实）与 §5.4（扁平式五卷），**T16 负责拆卷**
+> （`const.md` ← §1、`spec.md` ← §2，本卷此后只留"役与账本"）。
+> **账本与上下文**：`ctx.md`（R-T1…R-T9 七字段：锚点 / 证据 / 动作 / 验收 / 风险 / 依赖 / 待裁）。
+
+**基线（2026-09-12 实测）**：0 warning · `moon test src/gen_trig` **80/80** · 四套件 `pin=true` ·
+`.mbti` **349 行 / 37 pub**（对比 n3v2 收窄后 166 / 24）· 表 **36 态 / 34 事件 / 10 效果 / 195 转移** ·
+生产文件内联 test **21**（materialize 16 + serialize 5）· 包内 `.bak` **5** 个。
+
+**总图**（`→` 前置；`∥` 可并行）：
+
+```
+T10 产物黄金门 ──┬─→ T11 效果面接活 ──┐
+（第一役，无门不改生成物）│  ├─→ T12 公共面收窄 ─┤
+                 │  ├─→ T13 命名回灌 ────┤
+                 └─→ T14 测试归位 ∥ T15 清件 ├─→ T16 卷面补全 → T17 [立案] 双包重复治理
+                                            ┘
+```
+
+**统一验收（每役都跑）**：
+
+```sh
+cd /home/thy/moonttl && moon test src/rdf && moon test src/rdf/n3gen   # 外仓：IR 门 + 黄金门（动生成面时）
+cd /home/thy/moonttl/src/ttl
+moon check src/gen_trig        # 0 error / 0 warning
+moon test src/gen_trig         # ≥80；四套件数字不变（rdf11-trig / turtle / rdf12-trig / rdf12-turtle）
+moon info && moon fmt          # .mbti diff 逐行审；fmt 幂等
+```
+
+### T10 产物黄金门（R-T2）— P0，前置：无（**第一役：无门不改生成物**）
+
+- 范围：`src/fsm/cmd/main.mbt`（再生入口）+ `src/rdf/trig_domain_toml_gen.mbt`（门位）。
+- step：① 探针——摸 `fsm/cmd` 再生路径与"是否可 pin ts"（`trig.mbt:4` 现为墙钟值）；② 若不可 pin → 加 ts 参数（**先探针后动**，外仓 `src/fsm` 全测试兜底）；③ 加门：重生成 ≡ check-in `trig.mbt` **逐字节** + **强幂等**（重复生成零字节移动）。
+- 交付：`trig.mbt` 可复现、门绿、人工对齐注释（`domain_to_ir.mbt:15/52/257/407/2717`）改为指向门。
+- 验收：故意改一行表 → 门红；复原 → 门绿；两次生成零字节移动。
+- 风险：v1 路径共享 codegen（`src/fsm`），改它要跑外仓全测试。
+
+### T11 效果面接活（R-T1）— P0，前置：T10
+
+- 范围：`trig.mbt` 效果套装（`:1165/1166/1167/1172–1226`）+ `engine.mbt:364`（`next`）。
+- step：① 探针出切点表（`ctx.md` §2：观测/降级挂点现状全"不可以"）；② 套装收形（删恒定样板 `handle_continue`/`handle_done` 等）；③ `interpret` 成唯一解释器、`engine.next` 调它；④ `emit_queue` 下沉 ctx 模板。
+- 交付：`TrigEffectHandler` 有 impl + 调用点；观测/容灾切面可挂。
+- 验收：`rg "TrigEffectHandler"` 出现 impl 与调用点；80/80；四套件数字不变；门绿。
+- 风险：**trig 有图块**（`enter_graph`/`exit_graph`）——收形不得动图块语义（`engine.mbt` 注释 V 段）。
+
+### T12 公共面收窄（R-T3）— P1，前置：T10
+
+- 范围：`trig.mbt` 生成面的 `pub` 声明 + `pkg.generated.mbti`。
+- step：① 逐 `pub` 判定对外/包内（留 `trig_parser` / `TrigMaterializer` / `TrigSerializer`）；② FSM 机械（Context / State / Event / Effect / 三 trait / Engine）降包内；③ 黑盒 `_test.mbt` 适配。
+- 交付：`.mbti` ≤166 行 / ≤24 pub（对齐 n3v2）。
+- 验收：`moon info` diff 只含收窄项；80/80；门绿。
+- 待裁：题T2（建议 B：连 trait 一起降包内）。
+
+### T13 命名回灌（R-T4）— P1，前置：T10
+
+- 范围：`TrigLoopPolicy → TrigSupervisor`（生成面 `trig.mbt` + 实现面 `engine.mbt:227/240/314/344/353` + 文档）；`Hooks → TrigActionsImpl`（`actions.mbt:9` + `engine.mbt` 字段）。
+- step：① 改生成面（模板/表）→ 再生；② 实现面同名替换；③ 文档（本卷 §1.1 叙述、`ctx.md`）。
+- 交付：`grep -rn 'TrigLoopPolicy'` 仅剩迁移记录。
+- 验收：门绿；80/80；`moon info` diff 只含改名。
+- 待裁：与 T10 同笔（跨仓最省）。
+
+### T14 测试归位（R-T6）+ T15 清件（R-T5）— P1/P0，前置：无（低风险，可与 T10 并行）
+
+- 范围：`materialize_trig.mbt`（`:1132` 辅助段 + `:1212` 起 16 test）、`serialize_trig.mbt`（5 test）、`*.bak` 5 个。
+- step：① 新建 `materialize_trig_wbtest.mbt` / `serialize_trig_wbtest.mbt`；② 辅助去前缀并与 `trig_wbtest.mbt` 既有 helper **去重**（同包 `_wbtest` 共命名空间）；③ `.bak` 归档（`bak/` 或本仓 deprecated 位）并留指向，禁静默删。
+- 交付：生产文件只剩实现；包目录无 `.bak`。
+- 验收：**`moon info` 零 diff**（未碰公共面）；测试计数不减（80）。
+
+### T16 卷面补全（R-T7）— P1，前置：无
+
+- 范围：本目录五卷（扁平式）。
+- step：① `const.md` ← 现 §1（改写为"必须/禁止"句式）；② `spec.md` ← 现 §2（结构事实 + 不变量）；③ 本卷裁剪为"役与账本"；④ 决策落 `adr.md`（前缀建议 `ADR-TRIG-`）。
+- 交付：五卷齐（const / spec / todo / ctx / adr）。
+- 验收：`todo.md` 不再含红线条目；引用不悬空；与 `ctx.md` 互指一致。
+
+### T17 [立案] 双包重复治理（R-T8）— P2，前置：T11–T13
+
+- 范围：`gen_trig` + `gen_n3v2`（用户层同名 helper 交集 20 个；≈4064 vs ≈4381 行并行副本）。
+- step：① 出"共享面清单 + 抽件方案 + 分叉代价"评估；② 二选一：抽共享用户层件（新包/上移 `gen_nquads`）或"有意分叉 + 差异入 spec"。
+- 交付：评估报告 + 决策（ADR）。
+- 验收：决策落地；若抽件，两包各自只留方言特有部分。
+- 风险：跨包跨仓，大役；**不得与 T11–T13 同笔**。
+
+### P 步表
+
+| P | 步骤含义 | 役 | R | 前置 | 阻塞题 |
+|---|---|---|---|---|---|
+| **P0-1** | 产物黄金门（无门不改生成物） | T10 | R-T2 | — | 题T4 |
+| **P0-2** | 效果面接活 | T11 | R-T1 | T10 | 题T1 |
+| **P0-3** | 清包内死件 | T15 | R-T5 | — | — |
+| **P1-1** | 公共面收窄 | T12 | R-T3 | T10 | 题T2 |
+| **P1-2** | 命名回灌 | T13 | R-T4 | T10 | — |
+| **P1-3** | 测试归位 | T14 | R-T6 | — | — |
+| **P1-4** | 卷面补全（拆卷） | T16 | R-T7 | — | — |
+| **P2-1** | 双包重复治理 | T17 | R-T8 | T11–T13 | 题T3 |
+
+推荐执行序：**T10 →（T14 ∥ T15）→ T13 → T12 → T11 → T16 → T17[立案]**。
+
+### 执行记录（滚动追加）
+
+| 日期 | 役 | 范围 | 结果 / 验收数字 | 备注 |
+|---|---|---|---|---|
+| 2026-09-12 | — | 立项评审 + `ctx.md` 立卷 | 基线：0 warning · 80/80 · 四套件 pin · `.mbti` 349/37 pub · 表 36/34/10/195 · 内联 test 21 · `.bak` 5 | R-T1…R-T9 七字段见 `ctx.md`；**关键发现**：产物 `trig.mbt` 无黄金门（仅 IR 侧门 + 人工逐行对齐）、效果面孤儿挂点、公共面未收窄、命名未按 ADR 回灌 |
