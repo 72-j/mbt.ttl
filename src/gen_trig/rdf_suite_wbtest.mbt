@@ -32,7 +32,8 @@ fn trig_suite_verdict(
 }
 
 ///|
-/// deferred 桶已撤销（2026-09-04 六轮收官）：桶概念归零，详见 todo.md ★3 行。
+/// deferred 桶已撤销（2026-09-04 六轮收官）：桶概念归零。
+/// 决策与六轮账目见 `adr.md` ADR-TRIG-004/009；台账见 `spec.md` §7（C-T14）。
 /// 六轮：①[]/() 主桶 61 文件（★3）②lists-05/subm-01/sole 三桩 ③trig-turtle-/
 /// minimal-whitespace 整族 ④免试 5 出槽（探针逐文件真跑核实）⑤三桩真堵全平
 ///（壳内 ~ reifier / [] 图标签 / 注解体 fresh）⑥manifest 控制文件转 harness
