@@ -343,11 +343,11 @@ fn N3Context::under_formula(self : N3Context) -> Bool {
 }
 
 ///|
-/// N3LoopPolicy 实现（Engine 持有 lexer/ctx/last_error，钩子落在此处）
+/// N3Supervisor 实现（Engine 持有 lexer/ctx/last_error，钩子落在此处）
 
 ///|
 /// 入口重置策略：仅构造时一次（空 ctx 已是初始态；保留位——流式重建时用）
-impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn begin_record(
+impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn begin_record(
   self : N3Engine[L],
 ) -> Unit {
   self.ctx.reset(ResetScope::All)
@@ -363,7 +363,7 @@ impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn begin_record(
 /// N3 无图块：Rbrace/Rparen 均无前界语义（Rbrace 无表行；Rparen 只在集合区域
 /// 合法，区域随 slot_stack 清空失效）。state 归位是恢复语义的一部分；
 /// 不经转移表（错误不在表中表达）。
-impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn recover(
+impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn recover(
   self : N3Engine[L],
   span : Span,
 ) -> Unit {
@@ -420,7 +420,7 @@ fn[L : LexerSource] N3Engine::consume_to_recover_point(
 ///|
 /// EOF 判脏策略：state 未归位或槽位脏 → 报错并自清（防 parse_all 无限重报：
 /// 无 per-next 复位点，finish 自排水）
-impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn finish_at_end(
+impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn finish_at_end(
   self : N3Engine[L],
 ) -> Result[N3PendingQuad, ParseError]? {
   // DirectiveEnd 算干净终态：SPARQL 风格指令可无点直接收文件
@@ -451,7 +451,7 @@ impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn finish_at_end(
 
 ///|
 /// 错误装配策略：BusinessFailed 消息 → ParseError
-impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn on_business_failed(
+impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn on_business_failed(
   self : N3Engine[L],
   message : String,
 ) -> ParseError {
@@ -460,7 +460,7 @@ impl[L : LexerSource] N3LoopPolicy for N3Engine[L] with fn on_business_failed(
 
 ///|
 /// 模板内方法可见性：把 LoopPolicy 四钩子提升为 N3Engine 的扩展方法
-extend N3Engine with N3LoopPolicy::{
+extend N3Engine with N3Supervisor::{
   recover,
   begin_record,
   finish_at_end,

@@ -19,10 +19,6 @@ pub(all) enum GraphPolicy {
   Drop
 } derive(Eq, @debug.Debug)
 
-pub struct Hooks {
-}
-pub fn Hooks::new() -> Self
-
 pub(all) enum PredKind {
   Normal
   RDFFirst
@@ -74,6 +70,10 @@ pub(all) enum TrigActionError {
   UnexpectedEvent(TrigState, TrigEvent)
   BusinessFailed(String)
 }
+
+pub struct TrigActionsImpl {
+}
+pub fn TrigActionsImpl::new() -> Self
 
 pub(all) struct TrigContext {
   mut state : TrigState
@@ -130,7 +130,7 @@ pub(all) enum TrigEffectOutcome {
 
 pub struct TrigEngine[L] {
   lexer : L
-  hooks : Hooks
+  actions : TrigActionsImpl
   ctx : TrigContext
   dialect : TrigDialect
   mut last_error : (Int, Int)?
@@ -341,7 +341,7 @@ pub trait TrigEffectHandler {
   fn dispatch(Self, TrigEffect) -> Result[Unit, TrigEffectError]
 }
 
-pub trait TrigLoopPolicy {
+pub trait TrigSupervisor {
   fn begin_record(Self) -> Unit
   fn recover(Self, (Int, Int)) -> Unit
   fn finish_at_end(Self) -> Result[TrigPendingQuad, @gen_nquads.ParseError]?

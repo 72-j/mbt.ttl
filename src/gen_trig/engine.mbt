@@ -167,7 +167,7 @@ fn[L : LexerSource] TrigEngine::pull(self : TrigEngine[L]) -> TrigEvent? {
 /// 词法器可插拔：L = TrigLexerAdapter（当前唯一实现）
 pub struct TrigEngine[L] {
   lexer : L
-  hooks : Hooks
+  actions : TrigActionsImpl
   ctx : TrigContext // mutable 契约：ctx 原地推进（reset/step 原地写）
   dialect : TrigDialect // 方言开关（默认 TriG 超集；Turtle 禁图块区）
   mut last_error : Span? // 最近一次错误位置（行号由上层按 data 统计）
@@ -182,7 +182,7 @@ pub fn[L : LexerSource] TrigEngine::new(
 ) -> TrigEngine[L] {
   let engine = TrigEngine::{
     lexer,
-    hooks: Hooks::new(),
+    actions: TrigActionsImpl::new(),
     ctx: TrigContext::new(),
     dialect,
     last_error: None,
@@ -218,11 +218,11 @@ fn[L] TrigEngine::record_error(self : TrigEngine[L], span : Span) -> Unit {
 }
 
 ///|
-/// TrigLoopPolicy 实现（Engine 持有 lexer/ctx/last_error，钩子落在此处）
+/// TrigSupervisor 实现（Engine 持有 lexer/ctx/last_error，钩子落在此处）
 
 ///|
 /// 入口重置策略：仅构造时一次（空 ctx 已是初始态；保留位——流式重建时用）
-impl[L : LexerSource] TrigLoopPolicy for TrigEngine[L] with fn begin_record(
+impl[L : LexerSource] TrigSupervisor for TrigEngine[L] with fn begin_record(
   self : TrigEngine[L],
 ) -> Unit {
   self.ctx.reset(ResetScope::All)
@@ -235,7 +235,7 @@ impl[L : LexerSource] TrigLoopPolicy for TrigEngine[L] with fn begin_record(
 ///|
 /// 错误恢复策略：登记 → 消费到 Dot 或 Rbrace → 按"出错时是否在图块内"归位。
 /// state 归位是恢复语义的一部分；不经转移表（错误不在表中表达）。
-impl[L : LexerSource] TrigLoopPolicy for TrigEngine[L] with fn recover(
+impl[L : LexerSource] TrigSupervisor for TrigEngine[L] with fn recover(
   self : TrigEngine[L],
   span : Span,
 ) -> Unit {
@@ -309,7 +309,7 @@ fn[L : LexerSource] TrigEngine::consume_to_recover_point(
 ///|
 /// EOF 判脏策略：state 未归位或槽位脏 → 报错并自清（防 parse_all 无限重报：
 /// nquads 靠 begin_record 复位，trig 无 per-next 复位点，finish 自排水）
-impl[L : LexerSource] TrigLoopPolicy for TrigEngine[L] with fn finish_at_end(
+impl[L : LexerSource] TrigSupervisor for TrigEngine[L] with fn finish_at_end(
   self : TrigEngine[L],
 ) -> Result[TrigPendingQuad, ParseError]? {
   // DirectiveEnd 算干净终态：SPARQL 风格指令可无点直接收文件
@@ -339,7 +339,7 @@ impl[L : LexerSource] TrigLoopPolicy for TrigEngine[L] with fn finish_at_end(
 
 ///|
 /// 错误装配策略：BusinessFailed 消息 → ParseError
-impl[L : LexerSource] TrigLoopPolicy for TrigEngine[L] with fn on_business_failed(
+impl[L : LexerSource] TrigSupervisor for TrigEngine[L] with fn on_business_failed(
   self : TrigEngine[L],
   message : String,
 ) -> ParseError {
@@ -348,7 +348,7 @@ impl[L : LexerSource] TrigLoopPolicy for TrigEngine[L] with fn on_business_faile
 
 ///|
 /// 模板内方法可见性：把 LoopPolicy 四钩子提升为 TrigEngine 的扩展方法
-extend TrigEngine with TrigLoopPolicy::{
+extend TrigEngine with TrigSupervisor::{
   recover,
   begin_record,
   finish_at_end,
@@ -397,7 +397,7 @@ pub fn[L : LexerSource] TrigEngine::next(
       self.recover(span_of_event(event))
       continue
     }
-    match step(self.ctx, event, self.hooks) {
+    match step(self.ctx, event, self.actions) {
       Ok(effect) =>
         // 役11（T11，与 n3v2 役22 同构）：解释在 interpret（套装默认体），
         // 此处只兑现 loop 控制流；效果语义全数移驻 handler
@@ -489,7 +489,7 @@ impl[L] TrigEffectHandler for TrigEngine[L] with fn snapshot(
 impl[L] TrigEffectHandler for TrigEngine[L] with fn on_exit_graph(
   self : TrigEngine[L],
 ) -> Unit {
-  let _ = TrigActions::exit_graph(self.hooks, self.ctx)
+  let _ = TrigActions::exit_graph(self.actions, self.ctx)
 }
 
 ///|
@@ -497,7 +497,7 @@ impl[L] TrigEffectHandler for TrigEngine[L] with fn on_pop_bnp(
   self : TrigEngine[L],
   ctx : TrigContext,
 ) -> Unit {
-  let _ = TrigActions::pop_bnode_prop(self.hooks, ctx)
+  let _ = TrigActions::pop_bnode_prop(self.actions, ctx)
 }
 
 ///|
@@ -506,7 +506,7 @@ impl[L] TrigEffectHandler for TrigEngine[L] with fn on_list_step(
   ctx : TrigContext,
   elem : Span,
 ) -> Unit {
-  let _ = TrigActions::list_step(self.hooks, ctx, elem)
+  let _ = TrigActions::list_step(self.actions, ctx, elem)
 }
 
 ///|
@@ -517,5 +517,5 @@ impl[L] TrigEffectHandler for TrigEngine[L] with fn on_open_slot(
   typ : SlotType,
   ret_state : TrigState,
 ) -> Unit {
-  let _ = TrigActions::open_slot(self.hooks, ctx, span, typ, ret_state)
+  let _ = TrigActions::open_slot(self.actions, ctx, span, typ, ret_state)
 }

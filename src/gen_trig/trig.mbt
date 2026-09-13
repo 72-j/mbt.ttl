@@ -222,7 +222,7 @@ pub fn TrigContext::snapshot(self : TrigContext) -> TrigPendingQuad {
 /// 第三条业务面：LoopPolicy —— 主循环模板的领域钩子（生成契约，Engine 提供实现）。
 /// 循环骨架是固定模板（engine：入口/终止 → step 步进 → Effect 分发 → 错误降级），
 /// 领域知识（入口重置/行恢复/EOF 判脏/失败映射）全部收敛到本 trait。
-pub trait TrigLoopPolicy {
+pub trait TrigSupervisor {
   fn begin_record(Self) -> Unit
   fn recover(Self, Span) -> Unit
   fn finish_at_end(Self) -> Result[TrigPendingQuad, ParseError]?

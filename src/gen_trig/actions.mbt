@@ -1,4 +1,4 @@
-// ===== 用户部分：Actions 实现（mutable 契约，与 nquads Hooks 同构） =====
+// ===== 用户部分：Actions 实现（mutable 契约，与 nquads TrigActionsImpl 同构） =====
 // 口径（与 trig.mbt 头注一致）：
 //   - action 只写槽位/账本，返回意图；永不重置 ctx，也拿不到数据视图
 //   - 命名在 nquads 词汇基础上追加：set_subject/predicate/object 原样，
@@ -6,16 +6,16 @@
 
 ///|
 /// Actions 的缺省实现载体（单载体：step 的 actions 面）
-pub struct Hooks {}
+pub struct TrigActionsImpl {}
 
 ///|
-pub fn Hooks::new() -> Hooks {
-  Hooks::{ }
+pub fn TrigActionsImpl::new() -> TrigActionsImpl {
+  TrigActionsImpl::{ }
 }
 
 ///|
-impl TrigActions for Hooks with fn set_subject(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn set_subject(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   payload : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -24,8 +24,8 @@ impl TrigActions for Hooks with fn set_subject(
 }
 
 ///|
-impl TrigActions for Hooks with fn set_predicate(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn set_predicate(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   payload : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -34,8 +34,8 @@ impl TrigActions for Hooks with fn set_predicate(
 }
 
 ///|
-impl TrigActions for Hooks with fn set_object(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn set_object(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   payload : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -44,8 +44,8 @@ impl TrigActions for Hooks with fn set_object(
 }
 
 ///|
-impl TrigActions for Hooks with fn set_prefix_name(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn set_prefix_name(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   payload : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -54,8 +54,8 @@ impl TrigActions for Hooks with fn set_prefix_name(
 }
 
 ///|
-impl TrigActions for Hooks with fn declare_prefix(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn declare_prefix(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   iri : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -73,8 +73,8 @@ impl TrigActions for Hooks with fn declare_prefix(
 }
 
 ///|
-impl TrigActions for Hooks with fn set_base(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn set_base(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   iri : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -86,8 +86,8 @@ impl TrigActions for Hooks with fn set_base(
 }
 
 ///|
-impl TrigActions for Hooks with fn enter_graph(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn enter_graph(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   label : Span?,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -100,10 +100,10 @@ impl TrigActions for Hooks with fn enter_graph(
 }
 
 ///|
-impl TrigActions for Hooks with fn exit_graph(_self : Hooks, ctx : TrigContext) -> Result[
-  TrigEffect,
-  TrigActionError,
-] {
+impl TrigActions for TrigActionsImpl with fn exit_graph(
+  _self : TrigActionsImpl,
+  ctx : TrigContext,
+) -> Result[TrigEffect, TrigActionError] {
   ctx.graph = None
   Ok(TrigEffect::ExitGraph)
 }
@@ -112,8 +112,8 @@ impl TrigActions for Hooks with fn exit_graph(_self : Hooks, ctx : TrigContext) 
 /// ★3 区域栈：压栈 action——外层槽位快照入帧（s/p/g + ret_state；ret_state 是
 /// 开括号转移行定夺的决策，帧只携带），fresh 节点占 s 槽，谓词清空
 ///（宾位进入时外层 p 挂帧，弹栈恢复）。object 槽不动（进入位必为 None 缺口）
-impl TrigActions for Hooks with fn open_bnode_prop(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn open_bnode_prop(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   open_span : Span,
   as_subject : Bool,
@@ -139,8 +139,8 @@ impl TrigActions for Hooks with fn open_bnode_prop(
 /// ★3 区域栈：弹栈 action——恢复外层 s/p/g，fresh 节点落入目标槽
 ///（as_subject 定槽位），返回状态兑现帧携带的决策（state 由表间接管理的唯一例外）。
 /// 序上恒在 EmitQuad 之后：emit 先 snapshot 后收拾，恢复值取自帧不受 PredObj 收拾波及
-impl TrigActions for Hooks with fn pop_bnode_prop(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn pop_bnode_prop(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
 ) -> Result[TrigEffect, TrigActionError] {
   match ctx.slot_stack.pop() {
@@ -172,8 +172,8 @@ impl TrigActions for Hooks with fn pop_bnode_prop(
 ///|
 /// ★3 阶段3 `()` 集合：开集合 action——List 帧压栈，外层 s/p/g 快照入帧；
 /// s 槽留空（链头未定：空集合 = rdf:nil，非空集合头 = node0，收口/pop 时裁决）
-impl TrigActions for Hooks with fn open_collection(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn open_collection(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   open_span : Span,
   as_subject : Bool,
@@ -198,8 +198,8 @@ impl TrigActions for Hooks with fn open_collection(
 ///|
 /// OpenSlot 意图兑现 action（嵌套元素开帧，`[`/`(` 作集合元素）：按 typ 压对应帧。
 /// as_subject 恒 false（嵌套开帧只发生元素位，主位开帧走直连行）
-impl TrigActions for Hooks with fn open_slot(
-  self : Hooks,
+impl TrigActions for TrigActionsImpl with fn open_slot(
+  self : TrigActionsImpl,
   ctx : TrigContext,
   open_span : Span,
   typ : SlotType,
@@ -228,8 +228,8 @@ fn list_top(ctx : TrigContext) -> Result[Slot, TrigActionError] {
 ///|
 /// 首元素 first 链发射：链头未建则建 node0 = (open.0, 1)；first 标记 + 元素落 o 槽。
 /// EmitQuad(PredObj) 收拾后 s 槽保留链节点（下一元素 rest 链复用）
-impl TrigActions for Hooks with fn list_first(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn list_first(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   elem : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -249,8 +249,8 @@ impl TrigActions for Hooks with fn list_first(
 ///|
 /// 首元素为嵌套结构（`[`/`(`）：first 链发射（o = 嵌套头 span，开括号即身份）→
 /// OpenSlot 兑现开帧（发射在先——快照要拍到链节点，开帧覆写 s 在其后）
-impl TrigActions for Hooks with fn list_first_nested(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn list_first_nested(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   elem : Span,
   typ : SlotType,
@@ -277,8 +277,8 @@ impl TrigActions for Hooks with fn list_first_nested(
 ///|
 /// 后续元素：rest 链发射（当前节点 → 新节点 Span(open.0, node_seq+1)）→
 /// ListStep 兑现（切新节点 + first 标记 + 元素落 o）→ 第二次发射（新节点 first 元素）
-impl TrigActions for Hooks with fn list_next(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn list_next(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   elem : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -301,8 +301,8 @@ impl TrigActions for Hooks with fn list_next(
 ///|
 /// 后续元素为嵌套结构：rest 链 → ListStep 切新节点 + first 标记落 o = 嵌套头 →
 /// 第二次发射 → OpenSlot 开帧（四意图序）
-impl TrigActions for Hooks with fn list_next_nested(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn list_next_nested(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   elem : Span,
   typ : SlotType,
@@ -328,10 +328,10 @@ impl TrigActions for Hooks with fn list_next_nested(
 ///|
 /// 集合收口（尾元素后 `)`）：尾节点 rdf:rest rdf:nil（标记 Span(open.0, 0)）→
 /// pop（头节点 fr.open_span 落目标槽 + 返回状态兑现）
-impl TrigActions for Hooks with fn list_nil(_self : Hooks, ctx : TrigContext) -> Result[
-  TrigEffect,
-  TrigActionError,
-] {
+impl TrigActions for TrigActionsImpl with fn list_nil(
+  _self : TrigActionsImpl,
+  ctx : TrigContext,
+) -> Result[TrigEffect, TrigActionError] {
   let fr = match list_top(ctx) {
     Ok(fr) => fr
     Err(e) => return Err(e)
@@ -349,8 +349,8 @@ impl TrigActions for Hooks with fn list_nil(_self : Hooks, ctx : TrigContext) ->
 ///|
 /// ListStep 意图兑现 action：节点序号 +1，s 槽切新节点（Span(open.0, 新序号)），
 /// first 标记 + 元素落 o 槽（供串列中第二次 EmitQuad 快照）
-impl TrigActions for Hooks with fn list_step(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn list_step(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   elem : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -366,10 +366,10 @@ impl TrigActions for Hooks with fn list_step(
 }
 
 ///|
-impl TrigActions for Hooks with fn annot_open(_self : Hooks, ctx : TrigContext) -> Result[
-  TrigEffect,
-  TrigActionError,
-] {
+impl TrigActions for TrigActionsImpl with fn annot_open(
+  _self : TrigActionsImpl,
+  ctx : TrigContext,
+) -> Result[TrigEffect, TrigActionError] {
   // 役9 注解开壳：锚 s/o 入壳账（槽位不动——主 quad 快照仍取锚槽位）。
   // 返回 EmitQuad(PredObj) = 原固定效果行的 action 返回式（役8 同款架构约束：
   // 生成的 action 一律返回 Effect，没有「action + 固定效果」行型）
@@ -381,8 +381,8 @@ impl TrigActions for Hooks with fn annot_open(_self : Hooks, ctx : TrigContext) 
 }
 
 ///|
-impl TrigActions for Hooks with fn annot_body_verb(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn annot_body_verb(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
   payload : Span,
 ) -> Result[TrigEffect, TrigActionError] {
@@ -393,10 +393,10 @@ impl TrigActions for Hooks with fn annot_body_verb(
 }
 
 ///|
-impl TrigActions for Hooks with fn annot_end(_self : Hooks, ctx : TrigContext) -> Result[
-  TrigEffect,
-  TrigActionError,
-] {
+impl TrigActions for TrigActionsImpl with fn annot_end(
+  _self : TrigActionsImpl,
+  ctx : TrigContext,
+) -> Result[TrigEffect, TrigActionError] {
   // 役9 收口：置还原旗——末体 quad 在发射位（旗真）换 TT 壳主语，
   // settle_annotation 在快照之后消费清账
   ctx.annot_close = true
@@ -404,8 +404,8 @@ impl TrigActions for Hooks with fn annot_end(_self : Hooks, ctx : TrigContext) -
 }
 
 ///|
-impl TrigActions for Hooks with fn annot_close_silent(
-  _self : Hooks,
+impl TrigActions for TrigActionsImpl with fn annot_close_silent(
+  _self : TrigActionsImpl,
   ctx : TrigContext,
 ) -> Result[TrigEffect, TrigActionError] {
   // 役9 静默收口：末体 quad 已随分号行发射，直清壳账零发射
