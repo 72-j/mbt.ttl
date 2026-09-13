@@ -107,17 +107,22 @@ moon test src/gen_trig       # 80/80；四套件数字不变（357/316/36/75）
 moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 ```
 
-### T10 产物黄金门（R-T2）— P0，前置：无（**第一役：无门不改生成物**）
+### T10 产物黄金门（R-T2）— P0 **[✅ 已完成 2026-09-13]**，前置：无（**第一役：无门不改生成物**）
 
-- 范围：`src/fsm/cmd/main.mbt`（再生入口）+ `src/rdf/trig_domain_toml_gen.mbt`（门位）。
-- step：① 探针——摸 `fsm/cmd` 再生路径与"能否 pin ts"（`trig.mbt:4` 现为墙钟值
-  `src/fsm/codegen.mbt` 的 `@env.now()`）；② 若不可 pin → 加 ts 参数（**先探针后动**，
-  外仓 `src/fsm` 全测试兜底）；③ 加门：重生成 ≡ check-in `trig.mbt` **逐字节** + **强幂等**
-  （重复生成零字节移动）。参考实现：n3v2 的 `n3_emit_banner(ts)`（ts 显式注入）。
-- 交付：`trig.mbt` 可复现、门绿；`domain_to_ir.mbt` 的人工对齐注释改为指向门。
-- 验收：故意改一行表 → 门红；复原 → 门绿；两次生成零字节移动。
-- 风险：v1 路径共享 codegen（`src/fsm`），改它要跑外仓全测试；**先探针**。
-- 待裁：题T4（门落点 A/B）。
+**落地摘要（2026-09-13）**：`src/fsm` 增 `generate_with_ts` + CLI `--ts`；形态口径 =
+**原始形 + 工具链 `moon fmt`**（进程内 fmt 包实测与工具链不一致，已否决）；门 =
+「钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节 + 强幂等」，落
+`src/rdf/trig_domain_toml_gen.mbt`（`src/rdf` **21/21**；证伪探针：改一行表 → 门红）。
+**再生配方**：`moon run src/fsm/cmd -- src/rdf/fsm_out/trig_fsm.toml --ts 1788654011855 -o <产物>`
+→ `moon fmt <产物>`。**再生禁令解除**（`const.md` §5 已改写）。决策见 `src/rdf/adr.md` ADR-6。
+
+| 五件套 | 落地内容 |
+|---|---|
+| 范围 | `src/fsm/codegen.mbt`（`generate_with_ts`）+ `src/fsm/cli.mbt`（`--ts`）+ `src/rdf/trig_domain_toml_gen.mbt`（门位） |
+| 交付 | 钉 ts 可再生；`trig 产物黄金门` 落 `src/rdf`；`const.md` §5 禁令改写 |
+| 验收 | `moon test src/rdf` **21/21**；证伪探针：改一行表 → 门红（`assert_eq(formatted, golden)`）→ 复原 → 绿；强幂等（同 ir+ts 重放零字节移动） |
+| 风险 | ⚠ **Turtle 路径例外**：数组函数口径停在役9 前，经 Turtle 路径再生仍会抹注解，门只覆盖 2.0 路径（`src/rdf/adr.md` ADR-5）；nquads 同类形态差 68 行，产物门待补（另役） |
+| 待裁 | 题T4 = **A 落地**（门落 `trig_domain_toml_gen.mbt`；B 的"通用产物门"随之可复用同法补 nquads） |
 
 **前置修复 ✅ 2026-09-12（外仓）**：`moon test src/rdf` 的「trig 对照：手工 `trig_domain.toml` ≡
 词表生成」曾红（`src/rdf/trig_domain_toml_gen.mbt:215` `domain_config_matches`，由 `1152ca8` 引入）——
@@ -185,7 +190,7 @@ moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 
 | P | 步骤含义 | 役 | R | 前置 | 阻塞题 |
 |---|---|---|---|---|---|
-| **P0-1** | 产物黄金门（无门不改生成物） | T10 | R-T2 | — | 题T4 |
+| **P0-1** | 产物黄金门（无门不改生成物） | T10 **✅** | R-T2 ✅ | — | 题T4 = A 落地 |
 | **P0-2** | 效果面接活 | T11 | R-T1 | T10 | 题T1 |
 | **P0-3** | 清包内死件 + 头注 | T15 | R-T5 / R-T9 | — | — |
 | **P1-1** | 公共面收窄 | T12 | R-T3 | T10 | 题T2 |
@@ -213,3 +218,5 @@ T16 ✅ 已完成（本卷即其产物）。**R-T10–R-T13 的修口一律排�
 | 2026-09-06 | — | 役 9 注解精化 port | 体主语 = TT 壳；+9 钉；316/75/36 不变 | ADR-TRIG-007 |
 | 2026-09-12 | — | 立项评审 + `ctx.md` 立卷 | 基线：0 warning · 80/80 · 四套件 pin · `.mbti` 349/54 · 表 36/34/10/195 · 内联 test 21 · `.bak` 5 | 关键发现：产物无黄金门、效果面孤儿、公共面未收窄、命名未回灌 |
 | 2026-09-12 | **T16** | **卷面补全（拆卷）** | 五卷 + 一页齐：`const.md` / `spec.md` / `adr.md`（ADR-TRIG-001…011）/ `ARCHITECTURE.md` / 本卷重写 / `ctx.md` 对齐；实测数字复核一致 | 顺带清两处陈数（@base 缺陷已修、deferred 已全零）；`todo.md` 472 → 本版 |
+| 2026-09-13 | **T10 探针（外仓）** | 役9 注解四字段回灌 2.0 + 数组腿退役（`src/rdf`） | `moon test src/rdf` **20/20**（trig 正门四腿 → 三腿 + 规模钉 4 快照附加）；残差 337 → **250 行且全为 fmt 形 + ts**（48 hunk，注解面追平） | `src/rdf/adr.md` ADR-4（回灌 + 同名字段进快照口径）/ ADR-5（v1 数组腿退役）；⚠ Turtle 路径仍走数组旧口径，翻 2.0 另立役 |
+| 2026-09-13 | **T10 ✅** | 产物黄金门：`generate_with_ts` + CLI `--ts` + 工具链 `moon fmt` 收敛 + 门 | `moon test src/rdf` **21/21**（新增 `trig 产物黄金门`）；证伪探针：改一行表 → 门红 → 复原 → 绿；钉子进程内 fmt 包（与工具链不一致）已否决 | `src/rdf/adr.md` ADR-6；**再生禁令解除**（`const.md` §5 改写）；顺带发现 nquads 同类形态差 68 行（产物门待补，另役） |

@@ -127,6 +127,14 @@ trig 需同构移植（trig 多一个图块注解区）。
 **验收**：+9 钉（顶层正典 / 图块区壳+图名保持 / 续锚 / 嵌套 bnp 错键旗落假 / 静默收口 /
 TT 独立主语回归 / `~` 驻留位 + 物化 2 钉）；`gen_trig` 80/80、套件 316/75/36 不变。
 
+**补记（2026-09-13）**：本 ADR 声称的"toml 侧 +4 字段 +1 extra +4 动作"当时只落到了
+v1 层之外的产物/文档面——**2.0 数据面（`domain2/trig_*`）实际停在役9 之前**，导致
+"从盘上 `fsm_out` 再生会抹注解"的预存分歧（ADR-TRIG-006 遗留）。该分歧已由外层仓
+`src/rdf/adr.md` **ADR-4** 收口：四字段（含 derived `subj_shell`）/四 `action_hooks`/
+20 行行型回灌 `domain2/trig_*`，盘上 IR 与产物注解面追平；残差只剩 fmt 形与墙钟 ts。
+同轮 `src/rdf/adr.md` **ADR-5** 退役了 v1 数组对拍腿（v1 TOML 只服务 nquads）；
+⚠ Turtle 路径仍走数组函数、口径停在役9 前，翻 2.0 另立役。
+
 ## ADR-TRIG-008：Enter/ExitGraph 双路由维持现状（不引入 `action_args`）——✅ 2026-09-03
 
 **背景**：`}` 有两条到达路径——动作路径（`exit_graph` action → dispatch → `handle_exit_graph`）

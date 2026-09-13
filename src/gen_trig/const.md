@@ -63,7 +63,12 @@
 ## 5 生成物与再生纪律（禁止）
 
 - `trig.mbt` 是**生成物**（DO NOT EDIT）：**禁止手编**；改它 = 改生成面 → 再生。
-- 再生的门：IR 侧 `src/rdf/trig_domain_toml_gen.mbt`「双文件编译 ≡ `fsm_out/trig_fsm.toml`」；
-  **产物侧黄金门尚未建立**（T10 立）——门建立前，**禁止**在无对拍的情况下改生成面。
+- 再生的门（**两道，2026-09-13 起齐备**，ADR-6）：
+  ① **IR 侧**：`src/rdf/trig_domain_toml_gen.mbt`「domain2 双文件编译 ≡ 管线路由 ≡
+  `fsm_out/trig_fsm.toml`」三腿逐字节 + 增量校验门；
+  ② **产物侧**：「钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节 + 强幂等」
+  （`trig 产物黄金门`，金样 ts = `1788654011855`）。
+  **再生配方**：`moon run src/fsm/cmd -- src/rdf/fsm_out/trig_fsm.toml --ts <golden> -o <产物>`
+  → `moon fmt <产物>`；**门绿即可改生成面**（禁令解除）。
 - 生成面改动是**跨仓原子变更**：`src/rdf`（domain/IR）→ `fsm_out/trig_fsm.toml` → `src/fsm`（codegen）
   → `trig.mbt` → 子仓测试，**必须同笔**。

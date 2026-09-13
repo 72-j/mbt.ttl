@@ -31,11 +31,14 @@
 ## 2 生成链与再生
 
 ```
-src/rdf/domain/trig_domain.toml ──┐
-                                  ├─(域推导)→ src/rdf/domain_to_ir.mbt ─→ src/rdf/fsm_out/trig_fsm.toml
-                                  │                                        │
-                                  └─(IR 侧门: trig_domain_toml_gen.mbt)     └─(fsm CLI)→ src/ttl/src/gen_trig/trig.mbt
+src/rdf/domain2/trig_base.toml    （骨架：ctx/events/states/effects/chains/hooks/direct_actions）
+src/rdf/domain2/trig_domain.toml  （行为：195 行 [[parser.transitions]]）
+        └─(compile_domain2_files, src/rdf/domain_toml_2.mbt)→ src/rdf/fsm_out/trig_fsm.toml
+                                                                        └─(src/fsm/cmd)→ gen_trig/trig.mbt
 ```
+
+> **改表落点 = 上面这对 domain2 文件**（ADR-3 翻转 + ADR-5）：v1
+> `domain/trig_domain.toml` 自 2026-09-13 起**冻结**，只作方言探测与留档。
 
 再生命令（外层仓根）：
 
@@ -45,10 +48,24 @@ moon run src/fsm/cmd -- src/rdf/fsm_out/trig_fsm.toml -o src/ttl/src/gen_trig/tr
 cd src/ttl && moon test src/gen_trig                          # 3) 子仓回归
 ```
 
-**门现状**：IR 侧有门——`src/rdf/trig_domain_toml_gen.mbt`「双文件编译 ≡ `fsm_out/trig_fsm.toml`」
-（四腿：生产写盘路径 ≡ 停役数组快照 ≡ 盘上基线）；**产物侧无门**——`trig.mbt:4` 的
-`Generated at:` 是**墙钟值**（`src/fsm/codegen.mbt` 的 `@env.now()`），不 pin 就不可复现，
-当前一致性靠 `domain_to_ir.mbt` 里"与 `gen_trig/trig.mbt` 逐行对齐"的人工纪律（C-T2，T10 立门）。
+**门现状（2026-09-13 更新）**：
+
+- **IR 侧有门**——`src/rdf/trig_domain_toml_gen.mbt`：**三腿对拍**「domain2 双文件编译 ≡
+  管线路由 ≡ 盘上 `fsm_out/trig_fsm.toml`」+ 增量校验门 6 条。
+  原"停役数组腿"（v1 `domain/trig_domain.toml` + 冻结数组）已**退役**
+  （`src/rdf/adr.md` **ADR-5**）：v1 TOML 只服务 nquads；trig 的 2.0 数据面为唯一事实源。
+- **产物侧门已立（T10 ✅ 2026-09-13，src/rdf ADR-6）**——`trig 产物黄金门`：
+  ① `src/fsm` 增 `generate_with_ts(ir, config, ts)`（`generate` 缺省行为不变）+ CLI `--ts`；
+  ② 形态口径 = **原始形 + 工具链 `moon fmt`**（禁进程内 fmt 包——实测与工具链输出不一致）；
+  ③ 门 = 钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` **逐字节** + 强幂等
+  （金样 ts = `1788654011855`，与 n3v2 G9 同法）；证伪探针：改一行表 → 门红。
+- **注解面已追平（2026-09-13）**：役9 的四字段/四动作/20 行行型已回灌 `domain2/trig_*`
+  （`src/rdf/adr.md` **ADR-4**）——此前"盘上 2.0 数据落后产物、再生会抹注解"的预存分歧
+  **已解除**；2.0 再生与产物的残差从 337 行降到 **250 行，且全部是 fmt 形 + 头横幅 ts**
+  （48 hunk：单语句臂去花括号 / 超宽签名折行 / 空行与 `///|` / `Generated at:`）。
+- ⚠ **Turtle 路径例外**：数组**函数**仍被 `DomainDialectKind::Turtle` 分支消费，其口径停在
+  役9 之前 ⇒ **经 Turtle 路径再生 `trig.mbt` 仍会抹注解**；Turtle 翻 2.0 另立役。
+  「无门不改生成面」（`const.md` §5）对 2.0 路径与 Turtle 路径**同等适用**。
 （对照：n3v2 的 `n3_emit_banner(ts)` 把 ts 显式注入 ⇒ 可逐字节对拍。）
 
 ## 3 不变量清单（I）
@@ -184,7 +201,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 | 编号 | 事实（写实） | 证据锚点 | 性质 |
 |---|---|---|---|
 | C-T1 | 效果面孤儿：`TrigEffectHandler` 无 impl（除生成默认）+ 无调用点；`interpret` 定义了但零调用（`engine.next` 自己解释效果） | `trig.mbt:1138–1168`（trait）、`:1172` 起（默认 impl）、`:1166`（interpret）；`engine.mbt:364`（next） | [债]（R-T1 / T11） |
-| C-T2 | 产物无黄金门：`trig.mbt:4` 的 `Generated at:` 为墙钟值 ⇒ 再生不可复现；一致性靠 `domain_to_ir.mbt` 的人工"逐行对齐"注释 | `trig.mbt:4`；`src/fsm/codegen.mbt`（`@env.now()`）；`domain_to_ir.mbt:15/52/257/407/2717` | [债]（R-T2 / T10） |
+| C-T2 | ~~产物无黄金门~~ **已收口（T10，2026-09-13）**：`Generated at:` 墙钟值改由 `generate_with_ts` 显式注入（CLI `--ts`）；形态差由工具链 `moon fmt` 在管线末端收敛——钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节，门在 `src/rdf/trig_domain_toml_gen.mbt`。**遗留**：nquads 同类形态差 68 行（其 check-in 同为 fmt 形），产物门待补（另役） | 门：`trig 产物黄金门`；`src/fsm/codegen.mbt`（`generate_with_ts`）；`src/rdf/adr.md` ADR-6 | [债]→**已收口（T10）** |
 | C-T3 | 公共面过宽：`.mbti` 349 行 / 54 顶层 `pub` 行——FSM 机械（Context/State/Event/Effect/三 trait/Engine）全 `pub` | `pkg.generated.mbti`（对照 n3v2 收窄后 166 行 / 29 pub 行） | [债]（R-T3 / T12） |
 | C-T4 | 命名未回灌：`TrigLoopPolicy` 与 world 正名 `Supervisor` 冲突；`Hooks` 与 `TrigActionsImpl` 口径冲突 | `trig.mbt:223`；`engine.mbt:227/240/314/344/353`；`actions.mbt:9` | [债]（R-T4 / T13） |
 | C-T5 | 包内死件：5 个 `.bak`（`trig.mbt.bak` 36 KB、`engine.mbt.bak` 15 KB、`lexer_mbt*.bak` ×2、`nquads_test.mbt.bak`） | `ls *.bak` | [债]（R-T5 / T15） |
@@ -205,7 +222,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 | 编号 | 结论 | 状态 | 归属役 | 关联 |
 |---|---|---|---|---|
 | R-T1 | 效果面接活：`interpret` 成唯一解释器，`engine.next` 调它；套装收形；`emit_queue` 下沉 ctx | 建议 | T11 | C-T1 |
-| R-T2 | 产物黄金门：pin ts + 再生 ≡ check-in `trig.mbt` 逐字节 + 强幂等 | 建议 | T10 | C-T2 |
+| R-T2 | 产物黄金门 ✅（形态口径按 ADR-6 修正为"原始形 + 工具链 `moon fmt`"，非进程内直产 fmt 形） | **✅ 已落地（T10，2026-09-13）** | T10 | C-T2、src/rdf ADR-4/ADR-6 |
 | R-T3 | 公共面收窄：FSM 机械降包内，留入口与数据面 | 建议 | T12 | C-T3 |
 | R-T4 | 命名回灌：`TrigLoopPolicy → TrigSupervisor`；`Hooks → TrigActionsImpl` | 建议 | T13 | C-T4、world `ADR-NAMING-001` |
 | R-T5 | 清包内死件：5 个 `.bak` 归档（禁静默删） | 建议 | T15 | C-T5 |

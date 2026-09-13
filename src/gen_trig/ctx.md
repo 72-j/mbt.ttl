@@ -98,21 +98,12 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 | R | 役 | 现口径 | 证据 |
 |---|---|---|---|
 | R-T7 卷面补全 | T16 ✅ | 五卷 + 一页：`const` / `spec` / `adr`（ADR-TRIG-001…011）/ `todo` / 本卷 / `ARCHITECTURE.md` | `todo.md` 472 → 现版；拆卷留痕见 ADR-TRIG-011 |
+| R-T2 产物黄金门 | **T10 ✅ 2026-09-13** | 钉 ts 再生（`generate_with_ts` + CLI `--ts`）+ 工具链 `moon fmt` ≡ check-in `trig.mbt` 逐字节 + 强幂等；金样 ts `1788654011855`；形态口径 = 原始形 + `moon fmt` | 门：`src/rdf/trig_domain_toml_gen.mbt` `trig 产物黄金门`（`src/rdf` 21/21）；决策 `src/rdf/adr.md` ADR-6；禁令解除见 `const.md` §5 |
 | （陈数澄清） | T16 ✅ | 旧 §2.5"@base 已知缺陷"已由 ★1 修复；旧 §5 item 6"deferred 2/1/5/6"实测全零 | `spec.md` §5.5；套件 357/316/36/75 |
 
 ### 4.2 存活项上下文
 
-#### R-T2 产物黄金门 `[建议]`（**第一役**）
-
-- 目标：`trig.mbt` 可再生且可对拍——一致性从"人工逐行对齐"升级为机器门。
-- 锚点：`trig.mbt:4`（墙钟 ts）；`src/fsm/codegen.mbt`（`@env.now()`）；`src/rdf/trig_domain_toml_gen.mbt:215/222`
-  （现有 IR 侧门）；`domain_to_ir.mbt:15/52/257/407/2717`（人工对齐注释）；`src/fsm/cmd/main.mbt`（再生入口）。
-- 现状证据：产物头横幅每次再生都变 ⇒ 无钉不可复现；IR 侧门只覆盖到 `fsm_out/trig_fsm.toml`，**管不到产物**。
-- 动作：① 探针摸 `fsm/cmd` 是否可 pin ts（参考 n3v2 `n3_emit_banner(ts)` 的显式注入）；② 不可则加 ts 参数；
-  ③ 加"重生成 ≡ check-in `trig.mbt` 逐字节 + 强幂等"测试；④ 把人工对齐注释改为指向门的注记。
-- 验收：故意改一行表 → 门红；复原 → 门绿；连续两次生成零字节移动。
-- 风险：v1 codegen 属共享件（`src/fsm`），改它必须跑外仓全测试（`moon test src/rdf` + `src/fsm` 面）。
-- 依赖：无。
+（R-T2 已收口，见 4.1 索引；原七字段随 ADR-6 归档。）
 
 #### R-T1 效果面接活 `[建议]`（对齐 n3v2 役22）
 
@@ -237,7 +228,8 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 3. **题T3 双包重复（R-T8）**：A) 抽共享用户层件——B) 有意分叉 + 差异入 spec。→ 建议先 **B**（登记差异），
    保留 A 为立项选项（跨包大役，风险高）。
 4. **题T4 生成门落点**：A) 在 `trig_domain_toml_gen.mbt` 扩孪生门（与 n3gen G9 同构）——B) 在 `src/fsm` 侧建
-   通用产物门（波及 nquads，而 nquads 为 TOML 1.0 冻结口径）。→ 建议 **A**（爆炸半径最小）。
+   通用产物门（波及 nquads，而 nquads 为 TOML 1.0 冻结口径）。→ **裁断：A 落地**（T10 ✅）——
+   门落 `trig_domain_toml_gen.mbt`；B 的同法可在 nquads 产物门补立时复用（另役）。
 
 ---
 
