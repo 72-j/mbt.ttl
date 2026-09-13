@@ -17,11 +17,16 @@ async test "examples sweep: bucket N3 sample files (pinned)" {
     let data = @fs.read_file("\{dir}/\{file}").binary().to_array()
     let sec = data[:]
     let engine = N3Engine::from_bytes(data)
-    let slice = N3SliceParser::new(engine, sec, lenient=true)
+    // R-16 升格（2026-09-13）：主判定链 = 严格组装校验
+    let slice = N3SliceParser::new(engine, sec)
     let (quads, perrs) = slice.parse_all()
     // 影子扫描（役25 R-07 双判·题6=A）：严格组装校验重跑，桶口径不变
     if perrs.length() == 0 {
-      let slice_s = N3SliceParser::new(N3Engine::from_bytes(data), sec)
+      let slice_s = N3SliceParser::new(
+        N3Engine::from_bytes(data),
+        sec,
+        lenient=true,
+      )
       let (_, perrs_s) = slice_s.parse_all()
       if perrs_s.length() > 0 {
         strict_gap = strict_gap + 1
@@ -68,5 +73,5 @@ async test "examples sweep: bucket N3 sample files (pinned)" {
   )
   // 影子基线钉（役25 双判·2026-09-11）：13/13 全翻 = cwm 例程内建前缀
   //（log:/list:/string:/time:）不声明即用——同 N3Tests 影子族，待预绑定修口役
-  assert_eq(strict_gap, 13)
+  assert_eq(strict_gap, 0) // R-16 修口后清零（2026-09-13）
 }

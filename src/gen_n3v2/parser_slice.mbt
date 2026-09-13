@@ -296,10 +296,21 @@ fn validate_term(
     }
     return None
   }
-  if is_predicate &&
-    n == 2 &&
-    ((c0 == b'<' && view[1] == b'=') || (c0 == b'=' && view[1] == b'>')) {
-    // R-16 / C-17：N3 操作符谓词（`<=` / `=>`）是谓词身份（ADR-005），不是 IRI
+  if is_predicate {
+    // R-16 / C-17：N3 操作符谓词是谓词身份（ADR-005），不是 IRI/prefname——
+    // `=`（1 字节）/ `<=` / `=>`（2 字节）三形态都要放行
+    if n == 1 && c0 == b'=' {
+      return None
+    }
+    if n == 2 &&
+      ((c0 == b'<' && view[1] == b'=') || (c0 == b'=' && view[1] == b'>')) {
+      return None
+    }
+  }
+  // R-16 / C-16 第二族：结构性词项的身份 = **开括号 token span**
+  //（公式 `{` / 属性列表 `[` / 集合 `(`），由引擎栈机与物化层合成，
+  // 不参与前缀校验——严格路径此前把它们当 prefname 报"未声明前缀"
+  if c0 == b'{' || c0 == b'[' || c0 == b'(' {
     return None
   }
   if c0 == b'<' {

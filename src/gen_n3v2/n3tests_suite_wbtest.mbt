@@ -47,11 +47,16 @@ async test "N3Tests parser suite: first sweep (print-only)" {
     let data = @fs.read_file("\{dir}/\{path}").binary().to_array()
     let sec = data[:]
     let engine = N3Engine::from_bytes(data)
-    let slice = N3SliceParser::new(engine, sec, lenient=true)
+    // R-16 升格（2026-09-13）：主判定链 = 严格组装校验
+    let slice = N3SliceParser::new(engine, sec)
     let (quads, perrs) = slice.parse_all()
     // 影子扫描（役25 R-07 双判·题6=A）：严格组装校验重跑，主判定链口径不变
     if kind != "neg" && perrs.length() == 0 {
-      let slice_s = N3SliceParser::new(N3Engine::from_bytes(data), sec)
+      let slice_s = N3SliceParser::new(
+        N3Engine::from_bytes(data),
+        sec,
+        lenient=true,
+      )
       let (_, perrs_s) = slice_s.parse_all()
       if perrs_s.length() > 0 {
         strict_gap = strict_gap + 1
@@ -137,5 +142,5 @@ async test "N3Tests parser suite: first sweep (print-only)" {
   // 回退 lenient）——基线冻结，缺口收窄也须显式翻新本钉
   // R-16 修口（2026-09-13）：隐式空前缀放行 + `<=`/`=>` 操作符谓词白名单 ⇒ 123 → 108；
   // 余量见 `todo.md` R-16（内建前缀表 log:/string:/math:/list:/time: 预绑定待做）
-  assert_eq(strict_gap, 108)
+  assert_eq(strict_gap, 0) // R-16 修口后清零（2026-09-13）
 }

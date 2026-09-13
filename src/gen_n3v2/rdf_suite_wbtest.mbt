@@ -113,13 +113,19 @@ async fn run_n3_suite(
     let data = @fs.read_file("\{test_dir}/\{file}").binary().to_array()
     let sec = data[:]
     let engine = N3Engine::from_bytes(data)
-    let slice = N3SliceParser::new(engine, sec, lenient=true)
+    // R-16 升格（2026-09-13）：主判定链改走**严格**组装校验（影子缺口已清零）
+    let slice = N3SliceParser::new(engine, sec)
     let (quads, perrs) = slice.parse_all()
     // 影子扫描（役25 R-07 双判·题6=A）：lenient=false 严格组装校验同文件重跑。
     // 主判定链仍走宽容口径（套件数字不变硬约束）；影子只暴露被 lenient 掩盖
     // 的校验层缺口（mat 层四门不受 lenient 影响，影子面恒在 parse 层）——
     // 基线钉冻结，真缺口清零后把 expect_strict_gap 升 0 并考虑升格主判定
-    let slice_s = N3SliceParser::new(N3Engine::from_bytes(data), sec)
+    // 反向哨兵：宽容口径重跑（结构上不应比严格多报；钉 0）
+    let slice_s = N3SliceParser::new(
+      N3Engine::from_bytes(data),
+      sec,
+      lenient=true,
+    )
     let (_, perrs_s) = slice_s.parse_all()
     if !is_bad && perrs.length() == 0 && perrs_s.length() > 0 {
       strict_gap = strict_gap + 1
@@ -184,7 +190,7 @@ async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
     pin=true,
     rdf12=false,
     expect_pass=316,
-    expect_strict_gap=1, // R-16 修口后：Undeclared prefix 族清零，仅余 1（其余见 n3tests 侧）
+    expect_strict_gap=0, // R-16 修口后清零（2026-09-13）
   )
   run_n3_suite(
     "src/gen_n3v2/rdf-tests/rdf12/rdf-turtle/syntax",
