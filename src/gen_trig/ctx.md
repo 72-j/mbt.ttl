@@ -53,7 +53,7 @@
 |---|---|---|---|
 | ① 语义落点 | `TrigActions`（`trig.mbt:240`，`pub(open)` 风格由生成模板决定） | `actions.mbt:9`（`Hooks` 单载体） | 已接活 |
 | ② 效果面 Hook | `TrigEffectHandler`（`trig.mbt:1138`；默认 impl `:1172` 起；`interpret` `:1166`、`dispatch` `:1167`） | **无**（引擎自带效果语义） | **孤儿挂点（C-T1）** |
-| ③ 控制流 Hook | `TrigLoopPolicy`（`trig.mbt:223`；world 正名 `TrigSupervisor`） | `engine.mbt:227`（begin_record）/`:240`（recover）/`:314`（finish_at_end）/`:344`（on_business_failed）+ `extend:353` | 已接活；**改名归 T13** |
+| ③ 控制流 Hook | **`TrigSupervisor`**（world 正名；T13 已落地，`trig.mbt` trait 头） | `engine.mbt`（begin_record/recover/finish_at_end/on_business_failed + `extend`） | 已接活；改名 ✅ T13 |
 
 **② 的成员清单**（`trig.mbt:1138–1168`）：`handle_continue / handle_emit_quad / handle_reset /
 handle_done / handle_enter_graph / handle_exit_graph / handle_sequence / handle_pop_bnp /
@@ -100,6 +100,7 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 | R-T7 卷面补全 | T16 ✅ | 五卷 + 一页：`const` / `spec` / `adr`（ADR-TRIG-001…011）/ `todo` / 本卷 / `ARCHITECTURE.md` | `todo.md` 472 → 现版；拆卷留痕见 ADR-TRIG-011 |
 | R-T2 产物黄金门 | **T10 ✅ 2026-09-13** | 钉 ts 再生（`generate_with_ts` + CLI `--ts`）+ 工具链 `moon fmt` ≡ check-in `trig.mbt` 逐字节 + 强幂等；金样 ts `1788654011855`；形态口径 = 原始形 + `moon fmt` | 门：`src/rdf/trig_domain_toml_gen.mbt` `trig 产物黄金门`（`src/rdf` 21/21）；决策 `src/rdf/adr.md` ADR-6；禁令解除见 `const.md` §5 |
 | R-T1 效果面接活 | **T11 ✅ 2026-09-13** | `interpret` 唯一解释器（`engine.mbt:404` 调用点）；`emit_queue` 下沉 ctx；引擎实现 `snapshot`/`on_exit_graph`/`on_pop_bnp`/`on_list_step`/`on_open_slot`（`:476/489/496/504/513`）——观测/容灾切面可挂 | ADR-TRIG-013；生成器侧开关 `src/rdf` ADR-7；验收 `gen_trig` 80/80 + 模块 329/329 + `src/rdf` 21/21 |
+| R-T4 命名回灌 | **T13 ✅ 2026-09-13** | `TrigLoopPolicy → TrigSupervisor`（数据键 `[meta] policy_trait_name`）＋ `Hooks → TrigActionsImpl`（44 处）＋ 字段 `hooks → actions`；生成注释**不动**（改它会连带 nquads 冻结产物） | ADR-TRIG-015；生成器侧 `src/rdf` ADR-10；`.mbti` diff = 预期 6 行 |
 | Turtle 翻 2.0（清障） | **T18 ✅ 2026-09-13** | `DomainDialectKind::Turtle` 与 Trig 同路 → `domain2/trig_*`；本包全方言**数据面单一**；数组匹配臂收缩为仅 N3 | 钉子「Turtle 路由 ≡ domain2 trig 双文件」（`src/rdf` 22/22）；`src/rdf/adr.md` ADR-8；ADR-5 的"Turtle 例外"关闭 |
 | RDF 1.2 单开关 | **T19 ✅ 2026-09-13** | `scalar_only_escapes → rdf12`（单开关管转义 + 方向后缀）：1.2 代理全禁 + `--ltr/--rtl` 放行；1.1 宽容 + 方向后缀**拒** | ADR-TRIG-014；钉子 `@ar--rtl` 1.2 放行 / 1.1 拒；套件 runner `rdf12?`；`gen_trig` 80/80 |
 | （陈数澄清） | T16 ✅ | 旧 §2.5"@base 已知缺陷"已由 ★1 修复；旧 §5 item 6"deferred 2/1/5/6"实测全零 | `spec.md` §5.5；套件 357/316/36/75 |

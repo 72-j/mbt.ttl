@@ -5,7 +5,7 @@
 **效力与时效**（`bangto/world/const.md` §5.1/§5.2）：本卷是**红线条款**——**冻结，只减不增**；
 改一条必须由用户裁决并以 `adr.md` 条目留痕；**只对 `src/ttl/src/gen_trig/` 有效**。
 术语以 `bangto/world/vocabulary.spec.md`（v2.0）为准：契约成员 = `Actions` / `EffectHandler` / `Supervisor`
-（`LoopPolicy` 为废弃别名；本包代码现名 `TrigLoopPolicy`，回灌归 T13）。
+（`LoopPolicy` 为废弃别名、正名 `Supervisor`；本包代码自 T13 起为 **`TrigSupervisor`**）。
 
 ---
 
@@ -18,7 +18,7 @@
    都发生在 loop。**禁止**引擎或表触碰槽位切片。
 3. **领域知识在契约成员**：三成员各守一方——`TrigActions`（槽位写入，热路径）、
    `TrigEffectHandler`（Effect 执行，冷路径/下游输出）、`TrigSupervisor`（控制流钩子：
-   `begin_record` / `recover` / `finish_at_end` / `on_business_failed`；代码现名 `TrigLoopPolicy`）。
+   `begin_record` / `recover` / `finish_at_end` / `on_business_failed`；代码名 **`TrigSupervisor`**）。
 
 ## 2 口径铁律（必须 / 禁止）
 

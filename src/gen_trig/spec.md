@@ -212,7 +212,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 | C-T1 | ~~效果面孤儿~~ **已收口（T11，2026-09-13）**：`interpret` 成唯一解释器（`engine.mbt:404` 调用点）；`emit_queue` 下沉 ctx；引擎实现 `snapshot`/`on_*` 真实挂点（`:476/489/496/504/513`）——观测/容灾切面可挂 | `engine.mbt:404`（调用点）+ `:476/489/496/504/513`（impl）；`domain2/trig_base.toml`（`emit_queue`）；ADR-TRIG-013 | [债]→**已收口（T11）** |
 | C-T2 | ~~产物无黄金门~~ **已收口（T10，2026-09-13）**：`Generated at:` 墙钟值改由 `generate_with_ts` 显式注入（CLI `--ts`）；形态差由工具链 `moon fmt` 在管线末端收敛——钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节，门在 `src/rdf/trig_domain_toml_gen.mbt`。**遗留**：nquads 同类形态差 68 行（其 check-in 同为 fmt 形），产物门待补（另役） | 门：`trig 产物黄金门`；`src/fsm/codegen.mbt`（`generate_with_ts`）；`src/rdf/adr.md` ADR-6 | [债]→**已收口（T10）** |
 | C-T3 | 公共面过宽：`.mbti` 349 行 / 54 顶层 `pub` 行——FSM 机械（Context/State/Event/Effect/三 trait/Engine）全 `pub` | `pkg.generated.mbti`（对照 n3v2 收窄后 166 行 / 29 pub 行） | [债]（R-T3 / T12） |
-| C-T4 | 命名未回灌：`TrigLoopPolicy` 与 world 正名 `Supervisor` 冲突；`Hooks` 与 `TrigActionsImpl` 口径冲突 | `trig.mbt:223`；`engine.mbt:227/240/314/344/353`；`actions.mbt:9` | [债]（R-T4 / T13） |
+| C-T4 | ~~命名未回灌~~ **已收口（T13，2026-09-13）**：`TrigSupervisor`（数据键 `[meta] policy_trait_name`）+ `TrigActionsImpl`（`actions.mbt`）+ 字段 `actions`；产物已再生 | `trig.mbt`（trait 头）；`engine.mbt`；ADR-TRIG-015 / src/rdf ADR-10 | [债]→**已收口（T13）** |
 | C-T5 | 包内死件：5 个 `.bak`（`trig.mbt.bak` 36 KB、`engine.mbt.bak` 15 KB、`lexer_mbt*.bak` ×2、`nquads_test.mbt.bak`） | `ls *.bak` | [债]（R-T5 / T15） |
 | C-T6 | 测试位置：生产文件内联 21 个 test（`materialize_trig.mbt` 16 + `serialize_trig.mbt` 5） | `grep -c '^test '` 两文件 | [债]（R-T6 / T14） |
 | C-T7 | 卷面违规（**2026-09-12 已收口**）：`todo.md` 曾同时承载宪法（§1）与规格（§2） | 旧 `todo.md` §1/§2；`bangto/world/const.md` §5.2 | [债]→**已收口（T16）** |
@@ -233,7 +233,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 | R-T1 | 效果面接活：`interpret` 成唯一解释器，`engine.next` 调它；套装收形；`emit_queue` 下沉 ctx | 建议 | T11 | C-T1 |
 | R-T2 | 产物黄金门 ✅（形态口径按 ADR-6 修正为"原始形 + 工具链 `moon fmt`"，非进程内直产 fmt 形） | **✅ 已落地（T10，2026-09-13）** | T10 | C-T2、src/rdf ADR-4/ADR-6 |
 | R-T3 | 公共面收窄：FSM 机械降包内，留入口与数据面 | 建议 | T12 | C-T3 |
-| R-T4 | 命名回灌：`TrigLoopPolicy → TrigSupervisor`；`Hooks → TrigActionsImpl` | 建议 | T13 | C-T4、world `ADR-NAMING-001` |
+| R-T4 | 命名回灌：`TrigLoopPolicy → TrigSupervisor`；`Hooks → TrigActionsImpl` | **✅ 已落地（T13）** | T13 | C-T4、world `ADR-NAMING-001`、src/rdf ADR-10 |
 | R-T5 | 清包内死件：5 个 `.bak` 归档（禁静默删） | 建议 | T15 | C-T5 |
 | R-T6 | 测试归位：16+5 个内联 test 迁 `_wbtest.mbt`，辅助去重 | 建议 | T14 | C-T6 |
 | R-T7 | 卷面补全：拆 const/spec/adr，todo 只留役与账本 | **✅ 已落地（T16，2026-09-12）** | T16 | C-T7 |

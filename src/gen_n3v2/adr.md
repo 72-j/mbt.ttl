@@ -565,3 +565,20 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 **验证**：`moon test src/gen_n3v2` **117/117**（+1 双向钉子：`--rtl` 1.2 放行/1.1 拒 +
 转义代理 1.2 全禁/1.1 成对合法）；`rdf-turtle`(316, rdf12=false) 与 `rdf12-turtle`(75, true)
 数字不变；`.mbti` diff = 预期改名 2 行。
+
+## ADR-33：控制流 Hook trait 改名 `N3LoopPolicy → N3Supervisor`（T13 同笔）——✅ 2026-09-13
+
+**决策**（world 词表 `ADR-NAMING-001`；与 trig T13 同笔）：
+
+1. **生成器侧数据化**：n3gen（`src/rdf/n3gen/emit.mbt`）原先把 `N3LoopPolicy` 硬编码在
+   LoopPolicy 模板字符串里——改为 **`\{base.meta_prefix}Supervisor`**（前缀来自数据），
+   并把保留名清单里的 `"LoopPolicy"` 换成 `"Supervisor"`；
+2. **用户层**：`engine.mbt` 6 处 `N3LoopPolicy → N3Supervisor`（四钩子 impl + `extend` + 注释）；
+3. **产物**：走 G9 黄金路再生——`moon test src/rdf/n3gen` 落 `n3v2_out.gen` → `cp` 交付 `n3.mbt`
+   （n3gen 直产 fmt 形，无需再 fmt）。
+
+**验证**：`moon test src/rdf/n3gen` **12/12**（G9 逐字节 ⇒ 改名是全量唯一差异）；
+`gen_n3v2` **117/117**；模块 **330/330**；`.mbti` 零 diff（该 trait 是 `priv`，不进公共面）。
+
+**关联**：trig 侧同一改名见 `src/ttl/src/gen_trig/adr.md` ADR-TRIG-015；生成器侧数据键
+（v1 codegen + 2.0 面）见 `src/rdf/adr.md` ADR-10。

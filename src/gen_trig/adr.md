@@ -261,3 +261,21 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 3. **落点差异（写实）**：nquads 的 `rdf12` 落**校验层**（`SliceParser`，langtag/literal 文法在
    `validate_helper`）；trig/n3v2 的全量字面量文法在**物化层**（`deep_check_literal`），
    故开关落物化层——三方言语义一致、层位按各自管线分层，不强行拉平。
+
+## ADR-TRIG-015：命名回灌（T13：`TrigSupervisor` + `TrigActionsImpl`）——✅ 2026-09-13
+
+**决策**（world 词表 `ADR-NAMING-001`：`LoopPolicy` 为废弃别名、正名 `Supervisor`）：
+
+1. 生成物：`trig.mbt` 的控制流 Hook trait **`TrigLoopPolicy → TrigSupervisor`**——
+   由**数据**给出（`domain2/trig_base.toml` 的 `[meta] policy_trait_name = "TrigSupervisor"`；
+   生成器侧数据键见 `src/rdf/adr.md` **ADR-10**），产物由新管线再生
+   （`fsm CLI --ts 1788654011855` + `moon fmt`）。
+2. 用户层：`actions.mbt` 的 `Hooks → TrigActionsImpl`（44 处）+ `engine.mbt` 引用改
+   （类型 2 处、字段 `hooks → actions` 7 处）；`impl TrigSupervisor for TrigEngine[L]` 四钩子与
+   `extend` 同步。
+3. **注释文案不改**：生成注释里的 "第三条业务面：LoopPolicy" 保持原文——改它会连带改动
+   **nquads 冻结产物**（首轮实测撞红产物黄金门，遂回退）。措辞迁移留给 world 卷的下一轮统一。
+
+**验证**：`gen_trig` **80/80**（四套件 357/316/36/75 不变）；`src/rdf` **23/23**（trig/nquads 两道
+产物门 + G9 同绿）；模块 **330/330**；`.mbti` diff = 预期改名（6 行）；`rg TrigLoopPolicy|Hooks\b`
+在包内零残留。
