@@ -1,4 +1,4 @@
-// gen_nquads：fsm 生成器产物 + 用户补充部分（词法器/Actions 回调/主循环/SliceParser）
+// gen_trig：fsm 生成器产物（trig.mbt）+ 用户补充部分（词法器/Actions 回调/主循环/SliceParser）
 // 词法器复用用户提供的 lexer_mbt.mbt（Tokenizer/Tokenfast）
 import {
   "moonbitlang/core/debug",
