@@ -211,7 +211,7 @@ moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 | **P0-1** | 产物黄金门（无门不改生成物） | T10 **✅** | R-T2 ✅ | — | 题T4 = A 落地 |
 | **P0-2** | 效果面接活 | T11 **✅** | R-T1 ✅ | T10 ✅ | 题T1 = A 落地 |
 | **P0-3** | 清包内死件 + 头注 | T15 | R-T5 / R-T9 | — | — |
-| **P1-1** | 公共面收窄 | T12 | R-T3 | T10 | 题T2 |
+| **P1-1** | 公共面收窄 | T12 **✅** | R-T3 ✅ | T10 ✅ | 题T2 = B 落地 |
 | **P1-2** | 命名回灌 | T13 | R-T4 | T10 | — |
 | **P1-3** | 测试归位 | T14 | R-T6 | — | — |
 | **P1-4** | 卷面补全 | T16 **✅** | R-T7 ✅ | — | — |
@@ -243,3 +243,4 @@ T16 ✅ 已完成（本卷即其产物）。**R-T10–R-T13 的修口一律排�
 | 2026-09-13 | **T19 ✅** | RDF 1.2 单一模式开关 `rdf12`（题 B）：`scalar_only_escapes` → `rdf12`，转义 + 方向后缀同门控 | `gen_trig` **80/80**（rdf11-turtle 316 / rdf12-turtle 75 / rdf12-trig 36 不变）；钉子：`@ar--rtl` 在 1.2 放行、1.1 拒；`.mbti` diff = 预期改名 3 行 | ADR-TRIG-014；nquads 侧参数名保持冻结；n3v2 对齐另役 |
 | 2026-09-13 | **T20 ✅** | 口径对齐 nquads：`rdf12` **默认改 `true`**（1.2），1.1 侧显式 `false`（套件 runner 同步）；n3v2 同批落地 | `gen_trig` **80/80**、`gen_n3v2` **117/117**（+1 双向钉子）、模块 **330/330**、`src/rdf` 22/22；`.mbti` 两侧 diff 均为预期改名 | ADR-TRIG-014 补记 + n3v2 ADR-32；落点差异（校验层 vs 物化层）写实入档 |
 | 2026-09-13 | **T13 ✅** | 命名回灌：`TrigLoopPolicy → TrigSupervisor`（数据键 `[meta] policy_trait_name`）+ `Hooks → TrigActionsImpl`（44 处）+ 字段 `hooks → actions`；n3v2 同笔（`N3Supervisor`，n3gen 模板数据化） | `gen_trig` **80/80**、`gen_n3v2` **117/117**、`src/rdf` **23/23**（两道产物门 + G9 同绿）、模块 **330/330**；`.mbti` trig diff = 预期 6 行 | ADR-TRIG-015 + n3v2 ADR-33 + `src/rdf` ADR-10；生成注释**不改**（否则连带 nquads 冻结产物、产物门撞红——首轮实测后回退） |
+| 2026-09-13 | **T12 ✅** | 公共面收窄：`[meta] internals_priv` 数据驱动 + 收面即去死面 + 用户层字段级 priv + 窄入口访问器 | `.mbti` **349→172 行 / 54→37 pub**；`gen_trig` 80/80 且 **0 warning**；`src/rdf` 23/23（nquads 产物门绿）；模块 330/330（examples/trig 照常编译） | ADR-TRIG-016 + src/rdf ADR-11；`priv(all)`/`priv fn` 均为语法错、实测纠正（`n3_vis_all`/`n3_vis_fn`） |

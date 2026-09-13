@@ -279,3 +279,24 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 **验证**：`gen_trig` **80/80**（四套件 357/316/36/75 不变）；`src/rdf` **23/23**（trig/nquads 两道
 产物门 + G9 同绿）；模块 **330/330**；`.mbti` diff = 预期改名（6 行）；`rg TrigLoopPolicy|Hooks\b`
 在包内零残留。
+
+## ADR-TRIG-016：公共面收窄（T12 / R-T3，题T2=B）——✅ 2026-09-13
+
+**决策**（数据驱动，生成器侧见 `src/rdf/adr.md` **ADR-11**）：
+
+1. `domain2/trig_base.toml` 置 `[meta] internals_priv = true` ⇒ 生成件内部声明发 `priv`
+   （**例外** `TrigEvent`/`TrigPendingQuad` 保 `pub(all)`：出现在用户层 `pub` 签名里）。
+2. **收面即去死面**：`handle_*`/`dispatch`/`TrigEffectError`/`ResetScope::derive(Debug)` 不再发射
+   （T11 后 `interpret` 是唯一解释器），`interpret` 臂同步去掉 `handle_*` 调用——否则 priv 化把
+   "公开死面"变成"私有死码"，`moon check` 直接报 unused。
+3. 用户层：`TrigEngine` 字段级 `priv`（照 n3v2 役28）；`TrigActionsImpl`/`Slot`/`SlotType` 降 `priv`；
+   `Slot.ret_state` 去冗余 `priv`、`SlotType` 去无消费者的 `derive(Eq)`。
+4. **收面留入口**：新增 `TrigSliceParser::prefixes()` / `::bases()` 窄访问器，外部示例
+   （`src/examples/trig`）由 `slice.engine.ctx.*` 改走访问器——不把整个 `ctx` 暴露出去。
+
+**验收**：`.mbti` **349 → 172 行**（−51%）/ **54 → 37 pub 行**（−31%，n3v2 参照 166/29）；
+`moon check src/gen_trig` **0 warning**；`gen_trig` **80/80**；`src/rdf` **23/23**（nquads 产物门
+证明冻结方言字节零波及）；模块 **330/330**（`examples/trig` 等外部包照常编译）；`moon fmt --check` 通过。
+
+**保留的公共面（有意）**：`trig_parser`、`TrigEngine`、`TrigSliceParser`、`TrigMaterializer`、
+`TrigSerializer` 及其方法（外部入口）+ 数据面 `QuadSpan`/`PredKind`/`TrigDialect`/`SerializeFormat`/`GraphPolicy`。
