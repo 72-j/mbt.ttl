@@ -63,9 +63,10 @@ cd src/ttl && moon test src/gen_trig                          # 3) 子仓回归
   （`src/rdf/adr.md` **ADR-4**）——此前"盘上 2.0 数据落后产物、再生会抹注解"的预存分歧
   **已解除**；2.0 再生与产物的残差从 337 行降到 **250 行，且全部是 fmt 形 + 头横幅 ts**
   （48 hunk：单语句臂去花括号 / 超宽签名折行 / 空行与 `///|` / `Generated at:`）。
-- ⚠ **Turtle 路径例外**：数组**函数**仍被 `DomainDialectKind::Turtle` 分支消费，其口径停在
-  役9 之前 ⇒ **经 Turtle 路径再生 `trig.mbt` 仍会抹注解**；Turtle 翻 2.0 另立役。
-  「无门不改生成面」（`const.md` §5）对 2.0 路径与 Turtle 路径**同等适用**。
+- ✅ **Turtle 路径已翻 2.0（T18，2026-09-13，src/rdf ADR-8）**：`DomainDialectKind::Turtle`
+  与 Trig 同路路由到 `domain2/trig_*`（方言差异在运行时开关 `TrigDialect::Turtle` 禁图块区），
+  数据面**单一**；钉子「Turtle 路由 ≡ domain2 trig 双文件」在 `src/rdf`（**22/22**）。
+  ⇒ 本包全方言（Trig / Turtle）再生只走一条链，不再有"按方言走旧数组口径"的分叉。
 （对照：n3v2 的 `n3_emit_banner(ts)` 把 ts 显式注入 ⇒ 可逐字节对拍。）
 
 ## 3 不变量清单（I）
@@ -144,6 +145,12 @@ cd src/ttl && moon test src/gen_trig                          # 3) 子仓回归
 - **字面量族**：引号壳解码（转义集 `scalar_only_escapes`）；`a` → `rdf:type`；数值三型（integer/decimal/double → xsd）；
   布尔；`^^PrefName` 展开（arena 组装）；`@lang`（4 位语言拒绝、`X-` 不分大小写、span 恰覆盖子标签）/
   `--ltr` / `--rtl`；三引号长串。
+- **RDF 1.2 单一模式开关 `rdf12 : Bool`（ADR-TRIG-014）**：一个开关管两件事——
+  ① **转义**：`true` ⇒ `\u/\U` 代理一律拒（成对也不收），`false` ⇒ 1.1 宽容（成对合法）；
+  ② **方向后缀**：`true` ⇒ `--ltr/--rtl` 拆后缀后验基础标签（放行），`false` ⇒ **显式拒**
+  （`Language direction suffix (--ltr/--rtl) requires RDF 1.2`）。
+  与 nquads 共享的转义检查按名传参 `@nquads.validate_escapes_unicode(..., scalar_only=rdf12)`
+  （nquads 侧参数名不动，冻结口径）。套件侧 `rdf12? : Bool = false`，rdf12 两套件传 `true`。
 - **深验四门**：`gate_iri` = scheme 嗅探（与 `parse_scheme` 同文法，digit 可起头）+ `validate_iri_body(view,0,1,len)`，
   不做全 parse；`gate_literal` = `deep_check_literal`（含 datatype 递归 `gate_iri`）。
 
@@ -200,7 +207,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 
 | 编号 | 事实（写实） | 证据锚点 | 性质 |
 |---|---|---|---|
-| C-T1 | 效果面孤儿：`TrigEffectHandler` 无 impl（除生成默认）+ 无调用点；`interpret` 定义了但零调用（`engine.next` 自己解释效果） | `trig.mbt:1138–1168`（trait）、`:1172` 起（默认 impl）、`:1166`（interpret）；`engine.mbt:364`（next） | [债]（R-T1 / T11） |
+| C-T1 | ~~效果面孤儿~~ **已收口（T11，2026-09-13）**：`interpret` 成唯一解释器（`engine.mbt:404` 调用点）；`emit_queue` 下沉 ctx；引擎实现 `snapshot`/`on_*` 真实挂点（`:476/489/496/504/513`）——观测/容灾切面可挂 | `engine.mbt:404`（调用点）+ `:476/489/496/504/513`（impl）；`domain2/trig_base.toml`（`emit_queue`）；ADR-TRIG-013 | [债]→**已收口（T11）** |
 | C-T2 | ~~产物无黄金门~~ **已收口（T10，2026-09-13）**：`Generated at:` 墙钟值改由 `generate_with_ts` 显式注入（CLI `--ts`）；形态差由工具链 `moon fmt` 在管线末端收敛——钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节，门在 `src/rdf/trig_domain_toml_gen.mbt`。**遗留**：nquads 同类形态差 68 行（其 check-in 同为 fmt 形），产物门待补（另役） | 门：`trig 产物黄金门`；`src/fsm/codegen.mbt`（`generate_with_ts`）；`src/rdf/adr.md` ADR-6 | [债]→**已收口（T10）** |
 | C-T3 | 公共面过宽：`.mbti` 349 行 / 54 顶层 `pub` 行——FSM 机械（Context/State/Event/Effect/三 trait/Engine）全 `pub` | `pkg.generated.mbti`（对照 n3v2 收窄后 166 行 / 29 pub 行） | [债]（R-T3 / T12） |
 | C-T4 | 命名未回灌：`TrigLoopPolicy` 与 world 正名 `Supervisor` 冲突；`Hooks` 与 `TrigActionsImpl` 口径冲突 | `trig.mbt:223`；`engine.mbt:227/240/314/344/353`；`actions.mbt:9` | [债]（R-T4 / T13） |

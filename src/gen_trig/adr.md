@@ -194,3 +194,57 @@ P 步与执行记录；`ctx.md` 对齐 `bangto/world/ctx-template.meta.md`；新
 n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"变更收集"流水形式埋在 todo 里）。
 
 **后果**：`todo.md` 472 → 约 200 行；红线与结构事实各归其位；后续 T10–T17 的决策有了固定落点。
+
+## ADR-TRIG-013：效果面接活（T11 / R-T1）——✅ 2026-09-13
+
+**背景**：`TrigEffectHandler` 是"孤儿挂点"（C-T1）——`interpret` 零调用、`engine.next`
+自带一份效果解释序；观测/容灾切面（每 quad 埋点、丢弃/改写）**挂不上**。
+
+**决策**（与 n3v2 役22 同构，题T1 = A 全控）：
+
+1. **`interpret` 成唯一解释器**：`engine.next` 只做 loop 控制流
+   （取事件 → step → `TrigEffectHandler::interpret` → 上抛），效果语义全数移驻 handler。
+2. **`emit_queue` 下沉 ctx**（`domain2/trig_base.toml` 新增 `Array[TrigPendingQuad]` 累积字段）：
+   Sequence 多发逐条入队、队首即返、余者 loop 顶部排空——集合链 `rest+first` 双发射不再被
+   单 pending 覆盖。
+3. **生成器数据驱动开关**（ADR-7 @`src/rdf`）：ctx 声明 `emit_queue` 即发射"队列模式
+   interpret"（顶层意图臂走 `handle_*`/`on_*` 兑现）；无该字段的方言（nquads 等）**字节零波及**。
+4. **用户层接活**：`engine.mbt` 实现 handler 的真实挂点——`snapshot`（壳旗结算 + 收口旗消费）、
+   `on_exit_graph` / `on_pop_bnp` / `on_list_step` / `on_open_slot`（意图兑现调 action）；
+   `settle_shell` / `settle_annotation` 由引擎方法改为 **ctx 方法**。
+
+**被否方案**：让用户的 `snapshot` 私藏队列绕过模板（会丢首发/乱序，`rest+first` 顺序不可保）。
+
+**验证**：`moon test src/gen_trig` **80/80**（四套件 357/316/36/75 不变）；
+`moon test src/rdf` **21/21**（产物黄金门对新产物仍逐字节绿）；模块 **329/329**；
+验收锚点：`engine.mbt:404`（调用点）+ `:476/489/496/504/513`（impl）。
+
+**风险/遗留**：图块语义（ADR-TRIG-008 双路由）未被收形改动；Turtle 路径仍走数组旧口径（ADR-5）。
+
+## ADR-TRIG-014：RDF 1.2 单一模式开关（`rdf12`）——✅ 2026-09-13
+
+**背景**：trig 的 1.2 特征原本只有**半套开关**——字面量转义有 `scalar_only_escapes`
+（构造参数 `scalar_only? = false`），而**方向性语言标签 `--ltr/--rtl` 无条件放行**
+（`langtag.mbt` 共享文法本身认方向后缀）。后果：RDF 1.1 模式下 `"x"@ar--rtl` 也被接受，
+与 WG 语法不一致；两处特征各自为政，口径不对称（rdf11 语料暂无该形态，故 316/75 全绿掩盖了它）。
+
+**裁决（题：B 统一模式开关）**：
+
+1. `TrigMaterializer` 的 `scalar_only_escapes : Bool` → **`rdf12 : Bool`**（构造参数
+   `rdf12? : Bool = false`），**一个开关同时管两件事**：
+   - **转义**：`rdf12 = true` ⇒ 代理一律拒（成对也不收）；`false` ⇒ 1.1 宽容（成对合法）；
+   - **方向后缀**：`rdf12 = true` ⇒ 拆 `--ltr/--rtl` 后验基础标签（放行）；
+     `false` ⇒ **显式拒**（`Language direction suffix (--ltr/--rtl) requires RDF 1.2`）。
+2. `deep_check_literal` 第二参同步改名 `rdf12`（内部传
+   `@nquads.validate_escapes_unicode(..., scalar_only=rdf12)`——nquads 侧参数名保持不动，冻结口径）。
+3. 套件 runner `scalar_only?` → **`rdf12?`**；`rdf12-trig` / `rdf12-turtle` 两套件传 `rdf12=true`。
+
+**被否方案**：A（另加 `lang_dir` 开关）——两个布尔表达同一件事，调用方要成对维护；
+本仓已收敛"模式开关"口径，1.1/1.2 是**一个模式**而非两个正交特征。
+
+**验证**：`moon test src/gen_trig` **80/80**（rdf11-turtle 316、rdf12-turtle 75、rdf12-trig 36 不变）；
+新增钉子：`@ar--rtl` 在 `rdf12=true` 放行（1 emit/0 merr）、在缺省 1.1 模式**拒**（0 emit/1 merr）；
+转义钉子随开关改名（1.2 成对代理拒 / 1.1 成对合法）。`.mbti` diff = 预期改名（3 行）。
+
+**遗留（另役）**：n3v2 侧仍是 `scalar_only_escapes` 单命名（无 langdir 面），
+若要与本口径对齐，属独立原子改名（`src/ttl/src/gen_n3v2`）。

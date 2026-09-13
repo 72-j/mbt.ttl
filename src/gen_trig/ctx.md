@@ -65,8 +65,8 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 
 | 切面需求 | 挂点 | 现状 |
 |---|---|---|
-| 每 quad 观测（emit 埋点） | ② `handle_emit_quad` | **不可以**（loop 绕过 handler，C-T1） |
-| 效果降级（丢弃 / 改写） | ② `interpret` | **不可以**（`interpret` 零调用点） |
+| 每 quad 观测（emit 埋点） | ② `handle_emit_quad` | **可以（T11 接活）** |
+| 效果降级（丢弃 / 改写） | ② `interpret` | **可以（T11：唯一解释器）** |
 | 错误分类 / 容灾决策 | ③ `TrigLoopPolicy::recover` / `on_business_failed` | 可以（策略现写死在 `engine.mbt:240` 起） |
 | 收尾兜底 | ③ `finish_at_end` | 可以 |
 | 会话级注入 | ③ `begin_record` | 可以（trig 仅构造期调用一次） |
@@ -99,11 +99,14 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 |---|---|---|---|
 | R-T7 卷面补全 | T16 ✅ | 五卷 + 一页：`const` / `spec` / `adr`（ADR-TRIG-001…011）/ `todo` / 本卷 / `ARCHITECTURE.md` | `todo.md` 472 → 现版；拆卷留痕见 ADR-TRIG-011 |
 | R-T2 产物黄金门 | **T10 ✅ 2026-09-13** | 钉 ts 再生（`generate_with_ts` + CLI `--ts`）+ 工具链 `moon fmt` ≡ check-in `trig.mbt` 逐字节 + 强幂等；金样 ts `1788654011855`；形态口径 = 原始形 + `moon fmt` | 门：`src/rdf/trig_domain_toml_gen.mbt` `trig 产物黄金门`（`src/rdf` 21/21）；决策 `src/rdf/adr.md` ADR-6；禁令解除见 `const.md` §5 |
+| R-T1 效果面接活 | **T11 ✅ 2026-09-13** | `interpret` 唯一解释器（`engine.mbt:404` 调用点）；`emit_queue` 下沉 ctx；引擎实现 `snapshot`/`on_exit_graph`/`on_pop_bnp`/`on_list_step`/`on_open_slot`（`:476/489/496/504/513`）——观测/容灾切面可挂 | ADR-TRIG-013；生成器侧开关 `src/rdf` ADR-7；验收 `gen_trig` 80/80 + 模块 329/329 + `src/rdf` 21/21 |
+| Turtle 翻 2.0（清障） | **T18 ✅ 2026-09-13** | `DomainDialectKind::Turtle` 与 Trig 同路 → `domain2/trig_*`；本包全方言**数据面单一**；数组匹配臂收缩为仅 N3 | 钉子「Turtle 路由 ≡ domain2 trig 双文件」（`src/rdf` 22/22）；`src/rdf/adr.md` ADR-8；ADR-5 的"Turtle 例外"关闭 |
+| RDF 1.2 单开关 | **T19 ✅ 2026-09-13** | `scalar_only_escapes → rdf12`（单开关管转义 + 方向后缀）：1.2 代理全禁 + `--ltr/--rtl` 放行；1.1 宽容 + 方向后缀**拒** | ADR-TRIG-014；钉子 `@ar--rtl` 1.2 放行 / 1.1 拒；套件 runner `rdf12?`；`gen_trig` 80/80 |
 | （陈数澄清） | T16 ✅ | 旧 §2.5"@base 已知缺陷"已由 ★1 修复；旧 §5 item 6"deferred 2/1/5/6"实测全零 | `spec.md` §5.5；套件 357/316/36/75 |
 
 ### 4.2 存活项上下文
 
-（R-T2 已收口，见 4.1 索引；原七字段随 ADR-6 归档。）
+（R-T1 / R-T2 均已收口，见 4.1 索引；原七字段随 ADR-TRIG-013 / `src/rdf` ADR-6 归档。）
 
 #### R-T1 效果面接活 `[建议]`（对齐 n3v2 役22）
 

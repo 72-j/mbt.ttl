@@ -131,7 +131,25 @@ moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 验收：`moon test src/rdf` **20/20**（原 19/20）。旁注（未改，已标冻结）：
 `n3_domain_toml_gen.mbt` + `domain/n3_domain.toml` 仍是旧名但两层自洽（v1 冻结 oracle），勿顺手改。
 
-### T11 效果面接活（R-T1）— P0，前置：T10
+### T11 效果面接活（R-T1）— P0 **[✅ 已完成 2026-09-13]**，前置：T10 ✅
+
+| 五件套 | 落地内容 |
+|---|---|
+| 范围 | `src/fsm/codegen_effects.mbt`（队列模式 interpret 发射，数据驱动开关）+ `domain2/trig_base.toml`（`emit_queue` ctx 字段）+ `gen_trig/engine.mbt`（loop 纯化 + handler 接活） |
+| 交付 | `interpret` 唯一解释器；观测/容灾切面可挂；`emit_queue` 下沉 ctx（Sequence 多发不丢） |
+| 验收 | `moon test src/gen_trig` **80/80**（四套件 357/316/36/75 不变）；`moon test src/rdf` **21/21**（产物黄金门对新产物仍逐字节绿）；模块 329/329；锚点 `engine.mbt:404` + `:476/489/496/504/513` |
+| 风险 | 图块双路由语义未动（ADR-TRIG-008）；Turtle 路径仍走数组旧口径（ADR-5） |
+| 待裁 | 题T1 = **A 落地** |
+
+### T18 Turtle 翻 2.0（R-T10 前置清障）— P1 **[✅ 已完成 2026-09-13]**，前置：T10 ✅
+
+| 五件套 | 落地内容 |
+|---|---|
+| 范围 | `src/rdf/domain_to_ir.mbt`（`DomainDialectKind::Turtle` 路由改 domain2）+ 钉子（`src/rdf/trig_domain_toml_gen.mbt`） |
+| 交付 | Turtle 与 Trig 共用一个数据面（`domain2/trig_*`）；数组匹配臂收缩为仅 N3 |
+| 验收 | 钉子「Turtle 路由 ≡ domain2 trig 双文件」；`moon test src/rdf` **22/22**；`gen_trig` 80/80、模块 329/329 不变 |
+| 风险 | 数组函数路由侧零消费（留档，删除另役）；Turtle 方言语义（禁图块）仍由运行时开关裁决 |
+| 待裁 | 无（与 ADR-5 口径一致：v1 TOML 只服务 nquads） |
 
 - 范围：`trig.mbt:1138–1168`（trait）+ `:1172` 起（默认 impl）+ `engine.mbt:364`（`next`）。
 - 交付：`TrigEffectHandler` 有 impl + 调用点；观测/容灾切面可挂；效果语义只有一份。
@@ -191,7 +209,7 @@ moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 | P | 步骤含义 | 役 | R | 前置 | 阻塞题 |
 |---|---|---|---|---|---|
 | **P0-1** | 产物黄金门（无门不改生成物） | T10 **✅** | R-T2 ✅ | — | 题T4 = A 落地 |
-| **P0-2** | 效果面接活 | T11 | R-T1 | T10 | 题T1 |
+| **P0-2** | 效果面接活 | T11 **✅** | R-T1 ✅ | T10 ✅ | 题T1 = A 落地 |
 | **P0-3** | 清包内死件 + 头注 | T15 | R-T5 / R-T9 | — | — |
 | **P1-1** | 公共面收窄 | T12 | R-T3 | T10 | 题T2 |
 | **P1-2** | 命名回灌 | T13 | R-T4 | T10 | — |
@@ -220,3 +238,6 @@ T16 ✅ 已完成（本卷即其产物）。**R-T10–R-T13 的修口一律排�
 | 2026-09-12 | **T16** | **卷面补全（拆卷）** | 五卷 + 一页齐：`const.md` / `spec.md` / `adr.md`（ADR-TRIG-001…011）/ `ARCHITECTURE.md` / 本卷重写 / `ctx.md` 对齐；实测数字复核一致 | 顺带清两处陈数（@base 缺陷已修、deferred 已全零）；`todo.md` 472 → 本版 |
 | 2026-09-13 | **T10 探针（外仓）** | 役9 注解四字段回灌 2.0 + 数组腿退役（`src/rdf`） | `moon test src/rdf` **20/20**（trig 正门四腿 → 三腿 + 规模钉 4 快照附加）；残差 337 → **250 行且全为 fmt 形 + ts**（48 hunk，注解面追平） | `src/rdf/adr.md` ADR-4（回灌 + 同名字段进快照口径）/ ADR-5（v1 数组腿退役）；⚠ Turtle 路径仍走数组旧口径，翻 2.0 另立役 |
 | 2026-09-13 | **T10 ✅** | 产物黄金门：`generate_with_ts` + CLI `--ts` + 工具链 `moon fmt` 收敛 + 门 | `moon test src/rdf` **21/21**（新增 `trig 产物黄金门`）；证伪探针：改一行表 → 门红 → 复原 → 绿；钉子进程内 fmt 包（与工具链不一致）已否决 | `src/rdf/adr.md` ADR-6；**再生禁令解除**（`const.md` §5 改写）；顺带发现 nquads 同类形态差 68 行（产物门待补，另役） |
+| 2026-09-13 | **T11 ✅** | 效果面接活（R-T1）：interpret 唯一解释器 + `emit_queue` 下沉 ctx + 引擎 handler 接活 | `gen_trig` **80/80**、模块 **329/329**、`src/rdf` **21/21**；产物按新管线再生（`--ts` + `moon fmt`）后黄金门仍逐字节绿 | ADR-TRIG-013；生成器侧数据驱动开关（src/rdf ADR-7）；nquads 字节零波及 |
+| 2026-09-13 | **T18 ✅** | Turtle 翻 2.0：`DomainDialectKind::Turtle` 路由改 domain2 trig 双文件 | `src/rdf` **22/22**（新增 Turtle 路由钉子）；`gen_trig` 80/80、模块 329/329 不变 | `src/rdf/adr.md` ADR-8；ADR-5 的"Turtle 例外"关闭；数组匹配臂收缩为仅 N3（数组留档待删） |
+| 2026-09-13 | **T19 ✅** | RDF 1.2 单一模式开关 `rdf12`（题 B）：`scalar_only_escapes` → `rdf12`，转义 + 方向后缀同门控 | `gen_trig` **80/80**（rdf11-turtle 316 / rdf12-turtle 75 / rdf12-trig 36 不变）；钉子：`@ar--rtl` 在 1.2 放行、1.1 拒；`.mbti` diff = 预期改名 3 行 | ADR-TRIG-014；nquads 侧参数名保持冻结；n3v2 对齐另役 |
