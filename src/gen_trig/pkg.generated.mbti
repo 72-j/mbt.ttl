@@ -77,6 +77,7 @@ pub(all) enum TrigActionError {
 
 pub(all) struct TrigContext {
   mut state : TrigState
+  mut emit_queue : Array[TrigPendingQuad]
   mut subject : (Int, Int)?
   mut predicate : (Int, Int)?
   mut object : (Int, Int)?
@@ -134,7 +135,6 @@ pub struct TrigEngine[L] {
   dialect : TrigDialect
   mut last_error : (Int, Int)?
   mut pending : TrigEvent?
-  emit_queue : Array[TrigPendingQuad]
 }
 pub fn TrigEngine::from_bytes(Array[Byte], dialect? : TrigDialect) -> Self[TrigLexerAdapter]
 pub fn[L : LexerSource] TrigEngine::new(L, dialect? : TrigDialect) -> Self[L]
@@ -193,7 +193,7 @@ pub struct TrigMaterializer {
   prefixes : Array[((Int, Int), (Int, Int))]
   bases : Array[(Int, Int)]
   base_fallback : String?
-  scalar_only_escapes : Bool
+  rdf12 : Bool
   mut fallback_parsed : @gen_nquads.Iri?
   base_memo : Map[Int, @gen_nquads.Iri]
   mut deep_validate : Bool
@@ -202,7 +202,7 @@ pub struct TrigMaterializer {
 }
 pub fn TrigMaterializer::materialize_all(Self, Array[QuadSpan], deep_validate? : Bool) -> (Array[@gen_nquads.QuadEmit], Array[@gen_nquads.ParseError])
 pub fn TrigMaterializer::materialize_quad(Self, QuadSpan) -> Result[@gen_nquads.QuadEmit, @gen_nquads.ParseError]
-pub fn TrigMaterializer::new(ArrayView[Byte], Array[((Int, Int), (Int, Int))], bases? : Array[(Int, Int)], base_fallback? : String?, scalar_only_escapes? : Bool) -> Self
+pub fn TrigMaterializer::new(ArrayView[Byte], Array[((Int, Int), (Int, Int))], bases? : Array[(Int, Int)], base_fallback? : String?, rdf12? : Bool) -> Self
 
 pub(all) struct TrigPendingQuad {
   subj : (Int, Int)?

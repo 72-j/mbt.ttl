@@ -38,7 +38,7 @@ pub struct TrigMaterializer {
   prefixes : Array[(Span, Span)] // (name, iri) 声明账本（与 ctx.prefixes 同账本）
   bases : Array[Span] // ★1 @base 声明链（与 ctx.bases 同账本，append-only）
   base_fallback : String? // 外部 base（套件 runner 注入 test-URI 口径；doc @base 优先）
-  scalar_only_escapes : Bool // RDF 1.2 方言开关：字面量 \u/\U 代理全禁（1.1 成对合法）
+  rdf12 : Bool // **RDF 1.2 模式开关（单点）**：① 字面量 \u/\U 代理全禁（1.1 成对合法）；② 方向性语言标签 `--ltr/--rtl` 放行（1.1 拒）
   mut fallback_parsed : @nquads.Iri? // 外部 fallback base 解析 memo（成功才记）
   base_memo : Map[Int, @nquads.Iri] // base_version → 折叠后的生效 base（链前缀稳定，append-only）
   mut deep_validate : Bool // 深验融合开关（materialize_all 参数落位，materialize_quad 单入口读）
@@ -57,14 +57,14 @@ pub fn TrigMaterializer::new(
   prefixes : Array[(Span, Span)],
   bases? : Array[Span] = [],
   base_fallback? : String? = None,
-  scalar_only_escapes? : Bool = false,
+  rdf12? : Bool = false,
 ) -> TrigMaterializer {
   {
     data,
     prefixes,
     bases,
     base_fallback,
-    scalar_only_escapes,
+    rdf12,
     fallback_parsed: None,
     base_memo: Map([]),
     deep_validate: true,
@@ -944,7 +944,7 @@ fn TrigMaterializer::gate_literal(
   view : ArrayView[Byte],
 ) -> Result[ArrayView[Byte], ParseError] {
   if self.deep_validate {
-    match deep_check_literal(view, self.scalar_only_escapes) {
+    match deep_check_literal(view, self.rdf12) {
       Ok(_) => Ok(view)
       Err(e) => Err(e)
     }
@@ -957,7 +957,7 @@ fn TrigMaterializer::gate_literal(
 /// 深验字面量词项（引号体 + 可选 @lang / ^^dt 后缀）
 fn deep_check_literal(
   view : ArrayView[Byte],
-  scalar_only : Bool,
+  rdf12 : Bool,
 ) -> Result[Unit, ParseError] {
   let len = view.length()
   if len < 2 {
@@ -990,10 +990,16 @@ fn deep_check_literal(
     return Err(ParseError::ValidationErr("Malformed literal suffix"))
   }
   // \u/\U 孤代理（surrogate 桶）
-  // scalar_only（RDF 1.2 方言开关）：代理一律拒，成对也不收（surrogate-pair-bad
+  // rdf12（RDF 1.2 模式开关）：代理一律拒，成对也不收（surrogate-pair-bad
   // 口径）；1.1 宽容口径成对合法（test-38 正例 \ud801\udc69 编 SMP），按装配层注入
   match
-    @nquads.validate_escapes_unicode(view, 0, quote_run, close, scalar_only~) {
+    @nquads.validate_escapes_unicode(
+      view,
+      0,
+      quote_run,
+      close,
+      scalar_only=rdf12,
+    ) {
     Ok(_) => ()
     Err(e) => return Err(ParseError::ValidationErr("Bad literal escape: \{e}"))
   }
@@ -1002,9 +1008,20 @@ fn deep_check_literal(
     return Ok(()) // 无后缀：simple literal
   }
   if view[at] == b'@' {
-    // langtag.mbt 全量 RFC 5646；RDF 1.2 方向后缀（小写精确）拆出后验基础标签
+    // langtag.mbt 全量 RFC 5646；RDF 1.2 方向后缀（小写精确）拆出后验基础标签。
+    // **1.2 模式开关门控**：`--ltr/--rtl` 是 RDF 1.2 新增特征——1.1 模式下整词
+    // 按普通 langtag 验（含 `-` 段非法 ⇒ 拒），与 WG 语法一致。
     let tag_str = @utf8.decode_lossy(Bytes::from_array(view[at + 1:len]))
-    let base_tag = if tag_str.has_suffix("--ltr") || tag_str.has_suffix("--rtl") {
+    let has_dir = tag_str.has_suffix("--ltr") || tag_str.has_suffix("--rtl")
+    // 门控显式化：langtag 文法本身认方向后缀（共享件），1.1 模式在此拒
+    if has_dir && !rdf12 {
+      return Err(
+        ParseError::ValidationErr(
+          "Language direction suffix (--ltr/--rtl) requires RDF 1.2",
+        ),
+      )
+    }
+    let base_tag = if has_dir && rdf12 {
       tag_str[:tag_str.length() - 5]
     } else {
       tag_str[:]
@@ -1333,7 +1350,7 @@ test "物化: 全链路 → nquads Serializer(format=Quad) 输出" {
 fn mat_chain_deep(
   input : String,
   deep : Bool,
-  scalar_only? : Bool = false,
+  rdf12? : Bool = false,
 ) -> (Array[@nquads.QuadEmit], Array[ParseError], Array[ParseError]) {
   let data = mat_bytes(input)
   let engine = TrigEngine::from_bytes(data)
@@ -1347,7 +1364,7 @@ fn mat_chain_deep(
     sec,
     slice.engine.ctx.prefixes,
     bases=slice.engine.ctx.bases,
-    scalar_only_escapes=scalar_only,
+    rdf12~,
   )
   let (emits, merrs) = mat.materialize_all(quads, deep_validate=deep)
   (emits, merrs, [])
@@ -1504,9 +1521,17 @@ test "深验: deep_validate=false 穿透 + 方向后缀合法放行 / 大写方�
   assert_eq(e1.length(), 1)
   // RDF 1.2 方向后缀：拆 --rtl 后基础标签合法 → 放行
   let (e2, m2, p2) = mat_chain_deep(
-    "@prefix ex: <http://example/> .\nex:s ex:p \"x\"@ar--rtl .\n", true,
+    "@prefix ex: <http://example/> .\nex:s ex:p \"x\"@ar--rtl .\n",
+    true,
+    rdf12=true,
   )
   assert_eq(p2.length(), 0)
+  // 1.1 模式（rdf12=false 缺省）：方向后缀是 1.2 特征 ⇒ 拒（0 emit + 1 merr）
+  let (e1b, m1b, _) = mat_chain_deep(
+    "@prefix ex: <http://example/> .\nex:s ex:p \"x\"@ar--rtl .\n", true,
+  )
+  assert_eq(e1b.length(), 0)
+  assert_eq(m1b.length(), 1)
   assert_eq(m2.length(), 0)
   assert_eq(e2.length(), 1)
   // 方向后缀大写非法（小写精确）
@@ -1602,10 +1627,10 @@ test "深验: IRI 转义解码码点——代理/禁字符拒（good escape, bad
 }
 
 ///|
-test "深验: scalar_only 方言开关——1.2 成对代理拒 / 1.1 成对合法（test-38 口径）" {
+test "深验: rdf12 模式开关——1.2 成对代理拒 / 1.1 成对合法（test-38 口径）" {
   let lit = "@prefix ex: <http://example/> .\nex:s ex:p \"\\uD83C\\uDCA1\" .\n"
   // 开关开（RDF 1.2）：成对代理也拒——每个 UCHAR 须独立为标量值
-  let (e1, m1, p1) = mat_chain_deep(lit, true, scalar_only=true)
+  let (e1, m1, p1) = mat_chain_deep(lit, true, rdf12=true)
   assert_eq(p1.length(), 0)
   assert_eq(e1.length(), 0)
   assert_eq(m1.length(), 1)

@@ -51,7 +51,7 @@ async fn run_trig_suite(
   label : String,
   suite_base : String,
   pin? : Bool = false,
-  scalar_only? : Bool = false, // RDF 1.2 口径：字面量代理转义全禁（成对也不收）
+  rdf12? : Bool = false, // RDF 1.2 模式开关：代理转义全禁 + 方向后缀 `--ltr/--rtl` 放行
   dialect? : TrigDialect = TriG, // 方言开关：Turtle 禁图块区（bad-struct-01 口径）
 ) -> Unit {
   let files = @fs.readdir(test_dir, sort=true).filter(fn(x) {
@@ -73,7 +73,7 @@ async fn run_trig_suite(
       slice.engine.ctx.prefixes,
       bases=slice.engine.ctx.bases,
       base_fallback=Some("\{suite_base}\{file}"),
-      scalar_only_escapes=scalar_only,
+      rdf12~,
     )
     let (emits, merrs) = mat.materialize_all(quads)
     let ok = trig_suite_verdict(
@@ -127,7 +127,7 @@ async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底�
     "rdf12-trig",
     "https://w3c.github.io/rdf-tests/rdf12/rdf-trig/syntax/",
     pin=true,
-    scalar_only=true,
+    rdf12=true,
   )
   run_trig_suite(
     "src/gen_trig/rdf-tests/rdf12/rdf-turtle/syntax",
@@ -135,7 +135,7 @@ async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底�
     "rdf12-turtle",
     "https://w3c.github.io/rdf-tests/rdf12/rdf-turtle/syntax/",
     pin=true,
-    scalar_only=true,
+    rdf12=true,
     dialect=Turtle,
   )
 }
