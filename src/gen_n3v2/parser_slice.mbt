@@ -20,6 +20,20 @@ pub struct N3SliceParser[L] {
 }
 
 ///|
+/// 前缀账本视图（公共面收窄后的窄入口；物化层装配用。与 gen_trig 同规）
+pub fn[L] N3SliceParser::prefixes(
+  self : N3SliceParser[L],
+) -> Array[(Span, Span)] {
+  self.engine.ctx.prefixes
+}
+
+///|
+/// base 链视图（同上；`bases` 与 ctx 同账本）
+pub fn[L] N3SliceParser::bases(self : N3SliceParser[L]) -> Array[Span] {
+  self.engine.ctx.bases
+}
+
+///|
 pub fn[L] N3SliceParser::new(
   engine : N3Engine[L],
   data : ArrayView[Byte],

@@ -325,7 +325,7 @@ fn eq_ignore_case(data : ArrayView[Byte], off : Int, kw : Bytes) -> Bool {
 
 ///|
 /// LexerSource 实现：逐 token 分类；N3EOF 合法送达一次，其后 None=枯竭
-impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N3Event? {
+pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N3Event? {
   // 拆分/回存槽先兑现：@ 指令冒号半边、? 变量 peek 失配回存事件
   match self.pending {
     Some(ev) => {
@@ -455,12 +455,12 @@ impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N3Eve
 }
 
 ///|
-impl LexerSource for N3LexerAdapter with fn pos(self : N3LexerAdapter) -> Int {
+pub impl LexerSource for N3LexerAdapter with fn pos(self : N3LexerAdapter) -> Int {
   self.inner.current_pos()
 }
 
 ///|
-impl LexerSource for N3LexerAdapter with fn byte_at(
+pub impl LexerSource for N3LexerAdapter with fn byte_at(
   self : N3LexerAdapter,
   offset : Int,
 ) -> Byte {

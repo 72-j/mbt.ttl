@@ -77,6 +77,7 @@ pub struct N3LexerAdapter {
   mut anon_swallow : Bool
   // private fields
 }
+pub impl LexerSource for N3LexerAdapter
 
 pub struct N3Materializer {
   data : ArrayView[Byte]
@@ -117,9 +118,11 @@ pub struct N3SliceParser[L] {
   lenient : Bool
   errors : Array[@gen_nquads.ParseError]
 }
+pub fn[L] N3SliceParser::bases(Self[L]) -> Array[(Int, Int)]
 pub fn[L] N3SliceParser::new(N3Engine[L], ArrayView[Byte], lenient? : Bool) -> Self[L]
 pub fn[L : LexerSource] N3SliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
 pub fn[L : LexerSource] N3SliceParser::parse_next(Self[L]) -> Result[QuadSpan, @gen_nquads.ParseError]?
+pub fn[L] N3SliceParser::prefixes(Self[L]) -> Array[((Int, Int), (Int, Int))]
 
 pub(all) enum PredKind {
   Normal
