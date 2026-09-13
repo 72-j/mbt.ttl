@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/core/string",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "thy1016/moonttl/gen_n3v2",
+  "thy1016/moonttl/gen_nquads",
+}
+
+pkgtype(kind: "executable")
