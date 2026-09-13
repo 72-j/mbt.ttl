@@ -30,13 +30,13 @@
 
 | C | 事实 | 影响 | 处置 |
 |---|---|---|---|
-| C-N1 | `src/fsm/test_nquads.toml`（旧 v1 数组口径的快照）**已不存在**，`fsm_out/nquads_fsm.toml` 为唯一 IR | 无功能影响；文档锚点失效 | 见 C-N5（文档） |
-| C-N2 | `nquads.bak`（8.5 KB，2026-09-04 手抄时代残留） | 目录噪声 | 归档或删除（冻结样本不阻塞） |
+| C-N1 | `src/fsm/test_nquads.toml` 已不存在，`fsm_out/nquads_fsm.toml` 为唯一 IR | 无功能影响 | **已收口**：`src/md/*` 两处锚点改现代口径（R-N1） |
+| C-N2 | `nquads.bak`（8.5 KB，手抄时代残留） | 目录噪声 | **已归档** `bak/gen_nquads/`（R-N2，2026-09-13） |
 | C-N3 | `quick_machine` 双生成器并存（`gen_check/*` 旧词表） | 生成链重复面 | 归并属"另役"；本样本不动 |
 | C-N4 | MoonBit 词法器落后 C 侧 2.3–2.6× | 性能 | 借用 trig 的词法优化役结果；本样本不单独做 |
-| C-N5 | `src/md/FSM-toml-const.md`、`src/md/Tensor-evolution.md` 仍以 `test_nquads.toml` 为"mutable 产品"锚点 | 文档漂移 | 已在 `src/rdf/adr.md` ADR-9 登记；改文档属独立小役 |
+| C-N5 | ~~`src/md/*` 以 `test_nquads.toml` 为产品锚点~~ | 文档漂移 | **已收口**（R-N1，2026-09-13）：两处改指 2.0 事实源与再生配方 |
 | C-N6 | `types.mbt` 桩守卫依赖 CLI 首跑 bootstrap | 生成面维护债 | 与 C-N3 同批处置 |
-| C-N7 | 旧 `todo.adr.md` 的 §2 规格 / §3 伪代码正文**待搬** `spec.md` | 文档完整性 | `ctx.md` R-N4（低风险机械搬移） |
+| C-N7 | 旧 `todo.adr.md` 的 §2/§3 正文 | 文档完整性 | **已搬**入 `spec.md` §4（R-N4，2026-09-13） |
 
 ## 3 明确不做（定位 B 的边界，防反复拉锯）
 
@@ -50,3 +50,4 @@
 |---|---|---|---|---|
 | 2026-09-13 | **T21 立门** | nquads 产物黄金门 + `[parser] actions_trait_open` 数据驱动 + 数组腿退役 | `src/rdf` 23/23；`gen_nquads` 124/124；quicktest 照常编译 | `src/rdf/adr.md` ADR-9；立门首日抓到 `pub(open)` 漂移 |
 | 2026-09-13 | **卷面整理** | `todo.adr.md` → `adr.md`（只留决策）；新建本卷 + `ctx.md`；白名单补 `!src/gen_nquads/*.md` | 文档改动，门未动 | 与 gen_trig 五卷口径对齐 |
+| 2026-09-13 | **软项清理** | R-N1 文档锚点（`src/md/*` 两处）+ R-N2 `.bak` 归档 + R-N4 旧卷正文搬入 `spec.md` §4 | 文档/文件整理，门未动：`gen_nquads` 124/124、模块 330/330 | ctx 三项转 ✅；`adr.md` 去向表更新 |

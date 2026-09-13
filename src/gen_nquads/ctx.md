@@ -50,7 +50,7 @@
 
 ## 4 存活项上下文
 
-### R-N1 文档锚点修复（唯一"值得做"项）`[建议]`
+### R-N1 文档锚点修复 `[✅ 收口 2026-09-13]`
 
 - 目标：消除 `src/md/*` 对已不存在文件的引用。
 - 锚点：`src/md/FSM-toml-const.md:6`（`src/fsm/test_nquads.toml` 已删）、`src/md/Tensor-evolution.md:12`
@@ -60,7 +60,7 @@
 - 验收：`rg "test_nquads.toml" src/md` 命中处均已改口径；无悬空引用。
 - 风险：无（纯文档）。
 
-### R-N2 `nquads.bak` / `.bak` 类残留 `[建议]`
+### R-N2 `nquads.bak` 归档 `[✅ 收口 2026-09-13]`
 
 - 锚点：`src/gen_nquads/nquads.bak`（8.5 KB）。
 - 动作：归档到 `bak/` 或删除（git 历史即留档）。
@@ -71,7 +71,7 @@
 - 内容：`Hooks → NQuadsActionsImpl`、`.mbti` 203 pub 行收窄、内联 test 归位。
 - 处置：**定位 B 明确不做**（见 `todo.md` §3）；若将来 nquads 重新"跟随主线"，本条即为开工清单。
 
-### R-N4 旧卷正文搬移（`spec.md` 补全）`[建议]`
+### R-N4 旧卷正文搬移 `[✅ 收口 2026-09-13]`
 
 - 背景：`adr.md` 更名时，旧 `todo.adr.md` 的 §2 规格 / §3 伪代码去向已登记为"待搬"
   （`adr.md` 卷首去向表）——现有 `spec.md` 只含数据面 / 词法事件槽位 / 演进位三节。
