@@ -125,8 +125,8 @@ async fn demo(content : String, ser : @gen_trig.TrigSerializer) -> Unit {
   }
   let mat = @gen_trig.TrigMaterializer::new(
     data.to_array()[:],
-    slice.engine.ctx.prefixes,
-    bases=slice.engine.ctx.bases,
+    slice.prefixes(),
+    bases=slice.bases(),
   )
   let (emits, mat_errors) = mat.materialize_all(quad_spans)
   for err in mat_errors {

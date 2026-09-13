@@ -47,11 +47,11 @@ pub(all) struct QuadSpan {
 /// 栈帧类型（★3 `[]`/`()` 的 fresh 结构身份）：
 /// BnodeProp = `[ ... ]` 属性列表；List = `( ... )` 集合（预埋，阶段3 接表）；
 /// Formula = N3 `{ }` 公式（预埋未接）
-pub(all) enum SlotType {
+priv enum SlotType {
   BnodeProp
   List
   Formula
-} derive(Eq)
+}
 
 ///|
 /// 外层槽位快照帧（ctx.slot_stack 元素，嵌套深度 = 栈长）：
@@ -63,13 +63,13 @@ pub(all) enum SlotType {
 ///                帧只是携带表已做的决策；pop 时兑现——state 由表管理的唯一例外
 ///   as_subject = fresh 节点落位：true=外层 s 槽（主位进入），false=外层 o 槽（宾位进入）
 ///   prev_node/node_seq = 集合链上一节点与节点序号（List 专用；BnodeProp 恒 None/0）
-pub(all) struct Slot {
+priv struct Slot {
   typ : SlotType
   open_span : Span
   subject : Span?
   predicate : Span?
   graph : Span?
-  ret_state : TrigState
+  ret_state : TrigState // 返回态：类型来自生成件（`internals_priv` 下为 priv）
   as_subject : Bool
   prev_node : Span?
   mut node_seq : Int

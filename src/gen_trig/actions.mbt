@@ -6,10 +6,10 @@
 
 ///|
 /// Actions 的缺省实现载体（单载体：step 的 actions 面）
-pub struct TrigActionsImpl {}
+priv struct TrigActionsImpl {}
 
 ///|
-pub fn TrigActionsImpl::new() -> TrigActionsImpl {
+fn TrigActionsImpl::new() -> TrigActionsImpl {
   TrigActionsImpl::{ }
 }
 

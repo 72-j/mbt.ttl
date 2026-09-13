@@ -167,11 +167,11 @@ fn[L : LexerSource] TrigEngine::pull(self : TrigEngine[L]) -> TrigEvent? {
 /// 词法器可插拔：L = TrigLexerAdapter（当前唯一实现）
 pub struct TrigEngine[L] {
   lexer : L
-  actions : TrigActionsImpl
-  ctx : TrigContext // mutable 契约：ctx 原地推进（reset/step 原地写）
+  priv actions : TrigActionsImpl
+  priv ctx : TrigContext // mutable 契约：ctx 原地推进（reset/step 原地写）
   dialect : TrigDialect // 方言开关（默认 TriG 超集；Turtle 禁图块区）
-  mut last_error : Span? // 最近一次错误位置（行号由上层按 data 统计）
-  mut pending : TrigEvent? // 恢复推回的单 token（"停 Rbrace 前界"的兑现机制）
+  priv mut last_error : Span? // 最近一次错误位置（行号由上层按 data 统计）
+  priv mut pending : TrigEvent? // 恢复推回的单 token（"停 Rbrace 前界"的兑现机制）
 }
 
 ///|

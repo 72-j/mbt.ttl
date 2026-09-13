@@ -44,7 +44,7 @@ pub(all) enum TrigEvent {
 }
 
 ///|
-pub(all) enum TrigState {
+priv enum TrigState {
   TrigExpectSubject
   TrigExpectPredicate
   TrigExpectObject
@@ -86,16 +86,16 @@ pub(all) enum TrigState {
 ///|
 /// 重置粒度：每个变体显式列出"清谁"，未列字段一律保留（防错误重置）。
 /// 粒度不回头写 state —— state 由转移表的 to= 负责，两者正交。
-pub(all) enum ResetScope {
+priv enum ResetScope {
   Object // 清 object；保留 subject/predicate/graph
   PredObj // 清 predicate/object；保留 subject/graph
   SPO // 清 subject/predicate/object；保留 graph（TriG 图块口径）
   All // 清 subject/predicate/object/graph（N-Quads 行口径）
-} derive(Debug)
+}
 
 ///|
 /// Effect 枚举：状态机可能产生的副作用（纯数据）
-pub(all) enum TrigEffect {
+priv enum TrigEffect {
   Continue
   EmitQuad(ResetScope)
   Reset(ResetScope)
@@ -110,7 +110,7 @@ pub(all) enum TrigEffect {
 
 ///|
 /// FSM 运行时上下文：ctx 提供状态（state）与业务数据（其余字段）
-pub(all) struct TrigContext {
+priv struct TrigContext {
   mut state : TrigState
   mut emit_queue : Array[TrigPendingQuad]
   mut subject : Span?
@@ -132,7 +132,7 @@ pub(all) struct TrigContext {
 
 ///|
 /// 状态机初始上下文
-pub fn TrigContext::new() -> TrigContext {
+fn TrigContext::new() -> TrigContext {
   {
     state: TrigExpectSubject,
     emit_queue: [],
@@ -156,7 +156,7 @@ pub fn TrigContext::new() -> TrigContext {
 
 ///|
 /// 原地重置：按 scope 清槽位，未列字段一律保留（粒度语义见 ResetScope）
-pub fn TrigContext::reset(self : TrigContext, scope : ResetScope) -> Unit {
+fn TrigContext::reset(self : TrigContext, scope : ResetScope) -> Unit {
   match scope {
     ResetScope::Object => self.object = None
     ResetScope::PredObj => {
@@ -194,7 +194,7 @@ pub(all) struct TrigPendingQuad {
 
 ///|
 /// 发射槽位脏净判定：任一发射槽非空即有待发射残留（loop 的 EOF 收尾判据）
-pub fn TrigContext::has_pending(self : TrigContext) -> Bool {
+fn TrigContext::has_pending(self : TrigContext) -> Bool {
   self.subject is Some(_) ||
   self.predicate is Some(_) ||
   self.object is Some(_) ||
@@ -203,7 +203,7 @@ pub fn TrigContext::has_pending(self : TrigContext) -> Bool {
 
 ///|
 /// 发射槽位快照：ctx → 发射边界载荷（loop 模板发射点调用，字段映射随 ctx 生成）
-pub fn TrigContext::snapshot(self : TrigContext) -> TrigPendingQuad {
+fn TrigContext::snapshot(self : TrigContext) -> TrigPendingQuad {
   let pk = self.pred_kind
   self.pred_kind = Normal
   {
@@ -222,7 +222,7 @@ pub fn TrigContext::snapshot(self : TrigContext) -> TrigPendingQuad {
 /// 第三条业务面：LoopPolicy —— 主循环模板的领域钩子（生成契约，Engine 提供实现）。
 /// 循环骨架是固定模板（engine：入口/终止 → step 步进 → Effect 分发 → 错误降级），
 /// 领域知识（入口重置/行恢复/EOF 判脏/失败映射）全部收敛到本 trait。
-pub trait TrigSupervisor {
+priv trait TrigSupervisor {
   fn begin_record(Self) -> Unit
   fn recover(Self, Span) -> Unit
   fn finish_at_end(Self) -> Result[TrigPendingQuad, ParseError]?
@@ -231,7 +231,7 @@ pub trait TrigSupervisor {
 
 ///|
 /// Action 执行或状态转移阶段的错误
-pub(all) enum TrigActionError {
+priv enum TrigActionError {
   UnexpectedEvent(TrigState, TrigEvent) // 状态机引擎抛出：当前状态未定义该事件的转移
   BusinessFailed(String) // 用户业务逻辑抛出：Action 执行失败（如解析格式错误）
 }
@@ -239,7 +239,7 @@ pub(all) enum TrigActionError {
 ///|
 /// Actions trait：actions 提供逻辑，Self 携带运行时数据
 /// 每个方法：(ctx, 事件载荷) → 副作用意图或错误（ctx 为原地写，state 由 step 管理）
-pub trait TrigActions {
+priv trait TrigActions {
   fn set_subject(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
   fn enter_graph(Self, TrigContext, Span?) -> Result[
     TrigEffect,
@@ -300,7 +300,7 @@ pub trait TrigActions {
 ///|
 /// FSM Driver（mutable）：接收事件，原地推进 ctx，返回副作用意图或错误
 /// ctx 提供状态（mut，state 由本函数独占写入），event 提供数据，actions 提供逻辑
-pub fn[A : TrigActions] step(
+fn[A : TrigActions] step(
   ctx : TrigContext,
   event : TrigEvent,
   actions : A,
@@ -1127,30 +1127,10 @@ pub fn[A : TrigActions] step(
 }
 
 ///|
-/// 副作用执行阶段的错误（第二层）
-pub(all) enum TrigEffectError {
-  SinkFailed(String) // 下游写入失败（可恢复）
-  Fatal(String) // 致命错误，需要终止状态机
-}
-
-///|
 /// 第二层 EffectHandler：真正的 match effect 发生在 step 外部
 /// handle_* 模板方法默认 Ok(())；dispatch 默认解构意图并分发
 /// 用户 impl 覆盖需要的 handle_*，通常无需覆盖 dispatch
-pub trait TrigEffectHandler {
-  fn handle_continue(Self) -> Result[Unit, TrigEffectError] = _
-  fn handle_emit_quad(Self, ResetScope) -> Result[Unit, TrigEffectError] = _
-  fn handle_reset(Self, ResetScope) -> Result[Unit, TrigEffectError] = _
-  fn handle_done(Self) -> Result[Unit, TrigEffectError] = _
-  fn handle_enter_graph(Self) -> Result[Unit, TrigEffectError] = _
-  fn handle_exit_graph(Self) -> Result[Unit, TrigEffectError] = _
-  fn handle_sequence(Self, Array[TrigEffect]) -> Result[Unit, TrigEffectError] = _
-  fn handle_pop_bnp(Self) -> Result[Unit, TrigEffectError] = _
-  fn handle_list_step(Self, Span) -> Result[Unit, TrigEffectError] = _
-  fn handle_open_slot(Self, Span, SlotType, TrigState) -> Result[
-    Unit,
-    TrigEffectError,
-  ] = _
+priv trait TrigEffectHandler {
   // —— 用户补充面：组装机械（业务落点，必须实现）——
   fn snapshot(Self, ctx : TrigContext) -> TrigPendingQuad
   fn apply_scope(Self, ctx : TrigContext, scope : ResetScope) -> Unit = _
@@ -1166,72 +1146,11 @@ pub trait TrigEffectHandler {
   ) -> Unit = _
   // —— 模板面：interpret 默认实现（TrigEngine::next 解释序同源抽取）——
   fn interpret(Self, ctx : TrigContext, effect : TrigEffect) -> TrigEffectOutcome = _
-  fn dispatch(Self, effect : TrigEffect) -> Result[Unit, TrigEffectError] = _
-}
-
-///|
-/// handle_continue 模板默认：无操作
-impl TrigEffectHandler with fn handle_continue(_self) {
-  Ok(())
-}
-
-///|
-/// handle_emit_quad 模板默认：无操作
-impl TrigEffectHandler with fn handle_emit_quad(_self, _scope) {
-  Ok(())
-}
-
-///|
-/// handle_reset 模板默认：无操作
-impl TrigEffectHandler with fn handle_reset(_self, _scope) {
-  Ok(())
-}
-
-///|
-/// handle_done 模板默认：无操作
-impl TrigEffectHandler with fn handle_done(_self) {
-  Ok(())
-}
-
-///|
-/// handle_enter_graph 模板默认：无操作
-impl TrigEffectHandler with fn handle_enter_graph(_self) {
-  Ok(())
-}
-
-///|
-/// handle_exit_graph 模板默认：无操作
-impl TrigEffectHandler with fn handle_exit_graph(_self) {
-  Ok(())
-}
-
-///|
-/// handle_sequence 模板默认：无操作
-impl TrigEffectHandler with fn handle_sequence(_self, _effects) {
-  Ok(())
-}
-
-///|
-/// handle_pop_bnp 模板默认：无操作
-impl TrigEffectHandler with fn handle_pop_bnp(_self) {
-  Ok(())
-}
-
-///|
-/// handle_list_step 模板默认：无操作
-impl TrigEffectHandler with fn handle_list_step(_self, _elem) {
-  Ok(())
-}
-
-///|
-/// handle_open_slot 模板默认：无操作
-impl TrigEffectHandler with fn handle_open_slot(_self, _span, _typ, _ret_state) {
-  Ok(())
 }
 
 ///|
 /// 单个效果的解释结果（loop 级控制流意图）
-pub(all) enum TrigEffectOutcome {
+priv enum TrigEffectOutcome {
   KeepGoing // 无产出，继续循环
   YieldQuad(TrigPendingQuad) // 上抛一个组装好的 pending quad
   Stop // 终止循环
@@ -1297,27 +1216,20 @@ impl TrigEffectHandler with fn apply_scope(_self, ctx, scope) {
 impl TrigEffectHandler with fn interpret(self, ctx, effect) {
   match effect {
     TrigEffect::Continue => KeepGoing
-    TrigEffect::EnterGraph => {
-      let _ = self.handle_enter_graph()
-      KeepGoing
-    }
+    TrigEffect::EnterGraph => KeepGoing
     TrigEffect::ExitGraph => {
-      let _ = self.handle_exit_graph()
       self.on_exit_graph()
       KeepGoing
     }
     TrigEffect::PopBnp => {
-      let _ = self.handle_pop_bnp()
       self.on_pop_bnp(ctx)
       KeepGoing
     }
     TrigEffect::ListStep(elem) => {
-      let _ = self.handle_list_step(elem)
       self.on_list_step(ctx, elem)
       KeepGoing
     }
     TrigEffect::OpenSlot(span, typ, ret_state) => {
-      let _ = self.handle_open_slot(span, typ, ret_state)
       self.on_open_slot(ctx, span, typ, ret_state)
       KeepGoing
     }
@@ -1355,23 +1267,5 @@ impl TrigEffectHandler with fn interpret(self, ctx, effect) {
       }
     }
     TrigEffect::Done => Stop
-  }
-}
-
-///|
-/// dispatch 模板默认：match effect 并分发到 handle_*
-impl TrigEffectHandler with fn dispatch(self, effect) {
-  match effect {
-    Continue => self.handle_continue()
-    EmitQuad(scope) => self.handle_emit_quad(scope)
-    Reset(scope) => self.handle_reset(scope)
-    Done => self.handle_done()
-    EnterGraph => self.handle_enter_graph()
-    ExitGraph => self.handle_exit_graph()
-    Sequence(effects) => self.handle_sequence(effects)
-    PopBnp => self.handle_pop_bnp()
-    ListStep(elem) => self.handle_list_step(elem)
-    OpenSlot(span, typ, ret_state) =>
-      self.handle_open_slot(span, typ, ret_state)
   }
 }

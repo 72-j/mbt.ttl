@@ -16,6 +16,20 @@ pub struct TrigSliceParser[L] {
 }
 
 ///|
+/// 前缀账本视图（T12 公共面收窄：`ctx` 降 `priv` 后的窄入口；物化层装配用）
+pub fn[L] TrigSliceParser::prefixes(
+  self : TrigSliceParser[L],
+) -> Array[(Span, Span)] {
+  self.engine.ctx.prefixes
+}
+
+///|
+/// base 链视图（同上；`bases` 与 ctx 同账本）
+pub fn[L] TrigSliceParser::bases(self : TrigSliceParser[L]) -> Array[Span] {
+  self.engine.ctx.bases
+}
+
+///|
 pub fn[L] TrigSliceParser::new(
   engine : TrigEngine[L],
   data : ArrayView[Byte],
