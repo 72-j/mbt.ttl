@@ -38,7 +38,7 @@ pub struct TrigMaterializer {
   prefixes : Array[(Span, Span)] // (name, iri) 声明账本（与 ctx.prefixes 同账本）
   bases : Array[Span] // ★1 @base 声明链（与 ctx.bases 同账本，append-only）
   base_fallback : String? // 外部 base（套件 runner 注入 test-URI 口径；doc @base 优先）
-  rdf12 : Bool // **RDF 1.2 模式开关（单点）**：① 字面量 \u/\U 代理全禁（1.1 成对合法）；② 方向性语言标签 `--ltr/--rtl` 放行（1.1 拒）
+  rdf12 : Bool // **语法版本开关**（对齐 nquads 口径）：true = RDF 1.2（方向后缀 `--ltr/--rtl` 放行；转义代理全禁），false = 1.1 严格契约（方向后缀拒；转义成对合法）
   mut fallback_parsed : @nquads.Iri? // 外部 fallback base 解析 memo（成功才记）
   base_memo : Map[Int, @nquads.Iri] // base_version → 折叠后的生效 base（链前缀稳定，append-only）
   mut deep_validate : Bool // 深验融合开关（materialize_all 参数落位，materialize_quad 单入口读）
@@ -57,7 +57,7 @@ pub fn TrigMaterializer::new(
   prefixes : Array[(Span, Span)],
   bases? : Array[Span] = [],
   base_fallback? : String? = None,
-  rdf12? : Bool = false,
+  rdf12? : Bool = true,
 ) -> TrigMaterializer {
   {
     data,
@@ -1350,7 +1350,7 @@ test "物化: 全链路 → nquads Serializer(format=Quad) 输出" {
 fn mat_chain_deep(
   input : String,
   deep : Bool,
-  rdf12? : Bool = false,
+  rdf12? : Bool = true,
 ) -> (Array[@nquads.QuadEmit], Array[ParseError], Array[ParseError]) {
   let data = mat_bytes(input)
   let engine = TrigEngine::from_bytes(data)
@@ -1526,9 +1526,11 @@ test "深验: deep_validate=false 穿透 + 方向后缀合法放行 / 大写方�
     rdf12=true,
   )
   assert_eq(p2.length(), 0)
-  // 1.1 模式（rdf12=false 缺省）：方向后缀是 1.2 特征 ⇒ 拒（0 emit + 1 merr）
+  // 1.1 模式（显式 rdf12=false）：方向后缀是 1.2 特征 ⇒ 拒（0 emit + 1 merr）
   let (e1b, m1b, _) = mat_chain_deep(
-    "@prefix ex: <http://example/> .\nex:s ex:p \"x\"@ar--rtl .\n", true,
+    "@prefix ex: <http://example/> .\nex:s ex:p \"x\"@ar--rtl .\n",
+    true,
+    rdf12=false,
   )
   assert_eq(e1b.length(), 0)
   assert_eq(m1b.length(), 1)
@@ -1634,8 +1636,8 @@ test "深验: rdf12 模式开关——1.2 成对代理拒 / 1.1 成对合法（t
   assert_eq(p1.length(), 0)
   assert_eq(e1.length(), 0)
   assert_eq(m1.length(), 1)
-  // 开关关（1.1 宽容）：成对合法放行（孤代理仍拒）
-  let (e2, m2, p2) = mat_chain_deep(lit, true)
+  // 开关关（1.1 宽容，显式）：成对合法放行（孤代理仍拒）
+  let (e2, m2, p2) = mat_chain_deep(lit, true, rdf12=false)
   assert_eq(p2.length(), 0)
   assert_eq(m2.length(), 0)
   assert_eq(e2.length(), 1)

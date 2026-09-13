@@ -51,7 +51,7 @@ async fn run_trig_suite(
   label : String,
   suite_base : String,
   pin? : Bool = false,
-  rdf12? : Bool = false, // RDF 1.2 模式开关：代理转义全禁 + 方向后缀 `--ltr/--rtl` 放行
+  rdf12? : Bool = true, // 语法版本（对齐 nquads 口径）：true = RDF 1.2（方向后缀放行 + 转义代理全禁）；false = 1.1 严格契约
   dialect? : TrigDialect = TriG, // 方言开关：Turtle 禁图块区（bad-struct-01 口径）
 ) -> Unit {
   let files = @fs.readdir(test_dir, sort=true).filter(fn(x) {
@@ -112,6 +112,7 @@ async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底�
     "rdf-trig",
     "http://www.w3.org/2013/TriGTests/",
     pin=true,
+    rdf12=false,
   )
   run_trig_suite(
     "src/gen_trig/rdf-tests/rdf-turtle",
@@ -119,6 +120,7 @@ async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底�
     "rdf-turtle",
     "http://www.w3.org/2013/TurtleTests/",
     pin=true,
+    rdf12=false,
     dialect=Turtle,
   )
   run_trig_suite(
