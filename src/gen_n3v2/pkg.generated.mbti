@@ -83,7 +83,7 @@ pub struct N3Materializer {
   prefixes : Array[((Int, Int), (Int, Int))]
   bases : Array[(Int, Int)]
   base_fallback : String?
-  scalar_only_escapes : Bool
+  rdf12 : Bool
   mut fallback_parsed : @gen_nquads.Iri?
   base_memo : Map[Int, @gen_nquads.Iri]
   mut deep_validate : Bool
@@ -92,7 +92,7 @@ pub struct N3Materializer {
 }
 pub fn N3Materializer::materialize_all(Self, Array[QuadSpan], deep_validate? : Bool) -> (Array[@gen_nquads.QuadEmit], Array[@gen_nquads.ParseError])
 pub fn N3Materializer::materialize_quad(Self, QuadSpan) -> Result[@gen_nquads.QuadEmit, @gen_nquads.ParseError]
-pub fn N3Materializer::new(ArrayView[Byte], Array[((Int, Int), (Int, Int))], bases? : Array[(Int, Int)], base_fallback? : String?, scalar_only_escapes? : Bool) -> Self
+pub fn N3Materializer::new(ArrayView[Byte], Array[((Int, Int), (Int, Int))], bases? : Array[(Int, Int)], base_fallback? : String?, rdf12? : Bool) -> Self
 
 pub(all) struct N3PendingQuad {
   subj : (Int, Int)?

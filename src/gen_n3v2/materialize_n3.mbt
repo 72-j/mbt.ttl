@@ -27,7 +27,7 @@ pub struct N3Materializer {
   prefixes : Array[(Span, Span)] // (name, iri) 声明账本（与 ctx.prefixes 同账本）
   bases : Array[Span] // @base 声明链（与 ctx.bases 同账本，append-only）
   base_fallback : String? // 外部 base（套件 runner 注入 test-URI 口径；doc @base 优先）
-  scalar_only_escapes : Bool // RDF 1.2 方言开关：字面量 \u/\U 代理全禁（1.1 成对合法）
+  rdf12 : Bool // **语法版本开关**（对齐 nquads 口径）：true = RDF 1.2（方向后缀 `--ltr/--rtl` 放行；转义代理全禁），false = 1.1 严格契约（方向后缀拒；转义成对合法）
   mut fallback_parsed : @nquads.Iri? // 外部 fallback base 解析 memo（成功才记）
   base_memo : Map[Int, @nquads.Iri] // base_version → 折叠后的生效 base（链前缀稳定，append-only）
   mut deep_validate : Bool // 深验融合开关（materialize_all 参数落位，materialize_quad 单入口读）
@@ -44,14 +44,14 @@ pub fn N3Materializer::new(
   prefixes : Array[(Span, Span)],
   bases? : Array[Span] = [],
   base_fallback? : String? = None,
-  scalar_only_escapes? : Bool = false,
+  rdf12? : Bool = true,
 ) -> N3Materializer {
   {
     data,
     prefixes,
     bases,
     base_fallback,
-    scalar_only_escapes,
+    rdf12,
     fallback_parsed: None,
     base_memo: Map([]),
     deep_validate: true,
@@ -1173,7 +1173,7 @@ fn N3Materializer::gate_literal(
   view : ArrayView[Byte],
 ) -> Result[ArrayView[Byte], ParseError] {
   if self.deep_validate {
-    match deep_check_literal(view, self.scalar_only_escapes) {
+    match deep_check_literal(view, self.rdf12) {
       Ok(_) => Ok(view)
       Err(e) => Err(e)
     }
@@ -1186,7 +1186,7 @@ fn N3Materializer::gate_literal(
 /// 深验字面量词项（引号体 + 可选 @lang / ^^dt 后缀）
 fn deep_check_literal(
   view : ArrayView[Byte],
-  scalar_only : Bool,
+  rdf12 : Bool,
 ) -> Result[Unit, ParseError] {
   let len = view.length()
   if len < 2 {
@@ -1214,10 +1214,16 @@ fn deep_check_literal(
   if close > close0 && close + quote_run < len {
     return Err(ParseError::ValidationErr("Malformed literal suffix"))
   }
-  // \u/\U 孤代理；scalar_only（RDF 1.2 方言开关）：代理一律拒，成对也不收；
+  // \u/\U 孤代理；rdf12（语法版本开关）：1.2 ⇒ 代理一律拒，成对也不收；
   // 1.1 宽容口径成对合法
   match
-    @nquads.validate_escapes_unicode(view, 0, quote_run, close, scalar_only~) {
+    @nquads.validate_escapes_unicode(
+      view,
+      0,
+      quote_run,
+      close,
+      scalar_only=rdf12,
+    ) {
     Ok(_) => ()
     Err(e) => return Err(ParseError::ValidationErr("Bad literal escape: \{e}"))
   }
@@ -1226,9 +1232,18 @@ fn deep_check_literal(
     return Ok(()) // 无后缀：simple literal
   }
   if view[at] == b'@' {
-    // langtag 全量 RFC 5646；RDF 1.2 方向后缀（小写精确）拆出后验基础标签
+    // langtag 全量 RFC 5646；RDF 1.2 方向后缀（小写精确）拆出后验基础标签。
+    // 语法版本门控：`--ltr/--rtl` 是 1.2 特征——1.1 模式显式拒（与 nquads 口径一致）
     let tag_str = @utf8.decode_lossy(Bytes::from_array(view[at + 1:len]))
-    let base_tag = if tag_str.has_suffix("--ltr") || tag_str.has_suffix("--rtl") {
+    let has_dir = tag_str.has_suffix("--ltr") || tag_str.has_suffix("--rtl")
+    if has_dir && !rdf12 {
+      return Err(
+        ParseError::ValidationErr(
+          "Language direction suffix (--ltr/--rtl) requires RDF 1.2",
+        ),
+      )
+    }
+    let base_tag = if has_dir {
       tag_str[:tag_str.length() - 5]
     } else {
       tag_str[:]

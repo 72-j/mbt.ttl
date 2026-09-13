@@ -7,6 +7,7 @@
 /// 全链路：解析 → 物化。data 由本函数持有（view 生命周期 = 调用方作用域）
 fn parse_materialize(
   input : String,
+  rdf12? : Bool = true,
 ) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
   let data = bytes_of(input)
   let engine = N3Engine::from_bytes(data)
@@ -20,6 +21,7 @@ fn parse_materialize(
     sec,
     slice.engine.ctx.prefixes,
     bases=slice.engine.ctx.bases,
+    rdf12~,
   )
   mat.materialize_all(quads)
 }
@@ -532,4 +534,25 @@ test "役8: 体区多 quad 同壳——逗号连发皆 TT 壳主语" {
     emit_subject(emits[2]),
     "<<<http://e/s> <http://e/p> <http://e/o>>>",
   )
+}
+
+///|
+/// 语法版本开关 `rdf12`（对齐 nquads 口径，ADR-32）：一个开关管两件事——
+/// ① 方向后缀 `--ltr/--rtl`：1.2 放行 / 1.1 拒；② 转义代理：1.2 全禁（成对也不收）/
+/// 1.1 成对合法。
+test "深验: rdf12 语法版本开关——方向后缀 1.2 放行 / 1.1 拒 + 转义代理同向" {
+  let with_dir = "<http://e/s> <http://e/p> \"x\"@ar--rtl .\n"
+  let (emits12, errs12) = parse_materialize(with_dir, rdf12=true)
+  assert_eq(emits12.length(), 1)
+  assert_eq(errs12.length(), 0)
+  let (emits11, errs11) = parse_materialize(with_dir, rdf12=false)
+  assert_eq(emits11.length(), 0)
+  assert_eq(errs11.length(), 1)
+  let surro = "<http://e/s> <http://e/p> \"\\uD83C\\uDCA1\" .\n"
+  let (e12, m12) = parse_materialize(surro, rdf12=true)
+  assert_eq(e12.length(), 0)
+  assert_eq(m12.length(), 1)
+  let (e11, m11) = parse_materialize(surro, rdf12=false)
+  assert_eq(e11.length(), 1)
+  assert_eq(m11.length(), 0)
 }

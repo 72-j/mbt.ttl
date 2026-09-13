@@ -98,7 +98,7 @@ async fn run_n3_suite(
   label : String,
   suite_base : String,
   pin? : Bool = false,
-  scalar_only? : Bool = false, // RDF 1.2: surrogate escapes banned outright (pairs too)
+  rdf12? : Bool = true, // 语法版本（对齐 nquads 口径）：true = RDF 1.2（方向后缀放行 + 转义代理全禁）；false = 1.1 严格契约
   expect_pass? : Int = -1, // 役25 绝对计数钉（-1 不钉）：files 漂移即红
   expect_strict_gap? : Int = -1, // 影子扫描缺口基线（-1 不钉；清零后升格主判定）
 ) -> Unit {
@@ -133,7 +133,7 @@ async fn run_n3_suite(
       slice.engine.ctx.prefixes,
       bases=slice.engine.ctx.bases,
       base_fallback=Some("\{suite_base}\{file}"),
-      scalar_only_escapes=scalar_only,
+      rdf12~,
     )
     let (emits, merrs) = mat.materialize_all(quads)
     let ok = n3_suite_verdict(
@@ -182,6 +182,7 @@ async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
     "rdf-turtle",
     "http://www.w3.org/2013/TurtleTests/",
     pin=true,
+    rdf12=false,
     expect_pass=316,
     expect_strict_gap=5, // 影子基线（2026-09-11）：Undeclared prefix 族 ×4 + `<=` raw 谓词 ×1
   )
@@ -191,7 +192,7 @@ async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
     "rdf12-turtle",
     "https://w3c.github.io/rdf-tests/rdf12/rdf-turtle/syntax/",
     pin=true,
-    scalar_only=true,
+    rdf12=true,
     expect_pass=75,
     expect_strict_gap=0, // 影子零缺口（rdf12 语料无未声明前缀/操作符谓词）
   )
