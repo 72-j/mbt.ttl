@@ -12,8 +12,7 @@ skills/
 *.log
 src/benchmark/*/target/
 src/fsm/*.toml
-*spec.md
-*.adr.md
+
 *_gen.md
 *_biz.md
 *_usage.md
@@ -21,10 +20,8 @@ src/fsm/*.toml
 *pseudocode.md
 *viva.toml
 viva.toml
-adr.md
 const.md
 pseudocode.md
-spec.md
 ctx.md
 todo.md
 
