@@ -535,3 +535,33 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 
 **关联**：ADR-30（选型，判据句被本 ADR 取代）；役31（本判据的落地役）；`spec.md` §10；
 `todo.md` §役30e（G11 移交）/§役31（役定义）。
+
+## ADR-32：RDF 1.2 单一语法版本开关（`rdf12`）——✅ 2026-09-13
+
+**背景**：本包只有"半套" 1.2 开关——`N3Materializer` 的 `scalar_only_escapes`
+（构造 `scalar_only_escapes? = false`）只管**字面量转义代理**；而**方向性语言标签
+`--ltr/--rtl` 无条件放行**（langtag 共享文法认方向后缀）⇒ 1.1 模式下 `"x"@ar--rtl`
+也被接受，与 WG 语法不一致，且与 nquads 的口径不对称。
+
+**对照口径（nquads，本仓对齐基准）**：`SliceParser` 持 `rdf12 : Bool`
+（`parser_slice.mbt:8/17`，**默认 `true` = RDF 1.2**），语义 = **语法版本**；
+`validate_helper.mbt` 由它门控 `--ltr/--rtl`（`:427/491`）与 langString 变体（`:616/621`）。
+
+**裁决（与 gen_trig 同批，题 B 统一模式开关）**：
+
+1. `N3Materializer` 的 `scalar_only_escapes : Bool` → **`rdf12 : Bool`**，
+   构造参数 `rdf12? : Bool = true`（**默认 1.2**，对齐 nquads）；
+2. 一个开关管两件事：**转义**（1.2 代理全禁 / 1.1 成对合法）+ **方向后缀**
+   （1.2 拆后缀放行 / 1.1 **显式拒**：`Language direction suffix (--ltr/--rtl) requires RDF 1.2`）；
+3. `deep_check_literal(view, rdf12)` 同步改名，转义检查按名传参
+   `@nquads.validate_escapes_unicode(..., scalar_only=rdf12)`（nquads 侧参数名保持冻结）；
+4. 套件 runner `run_n3_suite(..., rdf12? : Bool = true)`：rdf11-turtle **显式 `rdf12=false`**、
+   rdf12-turtle `rdf12=true`。
+
+**落点差异（结构使然，非分叉）**：nquads 的 `rdf12` 落**校验层**（其 langtag/literal 文法
+在 `validate_helper`）；n3v2/trig 的字面量全量文法在**物化层**（`deep_check_literal`），
+故开关落物化层。三方言语义一致、层位按各自管线分层。
+
+**验证**：`moon test src/gen_n3v2` **117/117**（+1 双向钉子：`--rtl` 1.2 放行/1.1 拒 +
+转义代理 1.2 全禁/1.1 成对合法）；`rdf-turtle`(316, rdf12=false) 与 `rdf12-turtle`(75, true)
+数字不变；`.mbti` diff = 预期改名 2 行。

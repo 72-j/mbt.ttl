@@ -172,6 +172,13 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 
 ## 6. 已定语义口径（合理面总结，固化）
 
+**RDF 1.2 单一语法版本开关 `rdf12 : Bool`（ADR-32，2026-09-13）**：`N3Materializer`
+构造参数 `rdf12? : Bool = true`（**默认 1.2**，对齐 nquads 口径）——一个开关门控两件事：
+① **转义**：`true` ⇒ `\u/\U` 代理一律拒（成对也不收），`false` ⇒ 1.1 宽容（成对合法）；
+② **方向后缀**：`true` ⇒ `--ltr/--rtl` 拆后缀后验基础标签（放行），`false` ⇒ **显式拒**
+（`Language direction suffix (--ltr/--rtl) requires RDF 1.2`）。
+套件侧 `run_n3_suite(..., rdf12? = true)`：rdf11-turtle 传 `false`、rdf12-turtle 传 `true`。
+
 语义裁决（ADR 卷）：
 
 | 编号 | 口径 |

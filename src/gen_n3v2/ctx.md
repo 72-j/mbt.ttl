@@ -150,6 +150,7 @@
 | R-13 | 役28 | ADR-28 | 组清方法：`clear_annotation`（四件套）/ `clear_path`（三槽）；keywords/directive 不立项 | `engine.mbt` ctx 方法区；`actions.mbt` |
 | R-14 | 役30 | ADR-30 | 交叉族全部改为**子机声明 + 构建期求积**；G10 装配门；声明面 schema 见 `spec.md` §10.6 | `compose.mbt:161`；`validate.mbt:687`；`n3v2_base.toml` |
 | R-15 | 役29 | ADR-29 | 识别件单点 `gen_nquads/numeric.mbt`（八消费点三面收编；展开件留各物化层） | `numeric.mbt`；`rg "has_digit" src` 单点 |
+| （口径对齐，非 R） | — | **ADR-32** | **RDF 1.2 单开关**：`scalar_only_escapes → rdf12`（构造默认 `true`=1.2，对齐 nquads）；一个开关门控转义代理 + 方向后缀 `--ltr/--rtl`（1.1 显式拒） | `materialize_n3.mbt:30/47/1230`；`rdf_suite_wbtest.mbt:101`（rdf11 显式 `false`）；钉子 `materialize_n3_wbtest.mbt`（双向） |
 
 ### 4.2 存活项上下文（[立案]，完整七字段）
 

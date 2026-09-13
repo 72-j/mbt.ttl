@@ -248,3 +248,16 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 
 **遗留（另役）**：n3v2 侧仍是 `scalar_only_escapes` 单命名（无 langdir 面），
 若要与本口径对齐，属独立原子改名（`src/ttl/src/gen_n3v2`）。
+
+**补记（2026-09-13 当日收口，n3v2 同批）**：
+
+1. **默认值对齐 nquads**：`rdf12? : Bool = false` → **`true`**（语法版本默认 RDF 1.2，
+   与 nquads `SliceParser` 的 `rdf12? = true` 一致）；**1.1 侧改为显式传 `false`**——
+   套件 runner `rdf12? = true`，`rdf-trig`(357) / `rdf-turtle`(316) 两套件显式 `rdf12=false`，
+   `rdf12-trig`(36) / `rdf12-turtle`(75) 显式 `true`；测试辅助 `mat_chain_deep` 默认同步为 `true`，
+   1.1 用例（成对代理合法 / 方向后缀拒）显式 `rdf12=false`。
+2. **n3v2 同步落地**（`src/ttl/src/gen_n3v2`，其 `adr.md` **ADR-32**）：同一改名 + 同门控 +
+   同默认；新增双向钉子后 `gen_n3v2` **117/117**，模块 **330/330**。
+3. **落点差异（写实）**：nquads 的 `rdf12` 落**校验层**（`SliceParser`，langtag/literal 文法在
+   `validate_helper`）；trig/n3v2 的全量字面量文法在**物化层**（`deep_check_literal`），
+   故开关落物化层——三方言语义一致、层位按各自管线分层，不强行拉平。

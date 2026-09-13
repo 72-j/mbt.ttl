@@ -149,6 +149,8 @@ cd src/ttl && moon test src/gen_trig                          # 3) 子仓回归
   ① **转义**：`true` ⇒ `\u/\U` 代理一律拒（成对也不收），`false` ⇒ 1.1 宽容（成对合法）；
   ② **方向后缀**：`true` ⇒ `--ltr/--rtl` 拆后缀后验基础标签（放行），`false` ⇒ **显式拒**
   （`Language direction suffix (--ltr/--rtl) requires RDF 1.2`）。
+  **默认值（2026-09-13 对齐 nquads）**：构造 `rdf12? : Bool = **true**`（语法版本默认 RDF 1.2）；
+  1.1 侧显式传 `false`（套件 runner 同参默认 `true`，`rdf-trig`/`rdf-turtle` 显式 `false`）。
   与 nquads 共享的转义检查按名传参 `@nquads.validate_escapes_unicode(..., scalar_only=rdf12)`
   （nquads 侧参数名不动，冻结口径）。套件侧 `rdf12? : Bool = false`，rdf12 两套件传 `true`。
 - **深验四门**：`gate_iri` = scheme 嗅探（与 `parse_scheme` 同文法，digit 可起头）+ `validate_iri_body(view,0,1,len)`，
