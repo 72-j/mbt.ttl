@@ -582,3 +582,21 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 
 **关联**：trig 侧同一改名见 `src/ttl/src/gen_trig/adr.md` ADR-TRIG-015；生成器侧数据键
 （v1 codegen + 2.0 面）见 `src/rdf/adr.md` ADR-10。
+
+## ADR-34：R-16 影子缺口修口 step1–2（隐式空前缀 + 操作符谓词）——⏳ 2026-09-13（部分落地）
+
+**背景**：役25 冻结的影子基线 strict-gap = 5/0/123/13（共 488 处实报），两族真缺口：
+① 486 处 `Undeclared prefix`；② 2 处 `IRI must be wrapped in <>`。
+
+**裁决（step1–2，本 ADR）**：
+1. **隐式空前缀放行**（`prefix_declared`：`colon == 0` ⇒ 已声明）——N3/cwm 语料大量
+   使用 `:local` 而不声明 `@prefix :`（如官方 `examples/time.n3`），按默认前缀语义处理。
+2. **操作符谓词白名单**（`validate_term(..., is_predicate=true)`）：`<=` / `=>` 视为
+   谓词身份（ADR-005），不再落 "IRI must be wrapped in <>" 支。
+3. 负例钉按新口径改写：`engine_wbtest` 的"未声明前缀拒绝"改用**具名**未声明前缀
+   （`foo:x`），并补空前缀放行正例；影子钉随实测翻新（rdf-turtle 5→**1**、n3tests 123→**108**）。
+
+**效果**：实报 488 → **416**（−72）；rdf-turtle 1、n3tests 108、rdf12 0、examples 13 不变。
+
+**剩余（step3，未做）**：**内建前缀表预绑定**（`log:` / `string:` / `math:` / `list:` / `time:`
+等 cwm 内建）——余量主体；完成后再议"校验层升格进主判定链"（R-07 题6 的后续）。

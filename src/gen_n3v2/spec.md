@@ -223,7 +223,7 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 | C-13 | ctx 大对象：29 字段混 6 个特性轴（directive/prefix+base、slot_stack、path、inversion、annotation、keywords）+ 3 个死字段 | `n3.mbt:140-170`；`n3v2_base.toml:440-468` | reset 语义复杂、子系统的"联动清槽"靠人记 | [债] |
 | C-14 | 状态爆炸：55 状态含 `FormulaX`/`QuantX`/`SubjTrailX`/`ListPathX` 交叉族（~~手列~~） | `n3v2_base.toml` states 段；声明面 `[[submachines]]` / `[[submachine_instances]]` | ~~加特性 = 状态数乘性增长~~ **役30 构建期 compose 求积**：机器 9 / 段 57 / 实例 10 / 标记 59，零手列交叉族；新增特性只加"子机声明 + 接线" | [设计]/[债]→**已收口（役30，ADR-30）** |
 | C-15 | 数值/布尔识别两套：`is_numeric_span`（adapter/校验）与 `expand_number`+`bool_at`（物化）——**役29 收编**：识别件独此一份 `gen_nquads/numeric.mbt`（`is_numeric_span` + `is_boolean_word`），八消费点三面（adapter/校验/物化，两包）限定名收编；`bool_at` ×2 删除；展开件（expand_*）留驻各物化层（arena 发射非识别） | `gen_nquads/numeric.mbt`（唯一权威）；消费点全图见各 adapter/parser_slice/materialize | ~~同一规则两处实现，易漂移~~ `has_digit` 全仓单点 | [债]→**已清偿（役29）** |
-| C-16 | 前缀预绑定缺位：validate_prefname 拒未声明前缀，N3/cwm 内建前缀（log:/string:/...）不声明即用，官方正例 good_prefix.n3 也翻 | 役25 影子扫描 486 处 STRICT-GAP | 宽容主链正确性靠 lenient 跳过校验维持，校验层无法升格 | [债]（役25 立项） |
+| C-16 | 前缀预绑定缺位：~~validate_prefname 拒未声明前缀~~ **R-16 step1 已修（2026-09-13）**：隐式空前缀放行（`colon==0`）；**剩下内建前缀表**（`log:`/`string:`/`math:`/`list:`/`time:`）待 step3 | 役25 影子扫描 486 → 416 | 校验层仍无法完全升格主判定 | [债]（**部分收口**） |
 | C-17 | `<=` raw 谓词被 validate_pred 拒（ADR-005 操作符=谓词身份 vs "IRI must be wrapped in <>"） | 役25 影子扫描 extras-10（`=>` 同构未露头） | 操作符谓词语义与组装校验冲突 | [债]（役25 立项） |
 
 ---
