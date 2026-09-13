@@ -4,9 +4,15 @@ MoonTTL 是一个使用 MoonBit 语言编写的高性能 RDF 解析与序列化�
 
 ## 特性
 
-  - **多格式支持**：完整支持 Turtle, TriG, N-Triples, N-Quads 和 N3 格式的解析与序列化（目前仅支持 N-Quads 格式）。
-  - **RDF 1.2 兼容**：全面支持最新的 RDF 1.2 国际标准规范。
-  - **高性能**：基于状态机的词法分析器设计，提供高效的解析性能。
+  - **多格式支持**：完整支持 Turtle, TriG, N-Triples, N-Quads 和 N3 格式的解析与序列化——
+    现役三方言：**N-Quads/N-Triples**（`gen_nquads`）、**TriG/Turtle**（`gen_trig`，Turtle 由运行时方言开关裁决）、
+    **N3**（`gen_n3v2`，含公式/规则/操作符谓词/集合/属性列表）。
+  - **RDF 1.2 兼容**：全面支持最新的 RDF 1.2 国际标准规范；每方言带语法版本开关
+    （`rdf12`：转义标量口径 + 方向性语言标签 `--ltr/--rtl`；1.1 侧显式关闭）。
+  - **高性能**：基于状态机的词法分析器设计，双词法器（MoonBit `Lexermoon` / C FFI `Lexerc`）同字母表、
+    逐 token parity 钉死；提供分层基准（词法 / 转换 / 状态机 / 完整引擎）。
+  - **生成器纪律**：三方言均由**表/TOML 数据**驱动生成（生成契约 = Trait / 枚举 / Context；
+    Actions / EffectHandler / Supervisor 三面接线），生成物 `*.mbt` 禁手编、有黄金对拍门。
   - **轻量级**：专注于核心解析功能，保持依赖最小化。
 
 ## 安装
@@ -129,13 +135,18 @@ for ;; {
 
 ```
 src/
-├── lexer_*.mbt      # 词法分析器
-├── parser_*.mbt      # 语法分析器
-├── iri.mbt          # IRI 处理
-├── literal.mbt      # 字面量处理
-├── langtag.mbt      # 语言标签处理
-└── tests/           # 测试文件
+├── gen_nquads/       # N-Quads/N-Triples 解析器（生成契约 + 用户层；含词法器/物化/序列化/套件）
+├── gen_trig/         # TriG/Turtle 解析器（同上；TriG 超集 + Turtle 方言开关）
+├── gen_n3v2/         # N3 解析器（同上；公式/规则/量化/路径/@keywords）
+├── cmd/main/         # 命令行工具（`moon run src/cmd/main -- <file>`）
+├── examples/         # 三方言可运行示例：nquads / trig / n3
+├── benchmark/        # 基准程序
+└── quick_machine/    # 快测机（表驱动的模型执行对照）
 ```
+
+每个方言包内并列五卷文档（`const.md` 红线 / `spec.md` 结构事实 / `adr.md` 决策 /
+`todo.md` 路线账本 / `ctx.md` 整改上下文；`gen_n3v2` 另有 `ARCHITECTURE.md` 一页导读）；
+生成面（表源/生成器）在主仓 `src/rdf`、`src/fsm`。
 
 
 ## Examples
@@ -150,6 +161,7 @@ moon run src/examples/nquads
 输出示例：
 
 
+```text
 Written N-Quads content to: ./example.nq
 Parsing N-Quads file...
 [1] Quad<http://example.org/s1, http://example.org/p1, http://example.org/o1>
@@ -159,6 +171,7 @@ Parsing N-Quads file...
 
 === Summary ===
 Total quads parsed: 3
+```
 
 
 该示例展示了：
@@ -166,6 +179,39 @@ Total quads parsed: 3
 - 从文件读取并解析为二进制数据
 - 使用词法分析器和状态机解析 RDF 四元组
 - 错误处理和结果汇总
+
+### 解析 TriG 文件（图块 / GRAPH / Turtle 方言）
+
+```bash
+moon run src/examples/trig
+```
+
+八个 case 覆盖：基础默认图、`@prefix`/`@base`、命名图与 `GRAPH` 关键字、集合与嵌套、
+相对 IRI 按 base 解析、**Turtle 方言**（禁图块区）、序列化旋钮（Strict/Drop）、`@` 风格指令。
+管线：`TrigEngine::from_bytes` → `TrigSliceParser` → `TrigMaterializer` → `TrigSerializer`。
+
+### 解析 N3 文件（公式 / 规则 / 操作符 / `@keywords`）
+
+```bash
+moon run src/examples/n3
+```
+
+六个 case 覆盖：朴素三元组、`@prefix`+`@base`、**公式 `{ ... }` + 规则 `=>`**、
+**集合 `( ... )` 与属性列表 `[ ... ]`**（fresh `_:genid*`）、**操作符谓词 `=>` / `<=` / `=`**、
+`@keywords a .` 与 `a` → `rdf:type`。管线：`N3Engine::from_bytes` → `N3SliceParser` →
+`N3Materializer` → `N3Serializer`。
+
+### 测试与验证
+
+```bash
+moon test                     # 全模块：330/330
+moon test src/gen_nquads      # 124/124（W3C N-Quads 89/89、rdf12-nt 29/29、rdf12-nq 27/27、ntriples 72/72）
+moon test src/gen_trig        # 80/80（rdf-trig 357/357、rdf-turtle 316/316、rdf12 36/36 + 75/75）
+moon test src/gen_n3v2        # 117/117（turtle 316/316、rdf12 75/75、N3Tests neg 23ok/0miss + pos+eval 205 clean）
+```
+
+三方言的**生成物**（`nquads.mbt` / `trig.mbt` / `n3.mbt`）都有黄金对拍门：钉死头横幅 ts、
+经工具链 `moon fmt` 后与 check-in 产物**逐字节**相等且强幂等（`n3.mbt` 由 `src/rdf/n3gen` 的 G9 门把关）。
 
  ### 许可证声明
 
@@ -183,11 +229,17 @@ Total quads parsed: 3
 
    测试类别            总数    通过    状态
   ━━━━━━━━━━━━━━━━━━  ━━━━━━  ━━━━━━  ━━━━━━━━━━━━━
-   N-Quads 正向测试    45      45      ✅ 全部通过
+   N-Quads（段级）     89      89      ✅ 全部通过
   ──────────────────  ──────  ──────  ─────────────
-   N-Quads 负向测试    12      12      ✅ 全部通过
+   N-Triples（循环读） 72      72      ✅ 全部通过
   ──────────────────  ──────  ──────  ─────────────
-   语法边界测试        8       8       ✅ 全部通过
+   rdf12-nt / rdf12-nq 29 / 27 29 / 27 ✅ 全部通过
+  ──────────────────  ──────  ──────  ─────────────
+   TriG / Turtle       357 / 316 357 / 316 ✅ 全部通过
+  ──────────────────  ──────  ──────  ─────────────
+   rdf12-trig / -turtle 36 / 75 36 / 75 ✅ 全部通过
+  ──────────────────  ──────  ──────  ─────────────
+   N3Tests（neg/pos+eval）23ok/205clean 23ok/205clean ✅ 全部通过
 
   ## 性能基准
 

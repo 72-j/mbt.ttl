@@ -7,10 +7,19 @@ semantic web data processing engine for the MoonBit ecosystem.
 
 ## Features
 
-- **Multi-format Support**: Complete support for parsing and serialization of Turtle, TriG, N-Triples, N-Quads,
-and N3 formats (currently only N-Quads is supported).
-- **RDF 1.2 Compatible**: Fully compliant with the latest RDF 1.2 international standard specification.
-- **High Performance**: State-machine based lexer design for efficient parsing performance.
+- **Multi-format Support**: Complete support for parsing and serialization of Turtle, TriG, N-Triples, N-Quads
+and N3. Three dialects are shipped today: **N-Quads/N-Triples** (`gen_nquads`), **TriG/Turtle**
+(`gen_trig`, Turtle enforced by a runtime dialect switch) and **N3** (`gen_n3v2`: formulas, rules,
+operator predicates, collections, property lists).
+- **RDF 1.2 Compatible**: Fully compliant with the latest RDF 1.2 international standard specification;
+each dialect carries a syntax-version switch (`rdf12`: scalar-only escapes + directional language tags
+`--ltr/--rtl`; the 1.1 side is opted out explicitly).
+- **High Performance**: State-machine based lexer design. Dual lexers (MoonBit `Lexermoon` / C FFI `Lexerc`)
+share one token alphabet and are pinned token-by-token (parity batteries); layered benchmarks cover
+lexing / conversion / state machine / full engine.
+- **Generator discipline**: all three dialects are generated from table/TOML data (the generated contract is
+Trait / enum / Context wired through Actions / EffectHandler / Supervisor); generated `*.mbt` files are
+never hand-edited and are protected by byte-for-byte golden gates.
 - **Lightweight**: Focused on core parsing functionality with minimal dependencies.
 
 ## Installation
@@ -125,15 +134,21 @@ for ;; {
 
 ## Project Structure
 
+```
 src/
-├── lexer_*.mbt      # Lexer
-├── parser_*.mbt     # Parser
-├── iri.mbt          # IRI handling
-├── literal.mbt      # Literal handling
-├── langtag.mbt      # Language tag handling
-├── cmd/             # Command line tool
-├── examples/        # Example programs
-└── tests/           # Test files
+├── gen_nquads/       # N-Quads / N-Triples parser (generated contract + user layer; lexers, materializer, serializer, suites)
+├── gen_trig/         # TriG / Turtle parser (same layout; TriG superset + Turtle dialect switch)
+├── gen_n3v2/         # N3 parser (same layout; formulas, rules, quantification, paths, @keywords)
+├── cmd/main/         # Command line tool (`moon run src/cmd/main -- <file>`)
+├── examples/         # Runnable examples for the three dialects: nquads / trig / n3
+├── benchmark/        # Benchmark programs
+└── quick_machine/    # Quick machine (table-driven model-execution cross-check)
+```
+
+Each dialect package carries the same five-volume documentation set (`const.md` red lines /
+`spec.md` structural facts / `adr.md` decisions / `todo.md` roadmap / `ctx.md` working context;
+`gen_n3v2` additionally ships a one-page `ARCHITECTURE.md`). The generation surface lives in the
+outer repository under `src/rdf` and `src/fsm`.
 
 ## Example Programs
 
@@ -145,6 +160,7 @@ moon run src/examples/nquads
 
 Sample output:
 
+```text
 Written N-Quads content to: ./example.nq
 Parsing N-Quads file...
 [1] Quad<http://example.org/s1, http://example.org/p1, http://example.org/o1>
@@ -154,6 +170,7 @@ Parsing N-Quads file...
 
 === Summary ===
 Total quads parsed: 3
+```
 
 This example demonstrates:
 
@@ -161,6 +178,42 @@ This example demonstrates:
 - Reading from a file and parsing as binary data
 - Using lexer and state machine to parse RDF quads
 - Error handling and result summarization
+
+### Parse TriG Files (graph blocks / GRAPH / Turtle dialect)
+
+```bash
+moon run src/examples/trig
+```
+
+Eight cases cover: default graph basics, `@prefix` / `@base`, named graphs and the `GRAPH` keyword,
+collections with nesting, relative IRIs resolved against the base, the **Turtle dialect** (graph
+blocks rejected), serializer knobs (Strict / Drop) and `@`-style directives. Pipeline:
+`TrigEngine::from_bytes` → `TrigSliceParser` → `TrigMaterializer` → `TrigSerializer`.
+
+### Parse N3 Files (formulas / rules / operators / `@keywords`)
+
+```bash
+moon run src/examples/n3
+```
+
+Six cases cover: plain triples, `@prefix` + `@base`, **formulas `{ ... }` with rules `=>`**,
+**collections `( ... )` and property lists `[ ... ]`** (fresh `_:genid*` nodes),
+**operator predicates `=>` / `<=` / `=`**, and `@keywords a .` with `a` → `rdf:type`. Pipeline:
+`N3Engine::from_bytes` → `N3SliceParser` → `N3Materializer` → `N3Serializer`.
+
+### Tests and Verification
+
+```bash
+moon test                     # whole module: 330/330
+moon test src/gen_nquads      # 124/124 (W3C N-Quads 89/89, rdf12-nt 29/29, rdf12-nq 27/27, ntriples 72/72)
+moon test src/gen_trig        # 80/80 (rdf-trig 357/357, rdf-turtle 316/316, rdf12 36/36 + 75/75)
+moon test src/gen_n3v2        # 117/117 (turtle 316/316, rdf12 75/75, N3Tests neg 23ok/0miss + pos+eval 205 clean)
+```
+
+Every dialect's **generated artifact** (`nquads.mbt` / `trig.mbt` / `n3.mbt`) is protected by a golden
+gate: the banner timestamp is pinned, the regenerated code is formatted with the toolchain `moon fmt`
+and must match the checked-in artifact **byte for byte**, repeatedly (`n3.mbt` is guarded by the G9
+gate of `src/rdf/n3gen`).
 
 ## W3C Test Suite
 
@@ -205,11 +258,17 @@ Current W3C test suite coverage:
 
   Test Category             Total    Passed    Status
 ━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━  ━━━━━━━━  ━━━━━━━━━━━━━━━
-  N-Quads Positive Tests    45       45        ✅ All Passed
+  N-Quads (sections)        89       89        ✅ All Passed
 ────────────────────────  ───────  ────────  ───────────────
-  N-Quads Negative Tests    12       12        ✅ All Passed
+  N-Triples (file loop)     72       72        ✅ All Passed
 ────────────────────────  ───────  ────────  ───────────────
-  Syntax Boundary Tests     8        8         ✅ All Passed
+  rdf12-nt / rdf12-nq       29 / 27  29 / 27   ✅ All Passed
+────────────────────────  ───────  ────────  ───────────────
+  TriG / Turtle             357/316  357/316   ✅ All Passed
+────────────────────────  ───────  ────────  ───────────────
+  rdf12-trig / -turtle      36 / 75  36 / 75   ✅ All Passed
+────────────────────────  ───────  ────────  ───────────────
+  N3Tests (neg / pos+eval)  23ok / 205clean  23ok / 205clean  ✅ All Passed
 
   ## Performance Benchmark
 
@@ -323,5 +382,3 @@ under the Apache-2.0 license) shall be dual-licensed as above, without any addit
 - N-Quads Specification (https://www.w3.org/TR/n-quads/)
 - Turtle Specification (https://www.w3.org/TR/turtle/)
 - MoonBit Documentation (https://docs.moonbitlang.com)
-
-
