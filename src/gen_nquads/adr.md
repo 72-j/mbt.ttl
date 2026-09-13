@@ -75,3 +75,13 @@ ntriples 走"循环读文件 + 整合文件对比"双口径；`read_context` 提
 词法事件形状与三层边界不动。
 
 **关联**：细则与证据见 `spec.md` §1–§3；2.0 数据面与门见 `src/rdf/adr.md`（ADR-1…ADR-9）。
+
+## ADR-NQ-008：目录瘦身（遗留计划件 / 空件 / v1 输入件）——✅ 2026-09-13
+
+**决策**（定位 B 冻结样本下的"只清障、不改语义"）：
+1. `plan-retire-owned-terms.md`（94 行，owned term 退役方案，**早已执行完**）——**删除**，git 历史留档；
+2. `quicktest/todo.md`（0 行空件）——**删除**；
+3. `test_nquads.toml`（326 行 v1 遗留输入件；生产链早已走 `domain2/nquads_*`）——**归档**到
+   `bak/gen_nquads/`（与 trig 的 `bak/gen_trig/` 同规；`src/md/*` 两处引用已在 R-N1 标为"旧输入件"）。
+
+**依据/验收**：`gen_nquads` **124/124**、模块 330/330、`moon check` 干净；包目录只留实现 + 测试 + 五卷 + `spec/const/adr/todo/ctx`。
