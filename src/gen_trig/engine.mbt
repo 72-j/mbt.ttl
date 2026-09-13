@@ -172,7 +172,6 @@ pub struct TrigEngine[L] {
   dialect : TrigDialect // 方言开关（默认 TriG 超集；Turtle 禁图块区）
   mut last_error : Span? // 最近一次错误位置（行号由上层按 data 统计）
   mut pending : TrigEvent? // 恢复推回的单 token（"停 Rbrace 前界"的兑现机制）
-  emit_queue : Array[TrigPendingQuad] // Sequence 多发射队列：FIFO，next() 顶部优先排空（集合链 rest+first 双发射的承载）
 }
 
 ///|
@@ -188,7 +187,6 @@ pub fn[L : LexerSource] TrigEngine::new(
     dialect,
     last_error: None,
     pending: None,
-    emit_queue: [],
   }
   engine.begin_record()
   engine
@@ -366,8 +364,9 @@ pub fn[L : LexerSource] TrigEngine::next(
 ) -> Result[TrigPendingQuad, ParseError]? {
   // 发射队列优先排空：Sequence 内多条 EmitQuad 逐条回吐（parse_next 再进 next()
   // 时从队列续取，事件流不丢不重）
-  if self.emit_queue.length() > 0 {
-    return Some(Ok(self.emit_queue.remove(0)))
+  // 役11（T11）：队列下沉 ctx（与 n3v2 役22 同构）
+  if self.ctx.emit_queue.length() > 0 {
+    return Some(Ok(self.ctx.emit_queue.remove(0)))
   }
   let mut synth_dot = false
   for ;; {
@@ -399,76 +398,14 @@ pub fn[L : LexerSource] TrigEngine::next(
       continue
     }
     match step(self.ctx, event, self.hooks) {
-      Ok(TrigEffect::Continue) => continue
-      Ok(TrigEffect::EnterGraph) | Ok(TrigEffect::ExitGraph) => continue
-      Ok(TrigEffect::PopBnp) => {
-        // 弹栈恢复：`]` 空形式收口的裸意图，恢复机械在 action（帧携带返回状态）
-        let _ = TrigActions::pop_bnode_prop(self.hooks, self.ctx)
-        continue
-      }
-      Ok(TrigEffect::ListStep(elem)) => {
-        // 集合链推进：意图兑现机械在 action（对齐 PopBnp 口径）
-        let _ = TrigActions::list_step(self.hooks, self.ctx, elem)
-        continue
-      }
-      Ok(TrigEffect::OpenSlot(sp, typ, ret)) => {
-        // 嵌套元素开帧：意图兑现机械在 action
-        let _ = TrigActions::open_slot(self.hooks, self.ctx, sp, typ, ret)
-        continue
-      }
-      Ok(TrigEffect::Reset(scope)) => {
-        // 纯收拾意图：不发射，仅按粒度重置槽位
-        self.ctx.reset(scope)
-        continue
-      }
-      Ok(TrigEffect::EmitQuad(scope)) => {
-        // 发射：snapshot 打包槽位 span，按 scope 粒度重置后上抛
-        //（役9：壳旗结算 + 收口旗消费在快照与重置之间——换壳键只认锚主语身份）
-        let pending = self.settle_shell(self.ctx.snapshot())
-        self.settle_annotation()
-        self.ctx.reset(scope)
-        return Some(Ok(pending))
-      }
-      Ok(TrigEffect::Sequence(effects)) => {
-        // 意图串列：顺序解释；EmitQuad 逐条入队（集合链 rest+first 双发射 =
-        // 单次 step 多 quad，旧"单 pending 覆盖"口径退役），循环后队首上抛
-        for effect in effects {
-          match effect {
-            TrigEffect::EmitQuad(scope) => {
-              // 役9：队列入队同样过壳旗结算（`]` 收口序列的内层 fresh 主语
-              // 错键不换、旗落假——extra 直引会漏挂）
-              let item = self.settle_shell(self.ctx.snapshot())
-              self.ctx.reset(scope)
-              self.emit_queue.push(item)
-            }
-            TrigEffect::Reset(scope) => self.ctx.reset(scope)
-            TrigEffect::ExitGraph => {
-              // 意图兑现：表内该行只产意图，exit_graph 意图由 loop 补调
-              //（直连行的 exit_graph 已在 step 内执行，其返回的 ExitGraph 在上方 continue）
-              let _ = TrigActions::exit_graph(self.hooks, self.ctx)
-            }
-            TrigEffect::PopBnp => {
-              // 意图兑现：`]` 收口序列的弹栈恢复，机械在 action（对齐 ExitGraph 口径）
-              let _ = TrigActions::pop_bnode_prop(self.hooks, self.ctx)
-            }
-            TrigEffect::ListStep(e) => {
-              let _ = TrigActions::list_step(self.hooks, self.ctx, e)
-            }
-            TrigEffect::OpenSlot(sp, typ, ret) => {
-              let _ = TrigActions::open_slot(self.hooks, self.ctx, sp, typ, ret)
-            }
-            TrigEffect::Done => break
-            TrigEffect::Continue
-            | TrigEffect::EnterGraph
-            | TrigEffect::Sequence(_) => ()
-          }
+      Ok(effect) =>
+        // 役11（T11，与 n3v2 役22 同构）：解释在 interpret（套装默认体），
+        // 此处只兑现 loop 控制流；效果语义全数移驻 handler
+        match TrigEffectHandler::interpret(self, self.ctx, effect) {
+          KeepGoing => continue
+          YieldQuad(quad) => return Some(Ok(quad))
+          Stop => return None
         }
-        if self.emit_queue.length() > 0 {
-          return Some(Ok(self.emit_queue.remove(0)))
-        }
-        continue
-      }
-      Ok(TrigEffect::Done) => return None
       Err(TrigActionError::UnexpectedEvent(_, event)) => {
         // 无转移兜底：取事件载荷位置（缺失则词法位置）；恢复策略在 LoopPolicy
         synth_dot = false // 恢复消费整段，待发 Dot 一并作废
@@ -501,13 +438,13 @@ pub fn trig_parser(
 /// 锚宾语终点的原文连续区间，物化层据此合成 <<原文>> TT 壳。
 /// 错键支强制旗落假：subj_shell 是 ctx 直引 extra，不落旗内层 quad 无条件继承
 /// 壳旗被误包（役8 教训）。
-fn[L] TrigEngine::settle_shell(
-  self : TrigEngine[L],
+fn TrigContext::settle_shell(
+  self : TrigContext,
   pending : TrigPendingQuad,
 ) -> TrigPendingQuad {
   if pending.subj_shell {
-    if pending.subj == self.ctx.annot_s {
-      match (self.ctx.annot_s, self.ctx.annot_o) {
+    if pending.subj == self.annot_s {
+      match (self.annot_s, self.annot_o) {
         (Some(s), Some(o)) =>
           return { ..pending, subj: Some((s.0, o.0 + o.1 - s.0)), }
         (_, _) => ()
@@ -521,11 +458,64 @@ fn[L] TrigEngine::settle_shell(
 ///|
 /// 役9 收口旗消费：annot_close 置真时清壳账（发射位快照之后、reset 之前调用；
 /// PredObj reset 保锚主语在槽——`|} ; …` 续锚口径）
-fn[L] TrigEngine::settle_annotation(self : TrigEngine[L]) -> Unit {
-  if self.ctx.annot_close {
-    self.ctx.annot_close = false
-    self.ctx.subj_shell = false
-    self.ctx.annot_s = None
-    self.ctx.annot_o = None
+fn TrigContext::settle_annotation(self : TrigContext) -> Unit {
+  if self.annot_close {
+    self.annot_close = false
+    self.subj_shell = false
+    self.annot_s = None
+    self.annot_o = None
   }
+}
+
+// ===== 役11（T11）：效果面接活——引擎兑现 handler 的真实挂点 =====
+// interpret（套装默认体）为唯一解释器；snapshot 负责壳旗结算与收口旗消费，
+// on_* 把意图兑现机械（action）接回；其余成员用套装默认。
+
+///|
+/// snapshot 覆盖：壳旗结算 + 收口旗消费（役9 口径），产出待上抛的 pending quad
+impl[L] TrigEffectHandler for TrigEngine[L] with fn snapshot(
+  self : TrigEngine[L],
+  ctx : TrigContext,
+) -> TrigPendingQuad {
+  ignore(self)
+  let pending = ctx.settle_shell(ctx.snapshot())
+  ctx.settle_annotation()
+  pending
+}
+
+///|
+/// ExitGraph 意图兑现：退图机械在 action（直连行的 exit_graph 已在 step 内执行，
+/// 序列内嵌意图由 loop 经本钩子补调）
+impl[L] TrigEffectHandler for TrigEngine[L] with fn on_exit_graph(
+  self : TrigEngine[L],
+) -> Unit {
+  let _ = TrigActions::exit_graph(self.hooks, self.ctx)
+}
+
+///|
+impl[L] TrigEffectHandler for TrigEngine[L] with fn on_pop_bnp(
+  self : TrigEngine[L],
+  ctx : TrigContext,
+) -> Unit {
+  let _ = TrigActions::pop_bnode_prop(self.hooks, ctx)
+}
+
+///|
+impl[L] TrigEffectHandler for TrigEngine[L] with fn on_list_step(
+  self : TrigEngine[L],
+  ctx : TrigContext,
+  elem : Span,
+) -> Unit {
+  let _ = TrigActions::list_step(self.hooks, ctx, elem)
+}
+
+///|
+impl[L] TrigEffectHandler for TrigEngine[L] with fn on_open_slot(
+  self : TrigEngine[L],
+  ctx : TrigContext,
+  span : Span,
+  typ : SlotType,
+  ret_state : TrigState,
+) -> Unit {
+  let _ = TrigActions::open_slot(self.hooks, ctx, span, typ, ret_state)
 }

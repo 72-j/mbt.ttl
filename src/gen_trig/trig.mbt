@@ -112,6 +112,7 @@ pub(all) enum TrigEffect {
 /// FSM 运行时上下文：ctx 提供状态（state）与业务数据（其余字段）
 pub(all) struct TrigContext {
   mut state : TrigState
+  mut emit_queue : Array[TrigPendingQuad]
   mut subject : Span?
   mut predicate : Span?
   mut object : Span?
@@ -134,6 +135,7 @@ pub(all) struct TrigContext {
 pub fn TrigContext::new() -> TrigContext {
   {
     state: TrigExpectSubject,
+    emit_queue: [],
     subject: None,
     predicate: None,
     object: None,
@@ -1295,11 +1297,30 @@ impl TrigEffectHandler with fn apply_scope(_self, ctx, scope) {
 impl TrigEffectHandler with fn interpret(self, ctx, effect) {
   match effect {
     TrigEffect::Continue => KeepGoing
-    TrigEffect::EnterGraph
-    | TrigEffect::ExitGraph
-    | TrigEffect::PopBnp
-    | TrigEffect::ListStep(_)
-    | TrigEffect::OpenSlot(_, _, _) => KeepGoing
+    TrigEffect::EnterGraph => {
+      let _ = self.handle_enter_graph()
+      KeepGoing
+    }
+    TrigEffect::ExitGraph => {
+      let _ = self.handle_exit_graph()
+      self.on_exit_graph()
+      KeepGoing
+    }
+    TrigEffect::PopBnp => {
+      let _ = self.handle_pop_bnp()
+      self.on_pop_bnp(ctx)
+      KeepGoing
+    }
+    TrigEffect::ListStep(elem) => {
+      let _ = self.handle_list_step(elem)
+      self.on_list_step(ctx, elem)
+      KeepGoing
+    }
+    TrigEffect::OpenSlot(span, typ, ret_state) => {
+      let _ = self.handle_open_slot(span, typ, ret_state)
+      self.on_open_slot(ctx, span, typ, ret_state)
+      KeepGoing
+    }
     TrigEffect::Reset(scope) => {
       self.apply_scope(ctx, scope)
       KeepGoing
@@ -1310,12 +1331,11 @@ impl TrigEffectHandler with fn interpret(self, ctx, effect) {
       YieldQuad(pending)
     }
     TrigEffect::Sequence(effects) => {
-      // 意图串列：顺序解释；emit 组装暂存后继续执行余下意图
-      let mut pending : TrigPendingQuad? = None
+      // 意图串列：emit 逐条入 ctx.emit_queue（队首即返，余者由 loop 顶部排空）
       for sub in effects {
         match sub {
           TrigEffect::EmitQuad(scope) => {
-            pending = Some(self.snapshot(ctx))
+            ctx.emit_queue.push(self.snapshot(ctx))
             self.apply_scope(ctx, scope)
           }
           TrigEffect::Reset(scope) => self.apply_scope(ctx, scope)
@@ -1328,9 +1348,10 @@ impl TrigEffectHandler with fn interpret(self, ctx, effect) {
           _ => ()
         }
       }
-      match pending {
-        Some(q) => YieldQuad(q)
-        None => KeepGoing
+      if ctx.emit_queue.length() > 0 {
+        YieldQuad(ctx.emit_queue.remove(0))
+      } else {
+        KeepGoing
       }
     }
     TrigEffect::Done => Stop
