@@ -77,6 +77,11 @@ fn prefix_declared(
   if colon < 0 {
     return false
   }
+  if colon == 0 {
+    // 隐式空前缀（R-16 / C-16）：N3/cwm 语料大量使用 `:local` 而不声明 `@prefix :`，
+    // 按默认前缀语义放行（物化层 DefaultPrefixIRI 同径）
+    return true
+  }
   let mut j = prefixes.length() - 1
   while j >= 0 {
     let (name, _) = prefixes[j]
@@ -289,6 +294,12 @@ fn validate_term(
         None => ()
       }
     }
+    return None
+  }
+  if is_predicate &&
+    n == 2 &&
+    ((c0 == b'<' && view[1] == b'=') || (c0 == b'=' && view[1] == b'>')) {
+    // R-16 / C-17：N3 操作符谓词（`<=` / `=>`）是谓词身份（ADR-005），不是 IRI
     return None
   }
   if c0 == b'<' {

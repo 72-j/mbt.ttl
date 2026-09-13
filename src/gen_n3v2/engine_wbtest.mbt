@@ -164,11 +164,17 @@ test "切片: 端到端 n3_parser（前缀 + 集合宾位）" {
 }
 
 ///|
-test "切片: 未声明前缀拒绝" {
-  let data = bytes_of(":x :y :z .\n")
+test "切片: 未声明前缀拒绝（R-16 口径：具名前缀仍拒；空前缀按默认前缀放行）" {
+  // 具名未声明前缀：仍拒
+  let data = bytes_of("foo:x foo:y foo:z .\n")
   let (quads, errors) = n3_parser(data)
   assert_eq(quads.length(), 0)
   assert_eq(errors.length(), 1)
+  // 隐式空前缀（cwm 常态）：放行
+  let data2 = bytes_of(":x :y :z .\n")
+  let (quads2, errors2) = n3_parser(data2)
+  assert_eq(quads2.length(), 1)
+  assert_eq(errors2.length(), 0)
 }
 
 ///|

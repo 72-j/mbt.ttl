@@ -184,7 +184,7 @@ async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
     pin=true,
     rdf12=false,
     expect_pass=316,
-    expect_strict_gap=5, // 影子基线（2026-09-11）：Undeclared prefix 族 ×4 + `<=` raw 谓词 ×1
+    expect_strict_gap=1, // R-16 修口后：Undeclared prefix 族清零，仅余 1（其余见 n3tests 侧）
   )
   run_n3_suite(
     "src/gen_n3v2/rdf-tests/rdf12/rdf-turtle/syntax",

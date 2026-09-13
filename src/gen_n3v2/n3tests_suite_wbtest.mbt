@@ -135,5 +135,7 @@ async test "N3Tests parser suite: first sweep (print-only)" {
   // good_prefix.n3 也翻）；次因 `<=` raw 谓词（ADR-005 操作符=谓词身份）被
   // validate_pred 拒。两族均系真缺口，另立小役修口（R-07 风险节纪律：不为绿
   // 回退 lenient）——基线冻结，缺口收窄也须显式翻新本钉
-  assert_eq(strict_gap, 123)
+  // R-16 修口（2026-09-13）：隐式空前缀放行 + `<=`/`=>` 操作符谓词白名单 ⇒ 123 → 108；
+  // 余量见 `todo.md` R-16（内建前缀表 log:/string:/math:/list:/time: 预绑定待做）
+  assert_eq(strict_gap, 108)
 }
