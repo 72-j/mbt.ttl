@@ -4,36 +4,34 @@ echo "=========================================="
 echo "RDF 解析性能对比测试"
 echo "=========================================="
 
-# 2. Python 测试
 echo ""
-echo ">>> Python (rdflib) 测试"
+echo ">>> 1. Python (rdflib) 测试（1k / 10k）"
 python3 test_rdflib.py
 
-# 3. Java 测试
 echo ""
-echo ">>> Java (Jena) 测试"
+echo ">>> 2. Java (Jena) 测试（1k / 10k；1k 档含 JVM 启动）"
 cd jena-benchmark
 mvn compile -q
-mvn exec:java -Dexec.mainClass="JenaBenchmark"
+mvn -q exec:java -Dexec.mainClass="JenaBenchmark" -Dexec.args="../test_1000.nq"
+mvn -q exec:java -Dexec.mainClass="JenaBenchmark" -Dexec.args="../test_10000.nq"
 cd ..
 
-# 4. Rust 测试
 echo ""
-echo ">>> Rust (Oxigraph) 测试"
+echo ">>> 3. Rust (Oxigraph) 测试（1k / 10k）"
 cd oxigraph-benchmark
-cargo run --release 
+cargo run --release
 cd ..
-# 5. moonbit 测试（计时基准仅在 native 上有意义）
+
 echo ""
-echo "moonbit 测试"
+echo ">>> 4. MoonBit 测试（native = 正式计时口径，词法段走 C FFI Lexerc；1k）"
 moon run nquads-benchmark --target native test_1000.nq
-echo ">>> 测试结束"
-# 6. c语言测试(无脑扫)
+
 echo ""
-echo ">>> C语言 (no-brain-scan) 测试"
+echo ">>> 5. C 测试（gcc -O3；full = 行级结构解析；1k）"
 gcc -O3 -o nqparser nqparser.c
-./nqparser  test_1000.nq full  
+./nqparser test_1000.nq full
 
 echo ""
 echo "=========================================="
 echo "测试完成"
+echo "=========================================="
