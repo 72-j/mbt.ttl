@@ -208,6 +208,19 @@ pub(all) struct TrigPendingQuad {
   subj_shell : Bool
 } derive(Eq)
 
+pub struct TrigProbe {
+  // private fields
+}
+pub fn TrigProbe::new() -> Self
+pub fn TrigProbe::step(Self, TrigEvent) -> TrigProbeResponse
+
+pub(all) enum TrigProbeResponse {
+  Continue
+  EmitQuad(TrigPendingQuad)
+  Done
+  Failed(TrigActionError)
+}
+
 pub struct TrigSerializer {
   format : SerializeFormat
   graph_policy : GraphPolicy
