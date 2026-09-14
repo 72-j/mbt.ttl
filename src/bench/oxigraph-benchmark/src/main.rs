@@ -26,7 +26,7 @@ fn test_oxigraph(filename: &str) {
 }
 
 fn main() {
-    for f in ["../test_1000.nq", "../test_10000.nq", "../test_100000.nq"] {
+    for f in ["../test_1000.nq", "../test_10000.nq"] {
         test_oxigraph(f);
     }
 }

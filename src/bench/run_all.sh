@@ -4,11 +4,6 @@ echo "=========================================="
 echo "RDF 解析性能对比测试"
 echo "=========================================="
 
-# 1. 生成测试数据
-echo ""
-echo ">>> 生成测试数据"
-python3 generate_data.py
-
 # 2. Python 测试
 echo ""
 echo ">>> Python (rdflib) 测试"

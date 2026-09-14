@@ -2,12 +2,10 @@
 /// Parse N-Quads file example
 async fn main {
   @async.with_task_group() <| _root => {
-    let path = "./test_1000.nq"
-    let path = if @fs.exists(path) {
-      path
-    } else {
-      "./src/benchmark/test_1000.nq"
-    }
+    // 可选：命令行给文件路径（默认 1k）；便于 10k 档与交叉测试
+    let argv = @env.args()
+    let path = if argv.length() > 1 { argv[1] } else { "./test_1000.nq" }
+    let path = if @fs.exists(path) { path } else { "./src/bench/" + path }
     let content = @fs.read_file(path).binary()
     let data = content.to_fixedarray()
 
@@ -70,7 +68,7 @@ async fn main {
       0.0
     }
 
-    println("=== MoonBit 解析 test_1000.nq ===")
+    println("=== MoonBit 解析 \{path} ===")
     println("文件: \{path}")
     println("文件大小: \{data.length()} bytes")
     println("")

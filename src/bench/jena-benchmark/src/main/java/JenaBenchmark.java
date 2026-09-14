@@ -13,7 +13,7 @@ import java.util.List;
 
 public class JenaBenchmark {
     public static void main(String[] args) {
-        String filename = "/home/thy/moonttl/bak/benchmark/test_100000.nq";
+        String filename = args.length > 0 ? args[0] : "../test_1000.nq";
 
         try {
             long startTime = System.currentTimeMillis();

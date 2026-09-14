@@ -46,7 +46,7 @@ def test_rdflib(filename: str):
 
 
 if __name__ == "__main__":
-    for f in ["test_1000.nq", "test_100.nq"]:
+    for f in ["test_1000.nq", "test_10000.nq"]:
         try:
             test_rdflib(f)
         except Exception as e:
