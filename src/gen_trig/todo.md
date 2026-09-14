@@ -273,3 +273,48 @@ T16 ✅ 已完成（本卷即其产物）。**R-T10–R-T13 的修口一律排�
 `TrigActions`(open)/`TrigEvent`/`TrigEffect`+`ResetScope`/`TrigContext`/`TrigActionError`/`step`/
 `TrigPendingQuad`/`TrigEffectHandler`+`TrigEffectOutcome` 发 pub，其余仍按 `internals_priv` 收 priv，
 把 `.mbti` 拉回 172 行量级。**P4（trig quicktest 生成）不阻塞于 P3.5**。
+
+---
+
+## P4.2c 记录（action → 意图 数据面回灌，2026-09-14 立）
+
+**问题（P4.2b 实测）**：随机门在 `AnnotStart` 抓到漂移——引擎发射四元组、模型预测 `Continue`。
+根因：quick machine 生成器 `classify_action` **只按名字硬编码 5 条约定**
+（`set_<槽位>` / `emit_quad` / `skip_error` / `noop` / `done`），其余一律 `Default("Continue")`；
+而 action 的真实返回意图活在**用户代码** `src/ttl/src/gen_trig/actions.mbt` 里。
+trig 侧此类保守臂 **99 条**（`none` 36 / `annot_body_verb` 12 / `open_bnode_prop` 8 / `list_first` 7 /
+`enter_graph` 7 / `open_collection` 6 / `list_next` 6 / `annot_open` 4 / …）。
+
+**回灌设计（数据面，不是人工补 99 处）**：
+
+| 落点 | 动作 |
+| --- | --- |
+| `domain2/*_base.toml` | `[[parser.action_hooks]]` 增**可选键** `returns = "<EffectExpr>"`（如 `"EmitQuad(PredObj)"` / `"Continue"` / `"Sequence([...])"`）——action 的返回意图是**引擎契约事实**，写进数据面最正确 |
+| `src/rdf/domain_toml_2.mbt` | 解析该可选键 + 校验（未知 EffectExpr 拒收/告警）+ 发射进 IR |
+| `fsm_out/*_fsm.toml` | `[[parser.action_hooks]]` 段带 `returns`（可选；缺省 = 现状，nquads 字节零波及） |
+| `src/fsm`（parse_raw/construct） | 读进 `QuickGenInput`（hooks 表） |
+| `src/quick_machine/codegen.mbt` | `classify_action` 改为**优先查 hooks.returns**：命中即按该意图发射精确臂（含 `EmitQuad`/`Sequence` 内嵌 emit），查不到才回落到现状默认臂 |
+| `src/quick_machine/codegen_model.mbt` | 按 returns 发射精确臂（`EmitQuad` → `emit_or_error(model)`；`Sequence[EmitQuad,…]` → 发射臂 + 内嵌意图钩子） |
+
+**数据表（从 `actions.mbt` 实测抽取，22 个 action）**：
+
+```toml
+set_subject = "Continue"        set_predicate = "Continue"      set_object = "Continue"
+set_prefix_name = "Continue"    declare_prefix = "Continue"     set_base = "Continue"
+enter_graph = "EnterGraph"      exit_graph = "ExitGraph"
+open_bnode_prop = "Continue"    pop_bnode_prop = "Continue"     open_collection = "Continue"
+list_step = "Continue"          annot_body_verb = "Continue"    annot_close_silent = "Continue"
+annot_open = "EmitQuad(PredObj)"   annot_end = "EmitQuad"        list_first = "EmitQuad"
+list_first_nested = "Sequence([EmitQuad(PredObj), OpenSlot(...)])"
+list_next        = "Sequence([EmitQuad(PredObj), ListStep(...), EmitQuad(PredObj), …])"
+list_next_nested = "Sequence([EmitQuad(PredObj), ListStep(...), EmitQuad(PredObj), OpenSlot(...)])"
+list_nil         = "Sequence([EmitQuad(PredObj), PopBnp])"
+open_slot        = "（待核：body 走委托，需读实现确认返回意图）"
+```
+
+**验收预期**：触发物化后 `model_exec.mbt` 的"未识别 action"臂 **99 → 0**（或仅剩 `open_slot` 待核项）；
+`trig quicktest/runner.mbt` 的随机门取消注释并**转绿**（模型 ≡ 引擎，100 用例 × ≤20 命令）。
+
+**注意**：`EnterGraph/ExitGraph/Reset/…` 已在 `quick_machine_trig_gen.toml` 的 `effect_maps` 里归一到
+`Continue`，所以模型臂的"响应"仍取归一化后的档；本役要精确的是**是否发射**（emit 与否），
+这正是 `AnnotStart` 漂移的那一半。
