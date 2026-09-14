@@ -33,9 +33,12 @@ fn take_quad(model : Model) -> Quad {
 fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
   match (model.state, cmd) {
     // --- ExpectSubject ---
-    (ExpectSubject, Iri(r)) => (set_subject(model, r), Continue)
-    (ExpectSubject, BlankNode(r)) => (set_subject(model, r), Continue)
-    (ExpectSubject, PrefName(r)) => (set_subject(model, r), Continue)
+    (ExpectSubject, Iri(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectSubject, BlankNode(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectSubject, PrefName(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     (ExpectSubject, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, }, Continue) // TODO(P0): 未识别 action enter_graph，默认响应请人工确认
     (ExpectSubject, At) => ({ ..model, state: ExpectDirectiveKind, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -46,26 +49,37 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       ({ ..model, state: ExpectGraphLabel, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectSubject, VersionKw) =>
       ({ ..model, state: ExpectVersionLiteral, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
-    (ExpectSubject, TripleTerm(r)) => (set_subject(model, r), Continue)
+    (ExpectSubject, TripleTerm(r)) =>
+      (set_subject(model, r, ExpectVerbOrDot), Continue)
     (ExpectSubject, Lbracket(_)) =>
       ({ ..model, state: BnpExpectPredicate, }, Continue) // TODO(P0): 未识别 action open_bnode_prop，默认响应请人工确认
-    (ExpectSubject, Anon(r)) => (set_subject(model, r), Continue)
+    (ExpectSubject, Anon(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     (ExpectSubject, Lparen(_)) =>
       ({ ..model, state: ListExpectElemOrEnd, }, Continue) // TODO(P0): 未识别 action open_collection，默认响应请人工确认
     // --- ExpectPredicate ---
-    (ExpectPredicate, Iri(r)) => (set_predicate(model, r), Continue)
-    (ExpectPredicate, PrefName(r)) => (set_predicate(model, r), Continue)
-    (ExpectPredicate, KeywordA(r)) => (set_predicate(model, r), Continue)
+    (ExpectPredicate, Iri(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, PrefName(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     (ExpectPredicate, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, }, Continue) // TODO(P0): 未识别 action enter_graph，默认响应请人工确认
     // --- ExpectObject ---
-    (ExpectObject, Iri(r)) => (set_object(model, r), Continue)
-    (ExpectObject, BlankNode(r)) => (set_object(model, r), Continue)
-    (ExpectObject, Literal(r)) => (set_object(model, r), Continue)
-    (ExpectObject, PrefName(r)) => (set_object(model, r), Continue)
-    (ExpectObject, TripleTerm(r)) => (set_object(model, r), Continue)
-    (ExpectObject, BracketTripleTerm(r)) => (set_object(model, r), Continue)
-    (ExpectObject, Anon(r)) => (set_object(model, r), Continue)
+    (ExpectObject, Iri(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, BlankNode(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, Literal(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, PrefName(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, TripleTerm(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, BracketTripleTerm(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, Anon(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
     (ExpectObject, Lbracket(_)) =>
       ({ ..model, state: BnpExpectPredicate, }, Continue) // TODO(P0): 未识别 action open_bnode_prop，默认响应请人工确认
     (ExpectObject, Lparen(_)) =>
@@ -78,19 +92,28 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectDotOrGraph, AnnotStart) =>
       ({ ..model, state: AnnotExpectVerb, }, Continue) // TODO(P0): 未识别 action annot_open，默认响应请人工确认
     // --- ExpectVerbOrEnd ---
-    (ExpectVerbOrEnd, Iri(r)) => (set_predicate(model, r), Continue)
-    (ExpectVerbOrEnd, PrefName(r)) => (set_predicate(model, r), Continue)
-    (ExpectVerbOrEnd, KeywordA(r)) => (set_predicate(model, r), Continue)
+    (ExpectVerbOrEnd, Iri(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, PrefName(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     (ExpectVerbOrEnd, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectVerbOrEnd, Dot) => ({ ..model, state: ExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- ExpectVerbRequired ---
-    (ExpectVerbRequired, Iri(r)) => (set_predicate(model, r), Continue)
-    (ExpectVerbRequired, PrefName(r)) => (set_predicate(model, r), Continue)
-    (ExpectVerbRequired, KeywordA(r)) => (set_predicate(model, r), Continue)
+    (ExpectVerbRequired, Iri(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, PrefName(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // --- ExpectVerbOrDot ---
-    (ExpectVerbOrDot, Iri(r)) => (set_predicate(model, r), Continue)
-    (ExpectVerbOrDot, PrefName(r)) => (set_predicate(model, r), Continue)
-    (ExpectVerbOrDot, KeywordA(r)) => (set_predicate(model, r), Continue)
+    (ExpectVerbOrDot, Iri(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, PrefName(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     (ExpectVerbOrDot, Dot) => emit_spo(model, ExpectSubject)
     // --- ExpectTildeEnd ---
     (ExpectTildeEnd, Iri(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -121,16 +144,22 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (AnnotExpectVerbTail, AnnotEnd) =>
       ({ ..model, state: ExpectVerbOrEnd, }, Continue) // TODO(P0): 未识别 action annot_close_silent，默认响应请人工确认
     // --- AnnotExpectObject ---
-    (AnnotExpectObject, Iri(r)) => (set_object(model, r), Continue)
-    (AnnotExpectObject, BlankNode(r)) => (set_object(model, r), Continue)
-    (AnnotExpectObject, Literal(r)) => (set_object(model, r), Continue)
-    (AnnotExpectObject, PrefName(r)) => (set_object(model, r), Continue)
-    (AnnotExpectObject, TripleTerm(r)) => (set_object(model, r), Continue)
+    (AnnotExpectObject, Iri(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, BlankNode(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, Literal(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, PrefName(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, TripleTerm(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     (AnnotExpectObject, BracketTripleTerm(r)) =>
-      (set_object(model, r), Continue)
+      (set_object(model, r, AnnotExpectEnd), Continue)
     (AnnotExpectObject, Lbracket(_)) =>
       ({ ..model, state: BnpExpectPredicate, }, Continue) // TODO(P0): 未识别 action open_bnode_prop，默认响应请人工确认
-    (AnnotExpectObject, Anon(r)) => (set_object(model, r), Continue)
+    (AnnotExpectObject, Anon(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     // --- AnnotExpectEnd ---
     (AnnotExpectEnd, Comma) => emit_object(model, AnnotExpectObject)
     (AnnotExpectEnd, Semicolon) => emit_predobj(model, AnnotExpectVerbTail)
@@ -157,9 +186,12 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       ({ ..model, state: ExpectDirectiveEnd, }, Continue) // TODO(P0): 未识别 action set_base，默认响应请人工确认
     // --- ExpectDirectiveEnd ---
     (ExpectDirectiveEnd, Dot) => ({ ..model, state: ExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
-    (ExpectDirectiveEnd, Iri(r)) => (set_subject(model, r), Continue)
-    (ExpectDirectiveEnd, BlankNode(r)) => (set_subject(model, r), Continue)
-    (ExpectDirectiveEnd, PrefName(r)) => (set_subject(model, r), Continue)
+    (ExpectDirectiveEnd, Iri(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectDirectiveEnd, BlankNode(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectDirectiveEnd, PrefName(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     (ExpectDirectiveEnd, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, }, Continue) // TODO(P0): 未识别 action enter_graph，默认响应请人工确认
     (ExpectDirectiveEnd, At) =>
@@ -174,8 +206,10 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       ({ ..model, state: ExpectGraphLabel, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectDirectiveEnd, Lbracket(_)) =>
       ({ ..model, state: BnpExpectPredicate, }, Continue) // TODO(P0): 未识别 action open_bnode_prop，默认响应请人工确认
-    (ExpectDirectiveEnd, Anon(r)) => (set_subject(model, r), Continue)
-    (ExpectDirectiveEnd, TripleTerm(r)) => (set_subject(model, r), Continue)
+    (ExpectDirectiveEnd, Anon(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectDirectiveEnd, TripleTerm(r)) =>
+      (set_subject(model, r, ExpectVerbOrDot), Continue)
     (ExpectDirectiveEnd, Lparen(_)) =>
       ({ ..model, state: ListExpectElemOrEnd, }, Continue) // TODO(P0): 未识别 action open_collection，默认响应请人工确认
     // --- ExpectGraphLabel ---
@@ -191,30 +225,44 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectGraphLbrace, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- GraphExpectSubject ---
-    (GraphExpectSubject, Iri(r)) => (set_subject(model, r), Continue)
-    (GraphExpectSubject, BlankNode(r)) => (set_subject(model, r), Continue)
-    (GraphExpectSubject, PrefName(r)) => (set_subject(model, r), Continue)
-    (GraphExpectSubject, TripleTerm(r)) => (set_subject(model, r), Continue)
+    (GraphExpectSubject, Iri(r)) =>
+      (set_subject(model, r, GraphExpectPredicate), Continue)
+    (GraphExpectSubject, BlankNode(r)) =>
+      (set_subject(model, r, GraphExpectPredicate), Continue)
+    (GraphExpectSubject, PrefName(r)) =>
+      (set_subject(model, r, GraphExpectPredicate), Continue)
+    (GraphExpectSubject, TripleTerm(r)) =>
+      (set_subject(model, r, GraphExpectVerbOrDot), Continue)
     (GraphExpectSubject, Rbrace) =>
       ({ ..model, state: ExpectSubject, }, Continue) // TODO(P0): 未识别 action exit_graph，默认响应请人工确认
     (GraphExpectSubject, Lbracket(_)) =>
       ({ ..model, state: BnpExpectPredicate, }, Continue) // TODO(P0): 未识别 action open_bnode_prop，默认响应请人工确认
-    (GraphExpectSubject, Anon(r)) => (set_subject(model, r), Continue)
+    (GraphExpectSubject, Anon(r)) =>
+      (set_subject(model, r, GraphExpectPredicate), Continue)
     (GraphExpectSubject, Lparen(_)) =>
       ({ ..model, state: ListExpectElemOrEnd, }, Continue) // TODO(P0): 未识别 action open_collection，默认响应请人工确认
     // --- GraphExpectPredicate ---
-    (GraphExpectPredicate, Iri(r)) => (set_predicate(model, r), Continue)
-    (GraphExpectPredicate, PrefName(r)) => (set_predicate(model, r), Continue)
-    (GraphExpectPredicate, KeywordA(r)) => (set_predicate(model, r), Continue)
+    (GraphExpectPredicate, Iri(r)) =>
+      (set_predicate(model, r, GraphExpectObject), Continue)
+    (GraphExpectPredicate, PrefName(r)) =>
+      (set_predicate(model, r, GraphExpectObject), Continue)
+    (GraphExpectPredicate, KeywordA(r)) =>
+      (set_predicate(model, r, GraphExpectObject), Continue)
     // --- GraphExpectObject ---
-    (GraphExpectObject, Iri(r)) => (set_object(model, r), Continue)
-    (GraphExpectObject, Anon(r)) => (set_object(model, r), Continue)
-    (GraphExpectObject, BlankNode(r)) => (set_object(model, r), Continue)
-    (GraphExpectObject, Literal(r)) => (set_object(model, r), Continue)
-    (GraphExpectObject, PrefName(r)) => (set_object(model, r), Continue)
-    (GraphExpectObject, TripleTerm(r)) => (set_object(model, r), Continue)
+    (GraphExpectObject, Iri(r)) =>
+      (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    (GraphExpectObject, Anon(r)) =>
+      (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    (GraphExpectObject, BlankNode(r)) =>
+      (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    (GraphExpectObject, Literal(r)) =>
+      (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    (GraphExpectObject, PrefName(r)) =>
+      (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    (GraphExpectObject, TripleTerm(r)) =>
+      (set_object(model, r, GraphExpectDotOrGraph), Continue)
     (GraphExpectObject, BracketTripleTerm(r)) =>
-      (set_object(model, r), Continue)
+      (set_object(model, r, GraphExpectDotOrGraph), Continue)
     (GraphExpectObject, Lbracket(_)) =>
       ({ ..model, state: BnpExpectPredicate, }, Continue) // TODO(P0): 未识别 action open_bnode_prop，默认响应请人工确认
     (GraphExpectObject, Lparen(_)) =>
@@ -230,18 +278,24 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       ({ ..model, state: GraphAnnotExpectVerb, }, Continue) // TODO(P0): 未识别 action annot_open，默认响应请人工确认
     (GraphExpectDotOrGraph, Rbrace) => (model, Continue) // TODO(P0): effect 缺 scope 变体, 人工确认
     // --- GraphExpectVerbOrEnd ---
-    (GraphExpectVerbOrEnd, Iri(r)) => (set_predicate(model, r), Continue)
-    (GraphExpectVerbOrEnd, PrefName(r)) => (set_predicate(model, r), Continue)
-    (GraphExpectVerbOrEnd, KeywordA(r)) => (set_predicate(model, r), Continue)
+    (GraphExpectVerbOrEnd, Iri(r)) =>
+      (set_predicate(model, r, GraphExpectObject), Continue)
+    (GraphExpectVerbOrEnd, PrefName(r)) =>
+      (set_predicate(model, r, GraphExpectObject), Continue)
+    (GraphExpectVerbOrEnd, KeywordA(r)) =>
+      (set_predicate(model, r, GraphExpectObject), Continue)
     (GraphExpectVerbOrEnd, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (GraphExpectVerbOrEnd, Dot) =>
       ({ ..model, state: GraphExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (GraphExpectVerbOrEnd, Rbrace) =>
       ({ ..model, state: ExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- GraphExpectVerbOrDot ---
-    (GraphExpectVerbOrDot, Iri(r)) => (set_predicate(model, r), Continue)
-    (GraphExpectVerbOrDot, PrefName(r)) => (set_predicate(model, r), Continue)
-    (GraphExpectVerbOrDot, KeywordA(r)) => (set_predicate(model, r), Continue)
+    (GraphExpectVerbOrDot, Iri(r)) =>
+      (set_predicate(model, r, GraphExpectObject), Continue)
+    (GraphExpectVerbOrDot, PrefName(r)) =>
+      (set_predicate(model, r, GraphExpectObject), Continue)
+    (GraphExpectVerbOrDot, KeywordA(r)) =>
+      (set_predicate(model, r, GraphExpectObject), Continue)
     (GraphExpectVerbOrDot, Dot) => emit_spo(model, GraphExpectSubject)
     (GraphExpectVerbOrDot, Rbrace) =>
       ({ ..model, state: ExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -276,16 +330,22 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (GraphAnnotExpectVerbTail, AnnotEnd) =>
       ({ ..model, state: GraphExpectVerbOrEnd, }, Continue) // TODO(P0): 未识别 action annot_close_silent，默认响应请人工确认
     // --- GraphAnnotExpectObject ---
-    (GraphAnnotExpectObject, Iri(r)) => (set_object(model, r), Continue)
-    (GraphAnnotExpectObject, BlankNode(r)) => (set_object(model, r), Continue)
-    (GraphAnnotExpectObject, Literal(r)) => (set_object(model, r), Continue)
-    (GraphAnnotExpectObject, PrefName(r)) => (set_object(model, r), Continue)
-    (GraphAnnotExpectObject, TripleTerm(r)) => (set_object(model, r), Continue)
+    (GraphAnnotExpectObject, Iri(r)) =>
+      (set_object(model, r, GraphAnnotExpectEnd), Continue)
+    (GraphAnnotExpectObject, BlankNode(r)) =>
+      (set_object(model, r, GraphAnnotExpectEnd), Continue)
+    (GraphAnnotExpectObject, Literal(r)) =>
+      (set_object(model, r, GraphAnnotExpectEnd), Continue)
+    (GraphAnnotExpectObject, PrefName(r)) =>
+      (set_object(model, r, GraphAnnotExpectEnd), Continue)
+    (GraphAnnotExpectObject, TripleTerm(r)) =>
+      (set_object(model, r, GraphAnnotExpectEnd), Continue)
     (GraphAnnotExpectObject, BracketTripleTerm(r)) =>
-      (set_object(model, r), Continue)
+      (set_object(model, r, GraphAnnotExpectEnd), Continue)
     (GraphAnnotExpectObject, Lbracket(_)) =>
       ({ ..model, state: BnpExpectPredicate, }, Continue) // TODO(P0): 未识别 action open_bnode_prop，默认响应请人工确认
-    (GraphAnnotExpectObject, Anon(r)) => (set_object(model, r), Continue)
+    (GraphAnnotExpectObject, Anon(r)) =>
+      (set_object(model, r, GraphAnnotExpectEnd), Continue)
     // --- GraphAnnotExpectEnd ---
     (GraphAnnotExpectEnd, Comma) => emit_object(model, GraphAnnotExpectObject)
     (GraphAnnotExpectEnd, Semicolon) =>
@@ -294,16 +354,25 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       ({ ..model, state: GraphExpectVerbOrEnd, }, Continue) // TODO(P0): 未识别 action annot_end，默认响应请人工确认
     // --- BnpExpectPredicate ---
     (BnpExpectPredicate, Rbracket) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
-    (BnpExpectPredicate, Iri(r)) => (set_predicate(model, r), Continue)
-    (BnpExpectPredicate, PrefName(r)) => (set_predicate(model, r), Continue)
-    (BnpExpectPredicate, KeywordA(r)) => (set_predicate(model, r), Continue)
+    (BnpExpectPredicate, Iri(r)) =>
+      (set_predicate(model, r, BnpExpectObject), Continue)
+    (BnpExpectPredicate, PrefName(r)) =>
+      (set_predicate(model, r, BnpExpectObject), Continue)
+    (BnpExpectPredicate, KeywordA(r)) =>
+      (set_predicate(model, r, BnpExpectObject), Continue)
     // --- BnpExpectObject ---
-    (BnpExpectObject, Iri(r)) => (set_object(model, r), Continue)
-    (BnpExpectObject, BlankNode(r)) => (set_object(model, r), Continue)
-    (BnpExpectObject, Literal(r)) => (set_object(model, r), Continue)
-    (BnpExpectObject, PrefName(r)) => (set_object(model, r), Continue)
-    (BnpExpectObject, TripleTerm(r)) => (set_object(model, r), Continue)
-    (BnpExpectObject, BracketTripleTerm(r)) => (set_object(model, r), Continue)
+    (BnpExpectObject, Iri(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, BlankNode(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, Literal(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, PrefName(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, TripleTerm(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, BracketTripleTerm(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     (BnpExpectObject, Lbracket(_)) =>
       ({ ..model, state: BnpExpectPredicate, }, Continue) // TODO(P0): 未识别 action open_bnode_prop，默认响应请人工确认
     (BnpExpectObject, Lparen(_)) =>
@@ -350,35 +419,38 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
 
 ///|
 /// 槽位更新辅助: subject（action set_subject）
-fn set_subject(model : Model, r : @qcs.Ref[RefId]) -> Model {
+/// 目标态由调用臂传入（规则 to=），同一 action 的多目标复用由此消解
+fn set_subject(model : Model, r : @qcs.Ref[RefId], to : ModelState) -> Model {
   // 生成期 Symbolic 引用无法解析具体值: 槽位保持, 状态照常推进
   let subject = match ref_id(r) {
     Some(id) => Some(id)
     None => model.subject
   }
-  { ..model, subject, } // 目标状态冲突: 保持当前状态
+  { ..model, state: to, subject, }
 }
 
 ///|
 /// 槽位更新辅助: predicate（action set_predicate）
-fn set_predicate(model : Model, r : @qcs.Ref[RefId]) -> Model {
+/// 目标态由调用臂传入（规则 to=），同一 action 的多目标复用由此消解
+fn set_predicate(model : Model, r : @qcs.Ref[RefId], to : ModelState) -> Model {
   // 生成期 Symbolic 引用无法解析具体值: 槽位保持, 状态照常推进
   let predicate = match ref_id(r) {
     Some(id) => Some(id)
     None => model.predicate
   }
-  { ..model, predicate, } // 目标状态冲突: 保持当前状态
+  { ..model, state: to, predicate, }
 }
 
 ///|
 /// 槽位更新辅助: object（action set_object）
-fn set_object(model : Model, r : @qcs.Ref[RefId]) -> Model {
+/// 目标态由调用臂传入（规则 to=），同一 action 的多目标复用由此消解
+fn set_object(model : Model, r : @qcs.Ref[RefId], to : ModelState) -> Model {
   // 生成期 Symbolic 引用无法解析具体值: 槽位保持, 状态照常推进
   let object = match ref_id(r) {
     Some(id) => Some(id)
     None => model.object
   }
-  { ..model, object, } // 目标状态冲突: 保持当前状态
+  { ..model, state: to, object, }
 }
 
 ///|

@@ -45,11 +45,12 @@ fn run_assert_check() -> @qcs.RunReport[Command, Response, Command, Response] ra
   let config = { ..quick_run_config(), cases: 1, max_commands: 8, }
   @qcs.assert_check(quick_state_machine(script=Some(script)), config~)
 }
-// TODO(P0 人工): run_command 为骨架（...）, 补全后恢复以下执行类测试:
-// test "quick assert check passes" {
-//   let report = run_assert_check()
-//   assert_eq(report.commands_run, 8)
-// }
+///|
+/// 固定脚本检查（P4.2b 接活）：回归基线，覆盖两条三元组语句
+test "trig quick machine: assert check（固定脚本）" {
+  let report = run_assert_check()
+  assert_eq(report.commands_run, 8)
+}
 
 // ===== 覆盖率门（可达命令名取自 [[transitions]]）=====
 
@@ -106,11 +107,21 @@ fn run_random_check(
 ] {
   @qcs.check(quick_state_machine(), config~)
 }
-// TODO(P0 人工): run_command 为骨架（...）, 补全后恢复以下执行类测试:
-// test "quick random check passes" {
-//   let result = run_random_check()
-//   match result {
+// P4.2c（待补桩后开启）：随机属性检查（100 用例 × ≤20 命令）——"纯模型 ≡ 真引擎"的主门。
+//
+// 本门已**实测抓到第一处真漂移**（这是 quick machine 的价值，不是噪声）：
+//   seed=12345 第 3 步 `AnnotStart`：引擎发射 `EmitQuad{subject:id0, predicate:id1, object:id0}`，
+//   而模型预测 Continue。根因：生成器 `classify_action` 只认得 set_*/emit/skip/noop/done，
+//   其余 action 一律走保守默认臂（"未识别 action …，默认响应请人工确认"）——trig 侧这样的臂有
+//   **99 条**（`none` 36 / `annot_body_verb` 12 / `open_bnode_prop` 8 / `list_first` 7 /
+//   `enter_graph` 7 / `open_collection` 6 / `list_next` 6 / `annot_open` 4 / …）。
+//   ⇒ 需要把"action → 意图/效果"的领域语义补进模型（或回灌生成器的 action 数据面），
+//   补完再取消注释。在那之前本门保持挂起（口径：已知未实现的桶，不静默放过）。
+//
+// test "trig quick machine: random check（模型 ≡ 引擎）" {
+//   match run_random_check() {
 //     Ok(report) => assert_eq(report.cases_run, 100)
-//     Err(_) => assert_true(false) // 随机检查不应失败: 模型与系统语义漂移
+//     Err(failure) =>
+//       fail("随机检查失败（模型与引擎漂移）: \{@qcs.format_failure(failure)}")
 //   }
 // }
