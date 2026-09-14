@@ -47,7 +47,12 @@ pub(all) struct QuadSpan {
 /// 栈帧类型（★3 `[]`/`()` 的 fresh 结构身份）：
 /// BnodeProp = `[ ... ]` 属性列表；List = `( ... )` 集合（预埋，阶段3 接表）；
 /// Formula = N3 `{ }` 公式（预埋未接）
-priv enum SlotType {
+///
+/// P3（2026-09-14）：**pub(all)** —— 被生成件 `TrigEffect::OpenSlot(Span, SlotType, ...)`
+/// 与 `TrigContext.slot_stack` 引用；`internals_priv = false` 下生成件发 `pub(all)`，
+/// MoonBit 禁止"public definition depends on private type"，故此处必须同步放开
+/// （契约面最小集：`SlotType` + `Slot`）。
+pub(all) enum SlotType {
   BnodeProp
   List
   Formula
@@ -63,7 +68,7 @@ priv enum SlotType {
 ///                帧只是携带表已做的决策；pop 时兑现——state 由表管理的唯一例外
 ///   as_subject = fresh 节点落位：true=外层 s 槽（主位进入），false=外层 o 槽（宾位进入）
 ///   prev_node/node_seq = 集合链上一节点与节点序号（List 专用；BnodeProp 恒 None/0）
-priv struct Slot {
+pub(all) struct Slot {
   typ : SlotType
   open_span : Span
   subject : Span?

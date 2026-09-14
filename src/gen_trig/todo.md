@@ -244,3 +244,32 @@ T16 ✅ 已完成（本卷即其产物）。**R-T10–R-T13 的修口一律排�
 | 2026-09-13 | **T20 ✅** | 口径对齐 nquads：`rdf12` **默认改 `true`**（1.2），1.1 侧显式 `false`（套件 runner 同步）；n3v2 同批落地 | `gen_trig` **80/80**、`gen_n3v2` **117/117**（+1 双向钉子）、模块 **330/330**、`src/rdf` 22/22；`.mbti` 两侧 diff 均为预期改名 | ADR-TRIG-014 补记 + n3v2 ADR-32；落点差异（校验层 vs 物化层）写实入档 |
 | 2026-09-13 | **T13 ✅** | 命名回灌：`TrigLoopPolicy → TrigSupervisor`（数据键 `[meta] policy_trait_name`）+ `Hooks → TrigActionsImpl`（44 处）+ 字段 `hooks → actions`；n3v2 同笔（`N3Supervisor`，n3gen 模板数据化） | `gen_trig` **80/80**、`gen_n3v2` **117/117**、`src/rdf` **23/23**（两道产物门 + G9 同绿）、模块 **330/330**；`.mbti` trig diff = 预期 6 行 | ADR-TRIG-015 + n3v2 ADR-33 + `src/rdf` ADR-10；生成注释**不改**（否则连带 nquads 冻结产物、产物门撞红——首轮实测后回退） |
 | 2026-09-13 | **T12 ✅** | 公共面收窄：`[meta] internals_priv` 数据驱动 + 收面即去死面 + 用户层字段级 priv + 窄入口访问器 | `.mbti` **349→172 行 / 54→37 pub**；`gen_trig` 80/80 且 **0 warning**；`src/rdf` 23/23（nquads 产物门绿）；模块 330/330（examples/trig 照常编译） | ADR-TRIG-016 + src/rdf ADR-11；`priv(all)`/`priv fn` 均为语法错、实测纠正（`n3_vis_all`/`n3_vis_fn`） |
+
+---
+
+## P3 记录（trig quicktest 契约面，2026-09-14 **已落地**）
+
+**目标**：按 nquads ADR-9 同规打开 trig 契约面，为 quicktest 生成做准备。
+
+**落地内容**（用户口径："适当的地方开 pub"）：
+
+1. 触发键：`trig_base.toml` 改 `[meta] internals_priv = false` + `[parser] actions_trait_open = true`
+   （nquads ADR-9/ADR-11 同一套数据驱动开关）；门位 `trig_domain_toml_gen.mbt` 的
+   `actions_trait_open` 改读 `meta`（原先写死 false，会与生产路径分叉）。
+2. **用户层被连带引用的类型同步放开**：`types.mbt` 的 `priv enum SlotType` → `pub(all)`、
+   `priv struct Slot` → `pub(all)`（`PredKind` 本来就 `pub(all)`）。这是本轮唯一必要的用户层改动——
+   生成件 `pub(all) TrigEffect::OpenSlot(Span, SlotType, …)` 与 `pub(all) TrigContext.slot_stack` 引用它们，
+   MoonBit 禁止 "public definition depends on private type"（首轮实测 error 4046 ×7 正是这两处）。
+3. 产物按配方再生：IR（domain2 → `fsm_out/trig_fsm.toml`）+ `trig.mbt`（CLI 钉 ts `1788654011855`）
+   + `moon fmt`（**注意在子仓内跑**，外层 `moon fmt` 不覆盖子仓）。
+
+**验收**：`gen_trig` **80/80**（debug）/ **83/83**（native）、`src/rdf` **23/23**（产物黄金门逐字节绿）、
+模块 **342/342**、`moon check src/gen_trig` 0 error。
+
+**代价（写实）**：`.mbti` **172 → 344 行**（pub 行 37 → 54）——T12 的收面**整体回退**，
+因为 `internals_priv = false` 是**粗粒度**开关，把 `emit_queue`/`prefixes`/`bases` 等内部面一并放出。
+
+**待办 P3.5（细粒度收面）**：给 `[meta]` 加窄键（如 `quicktest_surface`），只把
+`TrigActions`(open)/`TrigEvent`/`TrigEffect`+`ResetScope`/`TrigContext`/`TrigActionError`/`step`/
+`TrigPendingQuad`/`TrigEffectHandler`+`TrigEffectOutcome` 发 pub，其余仍按 `internals_priv` 收 priv，
+把 `.mbti` 拉回 172 行量级。**P4（trig quicktest 生成）不阻塞于 P3.5**。
