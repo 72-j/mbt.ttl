@@ -107,16 +107,20 @@ fn run_random_check(
 ] {
   @qcs.check(quick_state_machine(), config~)
 }
-// P4.2c（待补桩后开启）：随机属性检查（100 用例 × ≤20 命令）——"纯模型 ≡ 真引擎"的主门。
+// 随机属性检查（100 用例 × ≤20 命令）："纯模型 ≡ 真引擎（经 probe）"的主门 —— **P4.2d 待开**。
 //
-// 本门已**实测抓到第一处真漂移**（这是 quick machine 的价值，不是噪声）：
-//   seed=12345 第 3 步 `AnnotStart`：引擎发射 `EmitQuad{subject:id0, predicate:id1, object:id0}`，
-//   而模型预测 Continue。根因：生成器 `classify_action` 只认得 set_*/emit/skip/noop/done，
-//   其余 action 一律走保守默认臂（"未识别 action …，默认响应请人工确认"）——trig 侧这样的臂有
-//   **99 条**（`none` 36 / `annot_body_verb` 12 / `open_bnode_prop` 8 / `list_first` 7 /
-//   `enter_graph` 7 / `open_collection` 6 / `list_next` 6 / `annot_open` 4 / …）。
-//   ⇒ 需要把"action → 意图/效果"的领域语义补进模型（或回灌生成器的 action 数据面），
-//   补完再取消注释。在那之前本门保持挂起（口径：已知未实现的桶，不静默放过）。
+// P4.2c 战果与残留（写实，两轮证据都在）：
+//   ① 首轮（P4.2b）：step 3 `AnnotStart` 漂移 —— 引擎发射、模型 Continue。
+//      根因 = 生成器按名字猜 action 语义（`classify_action` 只认 5 条约定），trig 侧 99 条保守臂。
+//      **已修**：`[actions]` 数据面（`quick_machine_trig_gen.toml`，22 个 action 的真返回意图）
+//      + 发射臂按 scope 组装（`emit_predobj`/`emit_spo`…）+ 行 effect 回填。
+//      修后 `AnnotStart`/`AnnotEnd`/列表族都进发射臂，"未识别 action" 99 → 30（余者是真无数据的
+//      纯表行，预测 Continue 与引擎一致）。
+//   ② 复开本门后**漂移到更深一层**：step 6 `Semicolon` —— 引擎发射
+//      `EmitQuad{subject:id0, predicate:id1, object:id0}`，模型仍预测 Continue。
+//      指向注解路径（`annot_*` 族）的"收集态"发射语义：引擎在注解收束时交出发射，
+//      而模型的按行预测只看到 `Continue`。⇒ 需要把**注解态的清槽/发射时机**补进模型
+//      （或回灌 `annot_*` 的"何时发射"数据键），属 P4.2d。
 //
 // test "trig quick machine: random check（模型 ≡ 引擎）" {
 //   match run_random_check() {

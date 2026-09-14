@@ -276,7 +276,43 @@ T16 ✅ 已完成（本卷即其产物）。**R-T10–R-T13 的修口一律排�
 
 ---
 
-## P4.2c 记录（action → 意图 数据面回灌，2026-09-14 立）
+## P4.2c 记录（action → 意图 数据面回灌，2026-09-14 **已落地**）
+
+**落点修正（比原设计更省、也更合分面纪律）**：`returns` 不放 IR，而是放进
+**quick machine 生成面 TOML** 的 `[actions]` 表（`quick_machine_trig_gen.toml`）——
+它本来就是"quick machine 怎么建模引擎 action"的生成器配置，**IR 与 nquads 字节零波及**。
+
+**生成器侧三处修复（都在 `src/quick_machine/`）**：
+
+1. `[actions]` 解析（`src/fsm/{construct,toml_parser}.mbt`）+ `classify_action` **优先查表**
+   （`codegen.mbt`）：命中即按声明意图发臂——发射档 → `emit_or_error`/scope 臂，其余 → 状态推进 + 该响应（**不再挂 TODO**）。
+   分类顺序：**结构优先**（`set_<槽位>` 先判，否则槽位写入会被声明表抢走——实测踩过）。
+2. **发射臂按 scope 组装**（`codegen_model.mbt`）：声明/行 effect 文本经 `scope_of_effect_text`
+   取 scope（`Sequence([EmitQuad(PredObj), …])` 取**首个**内嵌 EmitQuad 的 scope），
+   发 `emit_predobj/emit_spo/emit_object/emit_all` —— 与引擎清槽语义一致。
+3. **行 effect 回填**：action 缺省/未识别时，响应优先取**本行 effect**（`rule_effect_mapped`），
+   其次才回落 `[meta].default_effect`；两者都无才是真未知（挂 TODO）。
+   另修：生成的"发射路径"冒烟测试按 **scope** 断言清槽（原先只断言"第一个槽位空"，
+   在 PredObj/SPO 下会误红）。
+
+**数据表**（22 个 action，实测自 `actions.mbt`，已写进 `quick_machine_trig_gen.toml` `[actions]`）：
+`set_*`/`annot_body_verb`/`annot_close_silent`/`open_bnode_prop`/`pop_bnode_prop`/`open_collection`/
+`open_slot`/`list_step` = Continue；`annot_open` = `EmitQuad(PredObj)`；`annot_end` = `EmitQuad`；
+`list_first` = `EmitQuad(PredObj)`；`list_first_nested`/`list_next`/`list_next_nested`/`list_nil` =
+`Sequence([EmitQuad(PredObj), …])`；`enter_graph`/`exit_graph` = 同名的内部意图（经 `effect_maps` 归 Continue）。
+
+**验收**：trig quicktest **8/8**（固定脚本门接活且绿）；`model_exec.mbt` 的"未识别 action"臂
+**99 → 30**（余者为真无数据的纯表行，预测 Continue 与引擎一致）、发射臂 **48 条**；
+`gen_trig` 81/81、`quick_machine` 6/6、`gen_check` 10/10、`src/fsm` 95/95、`src/rdf` 23/23。
+
+**P4.2d 新证据（随机门复开一轮）**：漂移从 `AnnotStart`（step 3）**推进到更深一层**——
+step 6 `Semicolon`：引擎发射 `EmitQuad{subject:id0, predicate:id1, object:id0}`，模型仍 Continue。
+指向**注解路径的收集态发射时机**（`annot_*` 族）：引擎在注解收束时交出发射，而按行预测只看到 `Continue`。
+⇒ P4.2d 要把"注解态何时发射/清哪些槽"补进模型（或回灌 `annot_*` 的时机数据键）。
+
+---
+
+### 附：P4.2c 原始设计稿（留档）
 
 **问题（P4.2b 实测）**：随机门在 `AnnotStart` 抓到漂移——引擎发射四元组、模型预测 `Continue`。
 根因：quick machine 生成器 `classify_action` **只按名字硬编码 5 条约定**
