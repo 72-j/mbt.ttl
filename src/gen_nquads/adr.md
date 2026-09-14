@@ -85,3 +85,46 @@ ntriples 走"循环读文件 + 整合文件对比"双口径；`read_context` 提
    `bak/gen_nquads/`（与 trig 的 `bak/gen_trig/` 同规；`src/md/*` 两处引用已在 R-N1 标为"旧输入件"）。
 
 **依据/验收**：`gen_nquads` **124/124**、模块 330/330、`moon check` 干净；包目录只留实现 + 测试 + 五卷 + `spec/const/adr/todo/ctx`。
+
+## ADR-NQ-009：性能口径定版——正式数字 = native + `--release` + `Lexermoon`——✅ 2026-09-14
+
+**背景**：词法性能役 P1 实测出两条与既有假设相反的事实：
+
+1. 既有对外数字**全部取自 debug 档**；同一份代码 release 快 **4.6×**（10k 总计 34.07 → 7.41 ms）；
+2. release 下**纯 MoonBit `Lexermoon` 反超 C FFI `Lexerc` ~2×**（10k：1505 µs / 33.2M tok/s vs
+   3039 µs / 16.5M tok/s）——每 token 一次跨界调用（外加 12 字节清零 + 3×`read_int32` 回读）
+   比 C 侧扫描省下的时间更贵。
+
+**决策**：
+
+1. 性能结论一律以 **`--target native --release`** 为正式口径；debug 数字只作代码形状回归；
+2. 基准默认词法器 = `Lexermoon`（各目标都有）；`Lexerc` 降为**对照**（native-only，parity 门与
+   `lexer_bench_wbtest.mbt` 保留），不再是 `src/bench` 的计时路径；
+3. `src/bench/nquads-benchmark` 的"词法探针按目标二选一"退役——它是为"FFI 更快"假设搭的桥，
+   假设已证伪（ADR-NQ-003 的"C 版为标准对齐源"仍成立：那是**语义**对齐，不是性能排序）。
+
+**后果**：nquads 与 Rust Oxigraph 的关系由"慢 1.6×"改为"**快 ~2.7×**"（同口径 release：10k
+7.41 ms vs 21 ms，且我们多做轻验 + 深验四门 + 物化、不建图）。
+
+**关联**：数字与复现命令见 `todo.md` §5、`ctx.md` §7；对外口径见 `src/bench/README.md`；
+测量仪 `lexer_bench_wbtest.mbt`。
+
+## ADR-NQ-010：P1 三项词法微改造判定——实测负收益，全部回退——✅ 2026-09-14
+
+**背景**：P1 立项时按"扫描层可优化"假设列了三项改造，逐项在 release 下做三轮交错 A/B。
+
+| 改造 | 假设 | 实测（release，10k 纯词法，三轮交错中位） | 判定 |
+|---|---|---|---|
+| `pos` 局部化（每字节不碰字段） | 字段访存是热循环瓶颈 | 1505 → 1694 µs（**−15%**） | 回退 |
+| `<` 分派提前 + `v[pos+1]` 一次读 | N-Quads 里 `<` 占多数，可省判别 | 1505 → 1620 µs（**−7.6%**，三轮一致） | 回退 |
+| 终止字节查表（256 项） | 5 次比较换 1 次查表 | 扫描段 552 → 530 µs（−4%，噪声级） | 不采纳 |
+
+**决策**：`lexer_mbt.mbt` **零改动**入库；三项负结果留档，防后续重复尝试。
+
+**理由**：release 后端已把字段访问与边界检查处理好；现有扫描 ≈ 0.55 ns/byte（约 1.5 cycle/byte）
+已近上限，改形状只会破坏代码布局。
+
+**下一步杠杆**（另立役，跨方言）：词法成本 **63% 是"造 Token"**；微基准显示每 token 表示税
+≈ **8.1 ns**（tuple `(Int,Int)` 4.8 + enum 变体 3.2；`Option` 0.1 = 免费），占 Lexermoon 单 token
+成本 ~27%。释放它要把 `pub type Span` 与 `Token` 载荷从 tuple 换成紧凑表示（packed Int 或双 Int
+字段）——**跨 `gen_nquads / gen_trig / gen_n3v2` 的原子改动**（含 parity 门），不在定位 B 内单做。

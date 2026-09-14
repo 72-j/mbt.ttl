@@ -33,7 +33,7 @@
 | C-N1 | `src/fsm/test_nquads.toml` 已不存在，`fsm_out/nquads_fsm.toml` 为唯一 IR | 无功能影响 | **已收口**：`src/md/*` 两处锚点改现代口径（R-N1） |
 | C-N2 | 遗留件（`nquads.bak` 8.5 KB、`test_nquads.toml` 326 行 v1 输入、`plan-retire-owned-terms.md` 94 行已执行方案、`quicktest/todo.md` 空件） | 目录噪声 | **已清（2026-09-13，ADR-NQ-008）**：两件归档 `bak/gen_nquads/`、两件删除（git 历史留档） |
 | C-N3 | `quick_machine` 双生成器并存（`gen_check/*` 旧词表） | 生成链重复面 | 归并属"另役"；本样本不动 |
-| C-N4 | MoonBit 词法器落后 C 侧 2.3–2.6× | 性能 | 借用 trig 的词法优化役结果；本样本不单独做 |
+| C-N4 | ~~MoonBit 词法器落后 C 侧 2.3–2.6×~~ | 性能 | **已收口（P1 役，2026-09-14）**：该结论是 **debug 档假象**；release 下 Lexermoon **反超** C FFI ~2×。见 §5 与 ADR-NQ-009 |
 | C-N5 | ~~`src/md/*` 以 `test_nquads.toml` 为产品锚点~~ | 文档漂移 | **已收口**（R-N1，2026-09-13）：两处改指 2.0 事实源与再生配方 |
 | C-N6 | `types.mbt` 桩守卫依赖 CLI 首跑 bootstrap | 生成面维护债 | 与 C-N3 同批处置 |
 | C-N7 | 旧 `todo.adr.md` 的 §2/§3 正文 | 文档完整性 | **已搬**入 `spec.md` §4（R-N4，2026-09-13） |
@@ -43,6 +43,8 @@
 - **不做**：命名回灌（`Hooks → NQuadsActionsImpl`）、公共面收窄（`.mbti` 543 行 / 203 pub 行）、
   测试归位（内联 test）、RDF 1.2 开关改名（`scalar_only` 保持冻结参数名）。
 - **只做**：**钉门**（IR/产物）、**清障**（挡门的重复件，如停役数组腿）、**修文档锚点**（C-N5）。
+- **性能役例外**（2026-09-14 用户开役）：只允许"以实测为准"的**测量与口径修正**；
+  词法/协议**语义不动**（P1 终态：`lexer_mbt.mbt` 零改动）。跨方言的表示层重构另行立项。
 
 ## 4 执行记录（滚动追加）
 
@@ -52,3 +54,32 @@
 | 2026-09-13 | **卷面整理** | `todo.adr.md` → `adr.md`（只留决策）；新建本卷 + `ctx.md`；白名单补 `!src/gen_nquads/*.md` | 文档改动，门未动 | 与 gen_trig 五卷口径对齐 |
 | 2026-09-13 | **软项清理** | R-N1 文档锚点（`src/md/*` 两处）+ R-N2 `.bak` 归档 + R-N4 旧卷正文搬入 `spec.md` §4 | 文档/文件整理，门未动：`gen_nquads` 124/124、模块 330/330 | ctx 三项转 ✅；`adr.md` 去向表更新 |
 | 2026-09-13 | **目录瘦身** | `plan-retire-owned-terms.md` / `quicktest/todo.md` 删除；`test_nquads.toml` 归档 `bak/gen_nquads/` | 门未动：`gen_nquads` 124/124、模块 330/330 | ADR-NQ-008；另修 `src/rdf` trig 数组留档删除（ADR-12） |
+| 2026-09-14 | **P1 立测量仪** | 新建 `lexer_bench_wbtest.mbt`（1k/10k 纯词法双词法器对照，native-only）+ `moon.pkg` targets 登记 | release 基线（10k）：Lexermoon 1505 µs / Lexerc 3039 µs | 见 ADR-NQ-009；debug 同跑 14027 µs |
+| 2026-09-14 | **P1 口径纠偏** | bench 正式口径改 `--target native --release` + `Lexermoon`；`src/bench` 词法探针二选一退役 | 10k 总计 debug 34.07 → release **7.41 ms**（4.6×）；同口径比 Oxigraph 21 ms **快 2.7×** | `src/bench/README.md` 同步改写 |
+| 2026-09-14 | **P1 微改造判定** | 三项热路径改造 A/B（pos 本地化 / `<` 优先分派 / 表驱动扫描） | release 实测 **−15% / −7.6% / −4%** ⇒ 全部回退 | ADR-NQ-010；负结果留档防反复 |
+| 2026-09-14 | **P1 验收** | 门全绿 | `gen_nquads` 124/124（debug）/ **137/137（native release）**；`gen_n3v2` 117/117；`gen_trig` 80/80；模块 330/330、native 346/346；外层 `n3gen` 12/12 | parity 门（72 段 mismatch 0）未动 |
+
+---
+
+## 5 性能役 P1（Lexermoon，2026-09-14）
+
+**结论**：`C-N4` 的"落后 C 侧 2.3–2.6×"是 **debug 档假象**。三条事实（10k 真实语料 / native）：
+
+| # | 事实 | 数字 |
+|---|---|---|
+| P1-F1 | debug / release 差 **4.6×**，此前全部对外数字取自 debug | 总计 34.07 ms → **7.41 ms**；验证段 32.2 → 5.99 ms；引擎 16.2 → 3.2 ms |
+| P1-F2 | release 下**纯 MoonBit Lexermoon 反超 C FFI Lexerc ~2×** | 1505 µs（33.2M tok/s）vs 3039 µs（16.5M tok/s） |
+| P1-F3 | 词法成本 **63% 是"造 Token"**，扫描只占 37% | 纯扫描 543 µs vs 造 token 1483 µs |
+
+**token 表示税**（微基准，release，50 万次）：tuple `(Int,Int)` **+4.8 ns**、enum 变体 **+3.2 ns**、
+`Option` **+0.1 ns**（免费）⇒ 每 token ≈ **8.1 ns** 纯表示开销，占 Lexermoon 单 token 成本 ~27%。
+
+**正式口径与复现**：
+
+```sh
+moon test --target native --release src/gen_nquads -f "*词法役 P1*"       # 双词法器纯词法对照
+moon run src/bench/nquads-benchmark --target native --release src/bench/test_10000.nq
+```
+
+**下一步（另立役，跨方言，需授权）**：把 `pub type Span` 与 `Token` 载荷从 tuple 换成紧凑表示，
+释放那 63% —— 属 `gen_nquads / gen_trig / gen_n3v2` + parity 门的**原子改动**，不在本样本冻结边界内。

@@ -20,6 +20,7 @@ options(
     "engine_c.mbt": [ "native" ],
     "nquads_wbtest.mbt": [ "native" ],
     "nquads_bench_wbtest.mbt": [ "native" ],
+    "lexer_bench_wbtest.mbt": [ "native" ],
     "lexerc_parity_wbtest.mbt": [ "native" ],
   },
 )

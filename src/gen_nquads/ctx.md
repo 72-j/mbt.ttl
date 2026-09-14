@@ -98,3 +98,37 @@
 | 物化 / 序列化 | `materialize_quad.mbt`（构造与槽位路由）、`serialize_nquads.mbt`（旋钮 + round-trip） |
 | 跨包扩展点 | `quicktest/system.mbt:59-92`（`impl NQuadsActions for EngineActions`） |
 | 门 | `src/rdf/nquads_domain_toml_gen.mbt`（三腿 + **产物黄金门**）、`src/rdf/adr.md` ADR-9 |
+
+## 7 P1 词法性能役上下文（2026-09-14）
+
+**目标**：Lexermoon（纯 MoonBit 词法器）提速，并给出可复现的性能口径。
+
+**锚点**
+
+| 主题 | 锚点 |
+|---|---|
+| 测量仪（本役新立） | `lexer_bench_wbtest.mbt`（1k/10k 纯词法双词法器对照，native-only） |
+| 被测对象 | `lexer_mbt.mbt:198`（`Lexermoon::next`，**终态零改动**）、`:129`（`utf8_name_advance`） |
+| 对照 | `lexerc.mbt:124`（`Lexerc::next`：清零 12B + FFI + `read_int32`×3） |
+| 管线口径 | `src/bench/nquads-benchmark/main.mbt`（native + release 正式口径） |
+
+**证据（release / native / 10k 真实语料）**
+
+| 项 | 数 |
+|---|---|
+| 管线总计（Lexermoon） | 7.41–7.49 ms（≈1.34M quads/s） |
+| 管线总计（同码 debug） | 34.07 ms（4.6× 慢） |
+| 纯词法 Lexermoon / Lexerc | 1505 / 3039 µs（33.2 / 16.5 M tok/s） |
+| 纯扫描（无 Token 构造） | 543–552 µs（≈0.55 ns/byte） |
+| 造 Token 税 | 931–986 µs（占词法 63%） |
+| 每 token 表示税（微基准） | 8.1 ns = tuple 4.8 + enum 3.2（`Option` ≈ 0） |
+| 同口径对手 | Rust Oxigraph 21 ms（含建图）⇒ 我们快 **~2.7×** |
+
+**动作**：① 立测量仪；② 口径纠偏（release + Lexermoon，`src/bench` 探针二选一退役）；
+③ 三项热路径改造 A/B 后**全部回退**（详见 ADR-NQ-010）；④ 门全绿复核。
+
+**验收**：`gen_nquads` 124/124（debug）、137/137（native release）；parity 门 72 段 mismatch 0；
+`gen_n3v2` 117/117；`gen_trig` 80/80；模块 330/330、native 346/346；外层 `n3gen` 12/12。
+
+**风险 / 边界**：`lexer_mbt.mbt` 零改动 ⇒ 词法语义风险为零；口径变更只影响文档与脚本。
+**未做（另立役）**：`Span`/`Token` 表示层紧凑化（跨三方言原子改动）。
