@@ -25,17 +25,38 @@ JVM + Jena / Python 3.13 + rdflib 7.6.0 / MoonBit `moon 0.1.20260904`。
 | 实现 | 1,000 行 | 10,000 行 | 口径（重要） |
 |---|---|---|---|
 | **C**（`nqparser -O3`，`full`） | **0.12 ms** / 8.33M quads/s | **1.16 ms** / 8.61M quads/s | 行级结构解析（三词项 + 可选图）；**不建图、不做词项级深验**（基线） |
-| **Rust**（Oxigraph `bulk_loader` → `Store`） | 2 ms / 500k quads/s | 21 ms / 476k quads/s | 解析 + **建图**（内存 Store） |
-| **MoonBit**（native **release**，`parse_all` + `materialize_all`） | **0.74 ms** / 1.35M quads/s | **7.41 ms** / 1.35M quads/s | 词法 + 表驱动 step + 轻验 + **深验四门 + 物化**；**不建图** |
+| **Rust**（Oxigraph `bulk_loader` → `Store`） | 2.28 ms / 439k quads/s | 25.9 ms / 386k quads/s | 解析 + **建图**（内存 Store） |
+| **MoonBit**（native **release**，`parse_all` + `materialize_all`） | **0.75 ms** / 1.33M quads/s | **7.66 ms** / 1.31M quads/s | 词法 + 表驱动 step + 轻验 + **深验四门 + 物化**；**不建图** |
 | **Python**（rdflib 7.6.0 `Dataset.parse`） | 17.9 ms / 56k quads/s | 150.6 ms / 66k quads/s | 解析 + **建图** |
 | **Java**（Jena `RDFDataMgr` → Dataset + 收集 List） | 546 ms / 1.8k quads/s | 722 ms / 13.9k quads/s | 解析 + 建图 + 额外 List 收集；1k 档含 JVM 启动 |
 
 读表要点：
 
-- 10k 量级排序：C 1.16 < **MoonBit 7.41** < Oxigraph 21 < rdflib 151 < Jena 722 ms。
-  同口径（release）下 MoonBit 比 Oxigraph **快 ~2.7×**、比 rdflib **快 ~20×**、比 Jena **快 ~97×**；
+- 10k 量级排序（同批中位）：C 1.16 < **MoonBit 7.66** < Oxigraph 25.9 < rdflib 151 < Jena 722 ms。
+  同口径（release）下 MoonBit 比 Oxigraph **快 ~3.4×**、比 rdflib **快 ~20×**、比 Jena **快 ~94×**；
   距 C 的"只扫不算"基线 6.4×，而那 6.4× 正是深验四门 + 物化的质量成本。
 - 与 Oxigraph 的对比要记住两点：它**建图**（我们不建），我们**做 RDF 1.2 深验**（它不做）。
+
+### 不物化 / 不建图 同档对照（2026-09-14 同批中位）
+
+"不物化"省掉的到底是多少？把两边都退到**纯解析**档量（MoonBit `parse_all` 出 `QuadSpan`；
+Oxigraph `RdfParser` 迭代出 `Quad`，不插 Store）：
+
+| 口径 | MoonBit（native release） | Oxigraph（release） | 倍数 |
+|---|---|---|---|
+| 1k 纯解析 | **0.59 ms**（parse_all） | 0.79 ms（RdfParser 迭代） | 快 **1.34×** |
+| 10k 纯解析 | **6.18 ms**（parse_all） | 8.19 ms（RdfParser 迭代） | 快 **1.33×** |
+| 1k 解析 + 物化 / 建图 | **0.75 ms** | 2.28 ms | 快 **3.0×** |
+| 10k 解析 + 物化 / 建图 | **7.66 ms** | 25.9 ms | 快 **3.4×** |
+
+读法：
+
+- **不物化这一档我们本来就赢**（1.33×），且这 6.18 ms 里还包含 RDF 1.2 **深验四门**（Oxigraph 不做）。
+- 物化只占我们的 **19%**（1.48 / 7.66 ms）；Oxigraph 的建图占 **~68%**（17.7 / 25.9 ms）。
+  所以"省掉物化"对我们的相对回报小，对它是大头——**同档比我们赢，装上容器后我们赢更多**。
+- 极限档参考：连深验也省掉（只跑表驱动引擎）10k ≈ **3.3 ms**，约为 Oxigraph 纯解析的 **1/2.5**。
+- 注意产物形态不同：我们的 `QuadSpan` 是**零拷贝视图**，Oxigraph 的 `Quad` 是 **owned**（每词项
+  一个 `String`）。所以"纯解析"这一档更像"半成品 vs 成品"，倍数只作量级参照。
 
 ### MoonBit 分段（native；release 为正式口径）
 
@@ -113,7 +134,7 @@ cd oxigraph-benchmark && cargo run --release && cd ..
 | `test_rdflib.py` | Python（rdflib）harness，跑 1k + 10k |
 | `nquads.py` | 语料生成器（`generate_nquads_file`），未接入 `run_all.sh` |
 | `jena-benchmark/` | Java / Maven（Jena） |
-| `oxigraph-benchmark/` | Rust / Cargo（Oxigraph） |
+| `oxigraph-benchmark/` | Rust / Cargo（Oxigraph；一趟打印两档：**解析+建图** / **只解析不建图**） |
 | `run_all.sh` | 一把跑全部 |
 | `test_*.nq` | 语料（见上表） |
 
