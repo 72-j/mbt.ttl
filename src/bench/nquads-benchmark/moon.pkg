@@ -6,16 +6,9 @@ import {
   "thy1016/moonttl/gen_nquads" @nquads,
 }
 
-// 词法探针按目标二选一（同一对函数名，互斥编译）：
-//   native  → lexer_probe_native.mbt   （C FFI 词法器 Lexerc）
-//   wasm/js → lexer_probe_portable.mbt （纯 MoonBit 词法器 Lexermoon 兜底）
-// 于是 `moon run src/bench/nquads-benchmark` 在任何目标上都可跑（裸命令不再报
-// target 错）；正式计时口径仍是 native 档（wasm/js 量到的是宿主开销）。
+// 全目标可跑：词法段用纯 MoonBit `Lexermoon`（各目标都有）。
+// C FFI 词法器（Lexerc）**不再**走本 bench 计时（P1 役实测 release 下 Lexermoon
+// 比 FFI 路径快 ~2×：每 token 一次跨界的代价大于 C 扫描省下的时间），且 FFI 版
+// native-only。双词法器同表对照见 gen_nquads 的 lexer_bench_wbtest.mbt。
+// 正式计时口径 = `--target native --release`（debug 档同代码慢 4.6×，不作结论）。
 pkgtype(kind: "executable")
-
-options(
-  targets: {
-    "lexer_probe_native.mbt": [ "native" ],
-    "lexer_probe_portable.mbt": [ "wasm", "wasm-gc", "js" ],
-  },
-)

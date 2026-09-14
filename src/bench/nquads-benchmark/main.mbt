@@ -9,9 +9,17 @@ async fn main {
     let content = @fs.read_file(path).binary()
     let data = content.to_fixedarray()
 
-    // 1. 仅词法（词法器按目标二选一：native = C FFI Lexerc；wasm/js = MoonBit Lexermoon）
+    // 1. 仅词法（纯 MoonBit Lexermoon；C FFI 对照见 gen_nquads 的 lexer_bench_wbtest）
     let start1 = @bench.monotonic_clock_start()
-    let lexer_count = lexer_probe_tokens(data)
+    let lexer = @nquads.Lexermoon::new(data[:])
+    let mut lexer_count = 0
+    for ;; {
+      match lexer.next() {
+        Some(@nquads.Token::EOF(_)) => break
+        Some(_) => lexer_count = lexer_count + 1
+        None => break
+      }
+    }
     let elapsed1 = @bench.monotonic_clock_end(start1)
 
     // 2. NQuadsEngine (不含验证)
@@ -64,7 +72,6 @@ async fn main {
     println("文件大小: \{data.length()} bytes")
     println("")
     println("=== 性能数据 ===")
-    println("词法器:      \{lexer_probe_label()}")
     println("Lexer:       \{elapsed1} µs (\{lexer_count} tokens)")
     println("Parser:     \{elapsed2} µs (\{parser_count} quads)")
     println(

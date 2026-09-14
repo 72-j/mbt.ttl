@@ -23,8 +23,8 @@ cargo run --release
 cd ..
 
 echo ""
-echo ">>> 4. MoonBit 测试（native = 正式计时口径，词法段走 C FFI Lexerc；1k）"
-moon run nquads-benchmark --target native test_1000.nq
+echo ">>> 4. MoonBit 测试（native + release = 正式计时口径；词法段 = 纯 MoonBit Lexermoon；1k）"
+moon run nquads-benchmark --target native --release test_1000.nq
 
 echo ""
 echo ">>> 5. C 测试（gcc -O3；full = 行级结构解析；1k）"
