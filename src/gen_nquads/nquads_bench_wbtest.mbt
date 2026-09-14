@@ -1,5 +1,5 @@
 // ===== gen_nquads 性能测试 =====
-// 参考手写版 src/moon_ttl/src/benchmark/nquads-benchmark/main.mbt 的分阶段计时逻辑：
+// 参考手写版 src/bench/nquads-benchmark/main.mbt 的分阶段计时逻辑：
 //   1. 仅词法（Tokenizer） 2. 引擎不含验证（NQuadsEngine::next） 3. 含验证（SliceParser::parse_all）
 // 生成状态机版无 materialize 阶段（QuadSpan 即最终产物）
 
@@ -8,7 +8,7 @@ async test "gen_nquads 性能: lexer / engine / parse_all" {
   // 输入：优先真实语料，缺省时内存生成 1000 条
   let mut input = ""
   let mut source = "generated"
-  let path = "./src/moon_ttl/src/benchmark/test_1000.nq"
+  let path = "./src/bench/test_1000.nq"
   if @fs.exists(path) {
     input = @fs.read_file(path).text()
     source = path

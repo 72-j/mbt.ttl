@@ -23,10 +23,10 @@ echo ">>> Rust (Oxigraph) 测试"
 cd oxigraph-benchmark
 cargo run --release 
 cd ..
-# 5. moonbit 测试
+# 5. moonbit 测试（计时基准仅在 native 上有意义）
 echo ""
 echo "moonbit 测试"
-moon run nquads-benchmark
+moon run nquads-benchmark --target native test_1000.nq
 echo ">>> 测试结束"
 # 6. c语言测试(无脑扫)
 echo ""

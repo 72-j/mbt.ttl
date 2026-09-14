@@ -1,21 +1,16 @@
 import {
-  "moonbitlang/core/cmp",
-  "moonbitlang/core/string",
-  "moonbitlang/core/strconv",
-  "moonbitlang/core/ref",
-  "moonbitlang/core/debug",
-  "moonbitlang/core/test",
-  "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/core/bench",
   "moonbitlang/core/env",
-  "moonbitlang/core/quickcheck/splitmix",
   "thy1016/moonttl/gen_nquads" @nquads,
 }
 
-// 基准对比 C FFI 词法器（Lexerc），整包仅 native
+// 第一段计时对照 C FFI 词法器（@nquads.Lexerc，native-only）；
+// 计时基准只在 native 上有意义（wasm/js 量到的是宿主开销）——整包钉 native。
+// 因此本包没有 canonical（wasm）接口：不保留 pkg.generated.mbti
+// （native-only 包 moon info 会跳过，留一份只会是错路径的僵尸文件）。
 
-supported_targets = "wasm"
+supported_targets = "native"
 
 pkgtype(kind: "executable")

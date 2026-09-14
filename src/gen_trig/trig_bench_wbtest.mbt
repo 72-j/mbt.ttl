@@ -15,6 +15,27 @@ fn bench_bytes(input : String) -> Array[Byte] {
 }
 
 ///|
+/// Lexermoon 全量取词（含末位 EOF，调用方按 EOF 变体判终止）。
+/// gen_nquads 内部的 `Lexermoon::tokenize` 是包私有，跨包只能走 pub `next()`；
+/// 口径与内部实现一致：EOF 也入列，token 计数取 `length() - 1`。
+fn bench_tokens(data : Array[Byte]) -> Array[Token] {
+  let lexer = Lexermoon::new(data[:])
+  let tokens : Array[Token] = []
+  while true {
+    match lexer.next() {
+      Some(token) => {
+        tokens.push(token)
+        if token is Token::EOF(_) {
+          break
+        }
+      }
+      None => break
+    }
+  }
+  tokens
+}
+
+///|
 async test "gen_trig 性能(简单语料): lexer / engine / parse_all / 物化" {
   // 简单语料：全 IRI 扁平三元组（默认图 200 条 + 两个具名图块各 400 条 = 1000 quads），
   // 一行一 triple，无指令/无链式/无字面量——词汇面最窄的吞吐基线
@@ -39,10 +60,9 @@ async test "gen_trig 性能(简单语料): lexer / engine / parse_all / 物化" 
   let data = bench_bytes(buf.to_string())
   let total = n_flat + n_per_graph * 2
 
-  // 1. 仅词法（tokenize 一次性取全，末位 EOF 不计入 token 数）
+  // 1. 仅词法（一次性取全，末位 EOF 不计入 token 数）
   let start1 = @bench.monotonic_clock_start()
-  let tokenizer = Lexermoon::new(data[:])
-  let tokens = tokenizer.tokenize()
+  let tokens = bench_tokens(data)
   let token_count = tokens.length() - 1
   let elapsed1 = @bench.monotonic_clock_end(start1)
 
@@ -159,10 +179,9 @@ async test "gen_trig 性能(复杂语料): lexer / engine / parse_all / 物化" 
   let data = bench_bytes(buf.to_string())
   let total = 6 + n_iter * 9 + 2
 
-  // 1. 仅词法（tokenize 一次性取全，末位 EOF 不计入 token 数）
+  // 1. 仅词法（一次性取全，末位 EOF 不计入 token 数）
   let start1 = @bench.monotonic_clock_start()
-  let tokenizer = Lexermoon::new(data[:])
-  let tokens = tokenizer.tokenize()
+  let tokens = bench_tokens(data)
   let token_count = tokens.length() - 1
   let elapsed1 = @bench.monotonic_clock_end(start1)
 
@@ -314,9 +333,9 @@ fn bench_span_kind(data : Array[Byte], off : Int) -> Int {
 }
 
 ///|
-/// MoonBit 词法流：tokenize 全量 → (分类, offset, len) 序列（末位 EOF 不计）
+/// MoonBit 词法流：全量取词 → (分类, offset, len) 序列（末位 EOF 不计）
 fn lexmoon_stream(data : Array[Byte]) -> Array[(Int, Int, Int)] {
-  let tokens = Lexermoon::new(data[:]).tokenize()
+  let tokens = bench_tokens(data)
   let n = tokens.length() - 1
   let out : Array[(Int, Int, Int)] = []
   for i in 0..<n {

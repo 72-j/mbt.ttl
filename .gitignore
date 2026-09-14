@@ -10,7 +10,8 @@ testnook/
 *.ntriples
 skills/
 *.log
-src/benchmark/*/target/
+# 构建产物（目录由 benchmark/ 改名为 bench/，2026-09-14）
+src/bench/*/target/
 src/fsm/*.toml
 
 *_gen.md

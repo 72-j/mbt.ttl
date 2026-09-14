@@ -74,7 +74,7 @@ async fn main {
     println("")
     println("=== 性能数据 ===")
     println("Lexer:       \{elapsed1} µs (\{lexer_count} tokens)")
-    println("Parser:     \{elapsed2} µs (\{lexer_count} quads)")
+    println("Parser:     \{elapsed2} µs (\{parser_count} quads)")
     println(
       "验证:        \{elapsed3} µs (\{quads.length()} quads, \{parse_errors.length()} errors)",
     )
