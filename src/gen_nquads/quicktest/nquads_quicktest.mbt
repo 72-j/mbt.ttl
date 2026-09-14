@@ -260,6 +260,8 @@ fn command_name(command : Command) -> String {
 ///|
 /// 组装状态机（quick_machine.md §七）：回调注入点集中在此
 /// system_call 可替换，用于反例注入（验证机器真能发现系统漂移）
+/// label 提供**语义路径指标**：响应分档（continue / emit / emit:graph / done / error），
+/// 供 RunConfig.required_labels 做"路径覆盖门"（命令名粒度之外的第二层覆盖）
 fn quick_state_machine(
   system_call? : (Command, System) -> Response = run_command,
 ) -> @qcs.StateMachine[
@@ -289,6 +291,19 @@ fn quick_state_machine(
     reify_command~,
     run_command=(command, system) => system_call(command, system),
     bind_response~,
+    label=(_model, _command, response) => {
+      match response {
+        Continue => ["resp:continue"]
+        EmitQuad(quad) =>
+          if quad.graph is Some(_) {
+            ["resp:emit", "resp:emit:graph"]
+          } else {
+            ["resp:emit", "resp:emit:default"]
+          }
+        Done => ["resp:done"]
+        Error(_) => ["resp:error"]
+      }
+    },
     command_name~,
   )
 }

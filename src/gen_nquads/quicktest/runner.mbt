@@ -110,6 +110,12 @@ fn coverage_gate_config() -> @qcs.RunConfig {
     ..quick_run_config(),
     cases: 1,
     max_commands: 200,
+    // 语义路径覆盖（第二层，命令名之上）：只列随机生成**真能走到**的响应分档。
+    // `resp:error` 只在未定义转移出现，而生成器被 valid 过滤 ⇒ 永远走不到，
+    // 列进要求必然 CoverageFailed（与可达命令名同规）。
+    required_labels: [
+      "resp:continue", "resp:emit", "resp:emit:default", "resp:emit:graph",
+    ],
     required_command_names: [
       "Iri", "BlankNode", "Literal", "TripleTerm", "Comma", "Semicolon", "Dot", "Unknown",
     ],
