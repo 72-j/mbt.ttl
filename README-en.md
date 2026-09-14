@@ -141,7 +141,7 @@ src/
 ├── gen_n3v2/         # N3 parser (same layout; formulas, rules, quantification, paths, @keywords)
 ├── cmd/main/         # Command line tool (`moon run src/cmd/main -- <file>`)
 ├── examples/         # Runnable examples for the three dialects: nquads / trig / n3
-├── benchmark/        # Benchmark programs
+├── bench/            # Benchmark programs
 └── quick_machine/    # Quick machine (table-driven model-execution cross-check)
 ```
 
@@ -318,7 +318,7 @@ Current W3C test suite coverage:
   ### Running Benchmark Tests
 
   ```bash
-  cd src/benchmark
+  cd src/bench
   ./run_all.sh
   ```
   ### Performance Optimization Features

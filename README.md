@@ -140,7 +140,7 @@ src/
 ├── gen_n3v2/         # N3 解析器（同上；公式/规则/量化/路径/@keywords）
 ├── cmd/main/         # 命令行工具（`moon run src/cmd/main -- <file>`）
 ├── examples/         # 三方言可运行示例：nquads / trig / n3
-├── benchmark/        # 基准程序
+├── bench/            # 基准程序
 └── quick_machine/    # 快测机（表驱动的模型执行对照）
 ```
 
@@ -289,7 +289,7 @@ moon test src/gen_n3v2        # 117/117（turtle 316/316、rdf12 75/75、N3Tests
   ### 运行基准测试
 
   ```bash
-  cd src/benchmark
+  cd src/bench
   ./run_all.sh
   ```
 

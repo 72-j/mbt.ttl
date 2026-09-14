@@ -38,11 +38,13 @@
 ## 如何运行
 
 ```bash
-cd src/ttl/src/bench
+# MoonBit 基准：native-only（第一段计时对照 C FFI 词法器 Lexerc）——工作目录用模块根
+cd src/ttl
+moon run src/bench/nquads-benchmark --target native                          # 1k（默认）
+moon run src/bench/nquads-benchmark --target native src/bench/test_10000.nq   # 10k
 
-# MoonBit（native；可给文件参数，默认 test_1000.nq）
-moon run src/bench/nquads-benchmark --target native              # 1k
-moon run src/bench/nquads-benchmark --target native test_10000.nq # 10k
+# 其它实现——工作目录 src/ttl/src/bench
+cd src/ttl/src/bench
 
 # C（gcc -O3；fast=快速计数 / full=结构解析）
 gcc -O3 -o nqparser nqparser.c
@@ -67,5 +69,6 @@ cd oxigraph-benchmark && cargo run --release && cd ..
 - 全部为**单次计时**（非多轮取优/中位数），噪声主要影响 1k 档（如 JVM 启动、首次页缓存）。
 - C harness 只做**扫描/计数**，不与其它实现的语义校验强度对齐；要严格对比应把它的 `parse_line`
   升级为词项级校验（或改为消费 MoonBit 的深验口径）。
-- MoonBit 侧基准默认走 **C FFI 词法器（Lexerc）**；若要比 `Lexermoon`（纯 MoonBit）版本，
+- MoonBit 侧基准**第一段计时走 C FFI 词法器（Lexerc）**，故整包 `supported_targets = "native"`：
+  wasm/js 上量到的是宿主开销，计时基准在那里没有意义。若要比 `Lexermoon`（纯 MoonBit）版本，
   见 `src/gen_nquads/nquads_bench_wbtest.mbt` 与 `src/gen_trig/trig_bench_wbtest.mbt` 的双词法器对照。
