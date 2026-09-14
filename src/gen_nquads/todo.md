@@ -83,3 +83,29 @@ moon run src/bench/nquads-benchmark --target native --release src/bench/test_100
 
 **下一步（另立役，跨方言，需授权）**：把 `pub type Span` 与 `Token` 载荷从 tuple 换成紧凑表示，
 释放那 63% —— 属 `gen_nquads / gen_trig / gen_n3v2` + parity 门的**原子改动**，不在本样本冻结边界内。
+
+---
+
+## 6 指标口径样板（quicktest，2026-09-14）
+
+`src/ttl/src/gen_nquads/quicktest/` 定为 quick machine 的**指标口径样板**——三方言生成后照此对齐。
+事实源：`quicktest/metrics.mbt` 文件头 + 下表。
+
+| # | 指标 | 门槛（"怎么算够"） | 事实源 / 门 |
+|---|---|---|---|
+| ① | 命令覆盖 | 全部**可达**命令名（转移表有出边）= 8 个；不可达（`PrefName`/`EOF`）显式标"不适用" | `runner.coverage_gate_config` → `required_command_names` |
+| ② | 语义路径覆盖 | label 分档 `resp:continue` / `resp:emit` / `resp:emit:default` / `resp:emit:graph` 全覆盖 | `nquads_quicktest.quick_state_machine(label=)` + `required_labels` |
+| ③ | 转移覆盖 | 5 状态 × 10 命令 = **50 对逐对判定**：合法 14（目标态 + 槽位不变量）、非法 36（Error(0) + 模型不推进） | `metrics.mbt` 转移覆盖测试（数据化镜像表） |
+| ④ | 收缩收敛 | 注入"系统丢图名"后 `shrinks > 0`；**已知边界**：删命令收缩无效（序列受转移表约束），反例长度不缩短 | `metrics.mbt` 收缩测试 + 收缩机制直测 |
+| ⑤ | 重映射 | `remap_command` 恒等保留（含非空 scope）；它是 ④ 能进行的前提（返回 None 会否决整个候选） | `metrics.mbt` remap 测试 |
+
+**跑法**：`moon test src/gen_nquads/quicktest`（**21/21**）。
+
+**两条登记边界**（是口径，不是缺陷）：
+
+- `resp:error` 只出现在未定义转移，而生成器被 valid 过滤 ⇒ 不列进 `required_labels`（列进去必红）。
+- 反例"长度缩短"在本 FSM 不可达：qcs 的收缩候选只有"删一条"与"用户 shrinker 替换"两类，
+  而删掉任何中间命令都会让后续命令在前置条件上非法，`shrink_and_validate` 直接否决。
+
+**下一步（生成器侧 G7，未开）**：把 `metrics.mbt` 这四张门做成**发射模板**，随
+`business.mbt` / `runner.mbt` 一并产出；否则每个方言都要手抄一遍口径。
