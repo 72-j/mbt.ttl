@@ -34,6 +34,11 @@ fn fresh_ref(rng : @splitmix.RandomState) -> @qcs.Ref[RefId] {
 
 ///|
 /// P2 generator: 候选全构造 → valid 过滤 → 权重抽取（无合法候选返回 None）
+///
+/// **size 口径（P2 声明）**：本 FSM 的 `size` 不参与分布——命令合法性完全由
+/// 转移表（valid）决定，序列收缩由 P4 shrinker 负责，`size` 在此无可加权的
+/// 语义（生成器若将来要"按 size 收束"，接在这里）。`ignore(size)` 是显式声明，
+/// 不是遗漏；下面的 "size 不影响分布" 测试把它钉成可验证事实。
 fn generate_command(
   model : Model,
   size : Int,
@@ -321,4 +326,53 @@ test "nquads quick machine shrinker reduces refs" {
     Iri(Concrete({ id: 2, })),
     Iri(Concrete({ id: 0, })),
   ])
+}
+
+///|
+/// P2 口径测试：同一 seed、不同 size → 命令序列逐条一致（size 不参与分布）
+fn generated_prefix(seed : UInt64, size : Int, steps : Int) -> Array[Command] {
+  let rng = @splitmix.new(seed~)
+  let out : Array[Command] = []
+  let mut model = model_empty()
+  let mut taken = 0
+  while taken < steps {
+    match generate_command(model, size, rng) {
+      Some(command) => {
+        let (_, response) = model_execute(model, command)
+        model = transition(model, command, response)
+        out.push(command)
+      }
+      None => break
+    }
+    taken = taken + 1
+  }
+  out
+}
+
+///|
+test "nquads quick machine size 不影响分布（P2 口径）" {
+  assert_eq(
+    generated_prefix(12345UL, 1, 25),
+    generated_prefix(12345UL, 200, 25),
+  )
+  assert_eq(generated_prefix(7UL, 3, 25), generated_prefix(7UL, 999, 25))
+}
+
+///|
+/// 无转移命令（PrefName / EOF）必须被两条路径一致拒绝：
+/// valid=false（生成期过滤）+ 系统归一到未定义转移码（执行期）；
+/// 且非法命令不推进纯模型。
+test "nquads quick machine 无转移命令被拒" {
+  let model = model_empty()
+  assert_false(valid(model, PrefName(Concrete({ id: 1, }))))
+  assert_false(valid(model, EOF))
+  let system = system_init()
+  assert_eq(
+    run_command(PrefName(Concrete({ id: 1, })), system),
+    Error(UNDEFINED_TRANSITION_CODE),
+  )
+  assert_eq(run_command(EOF, system), Error(UNDEFINED_TRANSITION_CODE))
+  let (after, response) = model_execute(model, PrefName(Concrete({ id: 1, })))
+  assert_eq(response, Error(0))
+  assert_eq(after, model)
 }
