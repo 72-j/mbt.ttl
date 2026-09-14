@@ -6,11 +6,16 @@ import {
   "thy1016/moonttl/gen_nquads" @nquads,
 }
 
-// 第一段计时对照 C FFI 词法器（@nquads.Lexerc，native-only）；
-// 计时基准只在 native 上有意义（wasm/js 量到的是宿主开销）——整包钉 native。
-// 因此本包没有 canonical（wasm）接口：不保留 pkg.generated.mbti
-// （native-only 包 moon info 会跳过，留一份只会是错路径的僵尸文件）。
-
-supported_targets = "native"
-
+// 词法探针按目标二选一（同一对函数名，互斥编译）：
+//   native  → lexer_probe_native.mbt   （C FFI 词法器 Lexerc）
+//   wasm/js → lexer_probe_portable.mbt （纯 MoonBit 词法器 Lexermoon 兜底）
+// 于是 `moon run src/bench/nquads-benchmark` 在任何目标上都可跑（裸命令不再报
+// target 错）；正式计时口径仍是 native 档（wasm/js 量到的是宿主开销）。
 pkgtype(kind: "executable")
+
+options(
+  targets: {
+    "lexer_probe_native.mbt": [ "native" ],
+    "lexer_probe_portable.mbt": [ "wasm", "wasm-gc", "js" ],
+  },
+)

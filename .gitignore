@@ -12,6 +12,9 @@ skills/
 *.log
 # 构建产物（目录由 benchmark/ 改名为 bench/，2026-09-14）
 src/bench/*/target/
+# 基准二进制（非源码）：nqparser 由 nqparser.c 现编；lexer_test 源码已不在树内
+src/bench/nqparser
+src/bench/lexer_test
 src/fsm/*.toml
 
 *_gen.md
