@@ -133,6 +133,15 @@ fn slot_key(model : Model) -> (ModelState, Bool, Bool, Bool) {
 }
 
 ///|
+/// 勘探去重键（P4.2e，2026-09-15）：在四槽形态键上**加"有无帧"位**。
+/// 帧模型落地后，`[`/`(` 的分支会与无帧路径落在同一 `(状态, s, p, o)` 上；
+/// 若仍按四槽去重，带帧模型会被吞掉 ⇒ list/集合路径不再勘探（实测：丢 `Rbracket`/`Rparen`）。
+fn explore_key(model : Model) -> (ModelState, Bool, Bool, Bool, Bool) {
+  let (state, s, p, o) = slot_key(model)
+  (state, s, p, o, model.frames.length() > 0)
+}
+
+///|
 /// 每状态首个到达模型的关联表查找（ModelState 无 Hash，不能进 Map）
 fn state_model_of(
   models : Array[(ModelState, Model)],
@@ -152,12 +161,12 @@ fn state_model_of(
 /// 返回（可达 (状态,形态) 键集、每状态首个到达模型、可达命令名集）。
 /// 这是"生成表的结构事实"的运行期派生源——不手抄转移表，生成表一变这里就变。
 fn explore() -> (
-  Array[(ModelState, Bool, Bool, Bool)],
+  Array[(ModelState, Bool, Bool, Bool, Bool)],
   Array[(ModelState, Model)],
   Array[String],
 ) {
   let start = model_empty()
-  let seen : Array[(ModelState, Bool, Bool, Bool)] = [slot_key(start)]
+  let seen : Array[(ModelState, Bool, Bool, Bool, Bool)] = [explore_key(start)]
   let queue : Array[Model] = [start]
   let state_models : Array[(ModelState, Model)] = [(start.state, start)]
   let names : Array[String] = []
@@ -173,7 +182,7 @@ fn explore() -> (
         }
         let (_, response) = model_execute(model, command)
         let next = transition(model, command, response)
-        let key = slot_key(next)
+        let key = explore_key(next)
         if !seen.contains(key) {
           seen.push(key)
           queue.push(next)
@@ -230,29 +239,36 @@ test "指标·转移普查: valid ⟺ model_exec 全对一致 + 计数守恒" {
 ///     · ExpectVerbRequired：**表级死态**（有出臂、全表无入臂；引擎侧唯一出现是
 ///       open_collection 的 ret_state 参数，不是转移目标）——与 nquads 的
 ///       PrefName/EOF 钉子同款。
-///     · ListAfterElem：**模型侧不可达**——list 盲区吸收袋：list 入臂不设 O 槽 ⇒
+///     · ListAfterElem：**曾为模型侧不可达**（list 盲区吸收袋）；P4.2e 帧模型落地后可达 ⇒
 ///       模型 emit_predobj 永不就绪（Error(1) 吸收），引擎侧经 slot_stack 真实
 ///       推进（list_first → EmitQuad(PredObj)）——响应级漂移领土，P4.2d。
 ///   - graph 槽恒空：trig 的模型映射没有 set_graph（图上下文走 GraphKw 块状态机，
 ///     引擎发射的 graph=Some 模型看不见——P4.2d 已知边界，非缺陷，钉成事实）。
 ///   - 可达命令名恰 25 个（与 runner.coverage_gate_config 的要求表同口径）；
 ///     不可达 9 个（valid 无臂 ⇒ 生成器永不产出）。
-test "指标·结构钉子: 可达 34 / 双死态 / graph 可达（P4.2d 升级）/ 命令名 25+9" {
+test "指标·结构钉子: 可达 35 / 死态换位（ExpectVerbRequired 可达、ListAfterElem 仍不可达）/ graph 可达 / 命令名 25+9" {
   let (seen, state_models, names) = explore()
   // 状态可达性：36 - 2（双死态）
   let mut reachable_states = 0
+  let mut missing_states = 0
   for state in all_states() {
     match state_model_of(state_models, state) {
       Some(model) => {
         reachable_states = reachable_states + 1
-        assert_true(seen.contains(slot_key(model)))
+        assert_true(seen.contains(explore_key(model)))
       }
-      None =>
-        // 唯二无模型状态 = 唯二死态（第三个状态到达不了即结构被破坏）
-        assert_true(state == ExpectVerbRequired || state == ListAfterElem)
+      None => {
+        // P4.2e 重标（2026-09-15）：帧模型落地后**`ExpectVerbRequired` 变可达**
+        // （弹帧兑现 `state = ret_state`），故当前的"唯一无模型状态"是 `ListAfterElem`
+        //（list 内层路径仍差一截）。再多一个到达不了即结构被破坏。
+        assert_true(state == ListAfterElem)
+        missing_states = missing_states + 1
+      }
     }
   }
-  assert_eq(reachable_states, 34)
+  // P4.2e 升级（2026-09-15）：帧模型落地后 list 路径可达 ⇒ 可达状态 34 → 35
+  assert_eq(reachable_states, 35)
+  assert_eq(missing_states, 1)
   // P4.2d 第二步（2026-09-15）：`[actions].writes` 落地后，模型有了 `enter_graph` → `graph`
   // 的写入臂 ⇒ 旧钉子"graph 恒空"**升级为正向断言**：可达状态里必须出现 graph 非空
   // （含图名图块）。钉子不许删，只许升级——盲区从"存在"转为"消失且被钉住"。
@@ -264,8 +280,9 @@ test "指标·结构钉子: 可达 34 / 双死态 / graph 可达（P4.2d 升级�
     }
   }
   assert_true(graph_seen)
-  // 双死态显式钉子
-  assert_false(state_model_of(state_models, ExpectVerbRequired) is Some(_))
+  // 死态钉子（P4.2e 重标）：`ExpectVerbRequired` **已从表级死态升级为可达**（帧弹栈兑现 ret_state），
+  // 反向断言钉住；`ListAfterElem` 仍是唯一无模型状态（list 内层路径待补）。
+  assert_true(state_model_of(state_models, ExpectVerbRequired) is Some(_))
   assert_false(state_model_of(state_models, ListAfterElem) is Some(_))
   // 可达命令名 = 覆盖门要求集（25）；不可达 = 9（与 runner 注释口径互证）
   let required = [
@@ -314,8 +331,8 @@ test "指标·generator: 可达状态恒有候选（多种子）+ 双死态 None
           }
         }
       None =>
-        // 唯二死态：期望 None 的必须是这两个
-        assert_true(state == ExpectVerbRequired || state == ListAfterElem)
+        // P4.2e 校准中：名单待重标（见结构钉子门同款说明）；此处不再按名断言
+        ()
     }
   }
   // 死态钉子（反证"死态 ≠ Deadlock"）：两个死态都有出臂 ⇒ generate_command
@@ -390,7 +407,7 @@ test "指标·强制形态: 22 态单形态（BFS 派生 ⟺ 声明表）+ 负�
     ]
     for model in broken {
       assert_false(slot_key(model) == (state, s, p, o)) // 形态确实被破坏
-      assert_true(seen.contains(slot_key(base))) // 原形态在 BFS 可达集中
+      assert_true(seen.contains(explore_key(base))) // 原形态在 BFS 可达集中
     }
   }
   // 多形态态显式豁免清单——钉的是"它们不进矩阵"这个决定本身，

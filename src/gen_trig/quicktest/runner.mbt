@@ -162,6 +162,21 @@ fn run_random_check(
 //     **引擎状态与模型更早就分道**（不是这一步的臂错）⇒ 下一轮要把引擎状态面加进复现
 //     （probe 打引擎 `ctx.state` 逐步对照），再定位分道点；随后才轮到弹栈帧。
 //
+// 随机属性检查（100 用例 × ≤20 命令）——**待 P4.2e 第三轮（list 内层路径）后开启**。
+//
+// P4.2e 第三轮（帧栈，2026-09-15）战果：
+//   · 数据面：`[actions]` 加 `frame = "push"|"pop"`；新增 **`[frames]`（effect → 帧语义）**——
+//     `Rparen`/`Rbracket` 行**没有 action**（语义只在 effect `PopBnp` 上），按 action 查表
+//     查不到 ⇒ 帧语义曾整条丢失（实测）。
+//   · 模型：`Model.frames : Array[Frame]`（Frame = 外层三槽 + `open_span` + `ret_state` + `as_subject`）
+//     + `frame_push`（**state = 表的 to**）/ `frame_pop`（恢复三槽 + **state = ret_state**）。
+//     两个真 bug 当场钉出：① `frame_push` 漏写 state ⇒ list 分支进不去（可达命令名 25 → 23）；
+//     ② `frame_pop` 就地 `pop()` 共享数组 ⇒ 二次执行弹两次（BFS 形态键与模型不一致）。
+//   · 钉子重标：可达状态 **34 → 35**；死态**换位**——`ExpectVerbRequired` 因 `ret_state` 兑现而可达，
+//     `ListAfterElem` 成为唯一无模型状态；勘探去重键加"有无帧"位（否则带帧模型被同键吞掉）。
+//   · **新证据 = step 12 `Dot`**：引擎 `Error(0)`、模型已推进 ⇒ 换轨到 **list 内层/收口路径**
+//     （`ListAfterElem` 仍不可达正是这一截）⇒ 下一轮据此刻画。
+//
 // test "trig quick machine: random check（模型 ≡ 引擎）" {
 //   match run_random_check() {
 //     Ok(report) => assert_eq(report.cases_run, 100)

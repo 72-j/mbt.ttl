@@ -122,6 +122,19 @@ priv struct Model {
   object : RefId?
   graph : RefId?
   directive_at : Bool
+  frames : Array[Frame]
+} derive(Eq, Debug)
+
+///|
+/// Frame - 开括号帧（P4.2e）：记外层三槽快照 + open_span + 返回态
+/// （`ret_state` 是"状态由表管理"的唯一例外：弹帧时兑现，见引擎 pop_bnode_prop）
+priv struct Frame {
+  subject : RefId?
+  predicate : RefId?
+  graph : RefId?
+  open_span : RefId
+  ret_state : ModelState
+  as_subject : Bool
 } derive(Eq, Debug)
 // 未进模型的 Context 字段: emit_queue (Array[TrigPendingQuad]), directive_at (Bool), prefixes (Array[(Span, Span)]), bases (Array[Span]), slot_stack (Array[Slot]), pred_kind (PredKind), subj_shell (Bool), annot_close (Bool)
 
@@ -135,6 +148,7 @@ fn model_empty() -> Model {
     object: None,
     graph: None,
     directive_at: false,
+    frames: [],
   }
 }
 
