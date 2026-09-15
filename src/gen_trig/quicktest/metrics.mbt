@@ -202,7 +202,13 @@ test "指标·转移普查: valid ⟺ model_exec 全对一致 + 计数守恒" {
         legal = legal + 1
         // 合法转移的响应构造子空间：Continue / EmitQuad / Error(1)——
         // 绝不是未定义码 Error(0)，也绝不是 Done（Done 声明未引用，见 label 钉子门）
-        assert_false(response is Error(0))
+        // 例外（P4.2d 第四步，2026-09-15）：**带守卫的行**合法性与模型响应不再等价——
+        // valid 表只看 (状态, 命令)，守卫是运行时条件；`blank_model` 下守卫位为假 ⇒
+        // 模型按"守卫为假 ⇒ 引擎拒"给 Error(0)。目前唯一守卫行 = (ExpectDirectiveEnd, Dot)。
+        let guarded = state == ExpectDirectiveEnd && command is Dot
+        if !guarded {
+          assert_false(response is Error(0))
+        }
         assert_false(response is Done)
       } else {
         illegal = illegal + 1

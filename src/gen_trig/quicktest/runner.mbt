@@ -137,6 +137,18 @@ fn run_random_check(
 //      模型需要一个 bool 位复刻 `assign`（8 条，集中在 `directive_at`）供 `guard_def` 判定；
 //      该位**不影响 RefId**（只决定该行是否成立）⇒ 与 ADR-QM-008 的"不含注解账本字段"不冲突。
 //
+// 随机属性检查（100 用例 × ≤20 命令）——**待 P4.2e（领土③ list/slot_stack）后开启**。
+//
+// P4.2d 收官战果（守卫位落地，2026-09-15）：
+//   · 模型新增旗位（`assign` 目标 ∪ `guard_def` 主体，条件发射；nquads 无此数据 ⇒ 零波及）；
+//     带守卫的行发 `if model.<旗> { <正常臂> } else { (model, Error(0)) }`（短路口径与引擎一致）。
+//   · 随机门漂移序列 3 → 6 → 8 → 17 →（守卫修后）**换轨到领土③**：
+//     新证据 = step 6 `Lbracket(id 6)`：引擎 `Error(0)`，模型在 `ListExpectElemOrEnd`
+//     四槽全空 ⇒ 预测推进。根因是 `open_bnode_prop/list_*` 经引擎 `slot_stack` 写槽，
+//     模型无栈字段（metrics 的"结构钉子"门已钉住 `ListAfterElem` 模型侧不可达）。
+//   · 连带钉子升级：`指标·转移普查` 的"valid ⟺ model 全对"对**守卫行**放行
+//     （valid 只看 (状态,命令)，守卫是运行时条件——不平衡是**正确**的）。
+//
 // test "trig quick machine: random check（模型 ≡ 引擎）" {
 //   match run_random_check() {
 //     Ok(report) => assert_eq(report.cases_run, 100)

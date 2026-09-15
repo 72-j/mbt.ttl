@@ -121,6 +121,7 @@ priv struct Model {
   predicate : RefId?
   object : RefId?
   graph : RefId?
+  directive_at : Bool
 } derive(Eq, Debug)
 // 未进模型的 Context 字段: emit_queue (Array[TrigPendingQuad]), directive_at (Bool), prefixes (Array[(Span, Span)]), bases (Array[Span]), slot_stack (Array[Slot]), pred_kind (PredKind), subj_shell (Bool), annot_close (Bool)
 
@@ -133,6 +134,7 @@ fn model_empty() -> Model {
     predicate: None,
     object: None,
     graph: None,
+    directive_at: false,
   }
 }
 

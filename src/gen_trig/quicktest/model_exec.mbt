@@ -41,14 +41,16 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_subject(model, r, ExpectPredicate), Continue)
     (ExpectSubject, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, graph: None, }, Continue)
-    (ExpectSubject, At) => ({ ..model, state: ExpectDirectiveKind, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectSubject, At) =>
+      ({ ..model, state: ExpectDirectiveKind, directive_at: true, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectSubject, PrefixKw) =>
-      ({ ..model, state: ExpectPrefixName, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
-    (ExpectSubject, BaseKw) => ({ ..model, state: ExpectBaseIri, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+      ({ ..model, state: ExpectPrefixName, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectSubject, BaseKw) =>
+      ({ ..model, state: ExpectBaseIri, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectSubject, GraphKw) =>
       ({ ..model, state: ExpectGraphLabel, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectSubject, VersionKw) =>
-      ({ ..model, state: ExpectVersionLiteral, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+      ({ ..model, state: ExpectVersionLiteral, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectSubject, TripleTerm(r)) =>
       (set_subject(model, r, ExpectVerbOrDot), Continue)
     (ExpectSubject, Lbracket(_)) =>
@@ -242,7 +244,12 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectBaseIri, Iri(_)) =>
       ({ ..model, state: ExpectDirectiveEnd, }, Continue)
     // --- ExpectDirectiveEnd ---
-    (ExpectDirectiveEnd, Dot) => ({ ..model, state: ExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveEnd, Dot) =>
+      if model.directive_at {
+        ({ ..model, state: ExpectSubject, }, Continue)
+      } else {
+        (model, Error(0))
+      } // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectDirectiveEnd, Iri(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
     (ExpectDirectiveEnd, BlankNode(r)) =>
@@ -252,13 +259,13 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectDirectiveEnd, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, graph: None, }, Continue)
     (ExpectDirectiveEnd, At) =>
-      ({ ..model, state: ExpectDirectiveKind, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+      ({ ..model, state: ExpectDirectiveKind, directive_at: true, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectDirectiveEnd, PrefixKw) =>
-      ({ ..model, state: ExpectPrefixName, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+      ({ ..model, state: ExpectPrefixName, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectDirectiveEnd, BaseKw) =>
-      ({ ..model, state: ExpectBaseIri, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+      ({ ..model, state: ExpectBaseIri, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectDirectiveEnd, VersionKw) =>
-      ({ ..model, state: ExpectVersionLiteral, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+      ({ ..model, state: ExpectVersionLiteral, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectDirectiveEnd, GraphKw) =>
       ({ ..model, state: ExpectGraphLabel, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectDirectiveEnd, Lbracket(_)) =>
