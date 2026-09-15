@@ -231,7 +231,7 @@ test "指标·转移普查: valid ⟺ model_exec 全对一致 + 计数守恒" {
 ///     引擎发射的 graph=Some 模型看不见——P4.2d 已知边界，非缺陷，钉成事实）。
 ///   - 可达命令名恰 25 个（与 runner.coverage_gate_config 的要求表同口径）；
 ///     不可达 9 个（valid 无臂 ⇒ 生成器永不产出）。
-test "指标·结构钉子: 可达 34 / 双死态 / graph 恒空 / 命令名 25+9" {
+test "指标·结构钉子: 可达 34 / 双死态 / graph 可达（P4.2d 升级）/ 命令名 25+9" {
   let (seen, state_models, names) = explore()
   // 状态可达性：36 - 2（双死态）
   let mut reachable_states = 0
@@ -240,8 +240,6 @@ test "指标·结构钉子: 可达 34 / 双死态 / graph 恒空 / 命令名 25+
       Some(model) => {
         reachable_states = reachable_states + 1
         assert_true(seen.contains(slot_key(model)))
-        // graph 槽恒空（模型映射无 set_graph）
-        assert_false(model.graph is Some(_))
       }
       None =>
         // 唯二无模型状态 = 唯二死态（第三个状态到达不了即结构被破坏）
@@ -249,6 +247,17 @@ test "指标·结构钉子: 可达 34 / 双死态 / graph 恒空 / 命令名 25+
     }
   }
   assert_eq(reachable_states, 34)
+  // P4.2d 第二步（2026-09-15）：`[actions].writes` 落地后，模型有了 `enter_graph` → `graph`
+  // 的写入臂 ⇒ 旧钉子"graph 恒空"**升级为正向断言**：可达状态里必须出现 graph 非空
+  // （含图名图块）。钉子不许删，只许升级——盲区从"存在"转为"消失且被钉住"。
+  let mut graph_seen = false
+  for state in all_states() {
+    match state_model_of(state_models, state) {
+      Some(model) => if model.graph is Some(_) { graph_seen = true }
+      None => ()
+    }
+  }
+  assert_true(graph_seen)
   // 双死态显式钉子
   assert_false(state_model_of(state_models, ExpectVerbRequired) is Some(_))
   assert_false(state_model_of(state_models, ListAfterElem) is Some(_))
@@ -345,16 +354,18 @@ test "指标·强制形态: 22 态单形态（BFS 派生 ⟺ 声明表）+ 负�
     (GraphAnnotExpectVerbTail, true, false, false),
     // 主谓族：subject + predicate 已填
     (ExpectObject, true, true, false),
-    // 主谓宾族：三槽全满（注意注解族不同：AnnotStart 进注解态前 emit_predobj
-    // 清了 P/O，注解动词臂不落 O 槽 ⇒ 注解族是 (✓,∅,∅)/(✓,∅,✓) 形态）
+    // 主谓宾族：三槽全满
     (ExpectDotOrGraph, true, true, true),
     (ExpectTildeEnd, true, true, true),
     (GraphExpectDotOrGraph, true, true, true),
     (GraphExpectTildeEnd, true, true, true),
-    (AnnotExpectObject, true, false, false),
-    (AnnotExpectEnd, true, false, true),
-    (GraphAnnotExpectObject, true, false, false),
-    (GraphAnnotExpectEnd, true, false, true),
+    // 注解族（P4.2d 第二步校正，2026-09-15）：`annot_body_verb` 写 `predicate`
+    // 已在 `[actions].writes` 落地 ⇒ 注解动词臂**落 P 槽**；体宾语经 `set_object` 落 O。
+    // 旧形 (✓,∅,∅)/(✓,∅,✓) 是"P 未建模"时期的钉子。
+    (AnnotExpectObject, true, true, false),
+    (AnnotExpectEnd, true, true, true),
+    (GraphAnnotExpectObject, true, true, false),
+    (GraphAnnotExpectEnd, true, true, true),
   ]
   // 正向：BFS 派生的形态 = 恰声明的那一个（表抄错 / 入臂变化都在这里红）
   for entry in forced {

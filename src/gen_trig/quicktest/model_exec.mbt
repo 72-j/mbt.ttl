@@ -40,7 +40,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectSubject, PrefName(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
     (ExpectSubject, Lbrace) =>
-      ({ ..model, state: GraphExpectSubject, }, Continue)
+      ({ ..model, state: GraphExpectSubject, graph: None, }, Continue)
     (ExpectSubject, At) => ({ ..model, state: ExpectDirectiveKind, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectSubject, PrefixKw) =>
       ({ ..model, state: ExpectPrefixName, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -65,7 +65,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectPredicate, KeywordA(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
     (ExpectPredicate, Lbrace) =>
-      ({ ..model, state: GraphExpectSubject, }, Continue)
+      ({ ..model, state: GraphExpectSubject, graph: model.subject, }, Continue)
     // --- ExpectObject ---
     (ExpectObject, Iri(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
     (ExpectObject, BlankNode(r)) =>
@@ -123,21 +123,81 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectTildeEnd, Comma) => emit_object(model, ExpectObject)
     (ExpectTildeEnd, AnnotStart) => emit_predobj(model, AnnotExpectVerb)
     // --- AnnotExpectVerb ---
-    (AnnotExpectVerb, Iri(_)) =>
-      ({ ..model, state: AnnotExpectObject, }, Continue)
-    (AnnotExpectVerb, PrefName(_)) =>
-      ({ ..model, state: AnnotExpectObject, }, Continue)
-    (AnnotExpectVerb, KeywordA(_)) =>
-      ({ ..model, state: AnnotExpectObject, }, Continue)
+    (AnnotExpectVerb, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
+    (AnnotExpectVerb, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
+    (AnnotExpectVerb, KeywordA(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     (AnnotExpectVerb, Semicolon) =>
       ({ ..model, state: AnnotExpectVerbTail, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- AnnotExpectVerbTail ---
-    (AnnotExpectVerbTail, Iri(_)) =>
-      ({ ..model, state: AnnotExpectObject, }, Continue)
-    (AnnotExpectVerbTail, PrefName(_)) =>
-      ({ ..model, state: AnnotExpectObject, }, Continue)
-    (AnnotExpectVerbTail, KeywordA(_)) =>
-      ({ ..model, state: AnnotExpectObject, }, Continue)
+    (AnnotExpectVerbTail, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
+    (AnnotExpectVerbTail, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
+    (AnnotExpectVerbTail, KeywordA(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     (AnnotExpectVerbTail, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (AnnotExpectVerbTail, AnnotEnd) =>
       ({ ..model, state: ExpectVerbOrEnd, }, Continue)
@@ -161,7 +221,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // --- AnnotExpectEnd ---
     (AnnotExpectEnd, Comma) => emit_object(model, AnnotExpectObject)
     (AnnotExpectEnd, Semicolon) => emit_predobj(model, AnnotExpectVerbTail)
-    (AnnotExpectEnd, AnnotEnd) => (model, Continue) // TODO(P0): effect 缺 scope 变体, 人工确认
+    (AnnotExpectEnd, AnnotEnd) => emit_predobj(model, ExpectVerbOrEnd)
     // --- ExpectDirectiveKind ---
     (ExpectDirectiveKind, PrefixKw) =>
       ({ ..model, state: ExpectPrefixName, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -190,7 +250,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectDirectiveEnd, PrefName(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
     (ExpectDirectiveEnd, Lbrace) =>
-      ({ ..model, state: GraphExpectSubject, }, Continue)
+      ({ ..model, state: GraphExpectSubject, graph: None, }, Continue)
     (ExpectDirectiveEnd, At) =>
       ({ ..model, state: ExpectDirectiveKind, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectDirectiveEnd, PrefixKw) =>
@@ -210,14 +270,54 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectDirectiveEnd, Lparen(_)) =>
       ({ ..model, state: ListExpectElemOrEnd, }, Continue)
     // --- ExpectGraphLabel ---
-    (ExpectGraphLabel, Iri(_)) =>
-      ({ ..model, state: ExpectGraphLbrace, }, Continue)
-    (ExpectGraphLabel, PrefName(_)) =>
-      ({ ..model, state: ExpectGraphLbrace, }, Continue)
-    (ExpectGraphLabel, BlankNode(_)) =>
-      ({ ..model, state: ExpectGraphLbrace, }, Continue)
-    (ExpectGraphLabel, Anon(_)) =>
-      ({ ..model, state: ExpectGraphLbrace, }, Continue)
+    (ExpectGraphLabel, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectGraphLbrace,
+          graph: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.graph
+          },
+        },
+        Continue,
+      )
+    (ExpectGraphLabel, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectGraphLbrace,
+          graph: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.graph
+          },
+        },
+        Continue,
+      )
+    (ExpectGraphLabel, BlankNode(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectGraphLbrace,
+          graph: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.graph
+          },
+        },
+        Continue,
+      )
+    (ExpectGraphLabel, Anon(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectGraphLbrace,
+          graph: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.graph
+          },
+        },
+        Continue,
+      )
     // --- ExpectGraphLbrace ---
     (ExpectGraphLbrace, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -231,7 +331,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (GraphExpectSubject, TripleTerm(r)) =>
       (set_subject(model, r, GraphExpectVerbOrDot), Continue)
     (GraphExpectSubject, Rbrace) =>
-      ({ ..model, state: ExpectSubject, }, Continue)
+      ({ ..model, state: ExpectSubject, graph: None, }, Continue)
     (GraphExpectSubject, Lbracket(_)) =>
       ({ ..model, state: BnpExpectPredicate, }, Continue)
     (GraphExpectSubject, Anon(r)) =>
@@ -308,21 +408,81 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       emit_predobj(model, GraphAnnotExpectVerb)
     (GraphExpectTildeEnd, Rbrace) => emit_spo(model, ExpectSubject)
     // --- GraphAnnotExpectVerb ---
-    (GraphAnnotExpectVerb, Iri(_)) =>
-      ({ ..model, state: GraphAnnotExpectObject, }, Continue)
-    (GraphAnnotExpectVerb, PrefName(_)) =>
-      ({ ..model, state: GraphAnnotExpectObject, }, Continue)
-    (GraphAnnotExpectVerb, KeywordA(_)) =>
-      ({ ..model, state: GraphAnnotExpectObject, }, Continue)
+    (GraphAnnotExpectVerb, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: GraphAnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
+    (GraphAnnotExpectVerb, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: GraphAnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
+    (GraphAnnotExpectVerb, KeywordA(r)) =>
+      (
+        {
+          ..model,
+          state: GraphAnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     (GraphAnnotExpectVerb, Semicolon) =>
       ({ ..model, state: GraphAnnotExpectVerbTail, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- GraphAnnotExpectVerbTail ---
-    (GraphAnnotExpectVerbTail, Iri(_)) =>
-      ({ ..model, state: GraphAnnotExpectObject, }, Continue)
-    (GraphAnnotExpectVerbTail, PrefName(_)) =>
-      ({ ..model, state: GraphAnnotExpectObject, }, Continue)
-    (GraphAnnotExpectVerbTail, KeywordA(_)) =>
-      ({ ..model, state: GraphAnnotExpectObject, }, Continue)
+    (GraphAnnotExpectVerbTail, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: GraphAnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
+    (GraphAnnotExpectVerbTail, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: GraphAnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
+    (GraphAnnotExpectVerbTail, KeywordA(r)) =>
+      (
+        {
+          ..model,
+          state: GraphAnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     (GraphAnnotExpectVerbTail, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (GraphAnnotExpectVerbTail, AnnotEnd) =>
       ({ ..model, state: GraphExpectVerbOrEnd, }, Continue)
@@ -347,7 +507,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (GraphAnnotExpectEnd, Comma) => emit_object(model, GraphAnnotExpectObject)
     (GraphAnnotExpectEnd, Semicolon) =>
       emit_predobj(model, GraphAnnotExpectVerbTail)
-    (GraphAnnotExpectEnd, AnnotEnd) => (model, Continue) // TODO(P0): effect 缺 scope 变体, 人工确认
+    (GraphAnnotExpectEnd, AnnotEnd) => emit_predobj(model, GraphExpectVerbOrEnd)
     // --- BnpExpectPredicate ---
     (BnpExpectPredicate, Rbracket) => (model, Continue)
     (BnpExpectPredicate, Iri(r)) =>

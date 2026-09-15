@@ -123,6 +123,20 @@ fn run_random_check(
 //      而模型的按行预测只看到 `Continue`。⇒ 需要把**注解态的清槽/发射时机**补进模型
 //      （或回灌 `annot_*` 的"何时发射"数据键），属 P4.2d。
 //
+// 随机属性检查（100 用例 × ≤20 命令）——**待 P4.2d 第四步（守卫位）后开启**。
+//
+// P4.2d 三连战果（每开一轮，漂移都往深处推一层；证据留档）：
+//   ① step 3 `AnnotStart` —— P4.2c 修（action 意图数据面 + 发射臂 scope 化）。
+//   ② step 6 `Semicolon` —— 本轮修：`[actions].writes` 落地，`annot_body_verb` 写 `predicate`
+//      （旧模型丢 P 槽 ⇒ 恒 Error(1)）。同轮把 `enter_graph/exit_graph` 的 `graph` 写入也补上，
+//      结构钉子"graph 恒空"按纪律**升级为正向断言**。
+//   ③ step 8 `AnnotEnd` —— 同轮修：`annot_end` 的 returns 漏了 scope 参数（引擎真值是
+//      `EmitQuad(ResetObj)`），数据面补 `"EmitQuad(PredObj)"` 后模型进发射臂。
+//   ④ **本轮新证据 step 17 `Dot`**：引擎 `Error(0)`（`ExpectDirectiveEnd` 上守卫 `directive_at`
+//      为假 ⇒ 拒），模型无守卫位 ⇒ 预测推进成功。**这正是已登记的领土②**：
+//      模型需要一个 bool 位复刻 `assign`（8 条，集中在 `directive_at`）供 `guard_def` 判定；
+//      该位**不影响 RefId**（只决定该行是否成立）⇒ 与 ADR-QM-008 的"不含注解账本字段"不冲突。
+//
 // test "trig quick machine: random check（模型 ≡ 引擎）" {
 //   match run_random_check() {
 //     Ok(report) => assert_eq(report.cases_run, 100)
