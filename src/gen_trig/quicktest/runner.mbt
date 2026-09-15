@@ -45,6 +45,7 @@ fn run_assert_check() -> @qcs.RunReport[Command, Response, Command, Response] ra
   let config = { ..quick_run_config(), cases: 1, max_commands: 8, }
   @qcs.assert_check(quick_state_machine(script=Some(script)), config~)
 }
+
 ///|
 /// 固定脚本检查（P4.2b 接活）：回归基线，覆盖两条三元组语句
 test "trig quick machine: assert check（固定脚本）" {
