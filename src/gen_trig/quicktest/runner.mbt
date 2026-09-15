@@ -149,6 +149,19 @@ fn run_random_check(
 //   · 连带钉子升级：`指标·转移普查` 的"valid ⟺ model 全对"对**守卫行**放行
 //     （valid 只看 (状态,命令)，守卫是运行时条件——不平衡是**正确**的）。
 //
+// 随机属性检查（100 用例 × ≤20 命令）——**待 P4.2e 第二轮后开启**。
+//
+// P4.2e 第一轮（压栈侧 writes，2026-09-15）：
+//   · 判定完成：`open_bnode_prop(ctx, open_span, …)` 写的 `ctx.subject = open_span` 中，
+//     `open_span` **就是该行 `action_args[0] = payload`** ⇒ 压栈侧不需要栈；
+//     弹栈侧（`pop_bnode_prop` 从帧恢复外层 subject/predicate/graph，且 `[` 可嵌套）**需要帧快照**。
+//   · 落地：`[actions]` 给 `open_bnode_prop`/`open_collection` 补
+//     `writes = ["subject=arg0", "predicate=none"]`；模型侧已见 `subject: Some(id 7)`（载荷值）✓。
+//   · **新证据（本轮 step 6 `Lbracket(id 6)`）**：引擎 `Error(0)`（该事件在引擎当前状态无转移），
+//     而模型处于 `ListExpectElemOrEnd{subject:Some(7), predicate:None, object:None}` ⇒
+//     **引擎状态与模型更早就分道**（不是这一步的臂错）⇒ 下一轮要把引擎状态面加进复现
+//     （probe 打引擎 `ctx.state` 逐步对照），再定位分道点；随后才轮到弹栈帧。
+//
 // test "trig quick machine: random check（模型 ≡ 引擎）" {
 //   match run_random_check() {
 //     Ok(report) => assert_eq(report.cases_run, 100)

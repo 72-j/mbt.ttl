@@ -53,12 +53,34 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       ({ ..model, state: ExpectVersionLiteral, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectSubject, TripleTerm(r)) =>
       (set_subject(model, r, ExpectVerbOrDot), Continue)
-    (ExpectSubject, Lbracket(_)) =>
-      ({ ..model, state: BnpExpectPredicate, }, Continue)
+    (ExpectSubject, Lbracket(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectPredicate,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     (ExpectSubject, Anon(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
-    (ExpectSubject, Lparen(_)) =>
-      ({ ..model, state: ListExpectElemOrEnd, }, Continue)
+    (ExpectSubject, Lparen(r)) =>
+      (
+        {
+          ..model,
+          state: ListExpectElemOrEnd,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     // --- ExpectPredicate ---
     (ExpectPredicate, Iri(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
@@ -82,10 +104,32 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_object(model, r, ExpectDotOrGraph), Continue)
     (ExpectObject, Anon(r)) =>
       (set_object(model, r, ExpectDotOrGraph), Continue)
-    (ExpectObject, Lbracket(_)) =>
-      ({ ..model, state: BnpExpectPredicate, }, Continue)
-    (ExpectObject, Lparen(_)) =>
-      ({ ..model, state: ListExpectElemOrEnd, }, Continue)
+    (ExpectObject, Lbracket(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectPredicate,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
+    (ExpectObject, Lparen(r)) =>
+      (
+        {
+          ..model,
+          state: ListExpectElemOrEnd,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     // --- ExpectDotOrGraph ---
     (ExpectDotOrGraph, Comma) => emit_object(model, ExpectObject)
     (ExpectDotOrGraph, Semicolon) => emit_predobj(model, ExpectVerbOrEnd)
@@ -216,8 +260,19 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_object(model, r, AnnotExpectEnd), Continue)
     (AnnotExpectObject, BracketTripleTerm(r)) =>
       (set_object(model, r, AnnotExpectEnd), Continue)
-    (AnnotExpectObject, Lbracket(_)) =>
-      ({ ..model, state: BnpExpectPredicate, }, Continue)
+    (AnnotExpectObject, Lbracket(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectPredicate,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     (AnnotExpectObject, Anon(r)) =>
       (set_object(model, r, AnnotExpectEnd), Continue)
     // --- AnnotExpectEnd ---
@@ -268,14 +323,36 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       ({ ..model, state: ExpectVersionLiteral, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (ExpectDirectiveEnd, GraphKw) =>
       ({ ..model, state: ExpectGraphLabel, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
-    (ExpectDirectiveEnd, Lbracket(_)) =>
-      ({ ..model, state: BnpExpectPredicate, }, Continue)
+    (ExpectDirectiveEnd, Lbracket(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectPredicate,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     (ExpectDirectiveEnd, Anon(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
     (ExpectDirectiveEnd, TripleTerm(r)) =>
       (set_subject(model, r, ExpectVerbOrDot), Continue)
-    (ExpectDirectiveEnd, Lparen(_)) =>
-      ({ ..model, state: ListExpectElemOrEnd, }, Continue)
+    (ExpectDirectiveEnd, Lparen(r)) =>
+      (
+        {
+          ..model,
+          state: ListExpectElemOrEnd,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     // --- ExpectGraphLabel ---
     (ExpectGraphLabel, Iri(r)) =>
       (
@@ -339,12 +416,34 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_subject(model, r, GraphExpectVerbOrDot), Continue)
     (GraphExpectSubject, Rbrace) =>
       ({ ..model, state: ExpectSubject, graph: None, }, Continue)
-    (GraphExpectSubject, Lbracket(_)) =>
-      ({ ..model, state: BnpExpectPredicate, }, Continue)
+    (GraphExpectSubject, Lbracket(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectPredicate,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     (GraphExpectSubject, Anon(r)) =>
       (set_subject(model, r, GraphExpectPredicate), Continue)
-    (GraphExpectSubject, Lparen(_)) =>
-      ({ ..model, state: ListExpectElemOrEnd, }, Continue)
+    (GraphExpectSubject, Lparen(r)) =>
+      (
+        {
+          ..model,
+          state: ListExpectElemOrEnd,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     // --- GraphExpectPredicate ---
     (GraphExpectPredicate, Iri(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
@@ -367,10 +466,32 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_object(model, r, GraphExpectDotOrGraph), Continue)
     (GraphExpectObject, BracketTripleTerm(r)) =>
       (set_object(model, r, GraphExpectDotOrGraph), Continue)
-    (GraphExpectObject, Lbracket(_)) =>
-      ({ ..model, state: BnpExpectPredicate, }, Continue)
-    (GraphExpectObject, Lparen(_)) =>
-      ({ ..model, state: ListExpectElemOrEnd, }, Continue)
+    (GraphExpectObject, Lbracket(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectPredicate,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
+    (GraphExpectObject, Lparen(r)) =>
+      (
+        {
+          ..model,
+          state: ListExpectElemOrEnd,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     // --- GraphExpectDotOrGraph ---
     (GraphExpectDotOrGraph, Comma) => emit_object(model, GraphExpectObject)
     (GraphExpectDotOrGraph, Semicolon) =>
@@ -506,8 +627,19 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_object(model, r, GraphAnnotExpectEnd), Continue)
     (GraphAnnotExpectObject, BracketTripleTerm(r)) =>
       (set_object(model, r, GraphAnnotExpectEnd), Continue)
-    (GraphAnnotExpectObject, Lbracket(_)) =>
-      ({ ..model, state: BnpExpectPredicate, }, Continue)
+    (GraphAnnotExpectObject, Lbracket(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectPredicate,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     (GraphAnnotExpectObject, Anon(r)) =>
       (set_object(model, r, GraphAnnotExpectEnd), Continue)
     // --- GraphAnnotExpectEnd ---
@@ -536,10 +668,32 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_object(model, r, BnpAfterObject), Continue)
     (BnpExpectObject, BracketTripleTerm(r)) =>
       (set_object(model, r, BnpAfterObject), Continue)
-    (BnpExpectObject, Lbracket(_)) =>
-      ({ ..model, state: BnpExpectPredicate, }, Continue)
-    (BnpExpectObject, Lparen(_)) =>
-      ({ ..model, state: ListExpectElemOrEnd, }, Continue)
+    (BnpExpectObject, Lbracket(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectPredicate,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
+    (BnpExpectObject, Lparen(r)) =>
+      (
+        {
+          ..model,
+          state: ListExpectElemOrEnd,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+        },
+        Continue,
+      )
     // --- BnpAfterObject ---
     (BnpAfterObject, Comma) => emit_object(model, BnpExpectObject)
     (BnpAfterObject, Semicolon) => emit_predobj(model, BnpExpectPredicate)
