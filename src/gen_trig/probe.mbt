@@ -89,6 +89,12 @@ pub fn TrigProbe::new() -> TrigProbe {
 }
 
 ///|
+/// 当前引擎状态（P4.2e：逐步对照"引擎状态 ⟺ 模型状态"用）
+pub fn TrigProbe::state(self : TrigProbe) -> TrigState {
+  self.ctx.state
+}
+
+///|
 /// 单步驱动：喂一个事件 → 一档响应（队列排空 / step / interpret 三步与引擎同序）
 pub fn TrigProbe::step(
   self : TrigProbe,

@@ -174,8 +174,15 @@ fn run_random_check(
 //     ② `frame_pop` 就地 `pop()` 共享数组 ⇒ 二次执行弹两次（BFS 形态键与模型不一致）。
 //   · 钉子重标：可达状态 **34 → 35**；死态**换位**——`ExpectVerbRequired` 因 `ret_state` 兑现而可达，
 //     `ListAfterElem` 成为唯一无模型状态；勘探去重键加"有无帧"位（否则带帧模型被同键吞掉）。
-//   · **新证据 = step 12 `Dot`**：引擎 `Error(0)`、模型已推进 ⇒ 换轨到 **list 内层/收口路径**
-//     （`ListAfterElem` 仍不可达正是这一截）⇒ 下一轮据此刻画。
+//   · **新证据 = step 12 `Dot`**：引擎发 `EmitQuad`、模型预测 `Error(1)`。
+//
+// P4.2f 判定（2026-09-15 逐步对照，见 `src/quick_machine/todo.md §P4.2f`）：
+//   反例 `Lbrace Iri Iri Iri AnnotStart KeywordA TripleTerm AnnotEnd Rbrace Lbracket Rbracket Dot`
+//   的前 11 步**引擎与模型逐步同响应**（含两次 EmitQuad、弹帧后 `state = ret_state`）；
+//   第 12 步 `Dot` 分道 = **"不完整发射"口径不同**：引擎快照槽位可空、照发 `EmitQuad`；
+//   模型 `emit_*` 的 `quad_ready` 前置判据给 `Error(1)`。
+//   ⇒ 待拍：A 口径对齐引擎（`Quad` 三槽改可空 + 去 `quad_ready`，涟漪到两侧 quad 值锚点钉子）
+//      或 B 保持模型保守（把该判据写进 `const.md` + 随机门带白名单）。
 //
 // test "trig quick machine: random check（模型 ≡ 引擎）" {
 //   match run_random_check() {
