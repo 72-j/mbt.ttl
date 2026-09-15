@@ -192,6 +192,14 @@ fn shrink_ref(reference : @qcs.Ref[RefId]) -> Array[@qcs.Ref[RefId]] {
 
 ///|
 /// P4 shrinker: 只收缩引用载荷；结构命令（Dot/Comma/…）本身已是最简
+///
+/// 候选设计 = per-slot 收缩思路在本框架的**单载荷退化形**：
+///   - 命令在类型映射层恒为"单引用或原子"（spec §2：多载荷 Event 降为单引用），
+///     per-slot 候选矩阵（s/p/o/g 各自换最简值）在此退化为单槽候选；
+///   - `Concrete(0)` = 最小值替换（simple_uri(0) 同构）；
+///   - `id/2` = 数值二分，大 id 时比直接跳 0 收敛更快（两候选可叠加）；
+///   - 结构简化分支（如 Query→PatternAll）无对应：本 FSM 命令原子，序列级
+///     "删命令"收缩已被实测否决（见 metrics.mbt 文件头 ④ 与"收缩机制"测试）。
 fn shrink_command(_model : Model, command : Command) -> Array[Command] {
   match command {
     Iri(reference) => shrink_ref(reference).map(fn(smaller) { Iri(smaller) })
@@ -238,6 +246,49 @@ fn slots_consistent(model : Model) -> Bool {
 ///|
 fn model_invariant(model : Model) -> @qcs.Logic {
   @qcs.Logic::predicate(name="slot consistency", value=slots_consistent(model))
+}
+
+///|
+test "nquads quick machine invariant 负例矩阵" {
+  // 恒真不变量检测不出模型漂移；与 drift 注入同思想：先证明"尺子会咬人"，再信绿。
+  // 五状态各构造一个违反槽位形态的模型（源 slots_consistent 的五臂取反），必须全 false。
+  let broken : Array[Model] = [
+    { ..model_empty(), subject: Some({ id: 1, }), }, // ExpectSubject: 槽位应全空
+    { ..model_empty(), state: ExpectPredicate, predicate: Some({ id: 2, }), }, // ExpectPredicate: predicate 应空
+    { ..model_empty(), state: ExpectObject, object: Some({ id: 3, }), }, // ExpectObject: object 应空
+    { ..model_empty(), state: ExpectDotOrGraph, graph: Some({ id: 4, }), }, // ExpectDotOrGraph: graph 应空
+    {
+      state: ExpectDot,
+      subject: Some({ id: 1, }),
+      predicate: Some({ id: 2, }),
+      object: Some({ id: 3, }),
+      graph: None,
+    }, // ExpectDot: graph 必须已填
+  ]
+  for model in broken {
+    assert_false(slots_consistent(model))
+    match model_invariant(model) {
+      @qcs.Logic::Predicate(value=false, ..) => () // 谓词真的给出 false
+      _ => fail("invariant 必须给出可判定的 false 谓词")
+    }
+  }
+}
+
+///|
+test "nquads quick machine shrink 候选恒合法（安全性）" {
+  // shrink 安全性判定（P4）：收缩候选不得把合法命令变成非法——否则前置条件会
+  // 悄悄否决全部候选，收缩静默失效。本 FSM 载荷值不参与 valid；这条钉住
+  // "将来 valid 引用载荷值"时不许悄悄变卦。
+  for state in all_states() {
+    let model = ready_model(state)
+    for command in all_commands() {
+      if valid(model, command) {
+        for smaller in shrink_command(model, command) {
+          assert_true(valid(model, smaller))
+        }
+      }
+    }
+  }
 }
 
 ///|
@@ -324,10 +375,10 @@ test "nquads quick machine generate respects valid table" {
           break
         }
       }
-      None => {
-        assert_true(false)
-        break
-      }
+      None =>
+        fail(
+          "generate_command 返回 None（五状态恒有出边，不应发生）",
+        )
     }
   }
   assert_true(slots_consistent(model))

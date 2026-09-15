@@ -220,3 +220,42 @@ test "nquads quick machine detects system drift" {
     Err(_) => ()
   }
 }
+
+///|
+test "nquads quick machine detects error-code drift" {
+  // 反例注入：系统返回**约定外错误码**（Error(99)；[type_mapping].error_codes 只约定
+  // 0 = 未定义转移 / 1 = action 失败）——spec §5 失败语义第三档必须被判定失败。
+  // Continue 是恒可达分档 ⇒ 任一用例首命令即触发，检出是确定性的。
+  let code_flipping = fn(command : Command, system : System) -> Response {
+    match run_command(command, system) {
+      Continue => Error(99)
+      other => other
+    }
+  }
+  let config : @qcs.RunConfig = {
+    ..quick_run_config(),
+    cases: 5,
+    max_commands: 4,
+  }
+  match @qcs.check(quick_state_machine(system_call=code_flipping), config~) {
+    Ok(_) =>
+      fail("约定外错误码必须被检出（unexpected error code）")
+    Err(_) => ()
+  }
+}
+
+///|
+test "nquads quick machine random check: 多种子稳定" {
+  // 属性主门与覆盖率门同规（spec §9.6）：不靠单种子侥幸——
+  // 种子只影响探索路径，不放宽判定；分布/收缩回归会先在这里亮红灯。
+  for seed in [1UL, 2026UL] {
+    let config : @qcs.RunConfig = { ..quick_run_config(), seed, }
+    match run_random_check(config~) {
+      Ok(report) => assert_eq(report.cases_run, config.cases)
+      Err(failure) =>
+        fail(
+          "seed \{seed} random check failed: \{@qcs.format_failure(failure)}",
+        )
+    }
+  }
+}

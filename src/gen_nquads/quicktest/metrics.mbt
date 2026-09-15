@@ -14,8 +14,8 @@
 //   ⑤ 重映射恒等：收缩期允许删命令（`remap_command` 返回 None 会整体否决候选 ⇒ shrinks 必为 0）
 //
 // 口径纪律（与 runner 的两条门同规）：要求项只列**真能走到**的；走不到的（如
-// `PrefName`/`EOF` 无转移、`resp:error` 只出现在未定义转移）必须显式标注为"不适用"，
-// 而不是悄悄从要求里删掉。
+// `PrefName`/`EOF` 无转移、`resp:error` 只出现在未定义转移、`Done` 在 [[effects]]
+// 声明但转移表零引用 ⇒ `resp:done`）必须显式标注为"不适用"，而不是悄悄从要求里删掉。
 // ========================================
 
 ///|
@@ -168,6 +168,9 @@ test "指标·语义路径覆盖: label 分档齐全" {
       }
       // 未定义转移路径（resp:error）不走随机生成 —— 显式记为"不适用"
       assert_false(seen.contains("resp:error"))
+      // Done 在 [[effects]] 声明（semantics = "stop"）但转移表零引用（5 条 effect
+      // 全是 EmitQuad）⇒ resp:done 同为不可达分档 —— 对称地钉成"不适用"
+      assert_false(seen.contains("resp:done"))
     }
     Err(failure) =>
       fail("label coverage failed: \{@qcs.format_failure(failure)}")
@@ -206,6 +209,24 @@ test "指标·generator: 可达命令全覆盖 + 产出恒合法" {
   // 不可达命令不得出现（无转移 ⇒ valid 恒假 ⇒ 生成器永不产出）
   assert_false(produced.contains("PrefName"))
   assert_false(produced.contains("EOF"))
+}
+
+///|
+/// ① 姊妹门·无死锁：generate_command 返回 None ⇒ qcs 判 Deadlock。本 FSM 转移表
+/// 保证每个状态都有合法出边，None 不可达——generator 门测试的循环遇 None 会
+/// 静默提前 break，钉不住这个事实，这里按状态逐一钉死。
+test "指标·generator: 无死锁（五状态恒有合法候选）" {
+  for index, state in all_states() {
+    let model = ready_model(state)
+    let rng = @splitmix.new(seed=42UL)
+    match generate_command(model, 20, rng) {
+      Some(command) => assert_true(valid(model, command)) // 候选恒合法
+      None =>
+        fail(
+          "状态#\{index} 无合法候选（Deadlock 可达，转移表被破坏）",
+        )
+    }
+  }
 }
 
 ///|

@@ -148,6 +148,71 @@ fn transition(model : Model, command : Command, response : Response) -> Model {
 }
 
 ///|
+test "nquads quick machine 三档清槽: 模型侧 quad 值锚点" {
+  // 双执行比较对"模型与引擎同错"是盲的（spec §5 固有盲区），护栏 = 独立规格锚点。
+  // 这里把三档清槽脚本（ResetScope::Object / PredObj / All + 带图发射）的期望 quad
+  // 序列逐条写成值级断言——清错槽/不清槽/多清槽都会在这里红。
+  let emitted : Array[Quad] = []
+  let mut model = model_empty()
+  for command in assert_script_scopes() {
+    let (next_model, response) = model_execute(model, command)
+    match response {
+      EmitQuad(quad) => emitted.push(quad)
+      _ => ()
+    }
+    model = next_model
+  }
+  assert_eq(emitted.length(), 4)
+  // Comma → 发射 (1,2,3) 默认图，清 object（Object 粒度）
+  assert_eq(emitted[0], {
+    subject: { id: 1, },
+    predicate: { id: 2, },
+    object: { id: 3, },
+    graph: None,
+  })
+  // Semicolon → 发射 (1,2,4)，清 predicate+object（PredObj 粒度，subject 保留）
+  assert_eq(emitted[1], {
+    subject: { id: 1, },
+    predicate: { id: 2, },
+    object: { id: 4, },
+    graph: None,
+  })
+  // Dot → 发射 (1,5,6)，全清（All 粒度）
+  assert_eq(emitted[2], {
+    subject: { id: 1, },
+    predicate: { id: 5, },
+    object: { id: 6, },
+    graph: None,
+  })
+  // Dot → 带图名发射 (7,8,9,10)
+  assert_eq(emitted[3], {
+    subject: { id: 7, },
+    predicate: { id: 8, },
+    object: { id: 9, },
+    graph: Some({ id: 10, }),
+  })
+}
+
+///|
+test "nquads quick machine 符号期槽位保持" {
+  // Symbolic 引用无法解析具体值：槽位保持、状态照常推进（set_* 的 None 分支）——
+  // 符号执行期 mock 的关键语义：序列生成只关心状态推进，不依赖具体值。
+  let (next, response) = model_execute(
+    model_empty(),
+    Iri(Symbolic(@qcs.Var::{ id: 0, })),
+  )
+  assert_eq(response, Continue)
+  assert_eq(next.state, ExpectPredicate)
+  assert_true(next.subject is None)
+  // 对照组：Concrete 引用照常落槽
+  let (concrete_next, _) = model_execute(
+    model_empty(),
+    Iri(Concrete({ id: 1, })),
+  )
+  assert_eq(concrete_next.subject, Some({ id: 1, }))
+}
+
+///|
 test "nquads quick machine model oracle" {
   // Iri(p) Iri(o) Iri(g) Dot -> 一条默认图三元组 + 一条带图名四元组
   let mut model = model_empty()
