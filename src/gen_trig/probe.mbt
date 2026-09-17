@@ -95,6 +95,21 @@ pub fn TrigProbe::state(self : TrigProbe) -> TrigState {
 }
 
 ///|
+/// 帧栈视图（P4.2h 量测用）：自底向上每帧 `"<typ>(<open_span.0>)"`。
+/// 用途：与模型 `Model.frames` 逐项对照（引擎 `list_top` 取**栈顶整体**，
+/// 而栈里混有 `List`/`BnodeProp` 两类帧 ⇒ 顺序/类型都要对上才能等价）。
+pub fn TrigProbe::stack_view(self : TrigProbe) -> Array[String] {
+  self.ctx.slot_stack.map(fn(slot) {
+    let tag = match slot.typ {
+      SlotType::BnodeProp => "bnp"
+      SlotType::List => "list"
+      SlotType::Formula => "formula"
+    }
+    "\{tag}(\{slot.open_span.0})"
+  })
+}
+
+///|
 /// 单步驱动（**忽略发射队列**）：喂一个事件 → 一档响应（step / interpret 同引擎同序）。
 /// `Sequence` 内的余量仍入 `ctx.emit_queue`（由调用方排空）。
 pub fn TrigProbe::step_once(
