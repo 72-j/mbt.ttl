@@ -236,6 +236,116 @@ test "指标·转移普查: valid ⟺ model_exec 全对一致 + 计数守恒" {
 }
 
 ///|
+/// P4.3 账（**第一版：先要可达，再谈最短**）：每个可达命令名一条**从初始状态可达**的见证路径。
+/// **同源口径**（钉子①）：起点 = `[[states]]` 的 `is_initial`（此处 `ExpectSubject`）；
+/// 边 = `transition_expectation`（= valid 表 = `[[transitions]]` 的派生）；命令名归一 = `name_of`
+/// ——覆盖率门的名单必须由本函数派生，**不许**在门里手抄。
+/// 注意（钉子③的前置）：本函数只走**表**（纯结构），返回的路径**尚未**经过引擎执行验证——
+/// 带守卫行（如 `directive_at`）在表上有边、运行时可能被拒 ⇒ 下一步必须**逐条起跑验证**
+/// （每条路径独立从初始状态起跑 + 状态干净复位）后才可作为门的用例。
+fn reachable_witness_paths() -> Array[(String, Array[Command])] {
+  let found : Array[(String, Array[Command])] = []
+  let queue : Array[Array[Command]] = [[]]
+  let seen : Array[ModelState] = [ExpectSubject]
+  while queue.length() > 0 {
+    let path = queue.remove(0)
+    let state = path_end_state(path)
+    for command in all_commands() {
+      // 边口径 = `valid`（= `[[transitions]]` 的派生，与覆盖率门同源）；下一态**跑模型**取
+      // （`valid` 只看 (状态,命令)，带守卫行在空模型下按引擎口径被拒 ⇒ state 不动，两边一致）
+      if valid(blank_model(state), command) {
+        let (next_model, _) = model_execute(blank_model(state), command)
+        let next_state = next_model.state
+        let new_path = path.copy()
+        new_path.push(command)
+        let name = name_of(command)
+        if !found.any(fn(pair) { pair.0 == name }) {
+          found.push((name, new_path))
+        }
+        if !seen.contains(next_state) {
+          seen.push(next_state)
+          queue.push(new_path)
+        }
+      }
+    }
+  }
+  found
+}
+
+///|
+/// 沿路径推状态（只走表，不看模型）——`reachable_witness_paths` 的定位用
+fn path_end_state(path : Array[Command]) -> ModelState {
+  let mut state = ExpectSubject
+  for command in path {
+    let (next, _) = model_execute(blank_model(state), command)
+    state = next.state
+  }
+  state
+}
+
+///|
+/// P4.3 第一版验收（**只证存在性**，最短化留到存在性全绿之后）：每个"表上可达"的命令名
+/// 都必须有一条见证路径；同时把账打出来（下一步抄进 `todo.md` + 改成门名单的同源来源）。
+test "P4.3 账·存在性: 每个可达命令名都有见证路径（先要可达，再谈最短）" {
+  let witnesses = reachable_witness_paths()
+  let names = witnesses.map(fn(pair) { pair.0 })
+  for command in all_commands() {
+    let name = name_of(command)
+    if transition_expectation_is_anywhere(name) {
+      assert_true(names.contains(name))
+    }
+  }
+  debug("P4.3 见证路径账（\{witnesses.length()} 名）：")
+  for pair in witnesses {
+    debug("  \{pair.0} ← \{pair.1.map(fn(c) { name_of(c) }).join(" → ")}")
+  }
+}
+
+///|
+/// P4.3 钉子③：**每条见证路径独立起跑 + 状态干净复位 + 逐条引擎验证**。
+/// 为什么必须真跑：账是"表上可达"，而带守卫行（`directive_at`）表上有边、运行时可能被拒
+/// ⇒ 只有真跑（引擎 × 模型逐步同响应）才说明该路径**可作门的用例**。
+/// 复位口径：每条路径都新建 `system_init()` + `model_empty()`，**路径之间零共享状态**。
+test "P4.3 账·逐条起跑验证: 见证路径独立复位 + 双执行一致" {
+  let witnesses = reachable_witness_paths()
+  let failed : Array[String] = []
+  for pair in witnesses {
+    let (name, path) = pair
+    let system = system_init() // 干净复位（每条路径一份）
+    let mut model = model_empty()
+    let mut ok = true
+    for command in path {
+      let engine = run_command(command, system)
+      let (next, predicted) = model_execute(model, command)
+      if engine != predicted {
+        ok = false
+      }
+      model = next
+    }
+    if !ok {
+      failed.push(name)
+    }
+  }
+  assert_eq(failed, []) // 全绿 = 25 条路径都可作门的用例（否则列出失败的命令名）
+}
+
+///|
+/// 该命令名在**任意状态**上是否有出边（= "可达命令名"的口径，与 `coverage_gate_config` 同源）
+fn transition_expectation_is_anywhere(name : String) -> Bool {
+  let mut hit = false
+  for command in all_commands() {
+    if name_of(command) == name {
+      for state in all_states() {
+        if valid(blank_model(state), command) {
+          hit = true
+        }
+      }
+    }
+  }
+  hit
+}
+
+///|
 /// ② 结构钉子门：BFS 派生的可达事实。
 ///   - 可达状态 34 个；两个"死态"两个类别：
 ///     · ExpectVerbRequired：**表级死态**（有出臂、全表无入臂；引擎侧唯一出现是

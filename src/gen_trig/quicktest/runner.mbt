@@ -65,13 +65,50 @@ fn coverage_gate_config() -> @qcs.RunConfig {
     cases: 1,
     max_commands: 200,
     required_labels: ["resp:Continue", "resp:EmitQuad"],
-    required_command_names: [
-      "Iri", "BlankNode", "Literal", "PrefName", "TripleTerm", "BracketTripleTerm",
-      "KeywordA", "At", "PrefixKw", "BaseKw", "GraphKw", "VersionKw", "Tilde", "AnnotStart",
-      "AnnotEnd", "Comma", "Semicolon", "Dot", "Lbrace", "Rbrace", "Lbracket", "Rbracket",
-      "Lparen", "Rparen", "Anon",
-    ],
+    // P4.3 ② **同源改造**：名单不再手抄，改由见证路径账派生
+    //（与 BFS 同一来源；`metrics.reachable_witness_paths()` = 边口径 `valid` + 初始状态）
+    required_command_names: reachable_witness_paths().map(fn(pair) { pair.0 }),
   }
+}
+
+///|
+/// P4.3 **逐路径用例配置**：一条见证路径 = 一个用例，只扛**它自己那一个**命令名。
+/// 依据：qcs 覆盖判据是**逐用例**的（`CoverageFailed(missing_command_names=…)`）——
+/// 25 条路径塞进一个用例会互相污染状态，故必须一条一路径（同时满足"独立起跑 + 干净复位"）。
+fn path_coverage_config(path : Array[Command], name : String) -> @qcs.RunConfig {
+  {
+    ..quick_run_config(),
+    cases: 1,
+    max_commands: path.length(),
+    required_labels: [],
+    required_command_names: [name],
+  }
+}
+
+///|
+/// P4.3 覆盖率门（**路径驱动 + 逐条独立复位**）：每条见证路径新开一次 `check`；
+/// 返回**失败的命令名**清单（空 = 门全绿）。名单与账同源，不手抄。
+fn run_path_coverage_gate() -> Array[String] {
+  let failed : Array[String] = []
+  for pair in reachable_witness_paths() {
+    let (name, path) = pair
+    match
+      @qcs.check(
+        quick_state_machine(script=Some(path)),
+        config=path_coverage_config(path, name),
+      ) {
+      Ok(_) => ()
+      Err(_) => failed.push(name)
+    }
+  }
+  failed
+}
+
+///|
+/// P4.3 覆盖率门（开启）：25 条见证路径**各自一个用例**、独立起跑、干净复位；
+/// 失败会以"具体命令名清单"落地（不是模糊的"门挂了"）。
+test "trig_quick_machine 覆盖率门（路径驱动，逐条独立复位）" {
+  assert_eq(run_path_coverage_gate(), [])
 }
 
 ///|
