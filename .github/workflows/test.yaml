@@ -1,13 +1,78 @@
+# 子仓（thy1016/moonttl）CI
+#
+# 重排依据（2026-09-18）：
+#   · static 作业（仅 Linux）= 静态门：`--deny-warn` + `fmt --check` + `.mbti` 漂移门。
+#     静态门只跑一次：Windows 检出可能是 CRLF，字节级比对（fmt / `moon info` 回写）在那边会误报。
+#   · test 作业（3 OS 矩阵）= 只跑两道测试门，不写盘。
+#   · 不再跑 `moon fmt`（写盘）——它会把"未格式化"悄悄改掉再宣布通过；格式门由 static 的
+#     `moon fmt --check` 承担，CI 因此只在"提交形态"上判定。
+#   · 版本漂移可观测：CI 装的是最新工具链，static 作业与已知良好版本比对并打 warning。
+#
+# 本地已知良好工具链：moon 0.1.20260915 (2e1a46d 2026-09-15)
 name: Test
 
 on:
   push:
   pull_request:
 
+# 同一 ref 的旧运行自动取消：省 runner，也避免排队导致的"看着像随机失败"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  static:
+    name: Static gates (check --deny-warn / fmt --check / .mbti drift)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Moon env (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libssl-dev
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+
+      - name: Verify MoonBit installation
+        run: |
+          moon --version
+          moon version --all
+          installed="$(moon --version | head -n 1 | awk '{print $2}')"
+          known_good="0.1.20260915"
+          if [ "$installed" != "$known_good" ]; then
+            echo "::warning::MoonBit 工具链 $installed ≠ 本地已知良好 $known_good——先在本地复跑 check/test，再按需更新本文件"
+          fi
+
+      - name: Moon update
+        run: |
+          moon update
+
+      - name: Static gates
+        run: |
+          moon check --deny-warn
+          moon fmt --check
+          moon info
+          # .mbti 漂移门（评审 P0-2）：生成物必须与产生它的改动同笔提交，
+          # 否则"窄入口只开必要面"的公开面事实源不可信。
+          drift="$(git status --porcelain -- '*.mbti')"
+          if [ -n "$drift" ]; then
+            echo "::error::.mbti 与源码漂移——本地跑 moon info，把 .mbti 与产生它的改动同笔提交"
+            echo "$drift"
+            exit 1
+          fi
+
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -43,21 +108,22 @@ jobs:
         run: |
           # 1. 绕过执行策略限制（更彻底）
           powershell -ExecutionPolicy Bypass -Command "irm https://cli.moonbitlang.com/install/powershell.ps1 | iex"
-          
+
           # 2. 将 moon 加入当前会话的 PATH
           $moonPath = "$env:USERPROFILE\.moon\bin"
           echo "$moonPath" | Out-File -FilePath $env:GITHUB_PATH -Append
           $env:Path += ";$moonPath"
-          
+
           # 3. 验证安装
           moon --version
-          
+
       - name: Setup MSYS2 + MinGW + openssl (Windows)
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
-          update: true
+          # 原 true：pacman 全量升级是 Windows 侧最常见的超时/失败源（本项目 native 只是补充档）
+          update: false
           install: >-
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-openssl
@@ -66,18 +132,14 @@ jobs:
         run: |
           moon --version
           moon version --all
-          
+
       - name: Moon update
         run: |
           moon update
 
-      - name: Moon Check
+      - name: Moon check (--deny-warn)
         run: |
-          moon check
-          moon fmt
           moon check --deny-warn
-          moon info
-
 
       - name: Moon test
         run: |
