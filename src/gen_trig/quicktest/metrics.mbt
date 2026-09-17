@@ -330,6 +330,81 @@ test "P4.3 账·逐条起跑验证: 见证路径独立复位 + 双执行一致" 
 }
 
 ///|
+/// 状态距离表（最短性下界用）：从初始态 BFS，边 = `valid` 上有出边的命令、下一态**跑模型**取。
+fn state_distances() -> Array[(ModelState, Int)] {
+  let dist : Array[(ModelState, Int)] = [(ExpectSubject, 0)]
+  let queue : Array[ModelState] = [ExpectSubject]
+  while queue.length() > 0 {
+    let state = queue.remove(0)
+    let d = dist_lookup(dist, state)
+    for command in all_commands() {
+      if valid(blank_model(state), command) {
+        let (next, _) = model_execute(blank_model(state), command)
+        if !dist.any(fn(pair) { pair.0 == next.state }) {
+          dist.push((next.state, d + 1))
+          queue.push(next.state)
+        }
+      }
+    }
+  }
+  dist
+}
+
+///|
+/// 距离表查询（-1 = 未知）；不用 `find`，避免依赖数组查找 API 形态
+fn dist_lookup(dist : Array[(ModelState, Int)], state : ModelState) -> Int {
+  let mut found = -1
+  for pair in dist {
+    if pair.0 == state {
+      found = pair.1
+    }
+  }
+  found
+}
+
+///|
+/// P4.3 **最短化（优化，不是判据；单独提交）**：把"见证路径是最短的"钉成**可证**——
+/// 对每个名独立算状态下界（`min over s(valid(s,cmd))` 的 `dist(s)+1`），断言 `path.length() == 下界`。
+/// 断的是"**存在**一条最短路径"（护可达不护具体路径）：若将来路径内容变化，只要长度不劣于下界依然绿。
+test "P4.3 账·最短性: 见证路径长度 == 状态下界" {
+  let dist = state_distances()
+  let worse_than_bound : Array[String] = []
+  for pair in witnesses_with_bound(dist) {
+    let (name, len, bound) = pair
+    if len > bound {
+      worse_than_bound.push(name)
+    }
+  }
+  assert_eq(worse_than_bound, [])
+}
+
+///|
+/// 见证路径 × 状态下界（`(名, 路径长, 下界)`）——最短性断言的数据面
+fn witnesses_with_bound(
+  dist : Array[(ModelState, Int)],
+) -> Array[(String, Int, Int)] {
+  let rows : Array[(String, Int, Int)] = []
+  for pair in reachable_witness_paths() {
+    let (name, path) = pair
+    let mut bound = 999999
+    for command in all_commands() {
+      if name_of(command) == name {
+        for state in all_states() {
+          if valid(blank_model(state), command) {
+            let d = dist_lookup(dist, state)
+            if d >= 0 && d + 1 < bound {
+              bound = d + 1
+            }
+          }
+        }
+      }
+    }
+    rows.push((name, path.length(), bound))
+  }
+  rows
+}
+
+///|
 /// 该命令名在**任意状态**上是否有出边（= "可达命令名"的口径，与 `coverage_gate_config` 同源）
 fn transition_expectation_is_anywhere(name : String) -> Bool {
   let mut hit = false
