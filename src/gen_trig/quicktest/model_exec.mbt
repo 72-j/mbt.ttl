@@ -745,15 +745,20 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // P4.2h ②：`list_next`/`_nested` 写 `ctx.object = Some((open_span.0, node_seq+1))`（`:280`）
     // ⇒ RefId 空间 = 帧的 `open_span`；序列中段 `ListStep(elem)` 再写 subject(=open_span)/object(=elem)。
     // **尾意图的第二条 `EmitQuad` 只能等 ③（harness 返 Array[Response]）**——现行一步一响应对不上。
-    (ListAfterElem, Iri(r)) => list_next_arm(model, r, ListAfterElem)
-    (ListAfterElem, BlankNode(r)) => list_next_arm(model, r, ListAfterElem)
-    (ListAfterElem, Literal(r)) => list_next_arm(model, r, ListAfterElem)
-    (ListAfterElem, PrefName(r)) => list_next_arm(model, r, ListAfterElem)
-    (ListAfterElem, TripleTerm(r)) => list_next_arm(model, r, ListAfterElem)
+    (ListAfterElem, Iri(r)) => list_next_arm(model, r, ListAfterElem, false)
+    (ListAfterElem, BlankNode(r)) =>
+      list_next_arm(model, r, ListAfterElem, false)
+    (ListAfterElem, Literal(r)) => list_next_arm(model, r, ListAfterElem, false)
+    (ListAfterElem, PrefName(r)) =>
+      list_next_arm(model, r, ListAfterElem, false)
+    (ListAfterElem, TripleTerm(r)) =>
+      list_next_arm(model, r, ListAfterElem, false)
     (ListAfterElem, BracketTripleTerm(r)) =>
-      list_next_arm(model, r, ListAfterElem)
-    (ListAfterElem, Lbracket(r)) => list_next_arm(model, r, BnpExpectPredicate) // TODO(P0): 尾意图 EmitQuad/OpenSlot 待 ③
-    (ListAfterElem, Lparen(r)) => list_next_arm(model, r, ListExpectElemOrEnd) // TODO(P0): 尾意图 EmitQuad/OpenSlot 待 ③
+      list_next_arm(model, r, ListAfterElem, false)
+    (ListAfterElem, Lbracket(r)) =>
+      list_next_arm(model, r, BnpExpectPredicate, true)
+    (ListAfterElem, Lparen(r)) =>
+      list_next_arm(model, r, ListExpectElemOrEnd, true)
     // P4.2g + P4.2h：`list_nil` = `Sequence([EmitQuad(PredObj), PopBnp])`，且 `object = (open_span.0, 0)`
     // （`:331`；RefId 空间 = 帧的 `open_span`）⇒ 先写 object、发射、再弹帧。
     (ListAfterElem, Rparen) => {
@@ -851,6 +856,7 @@ fn list_next_arm(
   model : Model,
   r : @qcs.Ref[RefId],
   to : ModelState,
+  nested : Bool,
 ) -> (Model, Response) {
   let open = frame_open_span(model)
   let (next, response) = emit_predobj({ ..model, object: Some(open), }, to)
@@ -864,10 +870,14 @@ fn list_next_arm(
   // 序列第二枚 `EmitQuad`（P4.2h ③）：`ListStep(elem)` **之后**的快照 ⇒ 与第一枚同批、按序返回。
   // 批内容 = 引擎 `emit_queue` 的内容（**模型不背队列**：纯函数直接给出有序批）。
   let second = take_quad(next1)
-  (
-    frame_push(next1, r, ListAfterElem, false, next1.state),
-    Batch([response, EmitQuad(second)]),
-  )
+  // 非嵌套行序列里**没有** `OpenSlot`（引擎 `list_next` 三意图）⇒ 不压帧；
+  // 嵌套行（`list_next_nested` 四意图）才有末段压帧。2026-09-17 实测纠错。
+  let final = if nested {
+    frame_push(next1, r, ListAfterElem, false, next1.state)
+  } else {
+    next1
+  }
+  (final, Batch([response, EmitQuad(second)]))
 }
 
 ///|

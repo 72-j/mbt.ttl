@@ -260,10 +260,34 @@ fn run_random_check(
 //     ② 核 `frame_push`/`frame_pop` 与引擎 `open_slot`/`pop_bnode_prop` 的**入栈/出栈时机**是否一致
 //     （以及 `SlotType` 是否参与挑选）。
 //
-// test "trig quick machine: random check（模型 ≡ 引擎）" {
-//   match run_random_check() {
-//     Ok(report) => assert_eq(report.cases_run, 100)
-//     Err(failure) =>
-//       fail("随机检查失败（模型与引擎漂移）: \{@qcs.format_failure(failure)}")
-//   }
-// }
+// P4.2h ③ 4b 后的复现配方（**固定输入，别再靠随机门重找**）：`seed = 12345`、`cases = 100`、`shrink = true`
+// （= `quick_run_config()` 现值）；下列 16 步即该 seed 的 shrink 输出，**逐项抄成固定脚本**：
+//   BlankNode(0) Iri(0) TripleTerm(0) AnnotStart Iri(0) Anon(0) AnnotEnd PrefName(0) BlankNode(0) Dot
+//   BlankNode(0) PrefName(7) Lparen(4) Iri(5) PrefName(2) PrefName(7)
+// **量测已做（2026-09-17，探针已删；两侧同侧 = 都打"行执行后"）**：
+//   | step | 引擎 `slot_stack` | 模型 `frames` | batch eng/mdl |
+//   | 12 `Lparen(4)` | `[list(4)]` n=1 | `[4]` n=1 ✓ | 1/1 |
+//   | 13 `Iri(5)`    | `[list(4)]` n=1 | `[4]` n=1 ✓ | 1/1 |
+//   | 14 `PrefName(2)` | `[list(4)]` **n=1** | `[4, 2]` **n=2** ✗ | **2/2** |
+//   | 15 `PrefName(7)` | `[list(4)]` **n=1** | `[4, 2, 7]` **n=3** ✗ | **2/2** |
+//   身份已定：step 14/15 都走 **`list_next`**（batch=2 两侧一致 ⇒ 多发射口径已对齐）。
+//   **矛盾解释掉**：不是"引擎取栈底"，而是**引擎在 step 14 的 `OpenSlot` 那一环没有压帧**
+//   （栈仍 `[list(4)]`）⇒ 引擎 `list_top` = 栈顶 = `list(4)` ⇒ 基数 4 ✓；模型却压了 `2` ⇒ 基数 2 ✗。
+//   ⇒ **模型在非嵌套 `list_next` 行上多压了一帧**。
+//   **机制已确认（引擎源码直证，`actions.mbt:280`）**：非嵌套 `list_next` 返回的是**三意图**序列
+//     `Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])`——**末尾没有 `OpenSlot`** ⇒ 引擎不压帧；
+//     只有 `list_next_nested`（`:304`）是**四意图**（多一枚 `OpenSlot(elem, typ, ret_state)`）⇒ 才压帧。
+//     我们配置面的数据写错了：`[actions].list_next.returns` 写成了与 `_nested` 相同的四意图。
+//   **修复清单（已解释清楚，可动手）**：
+//     ① `quick_machine_trig_gen.toml [actions].list_next.returns` 改回三意图（去掉 `OpenSlot`）；
+//     ② 实例 `list_next_arm` 拆两支：非嵌套不压帧、`_nested` 压帧（或加 `nested: Bool` 参数）；
+//     ③ 复开随机门取新证据；`gen_check`/nquads 零波及（nquads 无 list 族）。
+//
+///|
+test "trig quick machine: random check（模型 ≡ 引擎）" {
+  match run_random_check() {
+    Ok(report) => assert_eq(report.cases_run, 100)
+    Err(failure) =>
+      fail("随机检查失败（模型与引擎漂移）: \{@qcs.format_failure(failure)}")
+  }
+}
