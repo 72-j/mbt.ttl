@@ -11,6 +11,9 @@
 // 映射：Command → TrigEvent（引用编码进 Span）；TrigProbeResponse → Response（四档）；
 //       TrigPendingQuad（引擎快照）→ Quad（模型四槽）。
 // 错误归一化：UnexpectedEvent → Error(0)，BusinessFailed → Error(1)。
+
+// >>> EVIDENCE（P4.4 钉子①：证据注释留位——生成/物化不得覆盖本区间，守卫测试按标记校验）
+// <<< EVIDENCE
 //
 // ⚠️ 本目录是**手维护实例**：`materialize trig quicktest` 只在目录缺失时 bootstrap，不再覆盖。
 
