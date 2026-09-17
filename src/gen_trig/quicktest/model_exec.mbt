@@ -24,85 +24,121 @@ fn take_quad(model : Model) -> Quad {
 fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
   match (model.state, cmd) {
     // --- ExpectSubject ---
+    // @arm ExpectSubject+Iri
     (ExpectSubject, Iri(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
+    // @arm ExpectSubject+BlankNode
     (ExpectSubject, BlankNode(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
+    // @arm ExpectSubject+PrefName
     (ExpectSubject, PrefName(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
+    // @arm ExpectSubject+Lbrace
     (ExpectSubject, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, graph: None, }, Continue)
+    // @arm ExpectSubject+At
     (ExpectSubject, At) =>
       ({ ..model, state: ExpectDirectiveKind, directive_at: true, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectSubject+PrefixKw
     (ExpectSubject, PrefixKw) =>
       ({ ..model, state: ExpectPrefixName, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectSubject+BaseKw
     (ExpectSubject, BaseKw) =>
       ({ ..model, state: ExpectBaseIri, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectSubject+GraphKw
     (ExpectSubject, GraphKw) =>
       ({ ..model, state: ExpectGraphLabel, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectSubject+VersionKw
     (ExpectSubject, VersionKw) =>
       ({ ..model, state: ExpectVersionLiteral, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectSubject+TripleTerm
     (ExpectSubject, TripleTerm(r)) =>
       (set_subject(model, r, ExpectVerbOrDot), Continue)
+    // @arm ExpectSubject+Lbracket
     (ExpectSubject, Lbracket(r)) =>
       (
         frame_push(model, r, ExpectVerbOrDot, true, BnpExpectPredicate),
         Continue,
       )
+    // @arm ExpectSubject+Anon
     (ExpectSubject, Anon(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
+    // @arm ExpectSubject+Lparen
     (ExpectSubject, Lparen(r)) =>
       (
         frame_push(model, r, ExpectVerbRequired, true, ListExpectElemOrEnd),
         Continue,
       )
     // --- ExpectPredicate ---
+    // @arm ExpectPredicate+Iri
     (ExpectPredicate, Iri(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectPredicate+PrefName
     (ExpectPredicate, PrefName(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectPredicate+KeywordA
     (ExpectPredicate, KeywordA(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectPredicate+Lbrace
     (ExpectPredicate, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, graph: model.subject, }, Continue)
     // --- ExpectObject ---
+    // @arm ExpectObject+Iri
     (ExpectObject, Iri(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
+    // @arm ExpectObject+BlankNode
     (ExpectObject, BlankNode(r)) =>
       (set_object(model, r, ExpectDotOrGraph), Continue)
+    // @arm ExpectObject+Literal
     (ExpectObject, Literal(r)) =>
       (set_object(model, r, ExpectDotOrGraph), Continue)
+    // @arm ExpectObject+PrefName
     (ExpectObject, PrefName(r)) =>
       (set_object(model, r, ExpectDotOrGraph), Continue)
+    // @arm ExpectObject+TripleTerm
     (ExpectObject, TripleTerm(r)) =>
       (set_object(model, r, ExpectDotOrGraph), Continue)
+    // @arm ExpectObject+BracketTripleTerm
     (ExpectObject, BracketTripleTerm(r)) =>
       (set_object(model, r, ExpectDotOrGraph), Continue)
+    // @arm ExpectObject+Anon
     (ExpectObject, Anon(r)) =>
       (set_object(model, r, ExpectDotOrGraph), Continue)
+    // @arm ExpectObject+Lbracket
     (ExpectObject, Lbracket(r)) =>
       (
         frame_push(model, r, ExpectDotOrGraph, false, BnpExpectPredicate),
         Continue,
       )
+    // @arm ExpectObject+Lparen
     (ExpectObject, Lparen(r)) =>
       (
         frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd),
         Continue,
       )
     // --- ExpectDotOrGraph ---
+    // @arm ExpectDotOrGraph+Comma
     (ExpectDotOrGraph, Comma) => emit_object(model, ExpectObject)
+    // @arm ExpectDotOrGraph+Semicolon
     (ExpectDotOrGraph, Semicolon) => emit_predobj(model, ExpectVerbOrEnd)
+    // @arm ExpectDotOrGraph+Dot
     (ExpectDotOrGraph, Dot) => emit_spo(model, ExpectSubject)
+    // @arm ExpectDotOrGraph+Tilde
     (ExpectDotOrGraph, Tilde) => ({ ..model, state: ExpectTildeEnd, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectDotOrGraph+AnnotStart
     (ExpectDotOrGraph, AnnotStart) => emit_predobj(model, AnnotExpectVerb)
     // --- ExpectVerbOrEnd ---
+    // @arm ExpectVerbOrEnd+Iri
     (ExpectVerbOrEnd, Iri(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbOrEnd+PrefName
     (ExpectVerbOrEnd, PrefName(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbOrEnd+KeywordA
     (ExpectVerbOrEnd, KeywordA(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbOrEnd+Semicolon
     (ExpectVerbOrEnd, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectVerbOrEnd+Dot
     (ExpectVerbOrEnd, Dot) =>
       (
         {
@@ -115,29 +151,44 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         Continue,
       )
     // --- ExpectVerbRequired ---
+    // @arm ExpectVerbRequired+Iri
     (ExpectVerbRequired, Iri(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbRequired+PrefName
     (ExpectVerbRequired, PrefName(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbRequired+KeywordA
     (ExpectVerbRequired, KeywordA(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
     // --- ExpectVerbOrDot ---
+    // @arm ExpectVerbOrDot+Iri
     (ExpectVerbOrDot, Iri(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbOrDot+PrefName
     (ExpectVerbOrDot, PrefName(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbOrDot+KeywordA
     (ExpectVerbOrDot, KeywordA(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbOrDot+Dot
     (ExpectVerbOrDot, Dot) => emit_spo(model, ExpectSubject)
     // --- ExpectTildeEnd ---
+    // @arm ExpectTildeEnd+Iri
     (ExpectTildeEnd, Iri(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectTildeEnd+PrefName
     (ExpectTildeEnd, PrefName(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectTildeEnd+BlankNode
     (ExpectTildeEnd, BlankNode(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectTildeEnd+Dot
     (ExpectTildeEnd, Dot) => emit_spo(model, ExpectSubject)
+    // @arm ExpectTildeEnd+Semicolon
     (ExpectTildeEnd, Semicolon) => emit_predobj(model, ExpectVerbOrEnd)
+    // @arm ExpectTildeEnd+Comma
     (ExpectTildeEnd, Comma) => emit_object(model, ExpectObject)
+    // @arm ExpectTildeEnd+AnnotStart
     (ExpectTildeEnd, AnnotStart) => emit_predobj(model, AnnotExpectVerb)
     // --- AnnotExpectVerb ---
+    // @arm AnnotExpectVerb+Iri
     (AnnotExpectVerb, Iri(r)) =>
       (
         {
@@ -150,6 +201,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm AnnotExpectVerb+PrefName
     (AnnotExpectVerb, PrefName(r)) =>
       (
         {
@@ -162,6 +214,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm AnnotExpectVerb+KeywordA
     (AnnotExpectVerb, KeywordA(r)) =>
       (
         {
@@ -174,9 +227,11 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm AnnotExpectVerb+Semicolon
     (AnnotExpectVerb, Semicolon) =>
       ({ ..model, state: AnnotExpectVerbTail, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- AnnotExpectVerbTail ---
+    // @arm AnnotExpectVerbTail+Iri
     (AnnotExpectVerbTail, Iri(r)) =>
       (
         {
@@ -189,6 +244,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm AnnotExpectVerbTail+PrefName
     (AnnotExpectVerbTail, PrefName(r)) =>
       (
         {
@@ -201,6 +257,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm AnnotExpectVerbTail+KeywordA
     (AnnotExpectVerbTail, KeywordA(r)) =>
       (
         {
@@ -213,92 +270,127 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm AnnotExpectVerbTail+Semicolon
     (AnnotExpectVerbTail, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm AnnotExpectVerbTail+AnnotEnd
     (AnnotExpectVerbTail, AnnotEnd) =>
       ({ ..model, state: ExpectVerbOrEnd, }, Continue)
     // --- AnnotExpectObject ---
+    // @arm AnnotExpectObject+Iri
     (AnnotExpectObject, Iri(r)) =>
       (set_object(model, r, AnnotExpectEnd), Continue)
+    // @arm AnnotExpectObject+BlankNode
     (AnnotExpectObject, BlankNode(r)) =>
       (set_object(model, r, AnnotExpectEnd), Continue)
+    // @arm AnnotExpectObject+Literal
     (AnnotExpectObject, Literal(r)) =>
       (set_object(model, r, AnnotExpectEnd), Continue)
+    // @arm AnnotExpectObject+PrefName
     (AnnotExpectObject, PrefName(r)) =>
       (set_object(model, r, AnnotExpectEnd), Continue)
+    // @arm AnnotExpectObject+TripleTerm
     (AnnotExpectObject, TripleTerm(r)) =>
       (set_object(model, r, AnnotExpectEnd), Continue)
+    // @arm AnnotExpectObject+BracketTripleTerm
     (AnnotExpectObject, BracketTripleTerm(r)) =>
       (set_object(model, r, AnnotExpectEnd), Continue)
+    // @arm AnnotExpectObject+Lbracket
     (AnnotExpectObject, Lbracket(r)) =>
       (
         frame_push(model, r, AnnotExpectEnd, false, BnpExpectPredicate),
         Continue,
       )
+    // @arm AnnotExpectObject+Anon
     (AnnotExpectObject, Anon(r)) =>
       (set_object(model, r, AnnotExpectEnd), Continue)
     // --- AnnotExpectEnd ---
+    // @arm AnnotExpectEnd+Comma
     (AnnotExpectEnd, Comma) => emit_object(model, AnnotExpectObject)
+    // @arm AnnotExpectEnd+Semicolon
     (AnnotExpectEnd, Semicolon) => emit_predobj(model, AnnotExpectVerbTail)
+    // @arm AnnotExpectEnd+AnnotEnd
     (AnnotExpectEnd, AnnotEnd) => emit_predobj(model, ExpectVerbOrEnd)
     // --- ExpectDirectiveKind ---
+    // @arm ExpectDirectiveKind+PrefixKw
     (ExpectDirectiveKind, PrefixKw) =>
       ({ ..model, state: ExpectPrefixName, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectDirectiveKind+BaseKw
     (ExpectDirectiveKind, BaseKw) =>
       ({ ..model, state: ExpectBaseIri, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectDirectiveKind+VersionKw
     (ExpectDirectiveKind, VersionKw) =>
       ({ ..model, state: ExpectVersionLiteral, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- ExpectVersionLiteral ---
+    // @arm ExpectVersionLiteral+Literal
     (ExpectVersionLiteral, Literal(_)) =>
       ({ ..model, state: ExpectDirectiveEnd, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- ExpectPrefixName ---
+    // @arm ExpectPrefixName+PrefName
     (ExpectPrefixName, PrefName(_)) =>
       ({ ..model, state: ExpectPrefixIri, }, Continue)
     // --- ExpectPrefixIri ---
+    // @arm ExpectPrefixIri+Iri
     (ExpectPrefixIri, Iri(_)) =>
       ({ ..model, state: ExpectDirectiveEnd, }, Continue)
     // --- ExpectBaseIri ---
+    // @arm ExpectBaseIri+Iri
     (ExpectBaseIri, Iri(_)) =>
       ({ ..model, state: ExpectDirectiveEnd, }, Continue)
     // --- ExpectDirectiveEnd ---
+    // @arm ExpectDirectiveEnd+Dot
     (ExpectDirectiveEnd, Dot) =>
       if model.directive_at {
         ({ ..model, state: ExpectSubject, }, Continue)
       } else {
         (model, Error(0))
       } // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectDirectiveEnd+Iri
     (ExpectDirectiveEnd, Iri(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
+    // @arm ExpectDirectiveEnd+BlankNode
     (ExpectDirectiveEnd, BlankNode(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
+    // @arm ExpectDirectiveEnd+PrefName
     (ExpectDirectiveEnd, PrefName(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
+    // @arm ExpectDirectiveEnd+Lbrace
     (ExpectDirectiveEnd, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, graph: None, }, Continue)
+    // @arm ExpectDirectiveEnd+At
     (ExpectDirectiveEnd, At) =>
       ({ ..model, state: ExpectDirectiveKind, directive_at: true, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectDirectiveEnd+PrefixKw
     (ExpectDirectiveEnd, PrefixKw) =>
       ({ ..model, state: ExpectPrefixName, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectDirectiveEnd+BaseKw
     (ExpectDirectiveEnd, BaseKw) =>
       ({ ..model, state: ExpectBaseIri, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectDirectiveEnd+VersionKw
     (ExpectDirectiveEnd, VersionKw) =>
       ({ ..model, state: ExpectVersionLiteral, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectDirectiveEnd+GraphKw
     (ExpectDirectiveEnd, GraphKw) =>
       ({ ..model, state: ExpectGraphLabel, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectDirectiveEnd+Lbracket
     (ExpectDirectiveEnd, Lbracket(r)) =>
       (
         frame_push(model, r, ExpectVerbOrDot, true, BnpExpectPredicate),
         Continue,
       )
+    // @arm ExpectDirectiveEnd+Anon
     (ExpectDirectiveEnd, Anon(r)) =>
       (set_subject(model, r, ExpectPredicate), Continue)
+    // @arm ExpectDirectiveEnd+TripleTerm
     (ExpectDirectiveEnd, TripleTerm(r)) =>
       (set_subject(model, r, ExpectVerbOrDot), Continue)
+    // @arm ExpectDirectiveEnd+Lparen
     (ExpectDirectiveEnd, Lparen(r)) =>
       (
         frame_push(model, r, ExpectVerbRequired, true, ListExpectElemOrEnd),
         Continue,
       )
     // --- ExpectGraphLabel ---
+    // @arm ExpectGraphLabel+Iri
     (ExpectGraphLabel, Iri(r)) =>
       (
         {
@@ -311,6 +403,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm ExpectGraphLabel+PrefName
     (ExpectGraphLabel, PrefName(r)) =>
       (
         {
@@ -323,6 +416,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm ExpectGraphLabel+BlankNode
     (ExpectGraphLabel, BlankNode(r)) =>
       (
         {
@@ -335,6 +429,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm ExpectGraphLabel+Anon
     (ExpectGraphLabel, Anon(r)) =>
       (
         {
@@ -348,86 +443,118 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         Continue,
       )
     // --- ExpectGraphLbrace ---
+    // @arm ExpectGraphLbrace+Lbrace
     (ExpectGraphLbrace, Lbrace) =>
       ({ ..model, state: GraphExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- GraphExpectSubject ---
+    // @arm GraphExpectSubject+Iri
     (GraphExpectSubject, Iri(r)) =>
       (set_subject(model, r, GraphExpectPredicate), Continue)
+    // @arm GraphExpectSubject+BlankNode
     (GraphExpectSubject, BlankNode(r)) =>
       (set_subject(model, r, GraphExpectPredicate), Continue)
+    // @arm GraphExpectSubject+PrefName
     (GraphExpectSubject, PrefName(r)) =>
       (set_subject(model, r, GraphExpectPredicate), Continue)
+    // @arm GraphExpectSubject+TripleTerm
     (GraphExpectSubject, TripleTerm(r)) =>
       (set_subject(model, r, GraphExpectVerbOrDot), Continue)
+    // @arm GraphExpectSubject+Rbrace
     (GraphExpectSubject, Rbrace) =>
       ({ ..model, state: ExpectSubject, graph: None, }, Continue)
+    // @arm GraphExpectSubject+Lbracket
     (GraphExpectSubject, Lbracket(r)) =>
       (
         frame_push(model, r, GraphExpectVerbOrDot, true, BnpExpectPredicate),
         Continue,
       )
+    // @arm GraphExpectSubject+Anon
     (GraphExpectSubject, Anon(r)) =>
       (set_subject(model, r, GraphExpectPredicate), Continue)
+    // @arm GraphExpectSubject+Lparen
     (GraphExpectSubject, Lparen(r)) =>
       (
         frame_push(model, r, GraphExpectPredicate, true, ListExpectElemOrEnd),
         Continue,
       )
     // --- GraphExpectPredicate ---
+    // @arm GraphExpectPredicate+Iri
     (GraphExpectPredicate, Iri(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
+    // @arm GraphExpectPredicate+PrefName
     (GraphExpectPredicate, PrefName(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
+    // @arm GraphExpectPredicate+KeywordA
     (GraphExpectPredicate, KeywordA(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
     // --- GraphExpectObject ---
+    // @arm GraphExpectObject+Iri
     (GraphExpectObject, Iri(r)) =>
       (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    // @arm GraphExpectObject+Anon
     (GraphExpectObject, Anon(r)) =>
       (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    // @arm GraphExpectObject+BlankNode
     (GraphExpectObject, BlankNode(r)) =>
       (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    // @arm GraphExpectObject+Literal
     (GraphExpectObject, Literal(r)) =>
       (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    // @arm GraphExpectObject+PrefName
     (GraphExpectObject, PrefName(r)) =>
       (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    // @arm GraphExpectObject+TripleTerm
     (GraphExpectObject, TripleTerm(r)) =>
       (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    // @arm GraphExpectObject+BracketTripleTerm
     (GraphExpectObject, BracketTripleTerm(r)) =>
       (set_object(model, r, GraphExpectDotOrGraph), Continue)
+    // @arm GraphExpectObject+Lbracket
     (GraphExpectObject, Lbracket(r)) =>
       (
         frame_push(model, r, GraphExpectDotOrGraph, false, BnpExpectPredicate),
         Continue,
       )
+    // @arm GraphExpectObject+Lparen
     (GraphExpectObject, Lparen(r)) =>
       (
         frame_push(model, r, GraphExpectDotOrGraph, false, ListExpectElemOrEnd),
         Continue,
       )
     // --- GraphExpectDotOrGraph ---
+    // @arm GraphExpectDotOrGraph+Comma
     (GraphExpectDotOrGraph, Comma) => emit_object(model, GraphExpectObject)
+    // @arm GraphExpectDotOrGraph+Semicolon
     (GraphExpectDotOrGraph, Semicolon) =>
       emit_predobj(model, GraphExpectVerbOrEnd)
+    // @arm GraphExpectDotOrGraph+Dot
     (GraphExpectDotOrGraph, Dot) => emit_spo(model, GraphExpectSubject)
+    // @arm GraphExpectDotOrGraph+Tilde
     (GraphExpectDotOrGraph, Tilde) =>
       ({ ..model, state: GraphExpectTildeEnd, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm GraphExpectDotOrGraph+AnnotStart
     (GraphExpectDotOrGraph, AnnotStart) =>
       emit_predobj(model, GraphAnnotExpectVerb)
     // P4.2g：`Sequence([EmitQuad(SPO), ExitGraph])` —— 尾意图 ExitGraph 要在**发射之后**兑现
     // （引擎 `on_exit_graph` → `exit_graph` = `graph: None`；顺序不能颠倒，否则快照带错图名）
+    // @arm GraphExpectDotOrGraph+Rbrace
     (GraphExpectDotOrGraph, Rbrace) => {
       let (next, response) = emit_spo(model, ExpectSubject)
       ({ ..next, graph: None, }, response)
     }
     // --- GraphExpectVerbOrEnd ---
+    // @arm GraphExpectVerbOrEnd+Iri
     (GraphExpectVerbOrEnd, Iri(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
+    // @arm GraphExpectVerbOrEnd+PrefName
     (GraphExpectVerbOrEnd, PrefName(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
+    // @arm GraphExpectVerbOrEnd+KeywordA
     (GraphExpectVerbOrEnd, KeywordA(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
+    // @arm GraphExpectVerbOrEnd+Semicolon
     (GraphExpectVerbOrEnd, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm GraphExpectVerbOrEnd+Dot
     (GraphExpectVerbOrEnd, Dot) =>
       (
         {
@@ -440,6 +567,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         Continue,
       )
     // P4.2g：`Reset(All)` —— 引擎 `ctx.reset(All)` 清四槽（此前模型一个没清）
+    // @arm GraphExpectVerbOrEnd+Rbrace
     (GraphExpectVerbOrEnd, Rbrace) =>
       (
         {
@@ -453,14 +581,19 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         Continue,
       )
     // --- GraphExpectVerbOrDot ---
+    // @arm GraphExpectVerbOrDot+Iri
     (GraphExpectVerbOrDot, Iri(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
+    // @arm GraphExpectVerbOrDot+PrefName
     (GraphExpectVerbOrDot, PrefName(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
+    // @arm GraphExpectVerbOrDot+KeywordA
     (GraphExpectVerbOrDot, KeywordA(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
+    // @arm GraphExpectVerbOrDot+Dot
     (GraphExpectVerbOrDot, Dot) => emit_spo(model, GraphExpectSubject)
     // P4.2g：`Reset(All)` 同族（清四槽）
+    // @arm GraphExpectVerbOrDot+Rbrace
     (GraphExpectVerbOrDot, Rbrace) =>
       (
         {
@@ -474,21 +607,30 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         Continue,
       )
     // --- GraphExpectTildeEnd ---
+    // @arm GraphExpectTildeEnd+Iri
     (GraphExpectTildeEnd, Iri(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm GraphExpectTildeEnd+PrefName
     (GraphExpectTildeEnd, PrefName(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm GraphExpectTildeEnd+BlankNode
     (GraphExpectTildeEnd, BlankNode(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm GraphExpectTildeEnd+Dot
     (GraphExpectTildeEnd, Dot) => emit_spo(model, GraphExpectSubject)
+    // @arm GraphExpectTildeEnd+Semicolon
     (GraphExpectTildeEnd, Semicolon) =>
       emit_predobj(model, GraphExpectVerbOrEnd)
+    // @arm GraphExpectTildeEnd+Comma
     (GraphExpectTildeEnd, Comma) => emit_object(model, GraphExpectObject)
+    // @arm GraphExpectTildeEnd+AnnotStart
     (GraphExpectTildeEnd, AnnotStart) =>
       emit_predobj(model, GraphAnnotExpectVerb)
     // P4.2g：`Sequence([EmitQuad(SPO), ExitGraph])`（同 GraphExpectDotOrGraph 口径）
+    // @arm GraphExpectTildeEnd+Rbrace
     (GraphExpectTildeEnd, Rbrace) => {
       let (next, response) = emit_spo(model, ExpectSubject)
       ({ ..next, graph: None, }, response)
     }
     // --- GraphAnnotExpectVerb ---
+    // @arm GraphAnnotExpectVerb+Iri
     (GraphAnnotExpectVerb, Iri(r)) =>
       (
         {
@@ -501,6 +643,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm GraphAnnotExpectVerb+PrefName
     (GraphAnnotExpectVerb, PrefName(r)) =>
       (
         {
@@ -513,6 +656,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm GraphAnnotExpectVerb+KeywordA
     (GraphAnnotExpectVerb, KeywordA(r)) =>
       (
         {
@@ -525,9 +669,11 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm GraphAnnotExpectVerb+Semicolon
     (GraphAnnotExpectVerb, Semicolon) =>
       ({ ..model, state: GraphAnnotExpectVerbTail, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- GraphAnnotExpectVerbTail ---
+    // @arm GraphAnnotExpectVerbTail+Iri
     (GraphAnnotExpectVerbTail, Iri(r)) =>
       (
         {
@@ -540,6 +686,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm GraphAnnotExpectVerbTail+PrefName
     (GraphAnnotExpectVerbTail, PrefName(r)) =>
       (
         {
@@ -552,6 +699,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm GraphAnnotExpectVerbTail+KeywordA
     (GraphAnnotExpectVerbTail, KeywordA(r)) =>
       (
         {
@@ -564,69 +712,97 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         Continue,
       )
+    // @arm GraphAnnotExpectVerbTail+Semicolon
     (GraphAnnotExpectVerbTail, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm GraphAnnotExpectVerbTail+AnnotEnd
     (GraphAnnotExpectVerbTail, AnnotEnd) =>
       ({ ..model, state: GraphExpectVerbOrEnd, }, Continue)
     // --- GraphAnnotExpectObject ---
+    // @arm GraphAnnotExpectObject+Iri
     (GraphAnnotExpectObject, Iri(r)) =>
       (set_object(model, r, GraphAnnotExpectEnd), Continue)
+    // @arm GraphAnnotExpectObject+BlankNode
     (GraphAnnotExpectObject, BlankNode(r)) =>
       (set_object(model, r, GraphAnnotExpectEnd), Continue)
+    // @arm GraphAnnotExpectObject+Literal
     (GraphAnnotExpectObject, Literal(r)) =>
       (set_object(model, r, GraphAnnotExpectEnd), Continue)
+    // @arm GraphAnnotExpectObject+PrefName
     (GraphAnnotExpectObject, PrefName(r)) =>
       (set_object(model, r, GraphAnnotExpectEnd), Continue)
+    // @arm GraphAnnotExpectObject+TripleTerm
     (GraphAnnotExpectObject, TripleTerm(r)) =>
       (set_object(model, r, GraphAnnotExpectEnd), Continue)
+    // @arm GraphAnnotExpectObject+BracketTripleTerm
     (GraphAnnotExpectObject, BracketTripleTerm(r)) =>
       (set_object(model, r, GraphAnnotExpectEnd), Continue)
+    // @arm GraphAnnotExpectObject+Lbracket
     (GraphAnnotExpectObject, Lbracket(r)) =>
       (
         frame_push(model, r, GraphAnnotExpectEnd, false, BnpExpectPredicate),
         Continue,
       )
+    // @arm GraphAnnotExpectObject+Anon
     (GraphAnnotExpectObject, Anon(r)) =>
       (set_object(model, r, GraphAnnotExpectEnd), Continue)
     // --- GraphAnnotExpectEnd ---
+    // @arm GraphAnnotExpectEnd+Comma
     (GraphAnnotExpectEnd, Comma) => emit_object(model, GraphAnnotExpectObject)
+    // @arm GraphAnnotExpectEnd+Semicolon
     (GraphAnnotExpectEnd, Semicolon) =>
       emit_predobj(model, GraphAnnotExpectVerbTail)
+    // @arm GraphAnnotExpectEnd+AnnotEnd
     (GraphAnnotExpectEnd, AnnotEnd) => emit_predobj(model, GraphExpectVerbOrEnd)
     // --- BnpExpectPredicate ---
+    // @arm BnpExpectPredicate+Rbracket
     (BnpExpectPredicate, Rbracket) => (frame_pop(model), Continue)
+    // @arm BnpExpectPredicate+Iri
     (BnpExpectPredicate, Iri(r)) =>
       (set_predicate(model, r, BnpExpectObject), Continue)
+    // @arm BnpExpectPredicate+PrefName
     (BnpExpectPredicate, PrefName(r)) =>
       (set_predicate(model, r, BnpExpectObject), Continue)
+    // @arm BnpExpectPredicate+KeywordA
     (BnpExpectPredicate, KeywordA(r)) =>
       (set_predicate(model, r, BnpExpectObject), Continue)
     // --- BnpExpectObject ---
+    // @arm BnpExpectObject+Iri
     (BnpExpectObject, Iri(r)) =>
       (set_object(model, r, BnpAfterObject), Continue)
+    // @arm BnpExpectObject+BlankNode
     (BnpExpectObject, BlankNode(r)) =>
       (set_object(model, r, BnpAfterObject), Continue)
+    // @arm BnpExpectObject+Literal
     (BnpExpectObject, Literal(r)) =>
       (set_object(model, r, BnpAfterObject), Continue)
+    // @arm BnpExpectObject+PrefName
     (BnpExpectObject, PrefName(r)) =>
       (set_object(model, r, BnpAfterObject), Continue)
+    // @arm BnpExpectObject+TripleTerm
     (BnpExpectObject, TripleTerm(r)) =>
       (set_object(model, r, BnpAfterObject), Continue)
+    // @arm BnpExpectObject+BracketTripleTerm
     (BnpExpectObject, BracketTripleTerm(r)) =>
       (set_object(model, r, BnpAfterObject), Continue)
+    // @arm BnpExpectObject+Lbracket
     (BnpExpectObject, Lbracket(r)) =>
       (
         frame_push(model, r, BnpAfterObject, false, BnpExpectPredicate),
         Continue,
       )
+    // @arm BnpExpectObject+Lparen
     (BnpExpectObject, Lparen(r)) =>
       (
         frame_push(model, r, BnpAfterObject, false, ListExpectElemOrEnd),
         Continue,
       )
     // --- BnpAfterObject ---
+    // @arm BnpAfterObject+Comma
     (BnpAfterObject, Comma) => emit_object(model, BnpExpectObject)
+    // @arm BnpAfterObject+Semicolon
     (BnpAfterObject, Semicolon) => emit_predobj(model, BnpExpectPredicate)
     // P4.2g：`Sequence([EmitQuad(PredObj), PopBnp])` —— 发射之后**弹帧**（帧的 ret_state 兑现 state）
+    // @arm BnpAfterObject+Rbracket
     (BnpAfterObject, Rbracket) => {
       let (next, response) = emit_predobj(model, BnpAfterObject)
       (frame_pop(next), response)
@@ -635,6 +811,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // P4.2h ①：`list_first` 写 `ctx.object = Some(elem)`（引擎 `actions.mbt:231`）
     //（`ctx.subject = Some((open_span.0, 1))` 只在 `node_seq == 0` 时写，且 RefId 与 `frame_push`
     // 已写的 subject 相同 ⇒ 模型不写；写了会在 `ret_state` 回程（node_seq ≠ 0）上出错）
+    // @arm ListExpectElemOrEnd+Iri
     (ListExpectElemOrEnd, Iri(r)) =>
       emit_predobj(
         {
@@ -646,6 +823,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         ListAfterElem,
       )
+    // @arm ListExpectElemOrEnd+BlankNode
     (ListExpectElemOrEnd, BlankNode(r)) =>
       emit_predobj(
         {
@@ -657,6 +835,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         ListAfterElem,
       )
+    // @arm ListExpectElemOrEnd+Literal
     (ListExpectElemOrEnd, Literal(r)) =>
       emit_predobj(
         {
@@ -668,6 +847,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         ListAfterElem,
       )
+    // @arm ListExpectElemOrEnd+PrefName
     (ListExpectElemOrEnd, PrefName(r)) =>
       emit_predobj(
         {
@@ -679,6 +859,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         ListAfterElem,
       )
+    // @arm ListExpectElemOrEnd+TripleTerm
     (ListExpectElemOrEnd, TripleTerm(r)) =>
       emit_predobj(
         {
@@ -690,6 +871,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         ListAfterElem,
       )
+    // @arm ListExpectElemOrEnd+BracketTripleTerm
     (ListExpectElemOrEnd, BracketTripleTerm(r)) =>
       emit_predobj(
         {
@@ -701,6 +883,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         },
         ListAfterElem,
       )
+    // @arm ListExpectElemOrEnd+Anon
     (ListExpectElemOrEnd, Anon(r)) =>
       emit_predobj(
         {
@@ -714,6 +897,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       )
     // P4.2h 续：`list_first_nested` 的序列末段 `OpenSlot` ⇒ **压帧**（`as_subject=false`、
     // 不改状态）；`ret_state` 取该行 `action_args` 的 `state:ListAfterElem`（两种类型都同值）。
+    // @arm ListExpectElemOrEnd+Lbracket
     (ListExpectElemOrEnd, Lbracket(r)) => {
       let (next, response) = emit_predobj(
         {
@@ -727,6 +911,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       )
       (frame_push(next, r, ListAfterElem, false, next.state), response)
     }
+    // @arm ListExpectElemOrEnd+Lparen
     (ListExpectElemOrEnd, Lparen(r)) => {
       let (next, response) = emit_predobj(
         {
@@ -740,27 +925,37 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       )
       (frame_push(next, r, ListAfterElem, false, next.state), response)
     }
+    // @arm ListExpectElemOrEnd+Rparen
     (ListExpectElemOrEnd, Rparen) => (frame_pop(model), Continue)
     // --- ListAfterElem ---
     // P4.2h ②：`list_next`/`_nested` 写 `ctx.object = Some((open_span.0, node_seq+1))`（`:280`）
     // ⇒ RefId 空间 = 帧的 `open_span`；序列中段 `ListStep(elem)` 再写 subject(=open_span)/object(=elem)。
     // **尾意图的第二条 `EmitQuad` 只能等 ③（harness 返 Array[Response]）**——现行一步一响应对不上。
+    // @arm ListAfterElem+Iri
     (ListAfterElem, Iri(r)) => list_next_arm(model, r, ListAfterElem, false)
+    // @arm ListAfterElem+BlankNode
     (ListAfterElem, BlankNode(r)) =>
       list_next_arm(model, r, ListAfterElem, false)
+    // @arm ListAfterElem+Literal
     (ListAfterElem, Literal(r)) => list_next_arm(model, r, ListAfterElem, false)
+    // @arm ListAfterElem+PrefName
     (ListAfterElem, PrefName(r)) =>
       list_next_arm(model, r, ListAfterElem, false)
+    // @arm ListAfterElem+TripleTerm
     (ListAfterElem, TripleTerm(r)) =>
       list_next_arm(model, r, ListAfterElem, false)
+    // @arm ListAfterElem+BracketTripleTerm
     (ListAfterElem, BracketTripleTerm(r)) =>
       list_next_arm(model, r, ListAfterElem, false)
+    // @arm ListAfterElem+Lbracket
     (ListAfterElem, Lbracket(r)) =>
       list_next_arm(model, r, BnpExpectPredicate, true)
+    // @arm ListAfterElem+Lparen
     (ListAfterElem, Lparen(r)) =>
       list_next_arm(model, r, ListExpectElemOrEnd, true)
     // P4.2g + P4.2h：`list_nil` = `Sequence([EmitQuad(PredObj), PopBnp])`，且 `object = (open_span.0, 0)`
     // （`:331`；RefId 空间 = 帧的 `open_span`）⇒ 先写 object、发射、再弹帧。
+    // @arm ListAfterElem+Rparen
     (ListAfterElem, Rparen) => {
       let (next, response) = emit_predobj(
         { ..model, object: Some(frame_open_span(model)), },
