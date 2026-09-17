@@ -213,7 +213,7 @@ test "parse_unchecked: empty string" {
 
 ///|
 test "resolve: relative to absolute base" {
-  let base = Iri::default()
+  let base : Iri = Default::default()
   let data = "relative/path"
   let bytes = @utf8.encode(data)[:]
   let result = base.resolve(bytes[0:bytes.length()])

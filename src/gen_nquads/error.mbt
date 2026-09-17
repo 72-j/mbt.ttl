@@ -126,9 +126,10 @@ pub impl ErrOut for IriError with fn err_kind(self : IriError) -> String {
 
 ///|
 pub impl Show for IriError with fn output(self : IriError, logger : &Logger) -> Unit {
-  let msg = self.message()
+  // 显式限定：方法隐式提升已 deprecated（`moon test --deny-warn` 红）
+  let msg = ErrOut::message(self)
   let pos = self.position()
-  let err_kind = self.err_kind()
+  let err_kind = ErrOut::err_kind(self)
   if pos >= 0 {
     logger.write_string(err_kind)
     logger.write_string(" - ")

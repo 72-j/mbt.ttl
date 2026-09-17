@@ -53,23 +53,7 @@ test "trig quick machine: assert check（固定脚本）" {
   assert_eq(report.commands_run, 8)
 }
 
-// ===== 覆盖率门（可达命令名取自 [[transitions]]）=====
-
-///|
-/// @qcs 的覆盖判定是**逐用例**的（任一用例缺 required 命令名即 CoverageFailed），
-/// 故这里用**单条长用例**，而不是把要求挂到随机多用例上。
-/// 只列**转移表里有出边**的命令名：无转移命令（valid 表兜底拒绝）列进去必然失败。
-fn coverage_gate_config() -> @qcs.RunConfig {
-  {
-    ..quick_run_config(),
-    cases: 1,
-    max_commands: 200,
-    required_labels: ["resp:Continue", "resp:EmitQuad"],
-    // P4.3 ② **同源改造**：名单不再手抄，改由见证路径账派生
-    //（与 BFS 同一来源；`metrics.reachable_witness_paths()` = 边口径 `valid` + 初始状态）
-    required_command_names: reachable_witness_paths().map(fn(pair) { pair.0 }),
-  }
-}
+// ===== 覆盖率门（P4.3 路径驱动；名单同源取自见证路径账）=====
 
 ///|
 /// P4.3 **逐路径用例配置**：一条见证路径 = 一个用例，只扛**它自己那一个**命令名。
@@ -111,34 +95,10 @@ test "trig_quick_machine 覆盖率门（路径驱动，逐条独立复位）" {
   assert_eq(run_path_coverage_gate(), [])
 }
 
-///|
-/// 覆盖率门: 成功一次即可（覆盖要求由 config 判定）
-fn run_coverage_check() -> Result[
-  @qcs.RunReport[Command, Response, Command, Response],
-  @qcs.RunFailure[Model, Model, Command, Command, Response, Response],
-] {
-  @qcs.check(quick_state_machine(), config=coverage_gate_config())
-}
-// 覆盖率运行门：**前置条件已具备**（`run_command` 早已不是骨架 + 随机门全绿 ⇒ 门已有意义），
-// 但**当前开启即红**（2026-09-17 实测）：`coverage_gate_config` 要求**单条 200 步**用例覆盖
-// **全部 25 个可达命令名**，而 34 事件、深状态（注解/集合/指令）的随机可达性没有保证
-// ⇒ 缺名必然出现。这**不是**模型缺陷，是**覆盖率策略**问题（trig 生成面早已登记为 P4.3）。
-// P4.3 选项（动手前先拍）：① 拉长单例（200 → 上千步）；② 改多例分摊（qcs 判定是**逐用例**的，
-// 需换判定口径或把要求挂到每条用例各自的子集）；③ **路径驱动**（用 `metrics` 的 BFS 产出
-// “每个命令名一条最短可达路径”，拼成确定性脚本）——三条里 ③ 与本仓"账本化"风格最合。
-//
-// test "trig_quick_machine 覆盖率门" {
-//   match run_coverage_check() {
-//     Ok(report) => {
-//       let missing = @qcs.cover_command_names(
-//         report.command_distribution,
-//         coverage_gate_config().required_command_names,
-//       )
-//       assert_eq(missing, [])
-//     }
-//     Err(failure) => assert_true(false) // 缺失命令名: @qcs.format_failure(failure)
-//   }
-// }
+// 沿革（P2-5，2026-09-18 清理）：此处原有"单条 200 步覆盖 25 名"的旧覆盖门
+// （`coverage_gate_config` + `run_coverage_check` + 注释掉的 test）——已被上面的
+// **路径驱动门**（`run_path_coverage_gate`，一条见证路径一个用例）整体取代；
+// 死函数与陈旧注释一并删除，勿再复活（要复活请走"一条路径一个用例 + 名单同源派生"）。
 
 // ===== 随机属性测试 =====
 

@@ -405,7 +405,7 @@ fn witnesses_with_bound(
 }
 
 ///|
-/// 该命令名在**任意状态**上是否有出边（= "可达命令名"的口径，与 `coverage_gate_config` 同源）
+/// 该命令名在**任意状态**上是否有出边（= "可达命令名"的口径，与 `reachable_witness_paths()` 同源）
 fn transition_expectation_is_anywhere(name : String) -> Bool {
   let mut hit = false
   for command in all_commands() {
@@ -432,7 +432,7 @@ fn transition_expectation_is_anywhere(name : String) -> Bool {
 ///       模型不再吸收 ⇒ 该钉子**升级为正向断言**（`ListAfterElem` 可达）。
 ///   - graph 槽恒空：trig 的模型映射没有 set_graph（图上下文走 GraphKw 块状态机，
 ///     引擎发射的 graph=Some 模型看不见——P4.2d 已知边界，非缺陷，钉成事实）。
-///   - 可达命令名恰 25 个（与 runner.coverage_gate_config 的要求表同口径）；
+///   - 可达命令名恰 25 个（与 runner 的见证路径门（`run_path_coverage_gate`）同口径）；
 ///     不可达 9 个（valid 无臂 ⇒ 生成器永不产出）。
 test "指标·结构钉子: 可达 36 / 无死态（ExpectVerbRequired、ListAfterElem 皆可达）/ graph 可达 / 命令名 25+9" {
   let (seen, state_models, names) = explore()

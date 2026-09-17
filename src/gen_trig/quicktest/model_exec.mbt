@@ -1072,12 +1072,12 @@ fn list_next_arm(
   let second = take_quad(next1)
   // 非嵌套行序列里**没有** `OpenSlot`（引擎 `list_next` 三意图）⇒ 不压帧；
   // 嵌套行（`list_next_nested` 四意图）才有末段压帧。2026-09-17 实测纠错。
-  let final = if nested {
+  let last = if nested {
     frame_push(next1, r, ListAfterElem, false, next1.state)
   } else {
     next1
   }
-  (final, Batch([response, EmitQuad(second)]))
+  (last, Batch([response, EmitQuad(second)]))
 }
 
 ///|

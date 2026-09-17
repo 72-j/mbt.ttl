@@ -94,7 +94,7 @@ fn command_to_event(command : Command) -> @trig.TrigEvent {
 
 ///|
 /// System：被测系统（probe 持有引擎 ctx + 真 Actions + 真 interpret，跨命令保持）
-struct System {
+priv struct System {
   probe : @trig.TrigProbe
 }
 

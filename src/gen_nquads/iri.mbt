@@ -43,14 +43,14 @@ struct IriSpan {
 pub fn parse(view : BytesView) -> Result[Iri, ParseError] {
   match parse_iri(view, 0) {
     Ok(span) => Ok(span.build(view))
-    Err(e) => Err(ParseError::IriErr(e.message()))
+    Err(e) => Err(ParseError::IriErr(ErrOut::message(e)))
   }
 }
 
 ///|
 /// 解析 IRI，忽略错误
 fn parse_unchecked(view : BytesView) -> Iri {
-  let span = IriSpan::default()
+  let span : IriSpan = Default::default()
   span.pos = 0
   span.parse_scheme(view)
   span.parse_authority(view)
@@ -427,7 +427,7 @@ fn IriSpan::parse_fragment(self : IriSpan, data : BytesView) -> Unit {
 ///|
 /// 主解析函数
 fn parse_iri(data : BytesView, start : Int) -> Result[IriSpan, ParseError] {
-  let span = IriSpan::default()
+  let span : IriSpan = Default::default()
   span.pos = start
   let len = data.length()
 
