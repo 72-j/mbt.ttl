@@ -1,12 +1,15 @@
 # 覆盖率基线（ratchet：CI 只许 ≥ 本值，不许倒退）
 #
 # 度量口径（CI static 作业同款，固定顺序保证可复现）：
-#   moon coverage clean && moon test --enable-coverage && moon coverage report -f summary | tail -1
+#   moon clean && moon coverage clean && moon test --enable-coverage && moon coverage report -f summary | tail -1
+#   （`moon clean` 不可省：源码改动后 _build 里会留下**旧插桩产物**，
+#     与新产物混跑会写出对不上的 trace ⇒ 报告直接 `Counts array length mismatch`
+#     甚至 `Invalid_argument("index out of bounds")`。2026-09-18 实测踩过。）
 #
 # 纪律：基线是**记账**不是目标——补测试把线推上去后，同笔更新本文件（并在本仓 todo.md §I 记一笔）；
 # 要下调必须写明理由（例如删了一整块被测代码 / 覆盖率统计口径变化）。
 #
-# 2026-09-18 首次立基（役 1 之后补测试一轮：68.0% → 82.3%）
-covered_permille = 823
-covered_lines = 7591
-total_lines = 9223
+# 2026-09-18 立基（役 1 后补测试：68% → 82.3%）；同日第二批役（役 2/3/4/5/6/14）后推高到 83.2%
+covered_permille = 832
+covered_lines = 7770
+total_lines = 9337

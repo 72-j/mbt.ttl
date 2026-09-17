@@ -72,7 +72,9 @@ jobs:
       - name: Coverage gate (ratchet)
         run: |
           # 覆盖率棘轮：只许 ≥ 基线（coverage-baseline.txt），不许倒退。
-          # 口径固定：clean → 带插桩跑一遍 → summary 末行（保证可复现，实测两次同为 7591/9223）。
+          # 口径固定（见 coverage-baseline.txt）：moon clean → coverage clean → 带插桩跑一遍 → summary 末行。
+          # `moon clean` 不可省：源码改动后 _build 里的旧插桩产物会与新产物混跑 ⇒ trace 对不上直接报错。
+          moon clean
           moon coverage clean
           moon test --enable-coverage
           summary="$(moon coverage report -f summary | tail -n 1)"
@@ -94,6 +96,26 @@ jobs:
           if [ "$permille" -gt "$baseline" ]; then
             echo "::notice::覆盖率高于基线（${permille}‰ > ${baseline}‰）——请同笔把 coverage-baseline.txt 推上去"
           fi
+
+      - name: "Default arms bookkeeping (TODO(P0) 计数门)"
+        run: |
+          # 默认臂 = "未识别 action/event" 的**保守臂**：能跑、但响应正确性没有判据（默认臂≠已验证）。
+          # 纪律（评审 P1-4）：数量变化必须同笔说明——否则模型可能悄悄退化成 90% 保守臂而门全绿。
+          # 名单侧另有 gen_trig/quicktest/metrics.mbt 的 default_arms()（30 条逐条断言合法+保守档），
+          # 两处一起才防得住"多一条保守臂"。
+          check_default_arms() {
+            local path="$1"
+            local expected="$2"
+            local actual
+            actual="$(grep -c 'TODO(P0):' "$path" || true)"
+            echo "$path: TODO(P0): = $actual（期望 $expected）"
+            if [ "$actual" -ne "$expected" ]; then
+              echo "::error::默认臂数量变化：$path 实得 $actual，期望 $expected——默认臂≠已验证，增减必须同笔说明并更新本门"
+              return 1
+            fi
+          }
+          check_default_arms src/gen_trig/quicktest/model_exec.mbt 30
+          check_default_arms src/gen_n3v2/quicktest/model_exec.mbt 47
 
   test:
     name: Test (${{ matrix.os }})
