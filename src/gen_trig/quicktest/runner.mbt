@@ -298,3 +298,65 @@ test "trig quick machine: random check（模型 ≡ 引擎）" {
       )
   }
 }
+
+///|
+/// **多种子随机门**（役 3，2026-09-18）：照 nquads 模板（`gen_nquads/quicktest/runner.mbt:248-265`）
+/// ——主门只跑默认 `seed = 12345`，给的是"这一条轨迹上的等价"；本门补"探索面上的等价"。
+/// 判据与主门同规（不放宽）：种子只改探索路径，不改判定。
+test "trig quick machine random check: 多种子稳定（1 / 2026）" {
+  for seed in [1UL, 2026UL] {
+    let config : @qcs.RunConfig = { ..quick_run_config(), seed, }
+    match run_random_check(config~) {
+      Ok(report) => assert_eq(report.cases_run, config.cases)
+      Err(failure) =>
+        fail(
+          "seed \{seed} random check failed: \{@qcs.format_failure(failure)}",
+        )
+    }
+  }
+}
+
+///|
+/// **反例索引 → 固定脚本**（役 4，2026-09-18）：`seed = 12345 / cases = 100 / shrink = true`
+/// 的 shrink 输出（16 步），逐项照抄自上方 P4.2h ③ 4b 的复现配方。
+///
+/// 为什么要有它：当年这条输入连续揭出 list 族三处分道（压帧多一帧 / 多发射快照序 / 尾意图被丢），
+/// 但修完之后反例只活在**注释**里——模型一改，注释就变成历史故事。本测试把它变成**可执行输入**：
+/// 逐步「模型预测 ⟷ 引擎响应」等值（含批内顺序）；另有 0-based step 14/15 的批形钉子。
+/// 边界写明：它钉的是**当年那条 bug 的输入**，不是"最小反例"；shrink 输出将来若再变，
+/// 以本测试为准，注释降格为出处。
+test "trig quick machine: shrink 反例固定脚本（16 步，逐 step 等值）" {
+  let script : Array[Command] = [
+    BlankNode(Concrete({ id: 0, })),
+    Iri(Concrete({ id: 0, })),
+    TripleTerm(Concrete({ id: 0, })),
+    AnnotStart,
+    Iri(Concrete({ id: 0, })),
+    Anon(Concrete({ id: 0, })),
+    AnnotEnd,
+    PrefName(Concrete({ id: 0, })),
+    BlankNode(Concrete({ id: 0, })),
+    Dot,
+    BlankNode(Concrete({ id: 0, })),
+    PrefName(Concrete({ id: 7, })),
+    Lparen(Concrete({ id: 4, })),
+    Iri(Concrete({ id: 5, })),
+    PrefName(Concrete({ id: 2, })),
+    PrefName(Concrete({ id: 7, })),
+  ]
+  assert_eq(script.length(), 16)
+  // 独立起跑（干净复位）：新 probe + 新模型，不借用其它用例状态
+  let system = system_init()
+  let mut model = model_empty()
+  for index = 0; index < script.length(); index = index + 1 {
+    let command = script[index]
+    let (next_model, expected) = model_execute(model, command)
+    let actual = run_command(command, system)
+    assert_eq(actual, expected)
+    // 批形钉子（0-based step 14/15 = 列表内层连续两枚 PrefName）：两侧都出有序批
+    if index >= 14 {
+      assert_true(actual is Batch(_))
+    }
+    model = next_model
+  }
+}
