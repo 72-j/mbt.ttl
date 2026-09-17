@@ -103,7 +103,17 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectVerbOrEnd, KeywordA(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
     (ExpectVerbOrEnd, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
-    (ExpectVerbOrEnd, Dot) => ({ ..model, state: ExpectSubject, }, Continue)
+    (ExpectVerbOrEnd, Dot) =>
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+        },
+        Continue,
+      )
     // --- ExpectVerbRequired ---
     (ExpectVerbRequired, Iri(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
@@ -404,7 +414,12 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       ({ ..model, state: GraphExpectTildeEnd, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (GraphExpectDotOrGraph, AnnotStart) =>
       emit_predobj(model, GraphAnnotExpectVerb)
-    (GraphExpectDotOrGraph, Rbrace) => emit_spo(model, ExpectSubject)
+    // P4.2g：`Sequence([EmitQuad(SPO), ExitGraph])` —— 尾意图 ExitGraph 要在**发射之后**兑现
+    // （引擎 `on_exit_graph` → `exit_graph` = `graph: None`；顺序不能颠倒，否则快照带错图名）
+    (GraphExpectDotOrGraph, Rbrace) => {
+      let (next, response) = emit_spo(model, ExpectSubject)
+      ({ ..next, graph: None, }, response)
+    }
     // --- GraphExpectVerbOrEnd ---
     (GraphExpectVerbOrEnd, Iri(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
@@ -414,9 +429,29 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_predicate(model, r, GraphExpectObject), Continue)
     (GraphExpectVerbOrEnd, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (GraphExpectVerbOrEnd, Dot) =>
-      ({ ..model, state: GraphExpectSubject, }, Continue)
+      (
+        {
+          ..model,
+          state: GraphExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+        },
+        Continue,
+      )
+    // P4.2g：`Reset(All)` —— 引擎 `ctx.reset(All)` 清四槽（此前模型一个没清）
     (GraphExpectVerbOrEnd, Rbrace) =>
-      ({ ..model, state: ExpectSubject, }, Continue)
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+          graph: None,
+        },
+        Continue,
+      )
     // --- GraphExpectVerbOrDot ---
     (GraphExpectVerbOrDot, Iri(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
@@ -425,8 +460,19 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (GraphExpectVerbOrDot, KeywordA(r)) =>
       (set_predicate(model, r, GraphExpectObject), Continue)
     (GraphExpectVerbOrDot, Dot) => emit_spo(model, GraphExpectSubject)
+    // P4.2g：`Reset(All)` 同族（清四槽）
     (GraphExpectVerbOrDot, Rbrace) =>
-      ({ ..model, state: ExpectSubject, }, Continue)
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+          graph: None,
+        },
+        Continue,
+      )
     // --- GraphExpectTildeEnd ---
     (GraphExpectTildeEnd, Iri(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     (GraphExpectTildeEnd, PrefName(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -437,7 +483,11 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (GraphExpectTildeEnd, Comma) => emit_object(model, GraphExpectObject)
     (GraphExpectTildeEnd, AnnotStart) =>
       emit_predobj(model, GraphAnnotExpectVerb)
-    (GraphExpectTildeEnd, Rbrace) => emit_spo(model, ExpectSubject)
+    // P4.2g：`Sequence([EmitQuad(SPO), ExitGraph])`（同 GraphExpectDotOrGraph 口径）
+    (GraphExpectTildeEnd, Rbrace) => {
+      let (next, response) = emit_spo(model, ExpectSubject)
+      ({ ..next, graph: None, }, response)
+    }
     // --- GraphAnnotExpectVerb ---
     (GraphAnnotExpectVerb, Iri(r)) =>
       (
@@ -576,7 +626,11 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // --- BnpAfterObject ---
     (BnpAfterObject, Comma) => emit_object(model, BnpExpectObject)
     (BnpAfterObject, Semicolon) => emit_predobj(model, BnpExpectPredicate)
-    (BnpAfterObject, Rbracket) => emit_predobj(model, BnpAfterObject)
+    // P4.2g：`Sequence([EmitQuad(PredObj), PopBnp])` —— 发射之后**弹帧**（帧的 ret_state 兑现 state）
+    (BnpAfterObject, Rbracket) => {
+      let (next, response) = emit_predobj(model, BnpAfterObject)
+      (frame_pop(next), response)
+    }
     // --- ListExpectElemOrEnd ---
     (ListExpectElemOrEnd, Iri(_)) => emit_predobj(model, ListAfterElem)
     (ListExpectElemOrEnd, BlankNode(_)) => emit_predobj(model, ListAfterElem)
@@ -599,7 +653,11 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ListAfterElem, BracketTripleTerm(_)) => emit_predobj(model, ListAfterElem)
     (ListAfterElem, Lbracket(_)) => emit_predobj(model, BnpExpectPredicate)
     (ListAfterElem, Lparen(_)) => emit_predobj(model, ListExpectElemOrEnd)
-    (ListAfterElem, Rparen) => emit_predobj(model, ListAfterElem)
+    // P4.2g：`Sequence([EmitQuad(PredObj), PopBnp])`（list 收口，同 BnpAfterObject 口径）
+    (ListAfterElem, Rparen) => {
+      let (next, response) = emit_predobj(model, ListAfterElem)
+      (frame_pop(next), response)
+    }
     // 兜底: 非法转移（valid 已过滤, 防御性保留）
     (_, _) => (model, Error(0))
   }

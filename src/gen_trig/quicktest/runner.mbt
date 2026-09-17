@@ -201,6 +201,25 @@ fn run_random_check(
 //     同族旁证：`Reset(All)` 两行（`GraphExpectVerbOrEnd/VOrDot + Rbrace`）现在生成
 //     `({ ..model, state: ExpectSubject, }, Continue)` —— 槽位一个没清，与引擎不符。
 //
+// P4.2g 落地后复开本门（2026-09-17）—— **漂移再推一层**（A 与 P4.2g 的目标都已达成）：
+//   · **step 12/15 都不再分道** ✓：`Sequence` 尾意图（`ExitGraph`）与 `Reset(<Scope>)` 已入模型
+//     （8 条臂：`Reset(SPO)`×2、`Reset(All)`×2、`Sequence([EmitQuad(SPO), ExitGraph])`×2、
+//      `Sequence([EmitQuad(PredObj), PopBnp])`×2）。
+//   · **新证据 = step 5**（shrink 后 6 步反例）：
+//     `PrefName PrefName TripleTerm Dot Lparen(7) BracketTripleTerm(4)`
+//     引擎在 `ListExpectElemOrEnd` 上收 `BracketTripleTerm` ⇒ `list_first` 写
+//     `ctx.subject = (open_span.0, 1)`、`ctx.object = Some(elem)` ⇒ 发
+//     `EmitQuad{subject: Some(7), predicate: None, object: Some(4), graph: None}`；
+//     模型臂 `emit_predobj(model, ListAfterElem)` 里 `object` 恒空（`[actions].list_first` 未声明 writes）
+//     ⇒ 预测 `{Some(7), None, None}`。
+//   · 根因 = **list 族的写槽**（引擎 `actions.mbt:231` `list_first` / `:280` `list_next`）：
+//     ① 数据缺口：`list_first`/`list_first_nested` 缺 `writes = ["object=arg0"]`（**纯数据即可修**）；
+//     ② 新值来源：`list_step`/`list_next` 写的是**合成 span** `(open_span.0, node_seq±1)`，
+//        RefId 空间里等于 `frame.open_span` ⇒ 写槽词表需要新来源 `frame.open_span`；
+//     ③ 多发射：`list_next` = `Sequence([EmitQuad, ListStep, EmitQuad, OpenSlot])` —— 一步**两次发射**，
+//        引擎经 `emit_queue` 逐条回吐（`probe.mbt` 队列优先排空，**一个命令可能对不上一个响应**）
+//        ⇒ 模型需要队列或换档口径，属**需要你拍板的架构项**（不是机械改）。
+//
 // test "trig quick machine: random check（模型 ≡ 引擎）" {
 //   match run_random_check() {
 //     Ok(report) => assert_eq(report.cases_run, 100)
