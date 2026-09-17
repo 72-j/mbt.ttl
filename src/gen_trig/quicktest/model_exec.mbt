@@ -632,30 +632,135 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (frame_pop(next), response)
     }
     // --- ListExpectElemOrEnd ---
-    (ListExpectElemOrEnd, Iri(_)) => emit_predobj(model, ListAfterElem)
-    (ListExpectElemOrEnd, BlankNode(_)) => emit_predobj(model, ListAfterElem)
-    (ListExpectElemOrEnd, Literal(_)) => emit_predobj(model, ListAfterElem)
-    (ListExpectElemOrEnd, PrefName(_)) => emit_predobj(model, ListAfterElem)
-    (ListExpectElemOrEnd, TripleTerm(_)) => emit_predobj(model, ListAfterElem)
-    (ListExpectElemOrEnd, BracketTripleTerm(_)) =>
-      emit_predobj(model, ListAfterElem)
-    (ListExpectElemOrEnd, Anon(_)) => emit_predobj(model, ListAfterElem)
-    (ListExpectElemOrEnd, Lbracket(_)) =>
-      emit_predobj(model, BnpExpectPredicate)
-    (ListExpectElemOrEnd, Lparen(_)) => emit_predobj(model, ListExpectElemOrEnd)
+    // P4.2h ①：`list_first` 写 `ctx.object = Some(elem)`（引擎 `actions.mbt:231`）
+    //（`ctx.subject = Some((open_span.0, 1))` 只在 `node_seq == 0` 时写，且 RefId 与 `frame_push`
+    // 已写的 subject 相同 ⇒ 模型不写；写了会在 `ret_state` 回程（node_seq ≠ 0）上出错）
+    (ListExpectElemOrEnd, Iri(r)) =>
+      emit_predobj(
+        {
+          ..model,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+        },
+        ListAfterElem,
+      )
+    (ListExpectElemOrEnd, BlankNode(r)) =>
+      emit_predobj(
+        {
+          ..model,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+        },
+        ListAfterElem,
+      )
+    (ListExpectElemOrEnd, Literal(r)) =>
+      emit_predobj(
+        {
+          ..model,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+        },
+        ListAfterElem,
+      )
+    (ListExpectElemOrEnd, PrefName(r)) =>
+      emit_predobj(
+        {
+          ..model,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+        },
+        ListAfterElem,
+      )
+    (ListExpectElemOrEnd, TripleTerm(r)) =>
+      emit_predobj(
+        {
+          ..model,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+        },
+        ListAfterElem,
+      )
+    (ListExpectElemOrEnd, BracketTripleTerm(r)) =>
+      emit_predobj(
+        {
+          ..model,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+        },
+        ListAfterElem,
+      )
+    (ListExpectElemOrEnd, Anon(r)) =>
+      emit_predobj(
+        {
+          ..model,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+        },
+        ListAfterElem,
+      )
+    // P4.2h 续：`list_first_nested` 的序列末段 `OpenSlot` ⇒ **压帧**（`as_subject=false`、
+    // 不改状态）；`ret_state` 取该行 `action_args` 的 `state:ListAfterElem`（两种类型都同值）。
+    (ListExpectElemOrEnd, Lbracket(r)) => {
+      let (next, response) = emit_predobj(
+        {
+          ..model,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+        },
+        BnpExpectPredicate,
+      )
+      (frame_push(next, r, ListAfterElem, false, next.state), response)
+    }
+    (ListExpectElemOrEnd, Lparen(r)) => {
+      let (next, response) = emit_predobj(
+        {
+          ..model,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+        },
+        ListExpectElemOrEnd,
+      )
+      (frame_push(next, r, ListAfterElem, false, next.state), response)
+    }
     (ListExpectElemOrEnd, Rparen) => (frame_pop(model), Continue)
     // --- ListAfterElem ---
-    (ListAfterElem, Iri(_)) => emit_predobj(model, ListAfterElem)
-    (ListAfterElem, BlankNode(_)) => emit_predobj(model, ListAfterElem)
-    (ListAfterElem, Literal(_)) => emit_predobj(model, ListAfterElem)
-    (ListAfterElem, PrefName(_)) => emit_predobj(model, ListAfterElem)
-    (ListAfterElem, TripleTerm(_)) => emit_predobj(model, ListAfterElem)
-    (ListAfterElem, BracketTripleTerm(_)) => emit_predobj(model, ListAfterElem)
-    (ListAfterElem, Lbracket(_)) => emit_predobj(model, BnpExpectPredicate)
-    (ListAfterElem, Lparen(_)) => emit_predobj(model, ListExpectElemOrEnd)
-    // P4.2g：`Sequence([EmitQuad(PredObj), PopBnp])`（list 收口，同 BnpAfterObject 口径）
+    // P4.2h ②：`list_next`/`_nested` 写 `ctx.object = Some((open_span.0, node_seq+1))`（`:280`）
+    // ⇒ RefId 空间 = 帧的 `open_span`；序列中段 `ListStep(elem)` 再写 subject(=open_span)/object(=elem)。
+    // **尾意图的第二条 `EmitQuad` 只能等 ③（harness 返 Array[Response]）**——现行一步一响应对不上。
+    (ListAfterElem, Iri(r)) => list_next_arm(model, r, ListAfterElem)
+    (ListAfterElem, BlankNode(r)) => list_next_arm(model, r, ListAfterElem)
+    (ListAfterElem, Literal(r)) => list_next_arm(model, r, ListAfterElem)
+    (ListAfterElem, PrefName(r)) => list_next_arm(model, r, ListAfterElem)
+    (ListAfterElem, TripleTerm(r)) => list_next_arm(model, r, ListAfterElem)
+    (ListAfterElem, BracketTripleTerm(r)) =>
+      list_next_arm(model, r, ListAfterElem)
+    (ListAfterElem, Lbracket(r)) => list_next_arm(model, r, BnpExpectPredicate) // TODO(P0): 尾意图 EmitQuad/OpenSlot 待 ③
+    (ListAfterElem, Lparen(r)) => list_next_arm(model, r, ListExpectElemOrEnd) // TODO(P0): 尾意图 EmitQuad/OpenSlot 待 ③
+    // P4.2g + P4.2h：`list_nil` = `Sequence([EmitQuad(PredObj), PopBnp])`，且 `object = (open_span.0, 0)`
+    // （`:331`；RefId 空间 = 帧的 `open_span`）⇒ 先写 object、发射、再弹帧。
     (ListAfterElem, Rparen) => {
-      let (next, response) = emit_predobj(model, ListAfterElem)
+      let (next, response) = emit_predobj(
+        { ..model, object: Some(frame_open_span(model)), },
+        ListAfterElem,
+      )
       (frame_pop(next), response)
     }
     // 兜底: 非法转移（valid 已过滤, 防御性保留）
@@ -724,6 +829,39 @@ fn emit_spo(model : Model, to : ModelState) -> (Model, Response) {
     { ..model, state: to, subject: None, predicate: None, object: None, },
     EmitQuad(quad),
   )
+}
+
+///|
+/// 帧栈顶 `open_span` 的 RefId（P4.2h）：list 族的**合成节点** `(open_span.0, k)`
+/// 在 RefId 空间里就等于它（`RefId = span.0`）⇒ 模型不必建链、不必记序号。
+/// 空栈兜底 = 哨兵 `RefId(0)`（与 `frame_push` 的符号期哨兵同口径）。
+fn frame_open_span(model : Model) -> RefId {
+  match model.frames.length() {
+    0 => { id: 0, }
+    _ => model.frames[model.frames.length() - 1].open_span
+  }
+}
+
+///|
+/// `list_next` / `list_next_nested` 的模型臂（P4.2h ②）：先写 `object = 帧 open_span`（合成节点），
+/// 发射第一枚快照，再兑现序列中段 `ListStep(elem)`（subject = open_span、object = elem）。
+/// **尾部的第二枚 EmitQuad / OpenSlot 待 ③**（harness 返 `Array[Response]`）——现行一步一响应
+/// 表达不了"一步两发射"，故这里只复刻到第一条发射为止（漂移已被 ③ 立项钉住）。
+fn list_next_arm(
+  model : Model,
+  r : @qcs.Ref[RefId],
+  to : ModelState,
+) -> (Model, Response) {
+  let open = frame_open_span(model)
+  let (next, response) = emit_predobj({ ..model, object: Some(open), }, to)
+  let elem = match ref_id(r) {
+    Some(id) => Some(id)
+    None => next.object
+  }
+  let next1 = { ..next, subject: Some(open), object: elem, }
+  // 序列末段 `OpenSlot`（P4.2h 续）：按 `SlotType` 压帧——引擎 `open_slot` 两分支都硬传
+  // `as_subject = false`；**不改状态**（状态早由转移表 `to=` 定 ⇒ 传 `next1.state`）。
+  (frame_push(next1, r, ListAfterElem, false, next1.state), response)
 }
 
 ///|

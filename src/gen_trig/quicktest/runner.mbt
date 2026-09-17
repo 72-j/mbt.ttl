@@ -220,6 +220,32 @@ fn run_random_check(
 //        引擎经 `emit_queue` 逐条回吐（`probe.mbt` 队列优先排空，**一个命令可能对不上一个响应**）
 //        ⇒ 模型需要队列或换档口径，属**需要你拍板的架构项**（不是机械改）。
 //
+// P4.2h ①②落地后复开本门（2026-09-17）—— **漂移再推一层**：
+//   · **step 5 不再分道** ✓（①：`list_first` 写 `object=elem`）；
+//   · **新证据 = step 8 `Comma`**：反例（shrink 后 9 步）
+//     `PrefName PrefName TripleTerm Dot Lparen(7) Lbracket(0) PrefName(3) BracketTripleTerm(4) Comma`
+//     —— 引擎快照 `subject: Some(0)`，模型 `subject: Some(7)`。
+//     根因 = **`OpenSlot` 尾意图未建模**：step 5 `Lbracket(0)` 的
+//     `list_first_nested` = `Sequence([EmitQuad(PredObj), OpenSlot(elem, typ, ret_state)])`，
+//     引擎的 `on_open_slot` → `open_slot`（`actions.mbt:201`）按 `typ` 分派到
+//     `open_bnode_prop`/`open_collection(ctx, open_span=elem, as_subject=false, ret_state)`
+//     ⇒ **压一帧 + `subject = Some(elem)`（=0）**；模型没建模 ⇒ subject 停在集合帧的 7。
+//   · 下一步（P4.2h 续）：`OpenSlot` 尾意图 = **帧压栈**（复用 `[effects]` 的 `frame = "push"` +
+//     现有 `frame_args` 取 `ret_state`；`as_subject=false` 因 `SlotType::*` 分支硬传 false），
+//     另需 `[effects].OpenSlot` 的 writes（`subject=arg0`、`predicate=none`）——
+//     与行级 `open_bnode_prop` 同机械，**不需要多发射**（序列里只有一枚 EmitQuad）。
+//   · 仍待 ③ 的是 `list_next` 族的**第二枚 EmitQuad**（`Sequence([EmitQuad, ListStep, EmitQuad, OpenSlot])`）：
+//     harness 返 `Array[Response]` 的前提已证（见 `probe.mbt` 的回吐顺序钉子）。
+//
+// P4.2h step 3（`OpenSlot` 尾意图 = 压帧）落地后复开本门（2026-09-17）—— **漂移再推一层**：
+//   · **step 8 不再分道** ✓（`OpenSlot` 已按 `open_slot` 口径压帧：`as_subject=false`、不改状态）；
+//   · **新证据 = step 15 `PrefName(7)`**：引擎回吐 `EmitQuad{subject: Some(4), predicate: None,
+//     object: Some(2)}`（= `list_next` 序列的**第二枚**：`ListStep` 后的 subject=open_span(4)/object=elem(2)），
+//     而模型该步给出的是**本命令自己的**第一枚 ⇒ 分道根因 = **一步两发射的错位**
+//     （probe 队列优先排空 ⇒ 上一命令的余量顶掉了本命令的响应）。
+//   · ⇒ 只剩 **③ harness 返 `Array[Response]`**：前提已证（`probe.mbt` 回吐顺序钉子：入队即快照 + FIFO
+//     ⇒ 顺序确定），且必须一并消掉"排空吞入参事件"的差异；**模型不背队列**（模型直接返回有序列表）。
+//
 // test "trig quick machine: random check（模型 ≡ 引擎）" {
 //   match run_random_check() {
 //     Ok(report) => assert_eq(report.cases_run, 100)
