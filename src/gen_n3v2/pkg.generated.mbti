@@ -10,6 +10,11 @@ import {
 // Errors
 
 // Types and methods
+pub(all) enum N3ActionError {
+  UnexpectedEvent(N3State, N3Event)
+  BusinessFailed(String)
+}
+
 type N3ActionsImpl
 
 pub(all) enum N3Dialect {
@@ -107,6 +112,19 @@ pub(all) struct N3PendingQuad {
   subj_shell : Bool
 } derive(Eq)
 
+pub struct N3Probe {
+  // private fields
+}
+pub fn N3Probe::new() -> Self
+pub fn N3Probe::step_all(Self, N3Event) -> Array[N3ProbeResponse]
+
+pub(all) enum N3ProbeResponse {
+  Continue
+  EmitQuad(N3PendingQuad)
+  Done
+  Failed(N3ActionError)
+}
+
 pub struct N3Serializer {
 }
 pub fn N3Serializer::new() -> Self
@@ -123,6 +141,64 @@ pub fn[L] N3SliceParser::new(N3Engine[L], ArrayView[Byte], lenient? : Bool) -> S
 pub fn[L : LexerSource] N3SliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
 pub fn[L : LexerSource] N3SliceParser::parse_next(Self[L]) -> Result[QuadSpan, @gen_nquads.ParseError]?
 pub fn[L] N3SliceParser::prefixes(Self[L]) -> Array[((Int, Int), (Int, Int))]
+
+pub(all) enum N3State {
+  N3ExpectSubject
+  N3ExpectPredicate
+  N3ExpectObject
+  N3ExpectDotOrGraph
+  N3ExpectDirectiveKind
+  N3ExpectPrefixName
+  N3ExpectPrefixIri
+  N3ExpectBaseIri
+  N3ExpectVersionLiteral
+  N3ExpectDirectiveEnd
+  N3ExpectKeywordsList
+  N3ExpectVerbOrEnd
+  N3ExpectVerbOrDot
+  N3ExpectVerbRequired
+  N3ExpectTildeEnd
+  N3AnnotExpectVerb
+  N3AnnotExpectVerbTail
+  N3AnnotExpectObject
+  N3AnnotExpectEnd
+  N3BnpExpectPredicate
+  N3BnpExpectIdNode
+  N3BnpExpectObject
+  N3BnpAfterObject
+  N3BnpIdAfterClose
+  N3ListExpectElemOrEnd
+  N3ListAfterElem
+  N3FormulaExpectSubject
+  N3FormulaExpectPredicate
+  N3FormulaExpectObject
+  N3FormulaAfterObject
+  N3PathExpectVerb
+  N3PathAfterStep
+  N3FormulaPathExpectVerb
+  N3FormulaPathAfterStep
+  N3ExpectIsProp
+  N3ExpectIsOf
+  N3BnpExpectIsProp
+  N3BnpExpectIsOf
+  N3FormulaExpectIsProp
+  N3FormulaExpectIsOf
+  N3QuantExpectVar
+  N3QuantExpectVarOrDot
+  N3FormulaDirectiveKind
+  N3FormulaQuantExpectVar
+  N3FormulaQuantExpectVarOrDot
+  N3SubjTrailExpectVerb
+  N3SubjTrailAfterStep
+  N3SubjTrailVerbDone
+  N3SubjTrailExpectVerbFormula
+  N3SubjTrailAfterStepFormula
+  N3SubjTrailVerbDoneFormula
+  N3ListPathExpectVerb
+  N3ListPathAfterStep
+  N3ObjTrailExpectVerb
+  N3ObjTrailAfterStep
+}
 
 pub(all) enum PredKind {
   Normal

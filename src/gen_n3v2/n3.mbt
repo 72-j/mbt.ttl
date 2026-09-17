@@ -63,7 +63,7 @@ pub(all) enum N3Event {
 }
 
 ///|
-priv enum N3State {
+pub(all) enum N3State {
   N3ExpectSubject
   N3ExpectPredicate
   N3ExpectObject
@@ -288,7 +288,8 @@ priv trait N3Supervisor {
 
 ///|
 /// Action 执行或状态转移阶段的错误
-priv enum N3ActionError {
+/// pub(all)：probe 响应 Failed 载荷跨包可见（quicktest P5.2；与 trig TrigActionError 同形）
+pub(all) enum N3ActionError {
   UnexpectedEvent(N3State, N3Event) // 状态机引擎抛出：当前状态未定义该事件的转移
   BusinessFailed(String) // 用户业务逻辑抛出：Action 执行失败（如解析格式错误）
 }
