@@ -796,3 +796,207 @@ test "指标·默认臂名单门: 30 条保守臂在册（合法 + 保守档，�
     assert_false(response is Done)
   }
 }
+
+///|
+/// 状态名（账/报告用；本目录只生成了 `command_name`，状态名归手维护件）
+fn state_name(state : ModelState) -> String {
+  match state {
+    ExpectSubject => "ExpectSubject"
+    ExpectPredicate => "ExpectPredicate"
+    ExpectObject => "ExpectObject"
+    ExpectDotOrGraph => "ExpectDotOrGraph"
+    ExpectDirectiveKind => "ExpectDirectiveKind"
+    ExpectPrefixName => "ExpectPrefixName"
+    ExpectPrefixIri => "ExpectPrefixIri"
+    ExpectBaseIri => "ExpectBaseIri"
+    ExpectVersionLiteral => "ExpectVersionLiteral"
+    ExpectDirectiveEnd => "ExpectDirectiveEnd"
+    ExpectGraphLabel => "ExpectGraphLabel"
+    ExpectGraphLbrace => "ExpectGraphLbrace"
+    ExpectVerbOrEnd => "ExpectVerbOrEnd"
+    ExpectVerbOrDot => "ExpectVerbOrDot"
+    ExpectVerbRequired => "ExpectVerbRequired"
+    ExpectTildeEnd => "ExpectTildeEnd"
+    AnnotExpectVerb => "AnnotExpectVerb"
+    AnnotExpectVerbTail => "AnnotExpectVerbTail"
+    AnnotExpectObject => "AnnotExpectObject"
+    AnnotExpectEnd => "AnnotExpectEnd"
+    GraphAnnotExpectVerb => "GraphAnnotExpectVerb"
+    GraphAnnotExpectVerbTail => "GraphAnnotExpectVerbTail"
+    GraphAnnotExpectObject => "GraphAnnotExpectObject"
+    GraphAnnotExpectEnd => "GraphAnnotExpectEnd"
+    GraphExpectSubject => "GraphExpectSubject"
+    GraphExpectPredicate => "GraphExpectPredicate"
+    GraphExpectObject => "GraphExpectObject"
+    GraphExpectDotOrGraph => "GraphExpectDotOrGraph"
+    GraphExpectVerbOrDot => "GraphExpectVerbOrDot"
+    GraphExpectTildeEnd => "GraphExpectTildeEnd"
+    GraphExpectVerbOrEnd => "GraphExpectVerbOrEnd"
+    BnpExpectPredicate => "BnpExpectPredicate"
+    BnpExpectObject => "BnpExpectObject"
+    BnpAfterObject => "BnpAfterObject"
+    ListExpectElemOrEnd => "ListExpectElemOrEnd"
+    ListAfterElem => "ListAfterElem"
+  }
+}
+
+///|
+/// `state_name` 全枚举**非空且互异**（账本/报告的可读性契约；顺带把 36 条臂都走一遍——
+/// 它们只在"普查报分道"时才被调用，绿跑时是死路，专测保覆盖）。
+test "指标·状态名枚举: 36 态非空且互异" {
+  let names = all_states().map(fn(state) { state_name(state) })
+  assert_eq(names.length(), 36)
+  for name in names {
+    assert_true(name.length() > 0)
+    let mut hits = 0
+    for other in names {
+      if other == name {
+        hits = hits + 1
+      }
+    }
+    assert_eq(hits, 1)
+  }
+}
+
+///|
+/// 沿路径推模型（只走模型；定位用）
+fn path_end_model(path : Array[Command]) -> Model {
+  let mut model = model_empty()
+  for command in path {
+    model = model_execute(model, command).0
+  }
+  model
+}
+
+///|
+/// **引擎状态 → 模型状态**（观测面桥）：`@trig.TrigProbe::state()` 给的是引擎侧 `TrigState`，
+/// 模型侧是 `ModelState`——两套枚举**镜像但类型不同**（`TrigState` 还没有 `Eq`）。
+/// 本映射写成**穷尽 match**（编译器保证不漏项），同时是"引擎 ↔ 模型状态对应关系"的成文账：
+/// 引擎加/删状态而这里没跟上 ⇒ 直接编译不过。
+fn model_state_of_engine(state : @trig.TrigState) -> ModelState {
+  match state {
+    @trig.TrigExpectSubject => ExpectSubject
+    @trig.TrigExpectPredicate => ExpectPredicate
+    @trig.TrigExpectObject => ExpectObject
+    @trig.TrigExpectDotOrGraph => ExpectDotOrGraph
+    @trig.TrigExpectDirectiveKind => ExpectDirectiveKind
+    @trig.TrigExpectPrefixName => ExpectPrefixName
+    @trig.TrigExpectPrefixIri => ExpectPrefixIri
+    @trig.TrigExpectBaseIri => ExpectBaseIri
+    @trig.TrigExpectVersionLiteral => ExpectVersionLiteral
+    @trig.TrigExpectDirectiveEnd => ExpectDirectiveEnd
+    @trig.TrigExpectGraphLabel => ExpectGraphLabel
+    @trig.TrigExpectGraphLbrace => ExpectGraphLbrace
+    @trig.TrigExpectVerbOrEnd => ExpectVerbOrEnd
+    @trig.TrigExpectVerbOrDot => ExpectVerbOrDot
+    @trig.TrigExpectVerbRequired => ExpectVerbRequired
+    @trig.TrigExpectTildeEnd => ExpectTildeEnd
+    @trig.TrigAnnotExpectVerb => AnnotExpectVerb
+    @trig.TrigAnnotExpectVerbTail => AnnotExpectVerbTail
+    @trig.TrigAnnotExpectObject => AnnotExpectObject
+    @trig.TrigAnnotExpectEnd => AnnotExpectEnd
+    @trig.TrigGraphAnnotExpectVerb => GraphAnnotExpectVerb
+    @trig.TrigGraphAnnotExpectVerbTail => GraphAnnotExpectVerbTail
+    @trig.TrigGraphAnnotExpectObject => GraphAnnotExpectObject
+    @trig.TrigGraphAnnotExpectEnd => GraphAnnotExpectEnd
+    @trig.TrigGraphExpectSubject => GraphExpectSubject
+    @trig.TrigGraphExpectPredicate => GraphExpectPredicate
+    @trig.TrigGraphExpectObject => GraphExpectObject
+    @trig.TrigGraphExpectDotOrGraph => GraphExpectDotOrGraph
+    @trig.TrigGraphExpectVerbOrDot => GraphExpectVerbOrDot
+    @trig.TrigGraphExpectTildeEnd => GraphExpectTildeEnd
+    @trig.TrigGraphExpectVerbOrEnd => GraphExpectVerbOrEnd
+    @trig.TrigBnpExpectPredicate => BnpExpectPredicate
+    @trig.TrigBnpExpectObject => BnpExpectObject
+    @trig.TrigBnpAfterObject => BnpAfterObject
+    @trig.TrigListExpectElemOrEnd => ListExpectElemOrEnd
+    @trig.TrigListAfterElem => ListAfterElem
+  }
+}
+
+///|
+/// **状态见证路径账**（役 7 的输入）：每个可达状态一条从初始状态可达的路径。
+/// 与 `reachable_witness_paths()`（按**命令名**记账）同一套边口径：边 = `valid`，下一态跑模型；
+/// 差别只在记账键——引擎侧普查要"把引擎开到某状态"，那就需要一条**路**，不是一份名单。
+fn reachable_state_witness_paths() -> Array[(ModelState, Array[Command])] {
+  let found : Array[(ModelState, Array[Command])] = [(ExpectSubject, [])]
+  let queue : Array[Array[Command]] = [[]]
+  while queue.length() > 0 {
+    let path = queue.remove(0)
+    let model = path_end_model(path)
+    for command in all_commands() {
+      if valid(model, command) {
+        let (next, _) = model_execute(model, command)
+        if !found.any(fn(pair) { pair.0 == next.state }) {
+          let new_path = path.copy()
+          new_path.push(command)
+          found.push((next.state, new_path))
+          queue.push(new_path)
+        }
+      }
+    }
+  }
+  found
+}
+
+///|
+/// **役 7：引擎侧独立转移普查**。
+///
+/// 要清的存疑（评审 §4）：现有普查（`指标·转移普查`）两侧**都在测试侧**
+/// （`valid` 生成物 ⟷ `model_exec` 手维护实例）；引擎真实转移面只被随机门 / 锚点门 /
+/// 见证路径门**抽样**验证——若 `valid` 表漏掉一条引擎真有的边，那三门可能全绿。
+///
+/// 本门把判据换成**引擎真件**：对每个可达状态（沿状态见证路径开过去）逐条喂命令，
+/// 比对「引擎归一响应 **+ 引擎状态** ⟷ 模型预测」。规模 = 36 态 × 34 命令 = **1224 对**（秒级）。
+/// 每对**新建 probe + 新模型**（干净复位，符合 qcs 逐用例口径）；失败输出
+/// `(状态+命令)` 清单，不是"门挂了"。
+///
+/// ⚠ **状态必须一起比**（变异实证，2026-09-18）：只比响应时，把默认臂
+/// `(ExpectVerbOrEnd, Semicolon)` 的**目标状态**改坏（`model` → `ExpectTildeEnd`），本门依旧报
+/// "分道 0"（那一轮只有随机门抓到）——因为两边响应都是 `Continue`。补上
+/// `system.probe.state()` ⟷ `next_model.state` 的比对后，同一变异本门即红。
+/// 这也正是 `state` 值得留在公开面的理由：它是本门的观测面（只读投影），不是量测遗产。
+test "指标·引擎侧普查: 36 态 × 34 命令 = 1224 对，引擎⟷模型逐对一致" {
+  let witnesses = reachable_state_witness_paths()
+  assert_eq(witnesses.length(), 36)
+  let mismatches : Array[String] = []
+  let mut pairs = 0
+  for entry in witnesses {
+    let (state, path) = entry
+    for command in all_commands() {
+      pairs = pairs + 1
+      let system = system_init()
+      let mut model = model_empty()
+      let mut path_diverged = false
+      for step_command in path {
+        let (next_model, expected_step) = model_execute(model, step_command)
+        let actual_step = run_command(step_command, system)
+        // 路径上每一步也比（响应 + 状态）：这样"到达该状态的过程"本身也是判据
+        if actual_step != expected_step ||
+          model_state_of_engine(system.probe.state()) != next_model.state {
+          path_diverged = true
+        }
+        model = next_model
+      }
+      let (next_model, expected) = model_execute(model, command)
+      let actual = run_command(command, system)
+      if actual != expected ||
+        model_state_of_engine(system.probe.state()) != next_model.state {
+        mismatches.push("\{state_name(state)}+\{name_of(command)}")
+      }
+      if path_diverged &&
+        !mismatches.contains("\{state_name(state)}+\{name_of(command)}") {
+        mismatches.push(
+          "\{state_name(state)}+\{name_of(command)}（路径分道）",
+        )
+      }
+    }
+  }
+  debug(
+    "引擎侧普查：\{pairs} 对（\{witnesses.length()} 态 × \{all_commands().length()} 命令）；分道 \{mismatches.length()}",
+  )
+  for site in mismatches {
+    debug("  分道：\{site}")
+  }
+  assert_eq(mismatches, [])
+}
