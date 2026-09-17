@@ -30,30 +30,44 @@ fn take_quad(model : Model) -> Quad {
 fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
   match (model.state, cmd) {
     // --- ExpectSubject ---
+    // @arm ExpectSubject+Iri
     (ExpectSubject, Iri(reference)) => (set_subject(model, reference), Continue)
+    // @arm ExpectSubject+BlankNode
     (ExpectSubject, BlankNode(reference)) =>
       (set_subject(model, reference), Continue)
     // --- ExpectPredicate ---
+    // @arm ExpectPredicate+Iri
     (ExpectPredicate, Iri(reference)) =>
       (set_predicate(model, reference), Continue)
     // --- ExpectObject ---
+    // @arm ExpectObject+Iri
     (ExpectObject, Iri(reference)) => (set_object(model, reference), Continue)
+    // @arm ExpectObject+BlankNode
     (ExpectObject, BlankNode(reference)) =>
       (set_object(model, reference), Continue)
+    // @arm ExpectObject+Literal
     (ExpectObject, Literal(reference)) =>
       (set_object(model, reference), Continue)
+    // @arm ExpectObject+TripleTerm
     (ExpectObject, TripleTerm(reference)) =>
       (set_object(model, reference), Continue)
     // --- ExpectDotOrGraph ---
+    // @arm ExpectDotOrGraph+Iri
     (ExpectDotOrGraph, Iri(reference)) =>
       (set_graph(model, reference), Continue)
+    // @arm ExpectDotOrGraph+BlankNode
     (ExpectDotOrGraph, BlankNode(reference)) =>
       (set_graph(model, reference), Continue)
+    // @arm ExpectDotOrGraph+Dot
     (ExpectDotOrGraph, Dot) => emit_all(model, ExpectSubject)
+    // @arm ExpectDotOrGraph+Comma
     (ExpectDotOrGraph, Comma) => emit_object(model, ExpectObject)
+    // @arm ExpectDotOrGraph+Semicolon
     (ExpectDotOrGraph, Semicolon) => emit_predobj(model, ExpectPredicate)
+    // @arm ExpectDotOrGraph+Unknown
     (ExpectDotOrGraph, Unknown) => emit_all(model, ExpectSubject)
     // --- ExpectDot ---
+    // @arm ExpectDot+Dot
     (ExpectDot, Dot) => emit_all(model, ExpectSubject)
     // 兜底: 非法转移（valid 已过滤，防御性保留）
     (_, _) => (model, Error(0))
