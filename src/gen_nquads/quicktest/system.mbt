@@ -16,6 +16,9 @@ const UNDEFINED_TRANSITION_CODE : Int = 0
 ///|
 const ACTION_FAILED_CODE : Int = 1
 
+// >>> EVIDENCE（P4.4 钉子①：证据注释留位——生成/物化不得覆盖本区间，守卫测试按标记校验）
+// <<< EVIDENCE
+
 ///|
 /// RefId → 引擎 Span（id 编码进 start/end，可逆；Span = (Int, Int) 元组）
 fn span_from(id : RefId) -> @nquads.Span {

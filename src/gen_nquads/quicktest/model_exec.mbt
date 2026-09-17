@@ -5,6 +5,11 @@
 // 由属性测试的双执行比较兜底（postcondition，见 nquads_quicktest.mbt）。
 // ========================================
 
+// >>> EVIDENCE（P4.4 钉子①：证据注释留位——领域证据/役次账写在这里；
+//     生成器只产"机械注释"，物化/生成不得覆盖本区间，守卫测试按本对标记校验）
+// （臂的稳定名 `// @arm <from_state>+<on_event>` 已与生成物同名，2026-09-17 对齐）
+// <<< EVIDENCE
+
 ///|
 /// 发射四元组所需的槽位检查（EmitQuad 前置）
 fn quad_ready(model : Model) -> Bool {
