@@ -69,6 +69,32 @@ jobs:
             exit 1
           fi
 
+      - name: Coverage gate (ratchet)
+        run: |
+          # 覆盖率棘轮：只许 ≥ 基线（coverage-baseline.txt），不许倒退。
+          # 口径固定：clean → 带插桩跑一遍 → summary 末行（保证可复现，实测两次同为 7591/9223）。
+          moon coverage clean
+          moon test --enable-coverage
+          summary="$(moon coverage report -f summary | tail -n 1)"
+          echo "coverage summary: $summary"
+          counts="$(echo "$summary" | sed -nE 's/^Total: ([0-9]+)\/([0-9]+)$/\1 \2/p')"
+          if [ -z "$counts" ]; then
+            echo "::error::无法从 summary 解析覆盖计数（格式变了？）：$summary"
+            exit 1
+          fi
+          covered="$(echo "$counts" | awk '{print $1}')"
+          total="$(echo "$counts" | awk '{print $2}')"
+          permille=$(( covered * 1000 / total ))
+          baseline="$(sed -nE 's/^covered_permille *= *([0-9]+).*/\1/p' coverage-baseline.txt)"
+          echo "covered=$covered/$total = ${permille}‰；基线 ${baseline}‰"
+          if [ "$permille" -lt "$baseline" ]; then
+            echo "::error::覆盖率倒退：${permille}‰ < 基线 ${baseline}‰——补测试，或（有理由时）同笔下调 coverage-baseline.txt"
+            exit 1
+          fi
+          if [ "$permille" -gt "$baseline" ]; then
+            echo "::notice::覆盖率高于基线（${permille}‰ > ${baseline}‰）——请同笔把 coverage-baseline.txt 推上去"
+          fi
+
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
