@@ -32,7 +32,9 @@ pub impl ErrOut for ParseError with fn err_kind(self : ParseError) -> String {
   match self {
     ValidationErr(_) => "ValidationErr"
     ParseError::StructSyntaxErr(_, _, _) => "StructSyntaxErr"
-    SyntaxErr(message, _) => message
+    // 修（2026-09-18）：此处原为 `message`——把消息当 kind 返回（与 trig 侧同名 impl
+    // `gen_trig/types.mbt:98` 的 "SyntaxErr" 不一致）；由 error_wbtest 的逐变体断言检出。
+    SyntaxErr(_, _) => "SyntaxErr"
     ParseError::IriErr(_) => "IriErr"
   }
 }
