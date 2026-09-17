@@ -82,7 +82,14 @@ fn run_coverage_check() -> Result[
 ] {
   @qcs.check(quick_state_machine(), config=coverage_gate_config())
 }
-// TODO(P0 人工): run_command 为骨架（...）, 补全后恢复以下覆盖门测试:
+// 覆盖率运行门：**前置条件已具备**（`run_command` 早已不是骨架 + 随机门全绿 ⇒ 门已有意义），
+// 但**当前开启即红**（2026-09-17 实测）：`coverage_gate_config` 要求**单条 200 步**用例覆盖
+// **全部 25 个可达命令名**，而 34 事件、深状态（注解/集合/指令）的随机可达性没有保证
+// ⇒ 缺名必然出现。这**不是**模型缺陷，是**覆盖率策略**问题（trig 生成面早已登记为 P4.3）。
+// P4.3 选项（动手前先拍）：① 拉长单例（200 → 上千步）；② 改多例分摊（qcs 判定是**逐用例**的，
+// 需换判定口径或把要求挂到每条用例各自的子集）；③ **路径驱动**（用 `metrics` 的 BFS 产出
+// “每个命令名一条最短可达路径”，拼成确定性脚本）——三条里 ③ 与本仓"账本化"风格最合。
+//
 // test "trig_quick_machine 覆盖率门" {
 //   match run_coverage_check() {
 //     Ok(report) => {
@@ -283,11 +290,14 @@ fn run_random_check(
 //     ② 实例 `list_next_arm` 拆两支：非嵌套不压帧、`_nested` 压帧（或加 `nested: Bool` 参数）；
 //     ③ 复开随机门取新证据；`gen_check`/nquads 零波及（nquads 无 list 族）。
 //
+
 ///|
 test "trig quick machine: random check（模型 ≡ 引擎）" {
   match run_random_check() {
     Ok(report) => assert_eq(report.cases_run, 100)
     Err(failure) =>
-      fail("随机检查失败（模型与引擎漂移）: \{@qcs.format_failure(failure)}")
+      fail(
+        "随机检查失败（模型与引擎漂移）: \{@qcs.format_failure(failure)}",
+      )
   }
 }
