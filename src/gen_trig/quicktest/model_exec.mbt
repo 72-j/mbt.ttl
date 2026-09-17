@@ -861,7 +861,13 @@ fn list_next_arm(
   let next1 = { ..next, subject: Some(open), object: elem, }
   // 序列末段 `OpenSlot`（P4.2h 续）：按 `SlotType` 压帧——引擎 `open_slot` 两分支都硬传
   // `as_subject = false`；**不改状态**（状态早由转移表 `to=` 定 ⇒ 传 `next1.state`）。
-  (frame_push(next1, r, ListAfterElem, false, next1.state), response)
+  // 序列第二枚 `EmitQuad`（P4.2h ③）：`ListStep(elem)` **之后**的快照 ⇒ 与第一枚同批、按序返回。
+  // 批内容 = 引擎 `emit_queue` 的内容（**模型不背队列**：纯函数直接给出有序批）。
+  let second = take_quad(next1)
+  (
+    frame_push(next1, r, ListAfterElem, false, next1.state),
+    Batch([response, EmitQuad(second)]),
+  )
 }
 
 ///|

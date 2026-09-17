@@ -72,6 +72,11 @@ priv enum Response {
   EmitQuad(Quad)
   Done
   Error(Int) // 引擎错误归一化（[type_mapping].error_codes）
+  // P4.2h ③：**有序批**——一条命令可能对应多枚发射（引擎 `Sequence` 内多条 EmitQuad，
+  // 经 `emit_queue` 逐条回吐）。批内顺序 = 引擎发射顺序（= `Sequence` 书写顺序）。
+  // qcs 的 `run_command` 是单值接口（外部依赖），故用本变体承载批，不 patch 依赖；
+  // 系统侧只在 `step_all` 长度 > 1 时包批（单枚仍是原变体，旧口径零迁移）。
+  Batch(Array[Response])
 } derive(Eq, Debug)
 
 ///|

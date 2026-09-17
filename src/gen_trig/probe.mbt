@@ -95,14 +95,12 @@ pub fn TrigProbe::state(self : TrigProbe) -> TrigState {
 }
 
 ///|
-/// 单步驱动：喂一个事件 → 一档响应（队列排空 / step / interpret 三步与引擎同序）
-pub fn TrigProbe::step(
+/// 单步驱动（**忽略发射队列**）：喂一个事件 → 一档响应（step / interpret 同引擎同序）。
+/// `Sequence` 内的余量仍入 `ctx.emit_queue`（由调用方排空）。
+pub fn TrigProbe::step_once(
   self : TrigProbe,
   event : TrigEvent,
 ) -> TrigProbeResponse {
-  if self.ctx.emit_queue.length() > 0 {
-    return EmitQuad(self.ctx.emit_queue.remove(0))
-  }
   match step(self.ctx, event, self.handler.actions) {
     Ok(effect) =>
       match TrigEffectHandler::interpret(self.handler, self.ctx, effect) {
@@ -112,6 +110,41 @@ pub fn TrigProbe::step(
       }
     Err(error) => Failed(error)
   }
+}
+
+///|
+/// 一条命令的**完整响应批**（P4.2h ③）：先排空残留 ⇒ 处理本事件 ⇒ 再收本事件的余量。
+/// 三条口径：
+///   ① 批内顺序 = **引擎发射顺序**（`Sequence` 书写顺序；见「多发射回吐顺序」钉子）；
+///   ② **不吞入参事件**——与 `step` 的关键差别（引擎 pull 循环"事件流不丢不重"：
+///      队首排空不消费事件），故 `step_all` 才是"一条命令 ↔ 它自己的响应"的正确映射；
+///   ③ 排空前置只是防御（正常调用下进批时队列为空）——与引擎 loop 顶部同形。
+pub fn TrigProbe::step_all(
+  self : TrigProbe,
+  event : TrigEvent,
+) -> Array[TrigProbeResponse] {
+  let responses : Array[TrigProbeResponse] = []
+  while self.ctx.emit_queue.length() > 0 {
+    responses.push(EmitQuad(self.ctx.emit_queue.remove(0)))
+  }
+  responses.push(self.step_once(event))
+  while self.ctx.emit_queue.length() > 0 {
+    responses.push(EmitQuad(self.ctx.emit_queue.remove(0)))
+  }
+  responses
+}
+
+///|
+/// 单步驱动（旧口径，**会吞入参事件**）：喂一个事件 → 一档响应（队列排空 / step / interpret）。
+/// 保留给既有调用方与钉子；新代码请用 `step_all`（③ 口径）。
+pub fn TrigProbe::step(
+  self : TrigProbe,
+  event : TrigEvent,
+) -> TrigProbeResponse {
+  if self.ctx.emit_queue.length() > 0 {
+    return EmitQuad(self.ctx.emit_queue.remove(0))
+  }
+  self.step_once(event)
 }
 
 ///|
@@ -185,4 +218,34 @@ test "probe: 多发射回吐顺序 = 书写顺序（FIFO + 入队即快照 + 排
     EmitQuad(p) => assert_eq(p.obj, Some((0, 0))) // 空表 `(open_span.0, 0)` ⇒ RefId = open_span.0
     _ => assert_true(false)
   }
+}
+
+///|
+/// P4.2h ③ 钉子：`step_all` = **一条命令 → 它自己的有序响应批**（不再吞事件）。
+/// 对照：同一脚本用旧 `step` 会在第 4 步被队首余量顶掉入参（见上一条钉子）。
+test "probe: step_all 一条命令 → 有序响应批（不吞事件）" {
+  let probe = TrigProbe::new()
+  assert_eq(probe.step_all(TrigEvent::TrigLparen((0, 1))).length(), 1)
+  assert_eq(probe.step_all(TrigEvent::TrigIri((2, 1))).length(), 1)
+  // `list_next`：一步两发射 ⇒ 批内两枚、按书写顺序
+  let batch = probe.step_all(TrigEvent::TrigIri((4, 1)))
+  assert_eq(batch.length(), 2)
+  match batch[0] {
+    EmitQuad(p) => {
+      assert_eq(p.subj, Some((0, 1))) // 第一枚：object = 合成节点 (open_span.0, k)
+      assert_eq(p.obj, Some((0, 2)))
+    }
+    _ => assert_true(false)
+  }
+  match batch[1] {
+    EmitQuad(p) => {
+      assert_eq(p.subj, Some((0, 2))) // 第二枚：ListStep 之后的 subject/object
+      assert_eq(p.obj, Some((4, 1)))
+    }
+    _ => assert_true(false)
+  }
+  // 事件不丢：再喂一个元素，它**自己的**发射照常产生（旧 step 会吞掉这一步的入参）
+  let next_batch = probe.step_all(TrigEvent::TrigIri((6, 1)))
+  assert_true(next_batch.length() >= 1)
+  assert_true(next_batch[0] is EmitQuad(_))
 }

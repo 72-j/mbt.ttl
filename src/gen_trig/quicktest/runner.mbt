@@ -246,6 +246,20 @@ fn run_random_check(
 //   · ⇒ 只剩 **③ harness 返 `Array[Response]`**：前提已证（`probe.mbt` 回吐顺序钉子：入队即快照 + FIFO
 //     ⇒ 顺序确定），且必须一并消掉"排空吞入参事件"的差异；**模型不背队列**（模型直接返回有序列表）。
 //
+// P4.2h ③ 4b（批载体 + `step_all` + 模型多发射）落地后复开本门（2026-09-17）—— **批机制通了**：
+//   · 引擎侧已返**有序批**（`Batch([EmitQuad{…}, EmitQuad{…}])`），模型侧也按序给两枚
+//     ⇒ "一条命令 ↔ 它自己的响应"成立（不再被上一命令的余量顶掉）；
+//   · **新证据 = step 15 `PrefName(7)`**：批内**节点基数**不同——
+//     引擎 `[q1{s:Some(4), o:Some(4)}, q2{s:Some(4), o:Some(7)}]`（基数 = **4**），
+//     模型同位置用 **2**（= 它**栈顶**帧的 `open_span`）。现场模型帧栈 =
+//     `[{open_span:4, ret:ExpectDotOrGraph, as_subject:false},
+//       {open_span:2, ret:ListAfterElem, as_subject:false}]`。
+//   · 根因方向（**下一手先量，不要猜**）：`list_top`（`actions.mbt:221`）取 `slot_stack` **栈顶整体**
+//     （不过滤类型）；模型 `frames` 是"压栈序"——混合栈（collection 帧 + bnp 帧）下两者必须逐项对照：
+//     ① 用 probe 窄访问器量引擎 `slot_stack` 在 step 5~15 的**真实内容/顺序**；
+//     ② 核 `frame_push`/`frame_pop` 与引擎 `open_slot`/`pop_bnode_prop` 的**入栈/出栈时机**是否一致
+//     （以及 `SlotType` 是否参与挑选）。
+//
 // test "trig quick machine: random check（模型 ≡ 引擎）" {
 //   match run_random_check() {
 //     Ok(report) => assert_eq(report.cases_run, 100)

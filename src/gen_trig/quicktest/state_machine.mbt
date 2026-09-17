@@ -103,6 +103,17 @@ fn quick_state_machine(
         EmitQuad(_) => ["resp:EmitQuad"]
         Done => ["resp:Done"]
         Error(_) => ["resp:error"]
+        // P4.2h ③：有序批按**批内每一枚**打标签（覆盖门口径不变：单枚仍是 resp:EmitQuad）
+        Batch(items) =>
+          items.map(fn(item) {
+            match item {
+              Continue => "resp:Continue"
+              EmitQuad(_) => "resp:EmitQuad"
+              Done => "resp:Done"
+              Error(_) => "resp:error"
+              Batch(_) => "resp:batch"
+            }
+          })
       }
     },
     command_name~,

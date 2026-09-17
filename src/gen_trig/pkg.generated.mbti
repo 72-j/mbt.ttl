@@ -214,6 +214,8 @@ pub struct TrigProbe {
 pub fn TrigProbe::new() -> Self
 pub fn TrigProbe::state(Self) -> TrigState
 pub fn TrigProbe::step(Self, TrigEvent) -> TrigProbeResponse
+pub fn TrigProbe::step_all(Self, TrigEvent) -> Array[TrigProbeResponse]
+pub fn TrigProbe::step_once(Self, TrigEvent) -> TrigProbeResponse
 
 pub(all) enum TrigProbeResponse {
   Continue

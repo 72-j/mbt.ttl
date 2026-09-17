@@ -104,7 +104,23 @@ fn system_init() -> System {
 /// 真实执行：Command → Event → probe.step（= step + interpret）→ Response（错误归一化）
 fn run_command(command : Command, system : System) -> Response {
   let event = command_to_event(command)
-  match system.probe.step(event) {
+  // P4.2h ③：走 `step_all`——**排空残留 ⇒ 处理本事件 ⇒ 收本事件余量**，
+  // 一条命令拿到"它自己的"有序响应批（不再被上一命令的余量顶掉/吞掉入参事件）。
+  let batch = system.probe.step_all(event)
+  let responses = batch.map(fn(response) {
+    probe_response_to_response(response)
+  })
+  if responses.length() == 1 {
+    responses[0]
+  } else {
+    Batch(responses)
+  }
+}
+
+///|
+/// 单档 probe 响应 → 归一化 Response（批的每个元素复用本函数）
+fn probe_response_to_response(response : @trig.TrigProbeResponse) -> Response {
+  match response {
     @trig.TrigProbeResponse::Continue => Continue
     @trig.TrigProbeResponse::EmitQuad(pending) =>
       EmitQuad(quad_from_pending(pending)) // 快照照抄（槽位可空，ADR-QM-009）
