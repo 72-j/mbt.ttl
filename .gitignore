@@ -26,8 +26,16 @@ src/fsm/*.toml
 viva.toml
 const.md
 pseudocode.md
+# ---- 决策（2026-09-18，用户拍）：临时账本 **不入库跟踪** ----
+# `todo.md`（战役账本：下一手做什么）与 `ctx.md`（即时坐标/踩坑）保持忽略：
+# 它们是随会话重写、随工作树演进的活账，**不是对外契约**。
+# 对外事实源 = 代码 + 测试 + 入库的模块文档卷（见下方 !src/{gen_trig,gen_nquads,gen_n3v2}/*.md）。
+# 已知代价（接受）：账本不随仓分发；要共享的结论必须搬进入库卷或 ADR。
 ctx.md
 todo.md
+
+# 注：`coverage-baseline.txt`（覆盖率棘轮基线）**不在忽略之列**——它是 CI static 作业的
+# 判据数据（`Coverage gate (ratchet)` 直接读它），必须入库；把判据搬进活账会让门在冷检出上失效。
 
 # ---- 文档卷入库（2026-09-12；只放开模块文档卷，不放开 .bak/生成件）----
 !src/gen_n3v2/*.md
