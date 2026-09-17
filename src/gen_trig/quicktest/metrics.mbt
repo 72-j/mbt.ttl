@@ -676,3 +676,58 @@ test "指标·label 钉子: resp:Done 不适用（表零引用）+ 引擎单步�
   let system = system_init()
   assert_true(run_command(Dot, system) is Error(0))
 }
+
+///|
+/// **权重表钉子**（2026-09-18 补，覆盖率实测发现 `command_weight` 有臂从没被查过——
+/// 例如 `"Caret"`）：34 个命令名逐条等值 + 表外名回落 1。
+/// 权重决定随机门的分布（属判据面）⇒ 改表即红，必须与
+/// `src/quick_machine/quick_machine_trig.toml` 的 `[business.weights]` 同笔说明。
+test "指标·权重表逐名等值（34 名全量 + 默认档）" {
+  let expected : Array[(String, Int)] = [
+    ("Iri", 3),
+    ("BlankNode", 2),
+    ("Literal", 3),
+    ("PrefName", 2),
+    ("TripleTerm", 1),
+    ("BracketTripleTerm", 1),
+    ("KeywordA", 1),
+    ("At", 1),
+    ("PrefixKw", 1),
+    ("BaseKw", 1),
+    ("GraphKw", 1),
+    ("VersionKw", 1),
+    ("Tilde", 1),
+    ("AnnotStart", 1),
+    ("AnnotEnd", 1),
+    ("Comma", 1),
+    ("Semicolon", 1),
+    ("Dot", 3),
+    ("Lbrace", 1),
+    ("Rbrace", 1),
+    ("Lbracket", 1),
+    ("Rbracket", 1),
+    ("Lparen", 1),
+    ("Rparen", 1),
+    ("Anon", 1),
+    ("Bang", 1),
+    ("Caret", 1),
+    ("Implies", 1),
+    ("ImpliedBy", 1),
+    ("ForAllKw", 1),
+    ("ForSomeKw", 1),
+    ("KeywordsKw", 1),
+    ("Unknown", 1),
+    ("EOF", 1),
+  ]
+  // 权重表 = 命令枚举（两条清单漂了就红）
+  assert_eq(expected.length(), all_commands().length())
+  for case in expected {
+    let (name, weight) = case
+    assert_eq(command_weight(name), weight)
+  }
+  let declared = expected.map(fn(pair) { pair.0 })
+  for command in all_commands() {
+    assert_true(declared.contains(name_of(command)))
+  }
+  assert_eq(command_weight("NotDeclared"), 1)
+}
