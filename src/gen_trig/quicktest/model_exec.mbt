@@ -8,21 +8,12 @@
 // 臂结构与 [[transitions]] 一一对应；纯模型与真实执行器语义漂移由属性测试双执行比较兜底
 
 ///|
-/// 发射四元组所需的槽位检查（EmitQuad 前置）
-fn quad_ready(model : Model) -> Bool {
-  true &&
-  model.subject is Some(_) &&
-  model.predicate is Some(_) &&
-  model.object is Some(_)
-}
-
-///|
-/// 从槽位取出四元组（调用前 quad_ready 必须为真）
+/// 从槽位取**快照**载荷（快照档：槽位可空，照抄模型槽位；与引擎发射边界同口径）
 fn take_quad(model : Model) -> Quad {
   Quad::{
-    subject: model.subject.unwrap(),
-    predicate: model.predicate.unwrap(),
-    object: model.object.unwrap(),
+    subject: model.subject,
+    predicate: model.predicate,
+    object: model.object,
     graph: model.graph,
   }
 }
@@ -651,39 +642,30 @@ fn set_object(model : Model, r : @qcs.Ref[RefId], to : ModelState) -> Model {
 }
 
 ///|
-/// 发射四元组: 槽位齐全 → EmitQuad 并按 Object 清槽; 不齐 → Error(1)
+/// 发射槽位快照: 无条件 EmitQuad(快照) 并按 Object 清槽
+/// （快照档：槽位可空与引擎发射边界同口径，模型不设前置判据——ADR-QM-009）
 fn emit_object(model : Model, to : ModelState) -> (Model, Response) {
-  if quad_ready(model) {
-    let quad = take_quad(model)
-    ({ ..model, state: to, object: None, }, EmitQuad(quad))
-  } else {
-    (model, Error(1)) // 不完整三元组
-  }
+  let quad = take_quad(model)
+  ({ ..model, state: to, object: None, }, EmitQuad(quad))
 }
 
 ///|
-/// 发射四元组: 槽位齐全 → EmitQuad 并按 PredObj 清槽; 不齐 → Error(1)
+/// 发射槽位快照: 无条件 EmitQuad(快照) 并按 PredObj 清槽
+/// （快照档：槽位可空与引擎发射边界同口径，模型不设前置判据——ADR-QM-009）
 fn emit_predobj(model : Model, to : ModelState) -> (Model, Response) {
-  if quad_ready(model) {
-    let quad = take_quad(model)
-    ({ ..model, state: to, predicate: None, object: None, }, EmitQuad(quad))
-  } else {
-    (model, Error(1)) // 不完整三元组
-  }
+  let quad = take_quad(model)
+  ({ ..model, state: to, predicate: None, object: None, }, EmitQuad(quad))
 }
 
 ///|
-/// 发射四元组: 槽位齐全 → EmitQuad 并按 SPO 清槽; 不齐 → Error(1)
+/// 发射槽位快照: 无条件 EmitQuad(快照) 并按 SPO 清槽
+/// （快照档：槽位可空与引擎发射边界同口径，模型不设前置判据——ADR-QM-009）
 fn emit_spo(model : Model, to : ModelState) -> (Model, Response) {
-  if quad_ready(model) {
-    let quad = take_quad(model)
-    (
-      { ..model, state: to, subject: None, predicate: None, object: None, },
-      EmitQuad(quad),
-    )
-  } else {
-    (model, Error(1)) // 不完整三元组
-  }
+  let quad = take_quad(model)
+  (
+    { ..model, state: to, subject: None, predicate: None, object: None, },
+    EmitQuad(quad),
+  )
 }
 
 ///|
@@ -765,21 +747,23 @@ test "trig_quick_machine model_exec: 非法转移兜底 / transition 不推进" 
 }
 
 ///|
-test "trig_quick_machine model_exec: EmitQuad 发射路径与缺槽兜底" {
-  // 发射路径: 槽位齐全 → EmitQuad; 缺槽 → Error(1)
+test "trig_quick_machine model_exec: EmitQuad 发射路径与空槽照发" {
+  // 快照档（ADR-QM-009）：槽位不全也照发 —— 载荷 = 引擎发射边界的槽位快照
   let ready = {
     ..model_empty(),
     state: ExpectDotOrGraph,
     subject: Some({ id: 1, }),
     predicate: Some({ id: 2, }),
     object: Some({ id: 3, }),
+    graph: Some({ id: 4, }),
   }
   let (m1, r1) = model_execute(ready, AnnotStart)
   assert_true(r1 is EmitQuad(_))
   assert_true(m1.predicate is None) // scope 清槽
   assert_true(m1.object is None) // scope 清槽
+  // 空槽快照：仍发 EmitQuad（不设"槽位齐全"前置），状态照常推进
   let empty = { ..model_empty(), state: ExpectDotOrGraph, }
   let (m2, r2) = model_execute(empty, AnnotStart)
-  assert_eq(r2, Error(1))
-  assert_eq(m2, empty) // 模型保持
+  assert_true(r2 is EmitQuad(_))
+  assert_eq(m2.state, AnnotExpectVerb)
 }

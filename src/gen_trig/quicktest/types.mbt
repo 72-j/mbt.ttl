@@ -55,11 +55,13 @@ priv enum Command {
 } derive(Eq, Debug)
 
 ///|
-/// Quad - EmitQuad 载荷的模型表示（槽位引用；graph 可空 = 默认图）
+/// Quad - EmitQuad 载荷的模型表示（**引擎发射边界的槽位快照**；槽位可空，见 ADR-QM-009）
+/// 口径源：引擎载荷 `@trig.TrigPendingQuad`（四槽 `Span?`）——缺槽是边界事实
+/// （壳 `<<s p o>>` / 集合·串列谓词无字节），领域解释在组装层，模型不提前拒绝。
 priv struct Quad {
-  subject : RefId
-  predicate : RefId
-  object : RefId
+  subject : RefId?
+  predicate : RefId?
+  object : RefId?
   graph : RefId?
 } derive(Eq, Debug)
 

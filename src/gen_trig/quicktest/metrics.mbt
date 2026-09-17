@@ -21,6 +21,8 @@
 //      Continue——本役引擎实测新发现，锚点门②避路绕行）；
 //   ③ list slot_stack 盲区（list_first 经栈发射 EmitQuad(PredObj)，模型无栈字段
 //      恒 Error(1) 吸收 ⇒ ListAfterElem 模型侧不可达——本役 BFS 新发现）；
+//      **P4.2f 已消**（ADR-QM-009 快照档：`emit_*` 去前置判据 ⇒ list 内层路径打通，
+//      `ListAfterElem` 由"模型不可达"升级为正向断言；可达 35 → **36**，无模型状态 0）；
 //   ④ 图块 graph=Some（引擎发射带图名，模型 graph 恒 None）。
 //   P4.2d 收口后从注释里复活四门并扩全形态表。
 // ========================================
@@ -239,16 +241,17 @@ test "指标·转移普查: valid ⟺ model_exec 全对一致 + 计数守恒" {
 ///     · ExpectVerbRequired：**表级死态**（有出臂、全表无入臂；引擎侧唯一出现是
 ///       open_collection 的 ret_state 参数，不是转移目标）——与 nquads 的
 ///       PrefName/EOF 钉子同款。
-///     · ListAfterElem：**曾为模型侧不可达**（list 盲区吸收袋）；P4.2e 帧模型落地后可达 ⇒
-///       模型 emit_predobj 永不就绪（Error(1) 吸收），引擎侧经 slot_stack 真实
-///       推进（list_first → EmitQuad(PredObj)）——响应级漂移领土，P4.2d。
+///     · ListAfterElem：**P4.2e 帧模型后可达，P4.2f 快照档后与引擎同口径**——
+///       旧模型 `emit_predobj` 因"槽位齐全"前置判据恒 `Error(1)` 吸收（盲区吸收袋），
+///       引擎侧经 slot_stack 真实推进（list_first → EmitQuad(PredObj)）；A 口径落地后
+///       模型不再吸收 ⇒ 该钉子**升级为正向断言**（`ListAfterElem` 可达）。
 ///   - graph 槽恒空：trig 的模型映射没有 set_graph（图上下文走 GraphKw 块状态机，
 ///     引擎发射的 graph=Some 模型看不见——P4.2d 已知边界，非缺陷，钉成事实）。
 ///   - 可达命令名恰 25 个（与 runner.coverage_gate_config 的要求表同口径）；
 ///     不可达 9 个（valid 无臂 ⇒ 生成器永不产出）。
-test "指标·结构钉子: 可达 35 / 死态换位（ExpectVerbRequired 可达、ListAfterElem 仍不可达）/ graph 可达 / 命令名 25+9" {
+test "指标·结构钉子: 可达 36 / 无死态（ExpectVerbRequired、ListAfterElem 皆可达）/ graph 可达 / 命令名 25+9" {
   let (seen, state_models, names) = explore()
-  // 状态可达性：36 - 2（双死态）
+  // 状态可达性：36 / 36（P4.2f 快照档后 list 内层路径打通 ⇒ 盲区消失）
   let mut reachable_states = 0
   let mut missing_states = 0
   for state in all_states() {
@@ -257,18 +260,13 @@ test "指标·结构钉子: 可达 35 / 死态换位（ExpectVerbRequired 可达
         reachable_states = reachable_states + 1
         assert_true(seen.contains(explore_key(model)))
       }
-      None => {
-        // P4.2e 重标（2026-09-15）：帧模型落地后**`ExpectVerbRequired` 变可达**
-        // （弹帧兑现 `state = ret_state`），故当前的"唯一无模型状态"是 `ListAfterElem`
-        //（list 内层路径仍差一截）。再多一个到达不了即结构被破坏。
-        assert_true(state == ListAfterElem)
-        missing_states = missing_states + 1
-      }
+      None => missing_states = missing_states + 1
     }
   }
-  // P4.2e 升级（2026-09-15）：帧模型落地后 list 路径可达 ⇒ 可达状态 34 → 35
-  assert_eq(reachable_states, 35)
-  assert_eq(missing_states, 1)
+  // P4.2f 重标（2026-09-17，ADR-QM-009）：快照档后 `ListAfterElem` 不再被 Error(1) 吸收
+  // ⇒ 36 个状态全部可达、无模型侧死态。少一个即结构被破坏（钉子只升级、不删）。
+  assert_eq(reachable_states, 36)
+  assert_eq(missing_states, 0)
   // P4.2d 第二步（2026-09-15）：`[actions].writes` 落地后，模型有了 `enter_graph` → `graph`
   // 的写入臂 ⇒ 旧钉子"graph 恒空"**升级为正向断言**：可达状态里必须出现 graph 非空
   // （含图名图块）。钉子不许删，只许升级——盲区从"存在"转为"消失且被钉住"。
@@ -280,10 +278,11 @@ test "指标·结构钉子: 可达 35 / 死态换位（ExpectVerbRequired 可达
     }
   }
   assert_true(graph_seen)
-  // 死态钉子（P4.2e 重标）：`ExpectVerbRequired` **已从表级死态升级为可达**（帧弹栈兑现 ret_state），
-  // 反向断言钉住；`ListAfterElem` 仍是唯一无模型状态（list 内层路径待补）。
+  // 死态钉子（P4.2f 重标）：`ExpectVerbRequired`（P4.2e 帧弹栈兑现 ret_state）与
+  // `ListAfterElem`（P4.2f 快照档打通 list 内层）**都已是正向断言**——两处都从
+  // "盲区/死态"升级为"可达且被钉住"。
   assert_true(state_model_of(state_models, ExpectVerbRequired) is Some(_))
-  assert_false(state_model_of(state_models, ListAfterElem) is Some(_))
+  assert_true(state_model_of(state_models, ListAfterElem) is Some(_))
   // 可达命令名 = 覆盖门要求集（25）；不可达 = 9（与 runner 注释口径互证）
   let required = [
     "Iri", "BlankNode", "Literal", "PrefName", "TripleTerm", "BracketTripleTerm",

@@ -104,42 +104,42 @@ test "锚点·三档清槽: quad 值级锚点（模型 ⟺ 引擎双面）" {
   let emitted_model = model_emitted_quads(script)
   assert_eq(emitted_model.length(), 3)
   assert_eq(emitted_model[0], {
-    subject: { id: 1, },
-    predicate: { id: 2, },
-    object: { id: 3, },
+    subject: Some({ id: 1, }),
+    predicate: Some({ id: 2, }),
+    object: Some({ id: 3, }),
     graph: None,
   })
   assert_eq(emitted_model[1], {
-    subject: { id: 1, },
-    predicate: { id: 2, },
-    object: { id: 4, },
+    subject: Some({ id: 1, }),
+    predicate: Some({ id: 2, }),
+    object: Some({ id: 4, }),
     graph: None,
   })
   assert_eq(emitted_model[2], {
-    subject: { id: 1, },
-    predicate: { id: 2, },
-    object: { id: 6, },
+    subject: Some({ id: 1, }),
+    predicate: Some({ id: 2, }),
+    object: Some({ id: 6, }),
     graph: None,
   })
   // 引擎侧逐步同响应 + quad 值**逐条**断言（期望值独立于两侧，spec §5 同错盲区护栏）
   let emitted_engine = engine_step_agree(script)
   assert_eq(emitted_engine.length(), 3)
   assert_eq(emitted_engine[0], {
-    subject: { id: 1, },
-    predicate: { id: 2, },
-    object: { id: 3, },
+    subject: Some({ id: 1, }),
+    predicate: Some({ id: 2, }),
+    object: Some({ id: 3, }),
     graph: None,
   })
   assert_eq(emitted_engine[1], {
-    subject: { id: 1, },
-    predicate: { id: 2, },
-    object: { id: 4, },
+    subject: Some({ id: 1, }),
+    predicate: Some({ id: 2, }),
+    object: Some({ id: 4, }),
     graph: None,
   })
   assert_eq(emitted_engine[2], {
-    subject: { id: 1, },
-    predicate: { id: 2, },
-    object: { id: 6, },
+    subject: Some({ id: 1, }),
+    predicate: Some({ id: 2, }),
+    object: Some({ id: 6, }),
     graph: None,
   })
 }

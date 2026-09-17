@@ -85,7 +85,7 @@ pub struct TrigProbe {
 ///|
 pub fn TrigProbe::new() -> TrigProbe {
   let ctx = TrigContext::new()
-  { ctx, handler: { actions: TrigActionsImpl::new(), ctx, } }
+  { ctx, handler: { actions: TrigActionsImpl::new(), ctx, }, }
 }
 
 ///|

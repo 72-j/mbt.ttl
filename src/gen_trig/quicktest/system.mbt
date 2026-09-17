@@ -36,17 +36,15 @@ fn concrete_id(reference : @qcs.Ref[RefId]) -> RefId {
 }
 
 ///|
-/// 引擎快照 → Quad（四槽；缺槽返回 None，交由调用方判"不完整发射"）
-fn quad_from_pending(pending : @trig.TrigPendingQuad) -> Quad? {
-  match (pending.subj, pending.pred, pending.obj) {
-    (Some(subj), Some(pred), Some(obj)) =>
-      Some({
-        subject: ref_id_of(subj),
-        predicate: ref_id_of(pred),
-        object: ref_id_of(obj),
-        graph: pending.graph.map(ref_id_of),
-      })
-    _ => None
+/// 引擎快照 → Quad（四槽**照抄**，槽位可空——快照档 ADR-QM-009）
+/// 与 `model_exec.take_quad` 同机械：模型侧怎么交出快照，适配层就怎么读引擎快照，
+/// 缺槽不在这一层拒绝（领域解释在组装层 `parser_slice.assemble`）。
+fn quad_from_pending(pending : @trig.TrigPendingQuad) -> Quad {
+  {
+    subject: pending.subj.map(ref_id_of),
+    predicate: pending.pred.map(ref_id_of),
+    object: pending.obj.map(ref_id_of),
+    graph: pending.graph.map(ref_id_of),
   }
 }
 
@@ -109,10 +107,7 @@ fn run_command(command : Command, system : System) -> Response {
   match system.probe.step(event) {
     @trig.TrigProbeResponse::Continue => Continue
     @trig.TrigProbeResponse::EmitQuad(pending) =>
-      match quad_from_pending(pending) {
-        Some(quad) => EmitQuad(quad)
-        None => Error(1) // 不完整发射：与 action 业务失败同码
-      }
+      EmitQuad(quad_from_pending(pending)) // 快照照抄（槽位可空，ADR-QM-009）
     @trig.TrigProbeResponse::Done => Done
     @trig.TrigProbeResponse::Failed(error) =>
       match error {

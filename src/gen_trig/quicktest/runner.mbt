@@ -176,13 +176,30 @@ fn run_random_check(
 //     `ListAfterElem` 成为唯一无模型状态；勘探去重键加"有无帧"位（否则带帧模型被同键吞掉）。
 //   · **新证据 = step 12 `Dot`**：引擎发 `EmitQuad`、模型预测 `Error(1)`。
 //
-// P4.2f 判定（2026-09-15 逐步对照，见 `src/quick_machine/todo.md §P4.2f`）：
+// P4.2f 判定与落地（2026-09-15 判定 / 2026-09-17 落地，决策见 ADR-QM-009）：
 //   反例 `Lbrace Iri Iri Iri AnnotStart KeywordA TripleTerm AnnotEnd Rbrace Lbracket Rbracket Dot`
 //   的前 11 步**引擎与模型逐步同响应**（含两次 EmitQuad、弹帧后 `state = ret_state`）；
 //   第 12 步 `Dot` 分道 = **"不完整发射"口径不同**：引擎快照槽位可空、照发 `EmitQuad`；
 //   模型 `emit_*` 的 `quad_ready` 前置判据给 `Error(1)`。
-//   ⇒ 待拍：A 口径对齐引擎（`Quad` 三槽改可空 + 去 `quad_ready`，涟漪到两侧 quad 值锚点钉子）
-//      或 B 保持模型保守（把该判据写进 `const.md` + 随机门带白名单）。
+//   ⇒ 拍板走 **A**（口径对齐引擎），落地为 `[type_mapping].emission_shape = "snapshot"`：
+//     载荷 = 引擎发射边界的**槽位快照**（`Quad` 四槽 `RefId?`），模型不设前置判据、
+//     无条件交出快照；生成器里 `name == "graph"` 那类业务假定一并数据化（`optional_slots`）。
+//     nquads 取 `complete` 档 ⇒ 形状零变（其"缺槽 ⇒ Error(1)"不可达性由掩码单值性独立保证）。
+//     钉子升级：`ListAfterElem` 由"模型不可达"转正向断言（可达状态 35 → 36、无死态）。
+//
+// P4.2f 落地后复开本门（2026-09-17）—— **漂移推到下一层**（A 的目标已达成）：
+//   反例（seed 12345，shrink 后 16 步）：
+//   `Lbrace Iri Iri Iri AnnotStart KeywordA TripleTerm AnnotEnd Rbrace PrefName Lbrace
+//    TripleTerm Rbrace Lbracket Rbracket Dot`
+//   · **step 12 `Dot` 不再分道** ✓（A 的验收面）：两侧同步交出空槽快照
+//     `EmitQuad{subject: Some(0), predicate: None, object: None, graph: None}`。
+//   · **新证据 = step 15 `Dot`**：引擎快照 `graph: None`、模型 `graph: Some(0)`。
+//     逐步对照（探针已删）定位分道点 = step 12 `Rbrace`（`GraphExpectDotOrGraph` 上）：
+//     该行 effect = `Sequence([EmitQuad(SPO), ExitGraph])`，模型只取**首个内嵌 EmitQuad 的 scope**
+//     （P4.2c 口径），**尾意图 `ExitGraph` 整条被丢**——引擎是"先发 SPO 快照、**再**清 `ctx.graph`"。
+//     ⇒ 新领土 **P4.2g：effect 侧写槽语义进模型**（`Sequence` 尾意图 / `Reset(<Scope>)`）。
+//     同族旁证：`Reset(All)` 两行（`GraphExpectVerbOrEnd/VOrDot + Rbrace`）现在生成
+//     `({ ..model, state: ExpectSubject, }, Continue)` —— 槽位一个没清，与引擎不符。
 //
 // test "trig quick machine: random check（模型 ≡ 引擎）" {
 //   match run_random_check() {
