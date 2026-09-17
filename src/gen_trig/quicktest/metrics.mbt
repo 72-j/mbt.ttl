@@ -731,3 +731,68 @@ test "指标·权重表逐名等值（34 名全量 + 默认档）" {
   }
   assert_eq(command_weight("NotDeclared"), 1)
 }
+
+///|
+/// **默认臂名单**（役 6，2026-09-18）：30 条 `// TODO(P0): 未识别 action none` 的保守臂。
+///
+/// 纪律（评审 P1-4）：**默认臂 ≠ 已验证**——生成器按名猜不准 action 语义时给的是保守档，
+/// 响应正确性**没有判据**；本名单给它们建账，防"模型悄悄退化成 90% 保守臂而门全绿"。
+/// 名单手工维护（测试读不到源码），源码侧另有 CI 扫描门（`Default arms bookkeeping`）
+/// 按 `TODO(P0):` 计数钉住——两处一起才防得住"悄悄多一条保守臂"。
+/// 名字口径 = `<from_state>+<on_event>`（与 ADR-QM-011 的 `@arm` 稳定名同形）。
+fn default_arms() -> Array[(ModelState, Command)] {
+  [
+    (ExpectSubject, At),
+    (ExpectSubject, PrefixKw),
+    (ExpectSubject, BaseKw),
+    (ExpectSubject, GraphKw),
+    (ExpectSubject, VersionKw),
+    (ExpectDotOrGraph, Tilde),
+    (ExpectVerbOrEnd, Semicolon),
+    (ExpectTildeEnd, Iri(Concrete({ id: 1, }))),
+    (ExpectTildeEnd, PrefName(Concrete({ id: 1, }))),
+    (ExpectTildeEnd, BlankNode(Concrete({ id: 1, }))),
+    (AnnotExpectVerb, Semicolon),
+    (AnnotExpectVerbTail, Semicolon),
+    (ExpectDirectiveKind, PrefixKw),
+    (ExpectDirectiveKind, BaseKw),
+    (ExpectDirectiveKind, VersionKw),
+    (ExpectVersionLiteral, Literal(Concrete({ id: 1, }))),
+    (ExpectDirectiveEnd, Dot),
+    (ExpectDirectiveEnd, At),
+    (ExpectDirectiveEnd, PrefixKw),
+    (ExpectDirectiveEnd, BaseKw),
+    (ExpectDirectiveEnd, VersionKw),
+    (ExpectDirectiveEnd, GraphKw),
+    (ExpectGraphLbrace, Lbrace),
+    (GraphExpectDotOrGraph, Tilde),
+    (GraphExpectVerbOrEnd, Semicolon),
+    (GraphExpectTildeEnd, Iri(Concrete({ id: 1, }))),
+    (GraphExpectTildeEnd, PrefName(Concrete({ id: 1, }))),
+    (GraphExpectTildeEnd, BlankNode(Concrete({ id: 1, }))),
+    (GraphAnnotExpectVerb, Semicolon),
+    (GraphAnnotExpectVerbTail, Semicolon),
+  ]
+}
+
+///|
+/// 默认臂名单门（役 6）：数量 + 每条"仍是合法臂 + 响应落在保守档"。
+/// 例外一处（与 §2.2 转移普查同款）：`ExpectDirectiveEnd+Dot` 是**唯一带运行时守卫**的保守臂，
+/// `blank_model` 下守卫位为假 ⇒ 该行按"保守拒"给 `Error(0)`，故对它只断言"在册且在册位合法"。
+test "指标·默认臂名单门: 30 条保守臂在册（合法 + 保守档，守卫行单列）" {
+  let arms = default_arms()
+  assert_eq(arms.length(), 30)
+  for site in arms {
+    let (state, command) = site
+    let model = blank_model(state)
+    // ① 保守臂也必须是转移表认可的合法臂（否则根本跑不到，账记错了）
+    assert_true(valid(model, command))
+    let (_, response) = model_execute(model, command)
+    // ② 保守档 = Continue / 状态推进 / 发射；绝不是未定义码 Error(0)，也不是 Done
+    let guarded = state == ExpectDirectiveEnd && command is Dot
+    if !guarded {
+      assert_false(response is Error(0))
+    }
+    assert_false(response is Done)
+  }
+}
