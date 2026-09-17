@@ -6,7 +6,11 @@
 // 本 probe 复用**引擎真件**（`TrigActionsImpl` + handler 钩子 + `interpret`），
 // 只暴露一对入出类型 + 两个方法：
 //   pub(all) enum TrigProbeResponse { Continue | EmitQuad(TrigPendingQuad) | Done | Failed(TrigActionError) }
-//   pub struct TrigProbe { priv … }   /  pub fn TrigProbe::new() / pub fn TrigProbe::step(event)
+//   pub struct TrigProbe { priv … }   /  pub fn TrigProbe::new() / pub fn TrigProbe::step_all(event)
+//
+// 面收口（役 2，2026-09-18）：公开面只留 `new` + `step_all`——`state`/`stack_view`（P4.2e/h
+// 量测遗产，quicktest 零引用）**删除**；`step_once`（内部件）与 `step`（吞事件旧口径，
+// n3v2 P5.2 已明裁不开）收 priv；`step` 仅剩包内钉子用。要量测请写临时 probe/测试，用完即删。
 //
 // 与引擎主循环（`TrigEngine::next`）同机械的三点，缺一不可：
 //   ① 队列优先排空（Sequence 内多条 EmitQuad 逐条回吐）；
@@ -88,31 +92,16 @@ pub fn TrigProbe::new() -> TrigProbe {
   { ctx, handler: { actions: TrigActionsImpl::new(), ctx, }, }
 }
 
-///|
-/// 当前引擎状态（P4.2e：逐步对照"引擎状态 ⟺ 模型状态"用）
-pub fn TrigProbe::state(self : TrigProbe) -> TrigState {
-  self.ctx.state
-}
-
-///|
-/// 帧栈视图（P4.2h 量测用）：自底向上每帧 `"<typ>(<open_span.0>)"`。
-/// 用途：与模型 `Model.frames` 逐项对照（引擎 `list_top` 取**栈顶整体**，
-/// 而栈里混有 `List`/`BnodeProp` 两类帧 ⇒ 顺序/类型都要对上才能等价）。
-pub fn TrigProbe::stack_view(self : TrigProbe) -> Array[String] {
-  self.ctx.slot_stack.map(fn(slot) {
-    let tag = match slot.typ {
-      SlotType::BnodeProp => "bnp"
-      SlotType::List => "list"
-      SlotType::Formula => "formula"
-    }
-    "\{tag}(\{slot.open_span.0})"
-  })
-}
+// 沿革（役 2，2026-09-18）：此处原有量测遗产两件——`TrigProbe::state`（P4.2e 逐步对照用）
+// 与 `TrigProbe::stack_view`（P4.2h 帧栈对照用）。quicktest 零引用、收 priv 后撞
+// `unused_value`（`--deny-warn` 红）⇒ **整体删除**：要再量测请写临时 probe/测试，用完即删，
+// 别再往公开面加量测件（窄入口只剩 `new` + `step_all`；`step`/`step_once` 收 priv 留作包内钉子）。
 
 ///|
 /// 单步驱动（**忽略发射队列**）：喂一个事件 → 一档响应（step / interpret 同引擎同序）。
 /// `Sequence` 内的余量仍入 `ctx.emit_queue`（由调用方排空）。
-pub fn TrigProbe::step_once(
+/// 收面（役 2，2026-09-18）：内部件（`step_all` / `step` 同包调它）⇒ 收 priv。
+fn TrigProbe::step_once(
   self : TrigProbe,
   event : TrigEvent,
 ) -> TrigProbeResponse {
@@ -152,10 +141,9 @@ pub fn TrigProbe::step_all(
 ///|
 /// 单步驱动（旧口径，**会吞入参事件**）：喂一个事件 → 一档响应（队列排空 / step / interpret）。
 /// 保留给既有调用方与钉子；新代码请用 `step_all`（③ 口径）。
-pub fn TrigProbe::step(
-  self : TrigProbe,
-  event : TrigEvent,
-) -> TrigProbeResponse {
+/// 收面（役 2，2026-09-18）：**吞事件旧口径、quicktest 零引用**，且 n3v2 侧 P5.2 已明裁不开
+/// （`gen_n3v2/probe.mbt:8-9`）⇒ 与 n3v2 对齐收 priv；窄入口只剩 `new` + `step_all`。
+fn TrigProbe::step(self : TrigProbe, event : TrigEvent) -> TrigProbeResponse {
   if self.ctx.emit_queue.length() > 0 {
     return EmitQuad(self.ctx.emit_queue.remove(0))
   }
