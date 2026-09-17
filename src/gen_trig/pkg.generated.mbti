@@ -212,6 +212,7 @@ pub struct TrigProbe {
   // private fields
 }
 pub fn TrigProbe::new() -> Self
+pub fn TrigProbe::state(Self) -> TrigState
 pub fn TrigProbe::step_all(Self, TrigEvent) -> Array[TrigProbeResponse]
 
 pub(all) enum TrigProbeResponse {

@@ -8,9 +8,12 @@
 //   pub(all) enum TrigProbeResponse { Continue | EmitQuad(TrigPendingQuad) | Done | Failed(TrigActionError) }
 //   pub struct TrigProbe { priv … }   /  pub fn TrigProbe::new() / pub fn TrigProbe::step_all(event)
 //
-// 面收口（役 2，2026-09-18）：公开面只留 `new` + `step_all`——`state`/`stack_view`（P4.2e/h
-// 量测遗产，quicktest 零引用）**删除**；`step_once`（内部件）与 `step`（吞事件旧口径，
-// n3v2 P5.2 已明裁不开）收 priv；`step` 仅剩包内钉子用。要量测请写临时 probe/测试，用完即删。
+// 面收口（役 2，2026-09-18）：公开面只留 **`new` + `step_all` + `state`**——
+//   · `stack_view`（P4.2h 量测遗产，零引用）**删除**；
+//   · `step_once`（内部件）与 `step`（吞事件旧口径）收 priv（`step` 仅剩包内钉子用）；
+//   · `state` **保留公开**：它不是遗产而是**观测面**——役 7 的引擎侧转移普查要拿它
+//     与模型的 `next_state` 逐对比对（只比响应会漏掉"状态漂移"这类分道，变异实证见 todo §N）。
+// 要量测请写临时 probe/测试，用完即删；新面只在"有常驻门的真实消费者"时才开。
 //
 // 与引擎主循环（`TrigEngine::next`）同机械的三点，缺一不可：
 //   ① 队列优先排空（Sequence 内多条 EmitQuad 逐条回吐）；
@@ -93,9 +96,16 @@ pub fn TrigProbe::new() -> TrigProbe {
 }
 
 // 沿革（役 2，2026-09-18）：此处原有量测遗产两件——`TrigProbe::state`（P4.2e 逐步对照用）
-// 与 `TrigProbe::stack_view`（P4.2h 帧栈对照用）。quicktest 零引用、收 priv 后撞
-// `unused_value`（`--deny-warn` 红）⇒ **整体删除**：要再量测请写临时 probe/测试，用完即删，
-// 别再往公开面加量测件（窄入口只剩 `new` + `step_all`；`step`/`step_once` 收 priv 留作包内钉子）。
+// 与 `TrigProbe::stack_view`（P4.2h 帧栈对照用）。`stack_view` 零引用且收 priv 后撞
+// `unused_value`（`--deny-warn` 红）⇒ **删除**；`state` 则因役 7 的引擎侧普查需要观测面而**保留**
+// （见文件头"面收口"注）。要再量测请写临时 probe/测试，用完即删。
+
+///|
+/// 当前引擎状态（**观测面**：役 7 引擎侧转移普查与模型 `next_state` 逐对比对用）。
+/// 只读投影，不暴露 `ctx`；业务代码勿依赖——它承诺的是"引擎此刻在哪一态"。
+pub fn TrigProbe::state(self : TrigProbe) -> TrigState {
+  self.ctx.state
+}
 
 ///|
 /// 单步驱动（**忽略发射队列**）：喂一个事件 → 一档响应（step / interpret 同引擎同序）。
