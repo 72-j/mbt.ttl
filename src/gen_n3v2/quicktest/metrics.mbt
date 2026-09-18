@@ -715,7 +715,11 @@ test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状
   // ⇒ ListPathAfterStep×4 值级同步（实测两侧同为 `Emit(s=1 p=1 o=1 g=-)`）。
   // 余 2 点 = SubjTrailAfterStepFormula×2（R-03-3 链形分派残差：分支条件是**值**
   // （path_src 空否），静态表行表达不了——留 3b+/3c 立项，见上）。
-  assert_eq(debt_sites.length(), 2)
+  // 【2 → 0（笔 3c 下半·二同笔，2026-09-19）】：罩内发射压制开通（`suppress_emit =
+  // { frame_flag = "is_formula" }` + 压帧即定旗）——Formula 值分支 Some(_) 臂的
+  // `emit_spo` 在罩内被降级为只收拾不上抛（Continue），与引擎 `under_formula()`
+  // 判定同刻同口径 ⇒ SubjTrailAfterStepFormula×2 值级同步，债台账**清零**。
+  assert_eq(debt_sites.length(), 0)
   // 红线：干净领土零分道（引擎⟷模型契约在深机械领土之外必须成立）
   assert_eq(violations, [])
 }
