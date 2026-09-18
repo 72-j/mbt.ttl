@@ -431,6 +431,34 @@ test "n3v2 P5.6 覆盖率门（路径驱动，逐条独立复位）" {
 }
 
 ///|
+/// **覆盖率门·范围断言**（笔 4，2026-09-19）：门只跑"表上有出边"的命令名——
+/// 本断言把"**门没覆盖谁、为什么**"钉死，防两类事：
+///   ① 名单悄悄少一名（见证 BFS 漏路）⇒ 这里先红（`witnessed` 与 `anywhere` 数不等）；
+///   ② 差额里混进"其实可达"的名字 ⇒ 逐名在册断言失败。
+/// 口径同源：两边都由 `valid`（= `[[transitions]]` 派生）算，不手抄。
+test "n3v2 覆盖率门范围: 见证名单 = 表上有出边的命令名（差额逐名在册）" {
+  let witnessed = reachable_witness_paths().map(fn(pair) { pair.0 })
+  let anywhere : Array[String] = []
+  for command in all_commands() {
+    let name = command_name(command)
+    if transition_expectation_is_anywhere(name) {
+      anywhere.push(name)
+    }
+  }
+  // ① 数量守恒：见证账必须把"表上有出边"的名字全找到
+  assert_eq(witnessed.length(), anywhere.length())
+  // ② 差额逐名在册（当前：EOF 表上无出边 ⇒ 合法不覆盖；将来变了这里先红）
+  let uncovered : Array[String] = []
+  for command in all_commands() {
+    let name = command_name(command)
+    if !witnessed.contains(name) {
+      uncovered.push(name)
+    }
+  }
+  assert_eq(uncovered, ["EOF"])
+}
+
+///|
 /// 结构钉子用的可达状态集（BFS，边口径同上）
 fn reachable_states() -> Array[ModelState] {
   let seen : Array[ModelState] = [ExpectSubject]

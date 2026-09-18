@@ -54,10 +54,15 @@ fn run_assert_check() -> @qcs.RunReport[Command, Response, Command, Response] ra
 //   assert_eq(report.commands_run, 11)
 // }
 
-// ===== 覆盖率门（挂起；役 14 按 trig P4.3 形态复活）=====
+// ===== 覆盖率门（**已复活**；2026-09-19 笔 4）=====
+// 门的落点在 `metrics.mbt`（**不属于本文件**）：`run_path_coverage_gate()` —— 一条见证路径
+// 一个用例、逐条独立复位、名单由 `reachable_witness_paths()` **运行时同源派生**（trig P4.3 ② 同形）；
+// 范围由 `metrics.mbt` 的"覆盖率门范围"测试钉死（当前 40/41，差额 = `EOF`——表上无出边）。
+// 本文件只保留运行配置与两道执行门（assert / random），**不再**生成第二份覆盖率门（防双门漂移）。
 // 沿革（P2-5 / N3，2026-09-18 清理）：生成骨架原带 `coverage_gate_config`
 // （**38 名手抄名单**，违"判据与账同源"纪律）+ `run_coverage_check` + 注释掉的 test，
-// 且门从未开启 ⇒ 三者一并删除。生成器模板仍产此形态（根治见主仓生成器役 9）。
+// 且门从未开启 ⇒ 三者一并删除。生成器模板的同款形态已在**役 9 nit**（2026-09-19）根治：
+// 名单非空才发 `coverage_gate_config`，且永不发死函数/注释测试。
 // 复活条件：照 trig P4.3 —— BFS 见证路径 → 一条路径一个用例 → 名单同源派生。
 
 // ===== 随机属性测试 =====
