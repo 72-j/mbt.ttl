@@ -981,8 +981,8 @@ fn frame_pop(model : Model) -> Model {
   }
 }
 ///|
-/// 帧栈顶 `prev_node` 读助手（笔 3b）：帧扩展位（`[type_mapping].frame_slots`）**被读**时生成。
-/// 空栈兜底 = `None`（引擎侧该媒介位在无帧时同样读不到值）。
+/// 帧栈顶 `prev_node` 读助手（笔 3b 起；笔 3c 支持带类型帧位）：**被读**时生成。
+/// 空栈兜底 = `None`（与该位的声明类型一致）。
 fn frame_prev_node(model : Model) -> RefId? {
   match model.frames.length() {
     0 => None
