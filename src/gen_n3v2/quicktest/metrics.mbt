@@ -697,7 +697,18 @@ test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状
   // SubjTrailAfterStepFormula+PrefName 回位公式族（SubjTrailVerbDone →
   // SubjTrailVerbDoneFormula）等；深切片新增对（Id/Invert × bnp 族、
   // BnpExpectIdNode 见证）**零分道**（响应+状态全同步）。11 点仍全在 trail 族。
-  assert_eq(debt_sites.length(), 11)
+  // 【11 → 6（笔 3a 同笔，2026-09-18）】：path 三账入模型（path_src/pend/tail/fwd
+  // 四字段）+ 六操作写槽真值（path_step/subj_trail/obj_trail/hop_tail/subj_end/
+  // obj_close，fwd: 排布来源 + 帧顶写）→ 主位/宾位尾随收口值级同步：
+  // SubjTrailAfterStep+Iri/PrefName、ObjTrailAfterStep×3 清账。余 6 点 =
+  // SubjTrailAfterStepFormula×2 + ListPathAfterStep×4：
+  //   · Formula×2 = R-03-3 链形分派残差——见证路走**谓词位 trail**（Lbrace→
+  //     set_predicate→Bang→path_subj_trail），引擎 path_src := ctx.subject =
+  //     None（公式内主语空）⇒ path_subj_end 走 None 分支（path_subj_object
+  //     回装 + state 拨回，Continue 不发射）；分支条件 path_src 空否是**值**，
+  //     行响应/状态静态，静态表行表达不了（spec §5 同 R-03-3），留 3b+ 立项。
+  //   · ListPath×4 = 元素位（Frame.prev_node 帧扩展位），笔 3b 立项。
+  assert_eq(debt_sites.length(), 6)
   // 红线：干净领土零分道（引擎⟷模型契约在深机械领土之外必须成立）
   assert_eq(violations, [])
 }

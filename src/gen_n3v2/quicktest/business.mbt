@@ -12,17 +12,15 @@
 // 组装点唯一: state_machine.mbt 的 quick_state_machine；本文件只出函数。
 
 // ===== P2 引用取值与权重 =====
-
 ///|
 /// 引用取值范围（源 [business].ref_id_range）：越小越利于 shrink 收敛
 const REF_ID_RANGE : Int = 8
-
 ///|
 /// 命令权重（源 [business].weights；未声明默认 1，0 表示禁用）。
 /// 权重只影响选择概率，合法性仍由 valid 过滤（转移表是唯一权威）。
 /// 沿革（R-18 再生笔，2026-09-18）：本表是**手编层**——再生模板只发空表 `_ => 1`，
 /// 再生后须照 `src/quick_machine/quick_machine_n3.toml` 的 [business.weights] 重铺
-///（役 9 候选：模板按业务 TOML 发表）。本笔新增 Id = 0 / Invert = 0（R-17 值级缺口排除）。
+///（役 9 候选：模板按业务 TOML 发表）。笔 3a 再生后再铺（表未变，Id/Invert = 0 保持）。
 fn command_weight(name : String) -> Int {
   match name {
     "At" => 1
@@ -69,13 +67,11 @@ fn command_weight(name : String) -> Int {
     _ => 1
   }
 }
-
 ///|
 /// 新引用：取值模 REF_ID_RANGE（有限取值空间利于失败复现）
 fn fresh_ref(rng : @splitmix.RandomState) -> @qcs.Ref[RefId] {
-  Concrete({ id: rng.next_positive_int() % REF_ID_RANGE, })
+  Concrete({ id: rng.next_positive_int() % REF_ID_RANGE })
 }
-
 ///|
 /// P2 generator: 候选全构造 → valid 过滤 → 权重抽取（无合法候选返回 None）
 ///
@@ -131,12 +127,47 @@ fn generate_command(
     EOF,
   ]
   let names : Array[String] = [
-    "Iri", "BlankNode", "Literal", "PrefName", "TripleTerm", "BracketTripleTerm",
-    "KeywordA", "Variable", "KeywordX", "Equals", "Is", "Of", "Has", "At", "PrefixKw",
-    "BaseKw", "VersionKw", "Tilde", "AnnotStart", "AnnotEnd", "ForAllKw", "ForSomeKw",
-    "KeywordsKw", "Comma", "Semicolon", "Dot", "Lbrace", "Rbrace", "Lbracket", "Rbracket",
-    "Lparen", "Rparen", "Anon", "Bang", "Caret", "Implies", "ImpliedBy", "Unknown",
-    "Id", "Invert", "EOF",
+    "Iri",
+    "BlankNode",
+    "Literal",
+    "PrefName",
+    "TripleTerm",
+    "BracketTripleTerm",
+    "KeywordA",
+    "Variable",
+    "KeywordX",
+    "Equals",
+    "Is",
+    "Of",
+    "Has",
+    "At",
+    "PrefixKw",
+    "BaseKw",
+    "VersionKw",
+    "Tilde",
+    "AnnotStart",
+    "AnnotEnd",
+    "ForAllKw",
+    "ForSomeKw",
+    "KeywordsKw",
+    "Comma",
+    "Semicolon",
+    "Dot",
+    "Lbrace",
+    "Rbrace",
+    "Lbracket",
+    "Rbracket",
+    "Lparen",
+    "Rparen",
+    "Anon",
+    "Bang",
+    "Caret",
+    "Implies",
+    "ImpliedBy",
+    "Unknown",
+    "Id",
+    "Invert",
+    "EOF",
   ]
   let weighted : Array[(Command, Int)] = []
   for index = 0; index < candidates.length(); index = index + 1 {
@@ -167,7 +198,6 @@ fn generate_command(
 // TODO(P2 人工): 业务导向的命令分布在此重写
 
 // ===== P2 符号响应 mock =====
-
 ///|
 /// P2 mock: 复用纯模型预测符号响应（本骨架不产生新符号变量）
 fn mock_command(
@@ -180,13 +210,11 @@ fn mock_command(
 }
 
 // ===== P3 响应变量 / 符号解析 / 绑定 =====
-
 ///|
 /// P3 response_vars: 响应不携带新资源（无新建引用），无变量可提取
 fn response_vars(_response : Response) -> Array[@qcs.Var] {
   [] // TODO(P3 人工): 响应携带新资源时在此提取
 }
-
 ///|
 /// 单个引用解析: Concrete 透传，Symbolic 查环境（缺变量报错）
 fn reify_ref(
@@ -202,15 +230,13 @@ fn reify_ref(
       }
   }
 }
-
 ///|
 /// P3 reify_command: 逐载荷解析 Symbolic → Concrete
 fn reify_command(
   command : Command,
   env : @qcs.Environment[RefId],
 ) -> Result[Command, @qcs.EnvError] {
-  match command {
-    Iri(reference) =>
+  match command {    Iri(reference) =>
       match reify_ref(reference, env) {
         Ok(resolved) => Ok(Iri(resolved))
         Err(error) => Err(error)
@@ -329,7 +355,6 @@ fn reify_command(
     EOF => Ok(EOF)
   }
 }
-
 ///|
 /// P3 bind_response: 环境透传（响应无新变量）
 fn bind_response(
@@ -341,7 +366,6 @@ fn bind_response(
 }
 
 // ===== P4 收缩 / 重映射 =====
-
 ///|
 /// P4 remap_command: 命令无符号变量引用，恒可保留
 fn remap_command(
@@ -350,22 +374,20 @@ fn remap_command(
 ) -> Command? {
   Some(command) // TODO(P4 人工): 命令引用响应变量时按 scope 重映射
 }
-
 ///|
 /// 引用收缩候选：id 减半、归零（取值空间有限，越小越易读）
 fn shrink_ref(reference : @qcs.Ref[RefId]) -> Array[@qcs.Ref[RefId]] {
   match reference {
     Concrete(id) if id.id > 0 =>
-      [Concrete({ id: id.id / 2, }), Concrete({ id: 0, })]
+      [Concrete({ id: id.id / 2 }), Concrete({ id: 0 })]
     _ => []
   }
 }
-
 ///|
 /// P4 shrink_command: 只收缩引用载荷；结构命令本身已是最简
 fn shrink_command(_model : Model, command : Command) -> Array[Command] {
-  match command {
-    Iri(reference) => shrink_ref(reference).map(fn(smaller) { Iri(smaller) })
+  match command {    Iri(reference) =>
+      shrink_ref(reference).map(fn(smaller) { Iri(smaller) })
     BlankNode(reference) =>
       shrink_ref(reference).map(fn(smaller) { BlankNode(smaller) })
     Literal(reference) =>
@@ -390,8 +412,10 @@ fn shrink_command(_model : Model, command : Command) -> Array[Command] {
       shrink_ref(reference).map(fn(smaller) { Lbracket(smaller) })
     Lparen(reference) =>
       shrink_ref(reference).map(fn(smaller) { Lparen(smaller) })
-    Anon(reference) => shrink_ref(reference).map(fn(smaller) { Anon(smaller) })
-    Bang(reference) => shrink_ref(reference).map(fn(smaller) { Bang(smaller) })
+    Anon(reference) =>
+      shrink_ref(reference).map(fn(smaller) { Anon(smaller) })
+    Bang(reference) =>
+      shrink_ref(reference).map(fn(smaller) { Bang(smaller) })
     Caret(reference) =>
       shrink_ref(reference).map(fn(smaller) { Caret(smaller) })
     Implies(reference) =>
@@ -405,7 +429,6 @@ fn shrink_command(_model : Model, command : Command) -> Array[Command] {
 }
 
 // ===== P5 后置条件与不变量 =====
-
 ///|
 /// P5 postcondition: 严格双执行比较（含错误码）——宁可误报，不可漏报
 fn postcondition(
@@ -414,9 +437,11 @@ fn postcondition(
   response : Response,
 ) -> @qcs.Logic {
   let (_, expected) = model_execute(model, command)
-  @qcs.Logic::predicate(name="model matches system", value=expected == response)
+  @qcs.Logic::predicate(
+    name="model matches system",
+    value=expected == response,
+  )
 }
-
 ///|
 /// P5 invariant: 模型不变量（保守恒真；槽位一致性等业务性质在此补）
 fn model_invariant(_model : Model) -> @qcs.Logic {
@@ -427,8 +452,7 @@ fn model_invariant(_model : Model) -> @qcs.Logic {
 test "n3_quick_machine business: 权重与收缩候选冒烟" {
   assert_true(REF_ID_RANGE > 0)
   assert_true(command_weight("Iri") > 0)
-  assert_eq(shrink_command(model_empty(), Iri(Concrete({ id: 4, }))), [
-    Iri(Concrete({ id: 2, })),
-    Iri(Concrete({ id: 0, })),
-  ])
-}
+  assert_eq(shrink_command(model_empty(), Iri(Concrete({ id: 4 }))), [
+    Iri(Concrete({ id: 2 })),
+    Iri(Concrete({ id: 0 })),
+  ])}

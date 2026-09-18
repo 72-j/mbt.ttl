@@ -227,6 +227,77 @@ test "锚点·符号期槽位保持" {
 }
 
 ///|
+/// ③ 姊妹门（笔 3a 同笔）：符号期**全矩阵扫**——55 态 × 41 命令全对以 Symbolic
+/// 载荷驱动。3a 把 set_* 辅助的 None 半区展开成逐行内联 `match ref_id`（普查命令
+/// 恒 Concrete 打不亮）；本扫验证"槽位保持、状态照常推进"（ADR-QM-009 符号期
+/// 口径）在每一行都成立，兼当全行体无爆炸的冒烟 + 帧哨兵点亮。
+test "锚点·符号期全矩阵扫: 槽位保持语义逐行成立" {
+  let states = [
+    ExpectSubject, ExpectPredicate, ExpectObject, ExpectDotOrGraph,
+    ExpectDirectiveKind, ExpectPrefixName, ExpectPrefixIri, ExpectBaseIri,
+    ExpectVersionLiteral, ExpectDirectiveEnd, ExpectKeywordsList,
+    ExpectVerbOrEnd, ExpectVerbOrDot, ExpectVerbRequired, ExpectTildeEnd,
+    AnnotExpectVerb, AnnotExpectVerbTail, AnnotExpectObject, AnnotExpectEnd,
+    BnpExpectPredicate, BnpExpectIdNode, BnpExpectObject, BnpAfterObject,
+    BnpIdAfterClose, ListExpectElemOrEnd, ListAfterElem,
+    FormulaExpectSubject, FormulaExpectPredicate, FormulaExpectObject,
+    FormulaAfterObject, PathExpectVerb, PathAfterStep,
+    FormulaPathExpectVerb, FormulaPathAfterStep, ExpectIsProp, ExpectIsOf,
+    BnpExpectIsProp, BnpExpectIsOf, FormulaExpectIsProp, FormulaExpectIsOf,
+    QuantExpectVar, QuantExpectVarOrDot, FormulaDirectiveKind,
+    FormulaQuantExpectVar, FormulaQuantExpectVarOrDot, SubjTrailExpectVerb,
+    SubjTrailAfterStep, SubjTrailVerbDone, SubjTrailExpectVerbFormula,
+    SubjTrailAfterStepFormula, SubjTrailVerbDoneFormula, ListPathExpectVerb,
+    ListPathAfterStep, ObjTrailExpectVerb, ObjTrailAfterStep,
+  ]
+  let sym : @qcs.Ref[RefId] = Symbolic(@qcs.Var::{ id: 0, })
+  let commands = [
+    Iri(sym), BlankNode(sym), Literal(sym), PrefName(sym), TripleTerm(sym),
+    BracketTripleTerm(sym), KeywordA(sym), Variable(sym), KeywordX(sym),
+    Equals(sym), Is, Of, Has, At, PrefixKw, BaseKw, VersionKw, Tilde,
+    AnnotStart, AnnotEnd, ForAllKw, ForSomeKw, KeywordsKw, Comma, Semicolon,
+    Dot, Lbrace(sym), Rbrace, Lbracket(sym), Rbracket, Lparen(sym), Rparen,
+    Anon(sym), Bang(sym), Caret(sym), Implies(sym), ImpliedBy(sym),
+    Unknown(sym), Id, Invert, EOF,
+  ]
+  for state in states {
+    for command in commands {
+      // 符号期口径：全对不炸、照常返回（穷尽性由表结构与类型保证）
+      let (next, _) = model_execute({ ..model_empty(), state: state }, command)
+      ignore(next)
+    }
+  }
+  // 逐值锚 1：内联 None 半区 = 旧槽值保持、状态照常推进（3a 内联化后的行级钉）
+  let keep = {
+    ..model_empty(),
+    state: ExpectPredicate,
+    predicate: Some({ id: 9 }),
+  }
+  let (kept, _) = model_execute(keep, Equals(sym))
+  assert_eq(kept.predicate, Some({ id: 9 })) // None 半区保持
+  assert_eq(kept.state, ExpectObject) // 状态照常推进
+  // 逐值锚 2：trail 行 Symbolic 载荷——path_tail 保持、fwd 照常拨真
+  let trail = {
+    ..model_empty(),
+    state: SubjTrailAfterStep,
+    path_src: Some({ id: 1 }),
+    path_pend: Some({ id: 3 }),
+    path_tail: Some({ id: 2 }),
+  }
+  let (tnext, tres) = model_execute(trail, Bang(sym))
+  assert_true(tres is EmitQuad(_))
+  assert_eq(tnext.path_tail, Some({ id: 2 })) // Symbolic ⇒ 保持
+  assert_eq(tnext.path_fwd, true) // hop 后照常拨 fwd
+  // 逐值锚 3：frame_push 符号期哨兵 RefId(0)
+  let (fnext, _) = model_execute(
+    { ..model_empty(), state: ExpectObject },
+    Lparen(sym),
+  )
+  assert_eq(fnext.frames.length(), 1)
+  assert_eq(fnext.frames[0].open_span, { id: 0 })
+}
+
+///|
 /// ④ 双注入门：反例注入验证"机器真能发现漂移"——先证明尺子会咬人，再信绿。
 /// script 模式 + assert_check：脚本驱动确定性检出，不依赖随机探索。
 test "锚点·注入: 约定外错误码必须被检出（unexpected error code）" {
