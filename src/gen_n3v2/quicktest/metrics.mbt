@@ -166,9 +166,11 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("Tilde", 1),
     ("BaseKw", 1),
     ("Equals", 1),
-    ("Lbrace", 0),
+    // 【0 → 1（笔 3c 下半·三，2026-09-19）】：公式族放开——as_pred 弹帧回写开通后
+    // 谓位反例两侧同步（锚点⑤⑥值级钉死），随机门组合路径实测通过（Lbrace=2/Rbrace=2）。
+    ("Lbrace", 1),
     ("Lparen", 0),
-    ("Rbrace", 0),
+    ("Rbrace", 1),
     ("Rparen", 0),
     ("Implies", 0),
     ("Literal", 3),

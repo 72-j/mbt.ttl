@@ -41,17 +41,17 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectSubject+Literal
     (ExpectSubject, Literal(r)) => (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+Lbracket
-    (ExpectSubject, Lbracket(r)) => (frame_push(model, r, ExpectVerbOrDot, true, BnpExpectPredicate, false), Continue)
+    (ExpectSubject, Lbracket(r)) => (frame_push(model, r, ExpectVerbOrDot, true, BnpExpectPredicate, false, false), Continue)
     // @arm ExpectSubject+Anon
     (ExpectSubject, Anon(r)) => (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+Lparen
-    (ExpectSubject, Lparen(r)) => (frame_push(model, r, ExpectVerbRequired, true, ListExpectElemOrEnd, false), Continue)
+    (ExpectSubject, Lparen(r)) => (frame_push(model, r, ExpectVerbRequired, true, ListExpectElemOrEnd, false, false), Continue)
     // @arm ExpectSubject+Variable
     (ExpectSubject, Variable(r)) => (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+KeywordX
     (ExpectSubject, KeywordX(r)) => (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+Lbrace
-    (ExpectSubject, Lbrace(r)) => (frame_push(model, r, ExpectVerbRequired, true, FormulaExpectSubject, true), Continue)
+    (ExpectSubject, Lbrace(r)) => (frame_push(model, r, ExpectVerbRequired, true, FormulaExpectSubject, true, false), Continue)
     // --- ExpectPredicate ---
     // @arm ExpectPredicate+Iri
     (ExpectPredicate, Iri(r)) => (set_predicate(model, r, ExpectObject), Continue)
@@ -82,9 +82,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectPredicate+Dot
     (ExpectPredicate, Dot) => ({ ..model, state: ExpectSubject, subject: None, predicate: None, object: None,  }, Continue)
     // @arm ExpectPredicate+Lbrace
-    (ExpectPredicate, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true), Continue)
+    (ExpectPredicate, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true, true), Continue)
     // @arm ExpectPredicate+Lbracket
-    (ExpectPredicate, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false), Continue)
+    (ExpectPredicate, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false, true), Continue)
     // @arm ExpectPredicate+Bang
     (ExpectPredicate, Bang(r)) => ({ ..model, state: SubjTrailExpectVerb, path_src: model.subject, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: true,  }, Continue)
     // @arm ExpectPredicate+Caret
@@ -105,9 +105,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectObject+Anon
     (ExpectObject, Anon(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+Lbracket
-    (ExpectObject, Lbracket(r)) => (frame_push(model, r, ExpectDotOrGraph, false, BnpExpectPredicate, false), Continue)
+    (ExpectObject, Lbracket(r)) => (frame_push(model, r, ExpectDotOrGraph, false, BnpExpectPredicate, false, false), Continue)
     // @arm ExpectObject+Lparen
-    (ExpectObject, Lparen(r)) => (frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd, false), Continue)
+    (ExpectObject, Lparen(r)) => (frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd, false, false), Continue)
     // @arm ExpectObject+Variable
     (ExpectObject, Variable(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+KeywordX
@@ -117,7 +117,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectObject+Caret
     (ExpectObject, Caret(r)) => if model.predicate is Some(_) { emit_spo({ ..model, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: match ref_id(r) { Some(id) => Some(id); None => model.path_src }, path_pend: None,  }, PathExpectVerb) } else { ({ ..model, state: PathExpectVerb, path_pend: None, path_src: model.subject, path_fwd: false,  }, Continue) }
     // @arm ExpectObject+Lbrace
-    (ExpectObject, Lbrace(r)) => (frame_push(model, r, ExpectDotOrGraph, false, FormulaExpectSubject, true), Continue)
+    (ExpectObject, Lbrace(r)) => (frame_push(model, r, ExpectDotOrGraph, false, FormulaExpectSubject, true, false), Continue)
     // --- ExpectDotOrGraph ---
     // @arm ExpectDotOrGraph+Comma
     (ExpectDotOrGraph, Comma) => emit_object(model, ExpectObject)
@@ -130,9 +130,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectDotOrGraph+AnnotStart
     (ExpectDotOrGraph, AnnotStart) => emit_predobj(model, AnnotExpectVerb)
     // @arm ExpectDotOrGraph+Bang
-    (ExpectDotOrGraph, Bang(r)) => ({ ..frame_push(model, r, ObjTrailExpectVerb, false, ObjTrailExpectVerb, false), object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: model.object, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, subject: model.subject, predicate: model.predicate, path_fwd: true,  }, Continue)
+    (ExpectDotOrGraph, Bang(r)) => ({ ..frame_push(model, r, ObjTrailExpectVerb, false, ObjTrailExpectVerb, false, false), object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: model.object, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, subject: model.subject, predicate: model.predicate, path_fwd: true,  }, Continue)
     // @arm ExpectDotOrGraph+Caret
-    (ExpectDotOrGraph, Caret(r)) => ({ ..frame_push(model, r, ObjTrailExpectVerb, false, ObjTrailExpectVerb, false), object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: model.object, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, subject: model.subject, predicate: model.predicate, path_fwd: false,  }, Continue)
+    (ExpectDotOrGraph, Caret(r)) => ({ ..frame_push(model, r, ObjTrailExpectVerb, false, ObjTrailExpectVerb, false, false), object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: model.object, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, subject: model.subject, predicate: model.predicate, path_fwd: false,  }, Continue)
     // --- ExpectVerbOrEnd ---
     // @arm ExpectVerbOrEnd+Iri
     (ExpectVerbOrEnd, Iri(r)) => (set_predicate(model, r, ExpectObject), Continue)
@@ -163,9 +163,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectVerbOrEnd+ImpliedBy
     (ExpectVerbOrEnd, ImpliedBy(r)) => (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+Lbrace
-    (ExpectVerbOrEnd, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true), Continue)
+    (ExpectVerbOrEnd, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true, true), Continue)
     // @arm ExpectVerbOrEnd+Lbracket
-    (ExpectVerbOrEnd, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false), Continue)
+    (ExpectVerbOrEnd, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false, true), Continue)
     // --- ExpectVerbRequired ---
     // @arm ExpectVerbRequired+Iri
     (ExpectVerbRequired, Iri(r)) => (set_predicate(model, r, ExpectObject), Continue)
@@ -190,9 +190,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectVerbRequired+Dot
     (ExpectVerbRequired, Dot) => ({ ..model, state: ExpectSubject, subject: None, predicate: None, object: None,  }, Continue)
     // @arm ExpectVerbRequired+Lbrace
-    (ExpectVerbRequired, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true), Continue)
+    (ExpectVerbRequired, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true, true), Continue)
     // @arm ExpectVerbRequired+Lbracket
-    (ExpectVerbRequired, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false), Continue)
+    (ExpectVerbRequired, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false, true), Continue)
     // @arm ExpectVerbRequired+Bang
     (ExpectVerbRequired, Bang(r)) => ({ ..model, state: SubjTrailExpectVerb, path_src: model.subject, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: true,  }, Continue)
     // @arm ExpectVerbRequired+Caret
@@ -229,9 +229,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectVerbOrDot+ImpliedBy
     (ExpectVerbOrDot, ImpliedBy(r)) => (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+Lbrace
-    (ExpectVerbOrDot, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true), Continue)
+    (ExpectVerbOrDot, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true, true), Continue)
     // @arm ExpectVerbOrDot+Lbracket
-    (ExpectVerbOrDot, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false), Continue)
+    (ExpectVerbOrDot, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false, true), Continue)
     // --- ExpectDirectiveKind ---
     // @arm ExpectDirectiveKind+PrefixKw
     (ExpectDirectiveKind, PrefixKw) => ({ ..model, state: ExpectPrefixName }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -275,15 +275,15 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectDirectiveEnd+VersionKw
     (ExpectDirectiveEnd, VersionKw) => ({ ..model, state: ExpectVersionLiteral, directive_at: false,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDirectiveEnd+Lbracket
-    (ExpectDirectiveEnd, Lbracket(r)) => (frame_push(model, r, ExpectVerbOrDot, true, BnpExpectPredicate, false), Continue)
+    (ExpectDirectiveEnd, Lbracket(r)) => (frame_push(model, r, ExpectVerbOrDot, true, BnpExpectPredicate, false, false), Continue)
     // @arm ExpectDirectiveEnd+Anon
     (ExpectDirectiveEnd, Anon(r)) => (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectDirectiveEnd+TripleTerm
     (ExpectDirectiveEnd, TripleTerm(r)) => (set_subject(model, r, ExpectVerbOrDot), Continue)
     // @arm ExpectDirectiveEnd+Lparen
-    (ExpectDirectiveEnd, Lparen(r)) => (frame_push(model, r, ExpectVerbRequired, true, ListExpectElemOrEnd, false), Continue)
+    (ExpectDirectiveEnd, Lparen(r)) => (frame_push(model, r, ExpectVerbRequired, true, ListExpectElemOrEnd, false, false), Continue)
     // @arm ExpectDirectiveEnd+Lbrace
-    (ExpectDirectiveEnd, Lbrace(r)) => (frame_push(model, r, ExpectVerbRequired, true, FormulaExpectSubject, true), Continue)
+    (ExpectDirectiveEnd, Lbrace(r)) => (frame_push(model, r, ExpectVerbRequired, true, FormulaExpectSubject, true, false), Continue)
     // --- ExpectKeywordsList ---
     // @arm ExpectKeywordsList+Unknown
     (ExpectKeywordsList, Unknown(_)) => (model, Continue)
@@ -358,7 +358,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm FormulaExpectPredicate+Rbrace
     (FormulaExpectPredicate, Rbrace) => (frame_pop(model), Continue)
     // @arm FormulaExpectPredicate+Lbracket
-    (FormulaExpectPredicate, Lbracket(r)) => (frame_push(model, r, FormulaExpectObject, false, BnpExpectPredicate, false), Continue)
+    (FormulaExpectPredicate, Lbracket(r)) => (frame_push(model, r, FormulaExpectObject, false, BnpExpectPredicate, false, true), Continue)
     // @arm FormulaExpectPredicate+Bang
     (FormulaExpectPredicate, Bang(r)) => ({ ..model, state: SubjTrailExpectVerbFormula, path_src: model.subject, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: true,  }, Continue)
     // @arm FormulaExpectPredicate+Caret
@@ -421,11 +421,11 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm FormulaExpectSubject+Anon
     (FormulaExpectSubject, Anon(r)) => (set_subject(model, r, FormulaExpectPredicate), Continue)
     // @arm FormulaExpectSubject+Lbracket
-    (FormulaExpectSubject, Lbracket(r)) => (frame_push(model, r, FormulaExpectPredicate, true, BnpExpectPredicate, false), Continue)
+    (FormulaExpectSubject, Lbracket(r)) => (frame_push(model, r, FormulaExpectPredicate, true, BnpExpectPredicate, false, false), Continue)
     // @arm FormulaExpectSubject+Lparen
-    (FormulaExpectSubject, Lparen(r)) => (frame_push(model, r, FormulaExpectPredicate, true, ListExpectElemOrEnd, false), Continue)
+    (FormulaExpectSubject, Lparen(r)) => (frame_push(model, r, FormulaExpectPredicate, true, ListExpectElemOrEnd, false, false), Continue)
     // @arm FormulaExpectSubject+Lbrace
-    (FormulaExpectSubject, Lbrace(r)) => (frame_push(model, r, FormulaExpectPredicate, true, FormulaExpectSubject, true), Continue)
+    (FormulaExpectSubject, Lbrace(r)) => (frame_push(model, r, FormulaExpectPredicate, true, FormulaExpectSubject, true, false), Continue)
     // @arm FormulaExpectSubject+Rbrace
     (FormulaExpectSubject, Rbrace) => (frame_pop(model), Continue)
     // --- FormulaDirectiveKind ---
@@ -493,15 +493,15 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm BnpExpectObject+BracketTripleTerm
     (BnpExpectObject, BracketTripleTerm(r)) => (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+Lbracket
-    (BnpExpectObject, Lbracket(r)) => (frame_push(model, r, BnpAfterObject, false, BnpExpectPredicate, false), Continue)
+    (BnpExpectObject, Lbracket(r)) => (frame_push(model, r, BnpAfterObject, false, BnpExpectPredicate, false, false), Continue)
     // @arm BnpExpectObject+Lparen
-    (BnpExpectObject, Lparen(r)) => (frame_push(model, r, BnpAfterObject, false, ListExpectElemOrEnd, false), Continue)
+    (BnpExpectObject, Lparen(r)) => (frame_push(model, r, BnpAfterObject, false, ListExpectElemOrEnd, false, false), Continue)
     // @arm BnpExpectObject+Variable
     (BnpExpectObject, Variable(r)) => (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+KeywordX
     (BnpExpectObject, KeywordX(r)) => (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+Lbrace
-    (BnpExpectObject, Lbrace(r)) => (frame_push(model, r, BnpAfterObject, false, FormulaExpectSubject, true), Continue)
+    (BnpExpectObject, Lbrace(r)) => (frame_push(model, r, BnpAfterObject, false, FormulaExpectSubject, true, false), Continue)
     // --- BnpAfterObject ---
     // @arm BnpAfterObject+Comma
     (BnpAfterObject, Comma) => emit_object(model, BnpExpectObject)
@@ -529,9 +529,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ListExpectElemOrEnd+Anon
     (ListExpectElemOrEnd, Anon(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListExpectElemOrEnd+Lbracket
-    (ListExpectElemOrEnd, Lbracket(r)) => ({ ..frame_push(model, r, BnpExpectPredicate, false, BnpExpectPredicate, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, Lbracket(r)) => ({ ..frame_push(model, r, BnpExpectPredicate, false, BnpExpectPredicate, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListExpectElemOrEnd+Lparen
-    (ListExpectElemOrEnd, Lparen(r)) => ({ ..frame_push(model, r, ListExpectElemOrEnd, false, ListExpectElemOrEnd, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, Lparen(r)) => ({ ..frame_push(model, r, ListExpectElemOrEnd, false, ListExpectElemOrEnd, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListExpectElemOrEnd+Rparen
     (ListExpectElemOrEnd, Rparen) => (frame_pop(model), Continue)
     // @arm ListExpectElemOrEnd+Variable
@@ -539,7 +539,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ListExpectElemOrEnd+KeywordX
     (ListExpectElemOrEnd, KeywordX(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListExpectElemOrEnd+Lbrace
-    (ListExpectElemOrEnd, Lbrace(r)) => ({ ..frame_push(model, r, FormulaExpectSubject, false, FormulaExpectSubject, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, Lbrace(r)) => ({ ..frame_push(model, r, FormulaExpectSubject, false, FormulaExpectSubject, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // --- ListAfterElem ---
     // @arm ListAfterElem+Iri
     (ListAfterElem, Iri(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
@@ -554,9 +554,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ListAfterElem+BracketTripleTerm
     (ListAfterElem, BracketTripleTerm(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListAfterElem+Lbracket
-    (ListAfterElem, Lbracket(r)) => ({ ..frame_push(model, r, BnpExpectPredicate, false, BnpExpectPredicate, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, Lbracket(r)) => ({ ..frame_push(model, r, BnpExpectPredicate, false, BnpExpectPredicate, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListAfterElem+Lparen
-    (ListAfterElem, Lparen(r)) => ({ ..frame_push(model, r, ListExpectElemOrEnd, false, ListExpectElemOrEnd, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, Lparen(r)) => ({ ..frame_push(model, r, ListExpectElemOrEnd, false, ListExpectElemOrEnd, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListAfterElem+Rparen
     (ListAfterElem, Rparen) => (frame_pop(model), Continue)
     // @arm ListAfterElem+Variable
@@ -568,7 +568,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ListAfterElem+Caret
     (ListAfterElem, Caret(r)) => ({ ..model, state: ListPathExpectVerb, path_src: frame_prev_node(model), path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }), path_fwd: false,  }, Continue)
     // @arm ListAfterElem+Lbrace
-    (ListAfterElem, Lbrace(r)) => ({ ..frame_push(model, r, FormulaExpectSubject, false, FormulaExpectSubject, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, Lbrace(r)) => ({ ..frame_push(model, r, FormulaExpectSubject, false, FormulaExpectSubject, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // --- FormulaExpectObject ---
     // @arm FormulaExpectObject+Variable
     (FormulaExpectObject, Variable(r)) => (set_object(model, r, FormulaAfterObject), Continue)
@@ -593,18 +593,18 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm FormulaExpectObject+Anon
     (FormulaExpectObject, Anon(r)) => (set_object(model, r, FormulaAfterObject), Continue)
     // @arm FormulaExpectObject+Lbracket
-    (FormulaExpectObject, Lbracket(r)) => (frame_push(model, r, FormulaAfterObject, false, BnpExpectPredicate, false), Continue)
+    (FormulaExpectObject, Lbracket(r)) => (frame_push(model, r, FormulaAfterObject, false, BnpExpectPredicate, false, false), Continue)
     // @arm FormulaExpectObject+Lparen
-    (FormulaExpectObject, Lparen(r)) => (frame_push(model, r, FormulaAfterObject, false, ListExpectElemOrEnd, false), Continue)
+    (FormulaExpectObject, Lparen(r)) => (frame_push(model, r, FormulaAfterObject, false, ListExpectElemOrEnd, false, false), Continue)
     // @arm FormulaExpectObject+Lbrace
-    (FormulaExpectObject, Lbrace(r)) => (frame_push(model, r, FormulaAfterObject, false, FormulaExpectSubject, true), Continue)
+    (FormulaExpectObject, Lbrace(r)) => (frame_push(model, r, FormulaAfterObject, false, FormulaExpectSubject, true, false), Continue)
     // --- AnnotExpectObject ---
     // @arm AnnotExpectObject+Variable
     (AnnotExpectObject, Variable(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+KeywordX
     (AnnotExpectObject, KeywordX(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+Lbrace
-    (AnnotExpectObject, Lbrace(r)) => (frame_push(model, r, AnnotExpectEnd, false, FormulaExpectSubject, true), Continue)
+    (AnnotExpectObject, Lbrace(r)) => (frame_push(model, r, AnnotExpectEnd, false, FormulaExpectSubject, true, false), Continue)
     // @arm AnnotExpectObject+Iri
     (AnnotExpectObject, Iri(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+BlankNode
@@ -618,7 +618,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm AnnotExpectObject+BracketTripleTerm
     (AnnotExpectObject, BracketTripleTerm(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+Lbracket
-    (AnnotExpectObject, Lbracket(r)) => (frame_push(model, r, AnnotExpectEnd, false, BnpExpectPredicate, false), Continue)
+    (AnnotExpectObject, Lbracket(r)) => (frame_push(model, r, AnnotExpectEnd, false, BnpExpectPredicate, false, false), Continue)
     // @arm AnnotExpectObject+Anon
     (AnnotExpectObject, Anon(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
     // --- SubjTrailExpectVerb ---
@@ -657,9 +657,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm SubjTrailVerbDone+Variable
     (SubjTrailVerbDone, Variable(_)) => ({ ..model, state: ExpectDotOrGraph }, Continue)
     // @arm SubjTrailVerbDone+Lbracket
-    (SubjTrailVerbDone, Lbracket(r)) => (frame_push(model, r, ExpectDotOrGraph, false, BnpExpectPredicate, false), Continue)
+    (SubjTrailVerbDone, Lbracket(r)) => (frame_push(model, r, ExpectDotOrGraph, false, BnpExpectPredicate, false, false), Continue)
     // @arm SubjTrailVerbDone+Lparen
-    (SubjTrailVerbDone, Lparen(r)) => (frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd, false), Continue)
+    (SubjTrailVerbDone, Lparen(r)) => (frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd, false, false), Continue)
     // @arm SubjTrailVerbDone+Bang
     (SubjTrailVerbDone, Bang(_)) => emit_spo({ ..model, path_fwd: true,  }, SubjTrailExpectVerb)
     // @arm SubjTrailVerbDone+Caret
@@ -700,11 +700,11 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm SubjTrailVerbDoneFormula+Variable
     (SubjTrailVerbDoneFormula, Variable(_)) => ({ ..model, state: FormulaAfterObject }, Continue)
     // @arm SubjTrailVerbDoneFormula+Lbracket
-    (SubjTrailVerbDoneFormula, Lbracket(r)) => (frame_push(model, r, FormulaAfterObject, false, BnpExpectPredicate, false), Continue)
+    (SubjTrailVerbDoneFormula, Lbracket(r)) => (frame_push(model, r, FormulaAfterObject, false, BnpExpectPredicate, false, false), Continue)
     // @arm SubjTrailVerbDoneFormula+Lparen
-    (SubjTrailVerbDoneFormula, Lparen(r)) => (frame_push(model, r, FormulaAfterObject, false, ListExpectElemOrEnd, false), Continue)
+    (SubjTrailVerbDoneFormula, Lparen(r)) => (frame_push(model, r, FormulaAfterObject, false, ListExpectElemOrEnd, false, false), Continue)
     // @arm SubjTrailVerbDoneFormula+Lbrace
-    (SubjTrailVerbDoneFormula, Lbrace(r)) => (frame_push(model, r, FormulaAfterObject, false, FormulaExpectSubject, true), Continue)
+    (SubjTrailVerbDoneFormula, Lbrace(r)) => (frame_push(model, r, FormulaAfterObject, false, FormulaExpectSubject, true, false), Continue)
     // --- ListPathExpectVerb ---
     // @arm ListPathExpectVerb+Iri
     (ListPathExpectVerb, Iri(r)) => ({ ..model, state: ListPathAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
@@ -804,11 +804,11 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm PathAfterStep+Variable
     (PathAfterStep, Variable(_)) => ({ ..model, state: ExpectDotOrGraph }, Continue)
     // @arm PathAfterStep+Lbracket
-    (PathAfterStep, Lbracket(r)) => (frame_push(model, r, ExpectDotOrGraph, false, BnpExpectPredicate, false), Continue)
+    (PathAfterStep, Lbracket(r)) => (frame_push(model, r, ExpectDotOrGraph, false, BnpExpectPredicate, false, false), Continue)
     // @arm PathAfterStep+Lparen
-    (PathAfterStep, Lparen(r)) => (frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd, false), Continue)
+    (PathAfterStep, Lparen(r)) => (frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd, false, false), Continue)
     // @arm PathAfterStep+Lbrace
-    (PathAfterStep, Lbrace(r)) => (frame_push(model, r, ExpectDotOrGraph, false, FormulaExpectSubject, false), Continue)
+    (PathAfterStep, Lbrace(r)) => (frame_push(model, r, ExpectDotOrGraph, false, FormulaExpectSubject, false, false), Continue)
     // --- FormulaPathAfterStep ---
     // @arm FormulaPathAfterStep+Bang
     (FormulaPathAfterStep, Bang(_)) => emit_spo({ ..model, path_fwd: true,  }, FormulaPathExpectVerb)
@@ -831,11 +831,11 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm FormulaPathAfterStep+Variable
     (FormulaPathAfterStep, Variable(_)) => ({ ..model, state: FormulaAfterObject }, Continue)
     // @arm FormulaPathAfterStep+Lbracket
-    (FormulaPathAfterStep, Lbracket(r)) => (frame_push(model, r, FormulaAfterObject, false, BnpExpectPredicate, false), Continue)
+    (FormulaPathAfterStep, Lbracket(r)) => (frame_push(model, r, FormulaAfterObject, false, BnpExpectPredicate, false, false), Continue)
     // @arm FormulaPathAfterStep+Lparen
-    (FormulaPathAfterStep, Lparen(r)) => (frame_push(model, r, FormulaAfterObject, false, ListExpectElemOrEnd, false), Continue)
+    (FormulaPathAfterStep, Lparen(r)) => (frame_push(model, r, FormulaAfterObject, false, ListExpectElemOrEnd, false, false), Continue)
     // @arm FormulaPathAfterStep+Lbrace
-    (FormulaPathAfterStep, Lbrace(r)) => (frame_push(model, r, FormulaAfterObject, false, FormulaExpectSubject, false), Continue)
+    (FormulaPathAfterStep, Lbrace(r)) => (frame_push(model, r, FormulaAfterObject, false, FormulaExpectSubject, false, false), Continue)
     // --- FormulaAfterObject ---
     // @arm FormulaAfterObject+Dot
     (FormulaAfterObject, Dot) => ({ ..model, state: FormulaExpectSubject, subject: None, predicate: None, object: None,  }, Continue)
@@ -954,6 +954,7 @@ fn frame_push(
   ret_state : ModelState,
   as_subject : Bool,
   to : ModelState,  f0 : Bool,
+  f1 : Bool,
 
 ) -> Model {
   // 符号期无具体值 ⇒ 哨兵 RefId(0)（结构期只需"有节点"；执行期解析真值）
@@ -971,6 +972,7 @@ fn frame_push(
     as_subject,
     prev_node: None,
     is_formula: f0,
+    as_pred: f1,
   })
   // 状态由**转移表**给（`to`）；`ret_state` 只是压进帧、弹帧时才兑现
   { ..model, state: to, subject: Some(open_span), predicate: None, frames }
@@ -985,6 +987,10 @@ fn frame_pop(model : Model) -> Model {
   match frames.pop() {
     Some(fr) => {
       let target = fr.open_span
+      // 弹帧回写（笔 3c 下半·三）：谓位帧弹帧把占位回写谓词槽（引擎 pop 尾行同机械）。
+      if fr.as_pred {
+        return { ..model, state: fr.ret_state, subject: fr.subject, predicate: Some(target), object: model.object, graph: fr.graph, frames }
+      }
       let subject = if fr.as_subject { Some(target) } else { fr.subject }
       let object = if fr.as_subject { model.object } else { Some(target) }
       {

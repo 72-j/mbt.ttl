@@ -35,9 +35,9 @@ fn command_weight(name : String) -> Int {
     "BaseKw" => 1
     "Equals" => 1
     "Invert" => 0
-    "Lbrace" => 0
+    "Lbrace" => 1
     "Lparen" => 0
-    "Rbrace" => 0
+    "Rbrace" => 1
     "Rparen" => 0
     "Implies" => 0
     "Literal" => 3

@@ -351,3 +351,87 @@ test "锚点·负控: 未注入脚本经全组装通过" {
     Err(failure) => fail("负控失败（组装面自带漂移）: \{failure}")
   }
 }
+
+///|
+/// ⑤ 公式帧族锚点（笔 3c 下半·三，放开权重前的确定性复跑）：三位置 + 空式 + 嵌套，
+/// 逐值手写期望——罩内发射被压制（ADR-002）、弹帧后正片恢复、占位 = 帧引用（与 Bnp
+/// 占位同口径）。此五案在权重 0 时代被随机门掩盖（组合路径，census 逐对新鲜复位
+/// 看不见）：谓位案 F3 曾是**真分道**（引擎 (1,7,6) vs 模型 (1,None,6)，as_pred
+/// 缺口的公式孪生），弹帧回写占位后两侧同步。
+fn anchor_expect_quads(script : Array[Command], expected : Array[Quad]) -> Unit raise {
+  let emitted_model = anchor_model_emitted_quads(script)
+  assert_eq(emitted_model.length(), expected.length())
+  for i = 0; i < expected.length(); i = i + 1 {
+    assert_eq(emitted_model[i], expected[i])
+  }
+  // 引擎侧逐步同响应（含错误码）+ quad 逐条断言（期望值独立于两侧）
+  let emitted_engine = anchor_engine_step_agree(script)
+  assert_eq(emitted_engine.length(), expected.length())
+  for i = 0; i < expected.length(); i = i + 1 {
+    assert_eq(emitted_engine[i], expected[i])
+  }
+}
+
+///|
+test "锚点·公式帧族: 三位置 + 空式 + 嵌套（罩内压制 + 弹帧回写占位）" {
+  // F1 宾位 + 罩内两条（; 续）：全压制；弹帧后 Dot 发外层 (1,2,9)
+  anchor_expect_quads(
+    [
+      Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbrace(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 3, })), Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })),
+      Semicolon, Iri(Concrete({ id: 6, })), Iri(Concrete({ id: 7, })), Rbrace, Dot,
+    ],
+    [{ subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 9 }), graph: None }],
+  )
+  // F2 主位：弹帧回写主槽（as_subject 既有机械），后续三元组发 (8,2,6)
+  anchor_expect_quads(
+    [
+      Lbrace(Concrete({ id: 8, })), Iri(Concrete({ id: 3, })), Iri(Concrete({ id: 4, })),
+      Iri(Concrete({ id: 5, })), Rbrace, Iri(Concrete({ id: 2, })), Iri(Concrete({ id: 6, })), Dot,
+    ],
+    [{ subject: Some({ id: 8 }), predicate: Some({ id: 2 }), object: Some({ id: 6 }), graph: None }],
+  )
+  // F3 谓位（权重 0 时代被掩盖的真分道，历史反例族）：弹帧回写谓词槽，发 (1,7,6)
+  anchor_expect_quads(
+    [
+      Iri(Concrete({ id: 1, })), Lbrace(Concrete({ id: 7, })), Iri(Concrete({ id: 3, })),
+      Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })), Rbrace, Iri(Concrete({ id: 6, })), Dot,
+    ],
+    [{ subject: Some({ id: 1 }), predicate: Some({ id: 7 }), object: Some({ id: 6 }), graph: None }],
+  )
+  // F4 空公式（开括号即收口）：发 (1,2,7)
+  anchor_expect_quads(
+    [Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbrace(Concrete({ id: 7, })), Rbrace, Dot],
+    [{ subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 7 }), graph: None }],
+  )
+  // F5 嵌套（公式套公式，宾位）：双层罩全压制，外层弹净后发 (1,2,9)
+  anchor_expect_quads(
+    [
+      Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbrace(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 3, })), Iri(Concrete({ id: 4, })), Lbrace(Concrete({ id: 10, })),
+      Iri(Concrete({ id: 5, })), Iri(Concrete({ id: 6, })), Iri(Concrete({ id: 7, })),
+      Rbrace, Rbrace, Dot,
+    ],
+    [{ subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 9 }), graph: None }],
+  )
+}
+
+///|
+/// ⑥ 谓位 Bnp 反例复跑（笔 3c 下半·三）：`:_b [:i :o] 58 ;`——quick_machine_n3.toml
+/// 头部口径载明的反例（引擎 (3,59,58)、模型丢谓词发 (3,None,58)）。as_pred 弹帧
+/// 回写后两侧同步；Bnp 族权重仍 0（放开属下一笔同款确认舞），但机械已值级钉死。
+/// 发射两枚：内层 (59,4,5) 在 `]`（emit_predobj+pop，PredObj 粒度）、外层 (3,59,58)
+/// 在 `;`——旧反例注释只记了当年分道的外层枚。
+test "锚点·谓位 Bnp 反例复跑: 内层 + 占位回写双枚值级钉死" {
+  anchor_expect_quads(
+    [
+      BlankNode(Concrete({ id: 3, })), Lbracket(Concrete({ id: 59, })),
+      Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })), Rbracket,
+      Literal(Concrete({ id: 58, })), Semicolon,
+    ],
+    [
+      { subject: Some({ id: 59 }), predicate: Some({ id: 4 }), object: Some({ id: 5 }), graph: None },
+      { subject: Some({ id: 3 }), predicate: Some({ id: 59 }), object: Some({ id: 58 }), graph: None },
+    ],
+  )
+}
