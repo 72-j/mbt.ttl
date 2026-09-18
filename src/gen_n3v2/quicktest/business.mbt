@@ -14,16 +14,13 @@
 // ===== P2 引用取值与权重 =====
 ///|
 /// 引用取值范围（源 [business].ref_id_range）：越小越利于 shrink 收敛
-const REF_ID_RANGE : Int = 8
+const REF_ID_RANGE : Int = 64
 ///|
 /// 命令权重（源 [business].weights；未声明默认 1，0 表示禁用）。
 /// 权重只影响选择概率，合法性仍由 valid 过滤（转移表是唯一权威）。
-/// 沿革（R-18 再生笔，2026-09-18）：本表是**手编层**——再生模板只发空表 `_ => 1`，
-/// 再生后须照 `src/quick_machine/quick_machine_n3.toml` 的 [business.weights] 重铺
-///（役 9 候选：模板按业务 TOML 发表）。笔 3a 再生后再铺（表未变，Id/Invert = 0 保持）。
 fn command_weight(name : String) -> Int {
-  match name {
-    "At" => 1
+  match name {    "At" => 1
+    "Id" => 0
     "Is" => 0
     "Of" => 0
     "Dot" => 3
@@ -37,6 +34,7 @@ fn command_weight(name : String) -> Int {
     "Tilde" => 1
     "BaseKw" => 1
     "Equals" => 1
+    "Invert" => 0
     "Lbrace" => 0
     "Lparen" => 0
     "Rbrace" => 0
@@ -62,8 +60,6 @@ fn command_weight(name : String) -> Int {
     "KeywordsKw" => 0
     "TripleTerm" => 0
     "BracketTripleTerm" => 0
-    "Id" => 0
-    "Invert" => 0
     _ => 1
   }
 }

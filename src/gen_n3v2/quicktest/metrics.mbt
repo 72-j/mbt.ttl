@@ -708,7 +708,14 @@ test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状
   //     回装 + state 拨回，Continue 不发射）；分支条件 path_src 空否是**值**，
   //     行响应/状态静态，静态表行表达不了（spec §5 同 R-03-3），留 3b+ 立项。
   //   · ListPath×4 = 元素位（Frame.prev_node 帧扩展位），笔 3b 立项。
-  assert_eq(debt_sites.length(), 6)
+  // 【6 → 2（笔 3b 同笔，2026-09-19）】：Frame 扩展位**数据化**（`frame_slots`）+
+  // 帧顶写/读助手按字段发 + 元素位词表补全（`list_first`/`list_next`/`*_nested` 写
+  // `frame.prev_node=arg0`；`path_elem_trail` 读 `frame.prev_node`；`path_elem_hop`
+  // 按 `path_hop_resolve` 真值改 `path_src=fresh`；`path_elem_end` 读 path 账 + 写 prev_node）
+  // ⇒ ListPathAfterStep×4 值级同步（实测两侧同为 `Emit(s=1 p=1 o=1 g=-)`）。
+  // 余 2 点 = SubjTrailAfterStepFormula×2（R-03-3 链形分派残差：分支条件是**值**
+  // （path_src 空否），静态表行表达不了——留 3b+/3c 立项，见上）。
+  assert_eq(debt_sites.length(), 2)
   // 红线：干净领土零分道（引擎⟷模型契约在深机械领土之外必须成立）
   assert_eq(violations, [])
 }

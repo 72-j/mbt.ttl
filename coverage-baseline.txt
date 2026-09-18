@@ -16,6 +16,8 @@
 # → 笔 3a（R-17 深半役：path 三账值级建模——quad_slots 隔离/fwd: 写源/折写压帧/
 #   IR assign 通道 28 行；frame_open_span 用途门清死码；符号期全矩阵扫锚点点亮
 #   3a 内联化的 53 处 None 半区）86.8%
-covered_permille = 868
-covered_lines = 8497
-total_lines = 9784
+# → 3b 笔 2 中间态（帧扩展位数据化 + `path_elem_end` 词表行；债点仍 6，见 todo §S）86.9%
+# → 3b 笔 2 收账（帧字段读写助手按字段发 + 集合族/元素位词表补全 ⇒ **债点 6 → 2**，见 §T）87.0%
+covered_permille = 870
+covered_lines = 8705
+total_lines = 9996
