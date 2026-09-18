@@ -182,10 +182,13 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("ForAllKw", 0),
     ("KeywordA", 0),
     ("KeywordX", 0),
-    ("Lbracket", 0),
+    // 【0 → 1（笔 3c 下半·四，2026-09-19）】：Bnp 族放开——as_pred 弹帧回写开通后
+    // 谓位反例两侧同步双发（内 (59,4,5) + 外 (3,59,58)，锚点⑥值级钉死），组合面
+    // 九案探针全绿（宾/主/嵌套/罩内谓位/逗号/bnp⊃formula/formula⊃formula/谓位公式⊃bnp）。
+    ("Lbracket", 1),
     ("PrefName", 2),
     ("PrefixKw", 1),
-    ("Rbracket", 0),
+    ("Rbracket", 1),
     ("Variable", 0),
     ("BlankNode", 2),
     ("ForSomeKw", 0),

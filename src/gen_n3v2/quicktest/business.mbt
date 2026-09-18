@@ -46,10 +46,10 @@ fn command_weight(name : String) -> Int {
     "ForAllKw" => 0
     "KeywordA" => 0
     "KeywordX" => 0
-    "Lbracket" => 0
+    "Lbracket" => 1
     "PrefName" => 2
     "PrefixKw" => 1
-    "Rbracket" => 0
+    "Rbracket" => 1
     "Variable" => 0
     "BlankNode" => 2
     "ForSomeKw" => 0

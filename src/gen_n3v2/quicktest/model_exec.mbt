@@ -529,9 +529,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ListExpectElemOrEnd+Anon
     (ListExpectElemOrEnd, Anon(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListExpectElemOrEnd+Lbracket
-    (ListExpectElemOrEnd, Lbracket(r)) => ({ ..frame_push(model, r, BnpExpectPredicate, false, BnpExpectPredicate, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, Lbracket(r)) => ({ ..frame_push(model, r, ListAfterElem, false, BnpExpectPredicate, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListExpectElemOrEnd+Lparen
-    (ListExpectElemOrEnd, Lparen(r)) => ({ ..frame_push(model, r, ListExpectElemOrEnd, false, ListExpectElemOrEnd, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, Lparen(r)) => ({ ..frame_push(model, r, ListAfterElem, false, ListExpectElemOrEnd, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListExpectElemOrEnd+Rparen
     (ListExpectElemOrEnd, Rparen) => (frame_pop(model), Continue)
     // @arm ListExpectElemOrEnd+Variable
@@ -539,7 +539,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ListExpectElemOrEnd+KeywordX
     (ListExpectElemOrEnd, KeywordX(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListExpectElemOrEnd+Lbrace
-    (ListExpectElemOrEnd, Lbrace(r)) => ({ ..frame_push(model, r, FormulaExpectSubject, false, FormulaExpectSubject, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, Lbrace(r)) => ({ ..frame_push(model, r, ListAfterElem, false, FormulaExpectSubject, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // --- ListAfterElem ---
     // @arm ListAfterElem+Iri
     (ListAfterElem, Iri(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
@@ -554,9 +554,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ListAfterElem+BracketTripleTerm
     (ListAfterElem, BracketTripleTerm(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListAfterElem+Lbracket
-    (ListAfterElem, Lbracket(r)) => ({ ..frame_push(model, r, BnpExpectPredicate, false, BnpExpectPredicate, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, Lbracket(r)) => ({ ..frame_push(model, r, ListAfterElem, false, BnpExpectPredicate, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListAfterElem+Lparen
-    (ListAfterElem, Lparen(r)) => ({ ..frame_push(model, r, ListExpectElemOrEnd, false, ListExpectElemOrEnd, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, Lparen(r)) => ({ ..frame_push(model, r, ListAfterElem, false, ListExpectElemOrEnd, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // @arm ListAfterElem+Rparen
     (ListAfterElem, Rparen) => (frame_pop(model), Continue)
     // @arm ListAfterElem+Variable
@@ -568,7 +568,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ListAfterElem+Caret
     (ListAfterElem, Caret(r)) => ({ ..model, state: ListPathExpectVerb, path_src: frame_prev_node(model), path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }), path_fwd: false,  }, Continue)
     // @arm ListAfterElem+Lbrace
-    (ListAfterElem, Lbrace(r)) => ({ ..frame_push(model, r, FormulaExpectSubject, false, FormulaExpectSubject, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, Lbrace(r)) => ({ ..frame_push(model, r, ListAfterElem, false, FormulaExpectSubject, false, false), frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
     // --- FormulaExpectObject ---
     // @arm FormulaExpectObject+Variable
     (FormulaExpectObject, Variable(r)) => (set_object(model, r, FormulaAfterObject), Continue)
@@ -732,9 +732,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ListPathAfterStep+KeywordX
     (ListPathAfterStep, KeywordX(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListAfterElem)
     // @arm ListPathAfterStep+Lbracket
-    (ListPathAfterStep, Lbracket(_)) => emit_spo(model, BnpExpectPredicate)
+    (ListPathAfterStep, Lbracket(r)) => emit_spo({ ..frame_push(model, r, ListAfterElem, false, BnpExpectPredicate, false, false), subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, BnpExpectPredicate)
     // @arm ListPathAfterStep+Lparen
-    (ListPathAfterStep, Lparen(_)) => emit_spo(model, ListExpectElemOrEnd)
+    (ListPathAfterStep, Lparen(r)) => emit_spo({ ..frame_push(model, r, ListAfterElem, false, ListExpectElemOrEnd, false, false), subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListExpectElemOrEnd)
     // @arm ListPathAfterStep+Rparen
     (ListPathAfterStep, Rparen) => {
       let (next, response) = emit_spo(model, ListAfterElem)

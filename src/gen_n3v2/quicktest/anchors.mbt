@@ -435,3 +435,67 @@ test "锚点·谓位 Bnp 反例复跑: 内层 + 占位回写双枚值级钉死" 
     ],
   )
 }
+
+///|
+/// ⑦ Bnp 组合族（笔 3c 下半·四）：Lbracket/Rbracket 放开前的确定性复跑——九案探针
+/// 收编（宾位/主位/嵌套/罩内谓位/逗号 + bnp⊃formula/formula⊃formula/谓位公式⊃bnp）。
+/// 全部两侧同值；谓位反例本体在锚点⑥。R-19（负例恢复道）不在此列——探针 P1 另案。
+test "锚点·Bnp 组合族九案（放开同笔确认 1）" {
+  // B1 宾位：内层 (9,4,5) 在 ]（PredObj 粒度），外层 (1,2,9) 在 .（SPO 粒度）
+  anchor_expect_quads(
+    [
+      Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbracket(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })), Rbracket, Dot,
+    ],
+    [
+      { subject: Some({ id: 9 }), predicate: Some({ id: 4 }), object: Some({ id: 5 }), graph: None },
+      { subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 9 }), graph: None },
+    ],
+  )
+  // B2 主位：内层 (8,4,5) 在 ]，外层 (8,2,6) 在 .
+  anchor_expect_quads(
+    [
+      Lbracket(Concrete({ id: 8, })), Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })),
+      Rbracket, Iri(Concrete({ id: 2, })), Iri(Concrete({ id: 6, })), Dot,
+    ],
+    [
+      { subject: Some({ id: 8 }), predicate: Some({ id: 4 }), object: Some({ id: 5 }), graph: None },
+      { subject: Some({ id: 8 }), predicate: Some({ id: 2 }), object: Some({ id: 6 }), graph: None },
+    ],
+  )
+  // B4 嵌套（bnp⊃bnp 宾位）：三枚 (10,6,7) (9,4,10) (1,9,14)
+  anchor_expect_quads(
+    [
+      Iri(Concrete({ id: 1, })), Lbracket(Concrete({ id: 9, })), Iri(Concrete({ id: 4, })),
+      Lbracket(Concrete({ id: 10, })), Iri(Concrete({ id: 6, })), Iri(Concrete({ id: 7, })),
+      Rbracket, Rbracket, Iri(Concrete({ id: 14, })), Dot,
+    ],
+    [
+      { subject: Some({ id: 10 }), predicate: Some({ id: 6 }), object: Some({ id: 7 }), graph: None },
+      { subject: Some({ id: 9 }), predicate: Some({ id: 4 }), object: Some({ id: 10 }), graph: None },
+      { subject: Some({ id: 1 }), predicate: Some({ id: 9 }), object: Some({ id: 14 }), graph: None },
+    ],
+  )
+  // B5 罩内谓位（bnp-as-pred in formula）：罩内发射全压制，仅 (1,2,9) 一枚
+  anchor_expect_quads(
+    [
+      Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbrace(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 3, })), Lbracket(Concrete({ id: 7, })), Iri(Concrete({ id: 4, })),
+      Iri(Concrete({ id: 5, })), Rbracket, Iri(Concrete({ id: 6, })), Rbrace, Dot,
+    ],
+    [{ subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 9 }), graph: None }],
+  )
+  // B6 逗号：内层两枚 (9,4,5) (9,4,6) + 外层 (1,2,9)
+  anchor_expect_quads(
+    [
+      Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbracket(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })), Comma, Iri(Concrete({ id: 6, })),
+      Rbracket, Dot,
+    ],
+    [
+      { subject: Some({ id: 9 }), predicate: Some({ id: 4 }), object: Some({ id: 5 }), graph: None },
+      { subject: Some({ id: 9 }), predicate: Some({ id: 4 }), object: Some({ id: 6 }), graph: None },
+      { subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 9 }), graph: None },
+    ],
+  )
+}
