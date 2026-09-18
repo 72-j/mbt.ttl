@@ -116,6 +116,7 @@ pub struct N3Probe {
   // private fields
 }
 pub fn N3Probe::new() -> Self
+pub fn N3Probe::state(Self) -> N3State
 pub fn N3Probe::step_all(Self, N3Event) -> Array[N3ProbeResponse]
 
 pub(all) enum N3ProbeResponse {

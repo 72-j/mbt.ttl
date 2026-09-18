@@ -422,10 +422,13 @@ fn reachable_states() -> Array[ModelState] {
   let queue : Array[Array[Command]] = [[]]
   while queue.length() > 0 {
     let path = queue.remove(0)
-    let state = path_end_state(path)
+    // 槽感知扩展（役 7 翻案修正，2026-09-18）：原版用 blank_model(state)（无帧无槽）
+    // 扩展 ⇒ ret_state 帧弹回类入口（ExpectVerbRequired，model_exec:66/78 唯一入口）
+    // 永远探不到 ⇒ 欠数 52。改用真路径模型（帧栈在位）⇒ 53/53 全可达。
+    let model = path_end_model(path)
     for command in all_commands() {
-      if valid(blank_model(state), command) {
-        let (next_model, _) = model_execute(blank_model(state), command)
+      if valid(model, command) {
+        let (next_model, _) = model_execute(model, command)
         let next_state = next_model.state
         if !seen.contains(next_state) {
           seen.push(next_state)
@@ -446,7 +449,10 @@ test "n3v2 结构钉子: 可达状态 / 可达命令名 / 死态" {
   let states = reachable_states()
   let witnesses = reachable_witness_paths()
   // 数字钉死（漂了先看上面的"不可达/无出边"两行）：改模型或改表必须同笔说明
-  assert_eq(states.length(), 52)
+  // 【52 → 53 翻案（役 7，2026-09-18）】：原 52 是 blank_model 槽盲扩展的 artifact
+  // ——ExpectVerbRequired 唯一入口 = frame_push 的 ret_state 帧弹回（model_exec:66/78），
+  // 槽盲探不到。槽感知后 53/53 全可达（"不可达"清单应为空）。
+  assert_eq(states.length(), 53)
   assert_eq(witnesses.length(), 38)
   debug(
     "n3v2 结构钉：可达状态 \{states.length()}/\{all_states().length()}；可达命令名 \{witnesses.length()}/\{all_commands().length()}",
@@ -488,5 +494,218 @@ test "n3v2 随机门多种子稳定（1 / 2026）" {
           "seed \{seed} random check failed: \{@qcs.format_failure(failure)}",
         )
     }
+  }
+}
+// ===== 役 7：引擎侧独立转移普查（2026-09-18）=====
+
+///|
+/// 穷尽桥（引擎态 → 模型态）：**引擎加/删状态而桥没跟上 ⇒ 编译不过**（trig 役 7
+/// 同铁律）。两枚 `None` 臂是**记录在案的缺口**：`BnpExpectIdNode`/`BnpIdAfterClose`
+/// 在 n3v2 表源有、stale IR（n3_fsm.toml）无——Id/Invert 切片的**状态位**（§6.1 账面
+/// 漏计，本桥补记）；R-18 清偿时改 `Some` 并同笔收紧普查门分母。
+fn model_state_of_engine(state : @n3.N3State) -> ModelState? {
+  match state {
+    @n3.N3ExpectSubject => Some(ExpectSubject)
+    @n3.N3ExpectPredicate => Some(ExpectPredicate)
+    @n3.N3ExpectObject => Some(ExpectObject)
+    @n3.N3ExpectDotOrGraph => Some(ExpectDotOrGraph)
+    @n3.N3ExpectDirectiveKind => Some(ExpectDirectiveKind)
+    @n3.N3ExpectPrefixName => Some(ExpectPrefixName)
+    @n3.N3ExpectPrefixIri => Some(ExpectPrefixIri)
+    @n3.N3ExpectBaseIri => Some(ExpectBaseIri)
+    @n3.N3ExpectVersionLiteral => Some(ExpectVersionLiteral)
+    @n3.N3ExpectDirectiveEnd => Some(ExpectDirectiveEnd)
+    @n3.N3ExpectKeywordsList => Some(ExpectKeywordsList)
+    @n3.N3ExpectVerbOrEnd => Some(ExpectVerbOrEnd)
+    @n3.N3ExpectVerbOrDot => Some(ExpectVerbOrDot)
+    @n3.N3ExpectVerbRequired => Some(ExpectVerbRequired)
+    @n3.N3ExpectTildeEnd => Some(ExpectTildeEnd)
+    @n3.N3AnnotExpectVerb => Some(AnnotExpectVerb)
+    @n3.N3AnnotExpectVerbTail => Some(AnnotExpectVerbTail)
+    @n3.N3AnnotExpectObject => Some(AnnotExpectObject)
+    @n3.N3AnnotExpectEnd => Some(AnnotExpectEnd)
+    @n3.N3BnpExpectPredicate => Some(BnpExpectPredicate)
+    // R-18 切片态（引擎真件有、stale IR 无模型对应）：
+    @n3.N3BnpExpectIdNode => None
+    @n3.N3BnpExpectObject => Some(BnpExpectObject)
+    @n3.N3BnpAfterObject => Some(BnpAfterObject)
+    // R-18 切片态（引擎真件有、stale IR 无模型对应）：
+    @n3.N3BnpIdAfterClose => None
+    @n3.N3ListExpectElemOrEnd => Some(ListExpectElemOrEnd)
+    @n3.N3ListAfterElem => Some(ListAfterElem)
+    @n3.N3FormulaExpectSubject => Some(FormulaExpectSubject)
+    @n3.N3FormulaExpectPredicate => Some(FormulaExpectPredicate)
+    @n3.N3FormulaExpectObject => Some(FormulaExpectObject)
+    @n3.N3FormulaAfterObject => Some(FormulaAfterObject)
+    @n3.N3PathExpectVerb => Some(PathExpectVerb)
+    @n3.N3PathAfterStep => Some(PathAfterStep)
+    @n3.N3FormulaPathExpectVerb => Some(FormulaPathExpectVerb)
+    @n3.N3FormulaPathAfterStep => Some(FormulaPathAfterStep)
+    @n3.N3ExpectIsProp => Some(ExpectIsProp)
+    @n3.N3ExpectIsOf => Some(ExpectIsOf)
+    @n3.N3BnpExpectIsProp => Some(BnpExpectIsProp)
+    @n3.N3BnpExpectIsOf => Some(BnpExpectIsOf)
+    @n3.N3FormulaExpectIsProp => Some(FormulaExpectIsProp)
+    @n3.N3FormulaExpectIsOf => Some(FormulaExpectIsOf)
+    @n3.N3QuantExpectVar => Some(QuantExpectVar)
+    @n3.N3QuantExpectVarOrDot => Some(QuantExpectVarOrDot)
+    @n3.N3FormulaDirectiveKind => Some(FormulaDirectiveKind)
+    @n3.N3FormulaQuantExpectVar => Some(FormulaQuantExpectVar)
+    @n3.N3FormulaQuantExpectVarOrDot => Some(FormulaQuantExpectVarOrDot)
+    @n3.N3SubjTrailExpectVerb => Some(SubjTrailExpectVerb)
+    @n3.N3SubjTrailAfterStep => Some(SubjTrailAfterStep)
+    @n3.N3SubjTrailVerbDone => Some(SubjTrailVerbDone)
+    @n3.N3SubjTrailExpectVerbFormula => Some(SubjTrailExpectVerbFormula)
+    @n3.N3SubjTrailAfterStepFormula => Some(SubjTrailAfterStepFormula)
+    @n3.N3SubjTrailVerbDoneFormula => Some(SubjTrailVerbDoneFormula)
+    @n3.N3ListPathExpectVerb => Some(ListPathExpectVerb)
+    @n3.N3ListPathAfterStep => Some(ListPathAfterStep)
+    @n3.N3ObjTrailExpectVerb => Some(ObjTrailExpectVerb)
+    @n3.N3ObjTrailAfterStep => Some(ObjTrailAfterStep)
+  }
+}
+
+///|
+/// 沿路径推模型（役 7 输入件；`path_end_state` 只给终态，普查要**整模型**好续步）
+fn path_end_model(path : Array[Command]) -> Model {
+  let mut model = model_empty()
+  for command in path {
+    let (next, _) = model_execute(model, command)
+    model = next
+  }
+  model
+}
+
+///|
+/// **状态见证路径账**（役 7 输入）：每个可达状态一条从初态可达的路径——普查要
+/// "把引擎开到某状态"，需要的是**路**不是名单。与 `reachable_witness_paths()`
+/// （按**命令名**记账，役 14）同边口径（边 = `valid`，下一态跑模型），差别只在记账键。
+fn reachable_state_witness_paths() -> Array[(ModelState, Array[Command])] {
+  let found : Array[(ModelState, Array[Command])] = [(ExpectSubject, [])]
+  let queue : Array[Array[Command]] = [[]]
+  while queue.length() > 0 {
+    let path = queue.remove(0)
+    let model = path_end_model(path)
+    for command in all_commands() {
+      if valid(model, command) {
+        let (next, _) = model_execute(model, command)
+        if !found.any(fn(pair) { pair.0 == next.state }) {
+          let new_path = path.copy()
+          new_path.push(command)
+          found.push((next.state, new_path))
+          queue.push(new_path)
+        }
+      }
+    }
+  }
+  found
+}
+
+///|
+/// **役 7：引擎侧独立转移普查**（trig 役 7 同门形，三处 n3 化裁剪）：
+/// 对每个可达状态（沿状态见证路径开过去）逐条喂命令，比对「引擎归一响应 + 引擎
+/// 状态 ⟷ 模型预测」；每对**新建 probe = 干净复位**；失败输出 (状态+命令) 清单。
+/// 规模 = 53 可达态 × 39 命令 = **2067 对**（役 14 预测数兑现——前提是槽感知
+/// 可达性：ExpectVerbRequired 靠 ret_state 帧弹回可达，blank_model 槽盲扩展漏之）。
+///
+/// **裁剪①（分层比对，n3 独有）**：正片事件（`command_weight > 0`，同源派生自
+/// 业务面权重表）比「响应+状态」全量；排除片（权重 0）**只比状态**——其响应载荷
+/// 缺口 = R-17 值级建模债（倒装/壳交换改 quad 内容、不改状态），不在此硬凑
+/// （todo §6.2/§8.1）。R-17/R-18 清偿抬高权重后，本门自动收紧，无需改码。
+///
+/// **裁剪②（Option 桥）**：两枚 R-18 切片态无模型对应 ⇒ 桥返 None ⇒ 记分道而非崩
+/// （实际不可达：进入需 Id/Invert 事件，不在 39 命令词表）。
+///
+/// **裁剪③（分类门）**：首跑实测 92 分道**全部**落在 6 个 trail/Path 态（尾随/路径
+/// 深机械 = prev_node 帧扩展位，R-17 领土），干净领土零分道 ⇒ 门形分两向：
+/// **违例**（干净领土分道 = 红线，必须空）+ **债点**（trail 族分道点 = R-17 可执行
+/// 台账，数字钉死）。分道按**分道步的当前 (状态,命令)** 归类，非见证路径终点。
+/// （trig 无此裁剪：34/34 全同步、无排除片、零分道。）
+test "指标·引擎侧普查: 53 可达态 × 39 命令 = 2067 对，响应+状态分层一致" {
+  let witnesses = reachable_state_witness_paths()
+  assert_eq(witnesses.length(), 53)
+  let violations : Array[String] = [] // 干净领土分道（红线，必须空）
+  let debt_sites : Array[String] = [] // 深机械领土分道点（R-17 债台账，数字钉死）
+  let mut pairs = 0
+  for entry in witnesses {
+    let (_, path) = entry
+    for command in all_commands() {
+      pairs = pairs + 1
+      // 每对独立复位：新 probe（=新引擎）+ 新模型
+      let system = system_init()
+      let mut model = model_empty()
+      // 起跑：逐「响应+状态」步比对（正片全量/排除片只比状态）；分道按**当前步的
+      // (状态,命令)** 归类——trail 族 = 债点（R-17 台账），干净领土 = 违例（红线）
+      for step_command in path {
+        let (next_model, expected_step) = model_execute(model, step_command)
+        let actual_step = run_command(step_command, system)
+        let state_ok = model_state_of_engine(system.probe.state()) ==
+          Some(next_model.state)
+        let step_diverged = if command_weight(command_name(step_command)) > 0 {
+          actual_step != expected_step || !state_ok
+        } else {
+          !state_ok
+        }
+        if step_diverged {
+          classify_divergence(model.state, step_command, violations, debt_sites)
+        }
+        model = next_model
+      }
+      let (next_model, expected) = model_execute(model, command)
+      let actual = run_command(command, system)
+      let state_ok = model_state_of_engine(system.probe.state()) ==
+        Some(next_model.state)
+      let own_diverged = if command_weight(command_name(command)) > 0 {
+        actual != expected || !state_ok
+      } else {
+        !state_ok
+      }
+      if own_diverged {
+        classify_divergence(model.state, command, violations, debt_sites)
+      }
+    }
+  }
+  debug(
+    "引擎侧普查：\{pairs} 对（\{witnesses.length()} 可达态 × \{all_commands().length()} 命令）；债点 \{debt_sites.length()}（R-17 台账）；违例 \{violations.length()}",
+  )
+  for m in debt_sites {
+    debug("  债点：\{m}")
+  }
+  for v in violations {
+    debug("  违例：\{v}")
+  }
+  // 债钉（R-17 债台账规模）：首跑实测 14（同笔说明，2026-09-18）——分道步全在
+  // trail/Path 深机械（prev_node 帧扩展位 territory，R-17）：值级发射/载荷改写
+  // （倒装、壳交换、formula 入口等）不在模型值域内，只比状态时这些步仍对得上、
+  // 比响应即分道。数字变化即红 ⇒ 同笔说明；R-17 清偿后此数应收窄（收紧即修账）。
+  assert_eq(debt_sites.length(), 14)
+  // 红线：干净领土零分道（引擎⟷模型契约在深机械领土之外必须成立）
+  assert_eq(violations, [])
+}
+
+///|
+/// 深机械领土分类（trail 族）：`*Trail*`/`*Path*` 态 = 路径/尾随机械（prev_node
+/// 帧扩展位 territory，R-17）。类取**全族**（宽于首跑实测的 6 态——同族同根，
+/// 记账说明）。族内分道 = 债；族外分道 = 违例。
+fn trail_state(state : ModelState) -> Bool {
+  let name = state_name(state)
+  name.contains("Trail") || name.contains("Path")
+}
+
+///|
+/// 分道归类：债点去重入台账，违例即入红线清单
+fn classify_divergence(
+  state : ModelState,
+  command : Command,
+  violations : Array[String],
+  debt_sites : Array[String],
+) -> Unit {
+  let site = "\{state_name(state)}+\{command_name(command)}"
+  if trail_state(state) {
+    if !debt_sites.contains(site) {
+      debt_sites.push(site)
+    }
+  } else {
+    violations.push(site)
   }
 }

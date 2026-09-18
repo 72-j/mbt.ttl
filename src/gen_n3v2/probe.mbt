@@ -7,6 +7,9 @@
 //      交换/注解结算三件已内置，interpret 默认体直调；
 //   ③ 面最小化：只开 `new`/`step_all`——trig 的 `step`（吞事件旧口径）与 `state`/
 //      `stack_view`（P4.2e/h 量测遗产，quicktest 零引用）不开；`step_once` 为内部件。
+//      【沿革（役 7 n3v2，2026-09-18）】`state` 本日开面（见下）：普查观测面（只读值
+//      拷贝），非量测遗产复辟——trig 同名面在役 7 经变异实证后保留（「响应+状态」
+//      比对的引擎侧读数，src/ttl/todo.md §N.1），n3 普查门同需求；回收条件见 state()。
 //
 // 与引擎主循环（`N3Engine::next`）同机械的三点，缺一不可：
 //   ① 队列优先排空（Sequence 多发逐条回吐——役18 path_obj_close 三发真实存在）；
@@ -98,6 +101,18 @@ pub fn N3Probe::step_all(
 }
 
 ///|
+/// 普查观测面（役 7 n3v2，2026-09-18 开面）：**只读值拷贝**——「响应 + 状态」比对的
+/// 引擎侧读数。归一化（N3State → 模型态）的穷尽桥住消费侧（quicktest metrics 的
+/// `model_state_of_engine`，priv 类型不可跨包——probe 只给读数，不做归一）。
+/// 纪律：**不开 ctx**、不许普查门以外的用途扩面（量测遗产教训，trig §N.1 同规）。
+/// **回收条件**：①普查门降级/撤销 ⇒ 本面同笔回收（trig `TrigProbe::state` 对称同规）；
+/// ②更窄等价投影目前不存在——穷尽桥需要真枚举（String 化会让桥的编译期保证烂掉）；
+/// ③存量面 `new`/`step_all` 不受影响（P5.2 最小面口径仍是基调，本面是记录在案的例外）。
+pub fn N3Probe::state(self : N3Probe) -> N3State {
+  self.ctx.state
+}
+
+///|
 /// 钉子①：一条完整语句 Iri Iri Iri Dot ⇒ Continue ×3 + EmitQuad（三槽齐、g 恒缺——
 /// N3 无图块口径）；随后未定义转移（ExpectSubject 位喂 Dot）⇒ Failed 原样上抛。
 test "probe: 事件驱动一条三元组" {
@@ -167,4 +182,14 @@ test "probe: step_all 一条命令 → 有序响应批（path_obj_close 三发�
     }
     _ => assert_true(false)
   }
+}
+
+///|
+/// 观测面自证：`state()` 只读、随转移推进（普查门的读数语义）——
+/// 初态主语位，一步 Iri 后谓词位。
+test "probe: state() 观测面只读随转移" {
+  let probe = N3Probe::new()
+  assert_true(probe.state() is N3State::N3ExpectSubject)
+  let _ = probe.step_all(N3Event::N3Iri((0, 3)))
+  assert_true(probe.state() is N3State::N3ExpectPredicate)
 }
