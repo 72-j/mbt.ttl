@@ -34,6 +34,7 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (ExpectPredicate, KeywordX(_)) => true
     (ExpectPredicate, Is) => true
     (ExpectPredicate, Has) => true
+    (ExpectPredicate, Invert) => true
     (ExpectPredicate, Equals(_)) => true
     (ExpectPredicate, Literal(_)) => true
     (ExpectPredicate, Variable(_)) => true
@@ -163,6 +164,7 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (ExpectIsOf, Of) => true
     // BnpExpectPredicate
     (BnpExpectPredicate, Has) => true
+    (BnpExpectPredicate, Id) => true
     (BnpExpectPredicate, Is) => true
     (BnpExpectPredicate, Equals(_)) => true
     (BnpExpectPredicate, Literal(_)) => true
@@ -173,9 +175,14 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (BnpExpectPredicate, PrefName(_)) => true
     (BnpExpectPredicate, KeywordA(_)) => true
     (BnpExpectPredicate, KeywordX(_)) => true
+    // BnpExpectIdNode
+    (BnpExpectIdNode, PrefName(_)) => true
+    // BnpIdAfterClose
+    (BnpIdAfterClose, Dot) => true
     // FormulaExpectPredicate
     (FormulaExpectPredicate, Has) => true
     (FormulaExpectPredicate, Is) => true
+    (FormulaExpectPredicate, Invert) => true
     (FormulaExpectPredicate, Equals(_)) => true
     (FormulaExpectPredicate, Literal(_)) => true
     (FormulaExpectPredicate, Variable(_)) => true
@@ -342,6 +349,8 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (SubjTrailVerbDone, Variable(_)) => true
     (SubjTrailVerbDone, Lbracket(_)) => true
     (SubjTrailVerbDone, Lparen(_)) => true
+    (SubjTrailVerbDone, Bang(_)) => true
+    (SubjTrailVerbDone, Caret(_)) => true
     // SubjTrailExpectVerbFormula
     (SubjTrailExpectVerbFormula, Iri(_)) => true
     (SubjTrailExpectVerbFormula, PrefName(_)) => true
@@ -363,6 +372,7 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (SubjTrailVerbDoneFormula, Variable(_)) => true
     (SubjTrailVerbDoneFormula, Lbracket(_)) => true
     (SubjTrailVerbDoneFormula, Lparen(_)) => true
+    (SubjTrailVerbDoneFormula, Lbrace(_)) => true
     // ListPathExpectVerb
     (ListPathExpectVerb, Iri(_)) => true
     (ListPathExpectVerb, PrefName(_)) => true

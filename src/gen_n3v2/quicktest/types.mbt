@@ -56,6 +56,8 @@ priv enum Command {
   Implies(@qcs.Ref[RefId])
   ImpliedBy(@qcs.Ref[RefId])
   Unknown(@qcs.Ref[RefId])
+  Id
+  Invert
   EOF
 } derive(Eq, Debug)
 
@@ -105,8 +107,10 @@ priv enum ModelState {
   AnnotExpectObject
   AnnotExpectEnd
   BnpExpectPredicate
+  BnpExpectIdNode
   BnpExpectObject
   BnpAfterObject
+  BnpIdAfterClose
   ListExpectElemOrEnd
   ListAfterElem
   FormulaExpectSubject
@@ -164,7 +168,7 @@ priv struct Frame {
   ret_state : ModelState
   as_subject : Bool
 } derive(Eq, Debug)
-// 未进模型的 Context 字段: directive_at (Bool), prefixes (Array[(Span, Span)]), bases (Array[Span]), slot_stack (Array[Slot]), pred_kind (PredKind), path_fwd (Bool), rule_side (RuleSide?), iri_upcast (Int), version_lit_ok (Bool), kw_ledger (Array[Span]), kw_directive_seen (Bool), kw_a_live (Bool), is_depth (Int), subj_shell (Bool), annot_close (Bool)
+// 未进模型的 Context 字段: directive_at (Bool), prefixes (Array[(Span, Span)]), bases (Array[Span]), slot_stack (Array[Slot]), pred_kind (PredKind), path_fwd (Bool), iri_upcast (Int), version_lit_ok (Bool), kw_ledger (Array[Span]), kw_directive_seen (Bool), kw_a_live (Bool), is_depth (Int), subj_shell (Bool), annot_close (Bool)
 
 ///|
 /// 初始模型：ExpectSubject，槽位全空

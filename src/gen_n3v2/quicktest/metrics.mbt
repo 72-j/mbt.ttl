@@ -6,7 +6,7 @@
 // 纪律：枚举是**手工维护**的数据面——IR（n3_fsm.toml）变了这里必须同笔改，数字门会替你把关。
 
 ///|
-/// 全部状态（源 [[states]]，53 个）
+/// 全部状态（源 [[states]]，55 个；R-18 同源刷新 +BnpExpectIdNode/+BnpIdAfterClose）
 fn all_states() -> Array[ModelState] {
   [
     ExpectSubject,
@@ -29,8 +29,10 @@ fn all_states() -> Array[ModelState] {
     AnnotExpectObject,
     AnnotExpectEnd,
     BnpExpectPredicate,
+    BnpExpectIdNode,
     BnpExpectObject,
     BnpAfterObject,
+    BnpIdAfterClose,
     ListExpectElemOrEnd,
     ListAfterElem,
     FormulaExpectSubject,
@@ -66,7 +68,7 @@ fn all_states() -> Array[ModelState] {
 }
 
 ///|
-/// 全部命令（源 weights 表 39 个事件；`@qcs.Ref` 统一取 `Concrete(id = 1)`）
+/// 全部命令（源 weights 表 41 个事件；`@qcs.Ref` 统一取 `Concrete(id = 1)`）
 fn all_commands() -> Array[Command] {
   let reference : @qcs.Ref[RefId] = Concrete({ id: 1, })
   [
@@ -108,6 +110,8 @@ fn all_commands() -> Array[Command] {
     Implies(reference),
     ImpliedBy(reference),
     Unknown(reference),
+    Id,
+    Invert,
     EOF,
   ]
 }
@@ -119,12 +123,13 @@ fn blank_model(state : ModelState) -> Model {
 }
 
 ///|
-/// **全臂冒烟门**：53 状态 × 39 命令，每对都跑一次 `model_execute`。
+/// **全臂冒烟门**：55 状态 × 41 命令，每对都跑一次 `model_execute`。
 /// 判据两条：
-///   ① 对数守恒（53 × 39 = 2067）——防枚举漏项；
-///   ② 合法对 = **376**（= `valid.mbt` 真行数 = 在库臂数）——结构钉子：臂表漂了这里就红。
+///   ① 对数守恒（55 × 41 = 2255）——防枚举漏项；
+///   ② 合法对 = **384**（= `valid.mbt` 真行数 = Meta 全表 = 在库臂数；R-18 后
+///     53/376 → 55/384，全表有效无裁行）——结构钉子：臂表漂了这里就红。
 /// 本门只证"每条臂都能执行一次"（覆盖率用途），**不**替代随机门/锚点门的语义对拍。
-test "n3v2 全臂冒烟：53×39 全对 + 合法对 376（臂表结构钉）" {
+test "n3v2 全臂冒烟：55×41 全对 + 合法对 384（臂表结构钉）" {
   let mut pairs = 0
   let mut legal = 0
   for state in all_states() {
@@ -137,15 +142,15 @@ test "n3v2 全臂冒烟：53×39 全对 + 合法对 376（臂表结构钉）" {
       }
     }
   }
-  assert_eq(pairs, 53 * 39)
-  assert_eq(legal, 376)
+  assert_eq(pairs, 55 * 41)
+  assert_eq(legal, 384)
 }
 
 ///|
-/// **权重表钉子**：39 名逐条等值 + 表外名回落 1。
+/// **权重表钉子**：41 名逐条等值 + 表外名回落 1。
 /// 权重决定随机门的分布（属判据面）⇒ 改表即红，必须与
 /// `src/quick_machine/quick_machine_n3.toml` 的 `[business.weights]` 同笔说明。
-test "n3v2 权重表逐名等值（39 名全量 + 默认档）" {
+test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
   let expected : Array[(String, Int)] = [
     ("At", 1),
     ("Is", 0),
@@ -168,6 +173,9 @@ test "n3v2 权重表逐名等值（39 名全量 + 默认档）" {
     ("Implies", 0),
     ("Literal", 3),
     ("Unknown", 0),
+    // R-18 后 Id/Invert 行落地 ⇒ 排除理由改为 R-17 值级缺口，仍显式 0（未列默认 1 陷阱）
+    ("Id", 0),
+    ("Invert", 0),
     ("AnnotEnd", 0),
     ("ForAllKw", 0),
     ("KeywordA", 0),
@@ -188,7 +196,7 @@ test "n3v2 权重表逐名等值（39 名全量 + 默认档）" {
     ("BracketTripleTerm", 0),
   ]
   // 权重表全量 = 命令枚举全量（两条清单漂了就红）
-  assert_eq(expected.length(), 39)
+  assert_eq(expected.length(), 41)
   assert_eq(all_commands().length(), expected.length())
   for case in expected {
     let (name, weight) = case
@@ -237,8 +245,10 @@ fn state_name(state : ModelState) -> String {
     AnnotExpectObject => "AnnotExpectObject"
     AnnotExpectEnd => "AnnotExpectEnd"
     BnpExpectPredicate => "BnpExpectPredicate"
+    BnpExpectIdNode => "BnpExpectIdNode"
     BnpExpectObject => "BnpExpectObject"
     BnpAfterObject => "BnpAfterObject"
+    BnpIdAfterClose => "BnpIdAfterClose"
     ListExpectElemOrEnd => "ListExpectElemOrEnd"
     ListAfterElem => "ListAfterElem"
     FormulaExpectSubject => "FormulaExpectSubject"
@@ -452,8 +462,13 @@ test "n3v2 结构钉子: 可达状态 / 可达命令名 / 死态" {
   // 【52 → 53 翻案（役 7，2026-09-18）】：原 52 是 blank_model 槽盲扩展的 artifact
   // ——ExpectVerbRequired 唯一入口 = frame_push 的 ret_state 帧弹回（model_exec:66/78），
   // 槽盲探不到。槽感知后 53/53 全可达（"不可达"清单应为空）。
-  assert_eq(states.length(), 53)
-  assert_eq(witnesses.length(), 38)
+  // 【53 → 54（R-18，2026-09-18）】：+BnpExpectIdNode（入口 = BnpExpectPredicate+Id 表行）
+  // 可达；**BnpIdAfterClose 死态（54/55）**：其唯一入边不在表上——引擎运行时
+  // set_id_subject 的 as_subject 特例改写帧 ret_state（actions.mbt:200），与
+  // ExpectVerbRequired 帧弹回同族；模型未识别 set_id_subject（R-17 浅半，TODO(P0)）
+  // 故探不到 = 债点计入普查，清偿后即 55/55。
+  assert_eq(states.length(), 54)
+  assert_eq(witnesses.length(), 40)
   debug(
     "n3v2 结构钉：可达状态 \{states.length()}/\{all_states().length()}；可达命令名 \{witnesses.length()}/\{all_commands().length()}",
   )
@@ -500,9 +515,9 @@ test "n3v2 随机门多种子稳定（1 / 2026）" {
 
 ///|
 /// 穷尽桥（引擎态 → 模型态）：**引擎加/删状态而桥没跟上 ⇒ 编译不过**（trig 役 7
-/// 同铁律）。两枚 `None` 臂是**记录在案的缺口**：`BnpExpectIdNode`/`BnpIdAfterClose`
-/// 在 n3v2 表源有、stale IR（n3_fsm.toml）无——Id/Invert 切片的**状态位**（§6.1 账面
-/// 漏计，本桥补记）；R-18 清偿时改 `Some` 并同笔收紧普查门分母。
+/// 同铁律）。沿革（R-18 清偿，2026-09-18）：`BnpExpectIdNode`/`BnpIdAfterClose`
+/// 两臂原为 `None`（stale IR 无模型对应，役 7 记录在案）——IR 同源刷新后模型
+/// 镜像了两态，改 `Some`，普查门分母同笔收紧（53→55 态）。
 fn model_state_of_engine(state : @n3.N3State) -> ModelState? {
   match state {
     @n3.N3ExpectSubject => Some(ExpectSubject)
@@ -525,12 +540,10 @@ fn model_state_of_engine(state : @n3.N3State) -> ModelState? {
     @n3.N3AnnotExpectObject => Some(AnnotExpectObject)
     @n3.N3AnnotExpectEnd => Some(AnnotExpectEnd)
     @n3.N3BnpExpectPredicate => Some(BnpExpectPredicate)
-    // R-18 切片态（引擎真件有、stale IR 无模型对应）：
-    @n3.N3BnpExpectIdNode => None
+    @n3.N3BnpExpectIdNode => Some(BnpExpectIdNode) // R-18 收编（沿革见函数头）
     @n3.N3BnpExpectObject => Some(BnpExpectObject)
     @n3.N3BnpAfterObject => Some(BnpAfterObject)
-    // R-18 切片态（引擎真件有、stale IR 无模型对应）：
-    @n3.N3BnpIdAfterClose => None
+    @n3.N3BnpIdAfterClose => Some(BnpIdAfterClose) // R-18 收编（沿革见函数头）
     @n3.N3ListExpectElemOrEnd => Some(ListExpectElemOrEnd)
     @n3.N3ListAfterElem => Some(ListAfterElem)
     @n3.N3FormulaExpectSubject => Some(FormulaExpectSubject)
@@ -605,25 +618,27 @@ fn reachable_state_witness_paths() -> Array[(ModelState, Array[Command])] {
 /// **役 7：引擎侧独立转移普查**（trig 役 7 同门形，三处 n3 化裁剪）：
 /// 对每个可达状态（沿状态见证路径开过去）逐条喂命令，比对「引擎归一响应 + 引擎
 /// 状态 ⟷ 模型预测」；每对**新建 probe = 干净复位**；失败输出 (状态+命令) 清单。
-/// 规模 = 53 可达态 × 39 命令 = **2067 对**（役 14 预测数兑现——前提是槽感知
-/// 可达性：ExpectVerbRequired 靠 ret_state 帧弹回可达，blank_model 槽盲扩展漏之）。
+/// 规模 = 54 可达态 × 41 命令 = **2214 对**（R-18 后 53×39=2067 → 54×41=2214：
+/// +BnpExpectIdNode 见证态、+Id/Invert 词表——前提是槽感知可达性：ExpectVerbRequired
+/// 靠 ret_state 帧弹回可达，blank_model 槽盲扩展漏之）。
 ///
 /// **裁剪①（分层比对，n3 独有）**：正片事件（`command_weight > 0`，同源派生自
 /// 业务面权重表）比「响应+状态」全量；排除片（权重 0）**只比状态**——其响应载荷
 /// 缺口 = R-17 值级建模债（倒装/壳交换改 quad 内容、不改状态），不在此硬凑
 /// （todo §6.2/§8.1）。R-17/R-18 清偿抬高权重后，本门自动收紧，无需改码。
 ///
-/// **裁剪②（Option 桥）**：两枚 R-18 切片态无模型对应 ⇒ 桥返 None ⇒ 记分道而非崩
-/// （实际不可达：进入需 Id/Invert 事件，不在 39 命令词表）。
+/// **裁剪②（Option 桥）**：沿革（R-18 清偿，2026-09-18）——两枚切片态原桥返 None，
+/// 同源刷新后桥已 `Some` 收编；Id/Invert 已入 41 命令词表，`BnpExpectIdNode` 入
+/// 见证清单（54 态），`BnpIdAfterClose` 因入边是运行时帧改写仍不可达（结构钉子 54/55）。
 ///
 /// **裁剪③（分类门）**：首跑实测 92 分道**全部**落在 6 个 trail/Path 态（尾随/路径
 /// 深机械 = prev_node 帧扩展位，R-17 领土），干净领土零分道 ⇒ 门形分两向：
 /// **违例**（干净领土分道 = 红线，必须空）+ **债点**（trail 族分道点 = R-17 可执行
 /// 台账，数字钉死）。分道按**分道步的当前 (状态,命令)** 归类，非见证路径终点。
 /// （trig 无此裁剪：34/34 全同步、无排除片、零分道。）
-test "指标·引擎侧普查: 53 可达态 × 39 命令 = 2067 对，响应+状态分层一致" {
+test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状态分层一致" {
   let witnesses = reachable_state_witness_paths()
-  assert_eq(witnesses.length(), 53)
+  assert_eq(witnesses.length(), 54)
   let violations : Array[String] = [] // 干净领土分道（红线，必须空）
   let debt_sites : Array[String] = [] // 深机械领土分道点（R-17 债台账，数字钉死）
   let mut pairs = 0
@@ -674,11 +689,15 @@ test "指标·引擎侧普查: 53 可达态 × 39 命令 = 2067 对，响应+状
   for v in violations {
     debug("  违例：\{v}")
   }
-  // 债钉（R-17 债台账规模）：首跑实测 14（同笔说明，2026-09-18）——分道步全在
+  // 债钉（R-17 债台账规模）：首跑实测 14（役 7，2026-09-18）——分道步全在
   // trail/Path 深机械（prev_node 帧扩展位 territory，R-17）：值级发射/载荷改写
   // （倒装、壳交换、formula 入口等）不在模型值域内，只比状态时这些步仍对得上、
   // 比响应即分道。数字变化即红 ⇒ 同笔说明；R-17 清偿后此数应收窄（收紧即修账）。
-  assert_eq(debt_sites.length(), 14)
+  // 【14 → 11（R-18 同笔，2026-09-18）】：v2 真相修正 stale 行三分道——
+  // SubjTrailAfterStepFormula+PrefName 回位公式族（SubjTrailVerbDone →
+  // SubjTrailVerbDoneFormula）等；深切片新增对（Id/Invert × bnp 族、
+  // BnpExpectIdNode 见证）**零分道**（响应+状态全同步）。11 点仍全在 trail 族。
+  assert_eq(debt_sites.length(), 11)
   // 红线：干净领土零分道（引擎⟷模型契约在深机械领土之外必须成立）
   assert_eq(violations, [])
 }

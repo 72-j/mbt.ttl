@@ -11,6 +11,8 @@
 #
 # 2026-09-18 立基（役 1 后补测试：68% → 82.3%）→ 第二批役（2/3/4/5/6/14）83.2%
 # → 役 7（引擎侧普查 + 观测面桥/状态名枚举）83.4%
-covered_permille = 833
-covered_lines = 7868
-total_lines = 9435
+# → R-18（P5.6 笔 1/2：n3v2 同源翻转 + quicktest 词表接深切片，model_exec 376→384 臂
+#   全被全臂冒烟覆盖、bridge/状态名收编两新态）86.4%
+covered_permille = 863
+covered_lines = 8277
+total_lines = 9581

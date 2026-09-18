@@ -15,11 +15,14 @@
 
 ///|
 /// 引用取值范围（源 [business].ref_id_range）：越小越利于 shrink 收敛
-const REF_ID_RANGE : Int = 64
+const REF_ID_RANGE : Int = 8
 
 ///|
 /// 命令权重（源 [business].weights；未声明默认 1，0 表示禁用）。
 /// 权重只影响选择概率，合法性仍由 valid 过滤（转移表是唯一权威）。
+/// 沿革（R-18 再生笔，2026-09-18）：本表是**手编层**——再生模板只发空表 `_ => 1`，
+/// 再生后须照 `src/quick_machine/quick_machine_n3.toml` 的 [business.weights] 重铺
+///（役 9 候选：模板按业务 TOML 发表）。本笔新增 Id = 0 / Invert = 0（R-17 值级缺口排除）。
 fn command_weight(name : String) -> Int {
   match name {
     "At" => 1
@@ -61,6 +64,8 @@ fn command_weight(name : String) -> Int {
     "KeywordsKw" => 0
     "TripleTerm" => 0
     "BracketTripleTerm" => 0
+    "Id" => 0
+    "Invert" => 0
     _ => 1
   }
 }
@@ -121,6 +126,8 @@ fn generate_command(
     Implies(fresh_ref(rng)),
     ImpliedBy(fresh_ref(rng)),
     Unknown(fresh_ref(rng)),
+    Id,
+    Invert,
     EOF,
   ]
   let names : Array[String] = [
@@ -129,7 +136,7 @@ fn generate_command(
     "BaseKw", "VersionKw", "Tilde", "AnnotStart", "AnnotEnd", "ForAllKw", "ForSomeKw",
     "KeywordsKw", "Comma", "Semicolon", "Dot", "Lbrace", "Rbrace", "Lbracket", "Rbracket",
     "Lparen", "Rparen", "Anon", "Bang", "Caret", "Implies", "ImpliedBy", "Unknown",
-    "EOF",
+    "Id", "Invert", "EOF",
   ]
   let weighted : Array[(Command, Int)] = []
   for index = 0; index < candidates.length(); index = index + 1 {
@@ -317,6 +324,8 @@ fn reify_command(
         Ok(resolved) => Ok(Unknown(resolved))
         Err(error) => Err(error)
       }
+    Id => Ok(Id)
+    Invert => Ok(Invert)
     EOF => Ok(EOF)
   }
 }

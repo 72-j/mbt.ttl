@@ -84,6 +84,8 @@ fn command_to_event(command : Command) -> @n3.N3Event {
     Implies(r) => N3Implies(span_from(concrete_id(r)))
     ImpliedBy(r) => N3ImpliedBy(span_from(concrete_id(r)))
     Unknown(r) => N3Unknown(span_from(concrete_id(r)))
+    Id => N3Id
+    Invert => N3Invert
     EOF => N3EOF
   }
 }

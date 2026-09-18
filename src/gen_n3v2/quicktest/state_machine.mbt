@@ -50,6 +50,8 @@ fn command_name(command : Command) -> String {
     Implies(_) => "Implies"
     ImpliedBy(_) => "ImpliedBy"
     Unknown(_) => "Unknown"
+    Id => "Id"
+    Invert => "Invert"
     EOF => "EOF"
   }
 }

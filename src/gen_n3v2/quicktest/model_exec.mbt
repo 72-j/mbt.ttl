@@ -95,6 +95,8 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectPredicate, Is) => ({ ..model, state: ExpectIsProp, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectPredicate+Has
     (ExpectPredicate, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectPredicate+Invert
+    (ExpectPredicate, Invert) => (model, Continue)
     // @arm ExpectPredicate+Equals
     (ExpectPredicate, Equals(r)) =>
       (
@@ -539,6 +541,8 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // --- BnpExpectPredicate ---
     // @arm BnpExpectPredicate+Has
     (BnpExpectPredicate, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm BnpExpectPredicate+Id
+    (BnpExpectPredicate, Id) => ({ ..model, state: BnpExpectIdNode, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm BnpExpectPredicate+Is
     (BnpExpectPredicate, Is) => ({ ..model, state: BnpExpectIsProp, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm BnpExpectPredicate+Equals
@@ -577,12 +581,31 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm BnpExpectPredicate+KeywordX
     (BnpExpectPredicate, KeywordX(r)) =>
       (set_predicate(model, r, BnpExpectObject), Continue)
+    // --- BnpExpectIdNode ---
+    // @arm BnpExpectIdNode+PrefName
+    (BnpExpectIdNode, PrefName(_)) =>
+      ({ ..model, state: BnpExpectPredicate, }, Continue) // TODO(P0): 未识别 action set_id_subject，默认响应请人工确认
+    // --- BnpIdAfterClose ---
+    // @arm BnpIdAfterClose+Dot
+    (BnpIdAfterClose, Dot) =>
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+        },
+        Continue,
+      )
     // --- FormulaExpectPredicate ---
     // @arm FormulaExpectPredicate+Has
     (FormulaExpectPredicate, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm FormulaExpectPredicate+Is
     (FormulaExpectPredicate, Is) =>
       ({ ..model, state: FormulaExpectIsProp, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm FormulaExpectPredicate+Invert
+    (FormulaExpectPredicate, Invert) => (model, Continue)
     // @arm FormulaExpectPredicate+Equals
     (FormulaExpectPredicate, Equals(r)) =>
       (
@@ -1191,6 +1214,10 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd),
         Continue,
       )
+    // @arm SubjTrailVerbDone+Bang
+    (SubjTrailVerbDone, Bang(_)) => emit_spo(model, SubjTrailExpectVerb)
+    // @arm SubjTrailVerbDone+Caret
+    (SubjTrailVerbDone, Caret(_)) => emit_spo(model, SubjTrailExpectVerb)
     // --- SubjTrailExpectVerbFormula ---
     // @arm SubjTrailExpectVerbFormula+Iri
     (SubjTrailExpectVerbFormula, Iri(_)) =>
@@ -1210,7 +1237,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       emit_spo(model, SubjTrailVerbDoneFormula)
     // @arm SubjTrailAfterStepFormula+PrefName
     (SubjTrailAfterStepFormula, PrefName(_)) =>
-      emit_spo(model, SubjTrailVerbDone)
+      emit_spo(model, SubjTrailVerbDoneFormula)
     // @arm SubjTrailAfterStepFormula+KeywordA
     (SubjTrailAfterStepFormula, KeywordA(_)) =>
       emit_spo(model, SubjTrailVerbDoneFormula)
@@ -1252,6 +1279,12 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (SubjTrailVerbDoneFormula, Lparen(r)) =>
       (
         frame_push(model, r, FormulaAfterObject, false, ListExpectElemOrEnd),
+        Continue,
+      )
+    // @arm SubjTrailVerbDoneFormula+Lbrace
+    (SubjTrailVerbDoneFormula, Lbrace(r)) =>
+      (
+        frame_push(model, r, FormulaAfterObject, false, FormulaExpectSubject),
         Continue,
       )
     // --- ListPathExpectVerb ---
@@ -1604,11 +1637,9 @@ fn frame_pop(model : Model) -> Model {
   }
 }
 
-// 沿革（P2-5 / N2，2026-09-18 清理）：此处原有 list 族助手 `frame_open_span`。
-// 本方言权重表把 list 族整体排除（`Lparen/Rparen/Anon = 0`，见
-// src/quick_machine/quick_machine_n3.toml）⇒ 无臂引用 ⇒ `unused_value`。
-// 生成器模板改为"按需产出助手"后（主仓役 9）不再自动出现；
-// 复活条件 = R-17 帧扩展位词表落地并放开 list 片（届时由生成器带来，不手写）。
+///|
+/// 沿革（R-18 再生笔，2026-09-18）：再生按模板带回 list 族助手 `frame_open_span`
+///（n3 模型零调用 ⇒ deny-warn 红；役 1 同款手删，役 9 模板根治：模板按使用发助手）。
 
 ///|
 /// 模型推进（quickcheck_statemachine transition_symbolic/concrete 接口形态）

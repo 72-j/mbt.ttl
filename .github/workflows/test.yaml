@@ -115,7 +115,11 @@ jobs:
             fi
           }
           check_default_arms src/gen_trig/quicktest/model_exec.mbt 30
-          check_default_arms src/gen_n3v2/quicktest/model_exec.mbt 47
+          # 47 → 49（R-18 同笔，2026-09-18）：词表 +Id/Invert 深切片新增两保守臂——
+          # (BnpExpectPredicate, Id) action "none" 未识别（默认 Continue 恰为真值）；
+          # (BnpExpectIdNode, PrefName) action set_id_subject 未识别（R-17 浅半值级缺口，
+          # 帧位 id_subject 不在模型值域；响应+状态层普查零分道，债点台账在案）。
+          check_default_arms src/gen_n3v2/quicktest/model_exec.mbt 49
 
   test:
     name: Test (${{ matrix.os }})
