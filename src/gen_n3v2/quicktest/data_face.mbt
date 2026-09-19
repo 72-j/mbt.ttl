@@ -54,7 +54,8 @@ fn parse_data_face_rows(text : String) -> Array[DataFaceRow] {
     if trimmed == "" ||
       trimmed.has_prefix("#") ||
       trimmed == "v1" ||
-      trimmed == "v2" {
+      trimmed == "v2" ||
+      trimmed == "v3" {
       continue
     }
     // §AN.12 **列分隔符 = TAB**：v1 用 `|` 作分隔符，而笔 3a 起的写槽词表含 `fwd:a|b`
@@ -118,17 +119,213 @@ fn slot_get(view : SlotView, target : String) -> RefId? {
 }
 
 ///|
-/// 写项来源解析：`Ok(期望值)` = 可比；`Err(理由)` = 不可比（入册）
-fn classify_write_source(
+/// 帧顶字段读数（§AN.13 帧面）：`Span` → `RefId` 归一、引擎态 → **模型态名**
+/// （经 `metrics.mbt` 的穷尽桥 `model_state_of_engine` + `state_name`；不可桥者记 `"?"`）。
+priv struct FaceFrame {
+  is_formula : Bool
+  open_span : RefId
+  subject : RefId?
+  predicate : RefId?
+  graph : RefId?
+  ret_state_name : String
+  as_subject : Bool
+  as_pred : Bool
+  prev_node : RefId?
+  node_seq : Int
+}
+
+///|
+/// **面外账本读数**（帧栈 + 倒装两槽）——与 `SlotView`（8 槽）分开的两个类型：
+/// `SlotView` 供 R-20 普查做"模型 ⟷ 引擎"整块 `==`（加字段会污染那把尺子），
+/// 本组只喂数据面门。
+priv struct FaceLedger {
+  frames : Array[FaceFrame] // 自底向上（栈顶 = 末元素）
+  is_src : RefId?
+  is_depth : Int
+}
+
+///|
+fn face_ledger_of_engine(probe : @n3.N3Probe) -> FaceLedger {
+  let frames : Array[FaceFrame] = []
+  for frame in probe.frames() {
+    frames.push({
+      is_formula: frame.is_formula,
+      open_span: ref_id_of(frame.open_span),
+      subject: frame.subject.map(ref_id_of),
+      predicate: frame.predicate.map(ref_id_of),
+      graph: frame.graph.map(ref_id_of),
+      ret_state_name: match model_state_of_engine(frame.ret_state) {
+        Some(state) => state_name(state)
+        None => "?"
+      },
+      as_subject: frame.as_subject,
+      as_pred: frame.as_pred,
+      prev_node: frame.prev_node.map(ref_id_of),
+      node_seq: frame.node_seq,
+    })
+  }
+  let inversion = probe.inversion()
+  {
+    frames,
+    is_src: inversion.is_src.map(ref_id_of),
+    is_depth: inversion.is_depth,
+  }
+}
+
+///|
+/// 帧面期望值：帧字段有四种值域（`RefId?` / `Bool` / `Int` / 态名）
+priv enum FaceValue {
+  FRef(RefId?)
+  FBool(Bool)
+  FInt(Int)
+  FState(String)
+}
+
+///|
+fn face_value_text(value : FaceValue) -> String {
+  match value {
+    FRef(v) => ref_id_text(v)
+    FBool(v) => if v { "true" } else { "false" }
+    FInt(v) => v.to_string()
+    FState(v) => v
+  }
+}
+
+///|
+fn face_value_eq(a : FaceValue, b : FaceValue) -> Bool {
+  match (a, b) {
+    (FRef(x), FRef(y)) => x == y
+    (FBool(x), FBool(y)) => x == y
+    (FInt(x), FInt(y)) => x == y
+    (FState(x), FState(y)) => x == y
+    _ => false
+  }
+}
+
+///|
+/// 帧顶取字段（`RefId?` 值域那几位的读取口）
+fn frame_ref_field(frame : FaceFrame, field : String) -> RefId? {
+  match field {
+    "open_span" => Some(frame.open_span)
+    "prev_node" => frame.prev_node
+    "subject" => frame.subject
+    "predicate" => frame.predicate
+    "graph" => frame.graph
+    _ => None
+  }
+}
+
+///|
+/// 帧写地址解析（§AN.13 投影写实）：`frame.top.<位>` → 后态**帧顶**（偏移 0）；
+/// `frame.below.<位>` → 后态**次顶**（偏移 1，效果通道压帧行的体写）；
+/// `frame.<位>`（无地址老形）按帧顶读，容错用。
+fn frame_address(target : String) -> (Int, String)? {
+  if target.has_prefix("frame.top.") {
+    Some((0, target[10:].to_owned()))
+  } else if target.has_prefix("frame.below.") {
+    Some((1, target[12:].to_owned()))
+  } else if target.has_prefix("frame.") {
+    Some((0, target[6:].to_owned()))
+  } else {
+    None
+  }
+}
+
+///|
+/// 帧面写项的**期望值**解析：左值域按字段定（布尔位 / 态位 / 栈深 / Span 值域），
+/// 右值走与槽位同一张来源词表（含 `frame.<字段>` 读**行进前**帧顶）。
+fn classify_face_expect(
+  target : String,
+  source : String,
+  before_slots : SlotView,
+  before : FaceLedger,
+  payload : RefId,
+  args : Array[String],
+) -> Result[FaceValue, String] {
+  if target == "is_depth" {
+    if source == "frames_len" {
+      return Ok(FInt(before.frames.length()))
+    }
+    return Err("\{source}（`is_depth` 只认 `frames_len`）")
+  }
+  // 倒装交换键（`is_of`/`<-` 落账）：与槽位同词表的 Span 来源
+  if target == "is_src" {
+    match
+      resolve_span_source(target, source, before_slots, before, payload, args) {
+      Ok(v) => return Ok(FRef(v))
+      Err(why) => return Err(why)
+    }
+  }
+  let field : String = match frame_address(target) {
+    Some(pair) => pair.1
+    None => return Err("\{target}（非帧面目标）")
+  }
+  if field == "is_formula" || field == "as_pred" || field == "as_subject" {
+    if source == "true" {
+      return Ok(FBool(true))
+    }
+    if source == "false" {
+      return Ok(FBool(false))
+    }
+    return Err("\{source}（布尔帧位只认 true/false 字面）")
+  }
+  // `frame.ret_state`：投影侧已把 `to` 写实成**行目标态名**（§AN.13）
+  if field == "ret_state" {
+    return Ok(FState(source))
+  }
+  if field == "node_seq" {
+    return Err("\{source}（node_seq 尚无可声明来源）")
+  }
+  match
+    resolve_span_source(target, source, before_slots, before, payload, args) {
+    Ok(v) => Ok(FRef(v))
+    Err(why) => Err(why)
+  }
+}
+
+///|
+/// 面外账本**目标位当前值**（与期望值同值域）
+fn face_target_value(ledger : FaceLedger, target : String) -> FaceValue? {
+  if target == "is_src" {
+    return Some(FRef(ledger.is_src))
+  }
+  if target == "is_depth" {
+    return Some(FInt(ledger.is_depth))
+  }
+  match frame_address(target) {
+    Some(pair) => {
+      let (offset, field) = pair
+      let depth = ledger.frames.length()
+      if depth < offset + 1 {
+        return None
+      }
+      let frame = ledger.frames[depth - 1 - offset]
+      match field {
+        "is_formula" => Some(FBool(frame.is_formula))
+        "as_pred" => Some(FBool(frame.as_pred))
+        "as_subject" => Some(FBool(frame.as_subject))
+        "ret_state" => Some(FState(frame.ret_state_name))
+        "node_seq" => Some(FInt(frame.node_seq))
+        "open_span" | "prev_node" | "subject" | "predicate" | "graph" =>
+          Some(FRef(frame_ref_field(frame, field)))
+        _ => None
+      }
+    }
+    None => None
+  }
+}
+
+///|
+/// **来源词表**解析（左值无关的那半）：`none` / `argN`（按 `args` 列解引用）/ `ctx.<槽>` /
+/// `fwd:`/`nfwd:` 条件式 / `frame.<字段>`（读**行进前**帧顶）。`Ok(期望值)` = 可比。
+fn resolve_span_source(
   target : String,
   source : String,
   before : SlotView,
+  ledger : FaceLedger,
   payload : RefId,
   args : Array[String],
 ) -> Result[RefId?, String] {
-  if !slot_in_view(target) {
-    return Err("\{target}（槽在观测面外）")
-  }
   if source == "none" {
     return Ok(None)
   }
@@ -187,7 +384,9 @@ fn classify_write_source(
         } else {
           rest[bar + 1:].to_owned()
         }
-        return classify_write_source(target, chosen, before, payload, args)
+        return resolve_span_source(
+          target, chosen, before, ledger, payload, args,
+        )
       }
       None => return Err("\{source}（条件式缺 `|`）")
     }
@@ -203,12 +402,37 @@ fn classify_write_source(
   if source.has_prefix("ctx.") {
     return Err("\{source}（源槽在观测面外/bool 槽）")
   }
-  // 帧内来源（`frame.prev_node` 这类**读**）：内容不在观测面内（§AN.12 起与"面外槽"同类，
-  // 不再落进泛兜底"首片不解析"——台账才如实反映"剩下的全是面外"）。
+  // 帧内来源（`frame.prev_node` 这类**读**）：§AN.13 帧面开面后按**行进前帧顶**取值
+  // （读的是"压帧前那一刻"的帧顶，与引擎"先读后写"同序）。
   if source.has_prefix("frame.") {
-    return Err("\{source}（源在帧内、观测面外）")
+    let field : String = source[6:].to_owned()
+    if !["open_span", "prev_node", "subject", "predicate", "graph"].contains(
+        field,
+      ) {
+      return Err("\{source}（帧位非 Span 值域）")
+    }
+    match ledger.frames.last() {
+      Some(top) => return Ok(frame_ref_field(top, field))
+      None => return Err("\{source}（帧栈空）")
+    }
   }
   Err("\{source}（首片不解析）")
+}
+
+///|
+/// 写项来源解析（**槽位**目标）：左值须在观测面内，右值走 `resolve_span_source`
+fn classify_write_source(
+  target : String,
+  source : String,
+  before : SlotView,
+  ledger : FaceLedger,
+  payload : RefId,
+  args : Array[String],
+) -> Result[RefId?, String] {
+  if !slot_in_view(target) {
+    return Err("\{target}（槽在观测面外）")
+  }
+  resolve_span_source(target, source, before, ledger, payload, args)
 }
 
 ///|
@@ -281,47 +505,57 @@ fn data_face_compare(
     // 的最终写槽** ⇒ 本门不再整行跳过（12 行入 `compared`）。今后若某 action 真按 SlotType
     // 分派却没声明臂，会以**分道**浮出（比静默跳过强）。
     // 注：**清-读同槽（60 行）自本笔起不再整行跳过**——门按"读前值"判（§AN.9 第一步）。
-    // 弹帧恢复（§AN.9 第一步实测 1 行）：`PopBnp` 把帧里保存的 subject/predicate/graph 写回，
-    // 而帧内容不在 `SlotView` 面内 ⇒ 含"读这三槽"的弹帧行整行入册（面外：帧）。
-    let mut pop_restore = false
-    if row.returns.contains("PopBnp") {
-      for item in row.writes {
-        let pair = item.split("=").to_array()
-        if pair.length() == 2 {
-          let src = pair[1]
-          if src == "ctx.subject" ||
-            src == "ctx.predicate" ||
-            src == "ctx.graph" {
-            pop_restore = true
-          }
-        }
-      }
-    }
-    if pop_restore {
-      incomparable.push("\{key}：弹帧恢复槽位（帧内容面外）")
-      continue
+    // **面外账本**前值（§AN.13 帧面）：帧栈 + 倒装两槽——供 `frame.*` 读源、`is_src`/`is_depth`
+    // 与帧写落位取值。
+    let before_ledger = face_ledger_of_engine(system.probe)
+    let pop_targets : Array[String] = if row.returns.contains("PopBnp") {
+      ["subject", "predicate", "graph"]
+    } else {
+      []
     }
     // ④ **逐项**解析期望：可比项照比，不可比项只把**该项**入册。
     // 负控①实测教训：整行入册会让"行内可比槽"也失去判据（改 `subject=none` 竟不红）⇒ 降为逐项。
     let expected_items : Array[(String, RefId?)] = []
+    let expected_faces : Array[(String, FaceValue)] = []
     for item in row.writes {
       let pair = item.split("=").to_array()
       if pair.length() != 2 {
         incomparable.push("\{key}：\{item}（非 tgt=src 形）")
         continue
       }
-      // 弹帧恢复**覆盖**三槽（帧内容面外）：含 `PopBnp` 的行，subject/predicate/graph 不可比，
-      // 其余槽（path_*）照比（§AN.9 第一步实测 1 行：path_obj_close·predicate）。
       let raw_target = pair[0].to_owned()
-      if row.returns.contains("PopBnp") &&
-        (
-          raw_target == "subject" ||
-          raw_target == "predicate" ||
-          raw_target == "graph"
-        ) {
+      // 弹帧行：声明的是**弹帧前**的动作体写槽，而行终态 = 弹帧恢复 + 尾随 scope 复位
+      // （`path_obj_close` 的尾随 scope 是**运行时**由 `ret_state` 定的三态）。
+      // 数据面**尚无位置声明"行终态"** ⇒ 这三槽逐项入册（§AN.13 立项：`pop_writes` 通道）。
+      if pop_targets.contains(raw_target) {
         incomparable.push(
-          "\{key}·\{raw_target}：弹帧恢复覆盖（帧内容面外）",
+          "\{key}·\{raw_target}：弹帧行声明的是**弹帧前**写槽（行终态 = 弹帧恢复 + 尾随 scope 动态复位）⇒ 待 `pop_writes` 通道（§AN.13 立项）",
         )
+        continue
+      }
+      // 被弹帧上的帧写：该帧后态**不存在**（同上立项；其可观测后果走 `ctx.state` 与身份落位 `object`）
+      if raw_target.has_prefix("frame.popped.") {
+        incomparable.push(
+          "\{key}·\{raw_target}：被弹帧后态不存在（后果面 = `ctx.state`/身份落位 `object`）⇒ 待 `pop_writes` 通道（§AN.13 立项）",
+        )
+        continue
+      }
+      // 面外账本目标位（`frame.<字段>` / `is_src` / `is_depth`）
+      if raw_target.has_prefix("frame.") ||
+        raw_target == "is_src" ||
+        raw_target == "is_depth" {
+        match
+          classify_face_expect(
+            raw_target,
+            pair[1].to_owned(),
+            before,
+            before_ledger,
+            payload,
+            row.args,
+          ) {
+          Ok(value) => expected_faces.push((raw_target, value))
+          Err(why) => incomparable.push("\{key}·\{raw_target}：\{why}")
+        }
         continue
       }
       match
@@ -329,6 +563,7 @@ fn data_face_compare(
           pair[0].to_owned(),
           pair[1].to_owned(),
           before,
+          before_ledger,
           payload,
           row.args,
         ) {
@@ -339,6 +574,7 @@ fn data_face_compare(
     // ⑤ 引擎步后逐槽比对
     let response = run_command(cmd, system)
     let actual = slot_view_of_engine(system.probe.slots())
+    let after_ledger = face_ledger_of_engine(system.probe)
     // 发射 scope 复位（债点裁定的结论）：EmitQuad(<Scope>) 之后 loop 按 scope 清槽 ⇒
     // 期望值 = 写槽后**再**按 scope 置 None。
     let reset_slots = scope_reset_slots(row.returns)
@@ -353,6 +589,20 @@ fn data_face_compare(
       if got != expected_value {
         mismatches.push(
           "\{key}·\{target}：期望 \{ref_id_text(expected_value)} 实得 \{ref_id_text(got)}（响应 \{response_short(response)}）",
+        )
+      }
+    }
+    // 面外账本逐位比对（帧顶 / 倒装两槽）
+    for entry in expected_faces {
+      let (target, want) = entry
+      let got = face_target_value(after_ledger, target)
+      let ok = match got {
+        Some(actual_value) => face_value_eq(want, actual_value)
+        None => false
+      }
+      if !ok {
+        mismatches.push(
+          "\{key}·\{target}：期望 \{face_value_text(want)} 实得 \{match got { Some(v) => face_value_text(v); None => "（无帧）" }}（响应 \{response_short(response)}）",
         )
       }
     }
@@ -411,15 +661,15 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
   )
   assert_eq(violations, [])
   assert_eq(debt_hits, 0)
-  // 台账**按类钉死**（首跑回填；任一类数字变化即红——比"只钉总数"强，能抓类间搬家）
-  // 槽/源在观测面外（frame.* / is_src / is_depth / 帧内容）。沿革：83（§AN.10 末）→ 77（§AN.11
-  // 分派族转真判、6 行 list_*_nested 由"整行一条"降为"逐项一条"）→ **81（§AN.12）**：
-  // v1 分隔符撞车让含 `fwd:a|b` 的行被**截断**（其 `writes` 尾部整段不可见）⇒ 修复后
-  // 那些行**多露出 4 项**面外条目（截断前的"看不见"不是通过，是**漏比**）。
+  // 台账**按类钉死**（首跑回填；任一类数字变化即红——比"只钉总数"强，能抓类间搬家）。
+  // 沿革：83（§AN.10 末）→ 77（§AN.11）→ 81（§AN.12 修截断后如实露出）→ **0 面外（§AN.13 帧面开面）**：
+  // 帧栈 + 倒装两槽进观测面 ⇒ 压帧落位/帧读/`is_src`/`is_depth` 全部转真判，
+  // 只剩 **`pop_writes` 立项族 15 项**（弹帧行的"行终态"数据面尚无声明通道）。
   let mut off_face = 0
   let mut order_sensitive = 0 // 清-读同槽（需读序数据）
   let mut conditional = 0 // 条件式来源（fwd:/nfwd:）
   let mut arg_unparsed = 0 // `argN` 指向未解析形态（state:X / 布尔 / SlotType::…）——args 列化后单列
+  let mut pop_final = 0 // 弹帧行终态（§AN.13 立项：待 `pop_writes` 声明通道）
   for site in incomparable {
     if site.contains("清-读同槽") {
       order_sensitive = order_sensitive + 1
@@ -428,18 +678,23 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
     } else if site.contains("形态未解析") ||
       site.contains("args 列不足") {
       arg_unparsed = arg_unparsed + 1
+    } else if site.contains("pop_writes") {
+      pop_final = pop_final + 1
     } else {
       off_face = off_face + 1
     }
   }
   debug(
-    "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / arg未解析 \{arg_unparsed} / 不可达 \{unreachable_rows.length()}",
+    "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / arg未解析 \{arg_unparsed} / 弹帧终态 \{pop_final}（待立项）/ 不可达 \{unreachable_rows.length()}",
   )
   assert_eq(unreachable_rows.length(), 0)
-  assert_eq(off_face, 81)
+  // **面外归零**（§AN.13）：帧面开面后"观测面外"这一类不再有成员
+  assert_eq(off_face, 0)
   assert_eq(order_sensitive, 0)
   // 条件式（fwd:/nfwd:）**清零**（§AN.12）：运行时旗读 + `nfwd:` 编译期坍缩
   assert_eq(conditional, 0)
   // `argN` 未解析形态**清零**（§AN.12）：缺省绑定写实（span 事件 ⇒ payload）后 76 项转真判
   assert_eq(arg_unparsed, 0)
+  // 弹帧行终态 **15 项在册**（§AN.13 立项）：这是当前**唯一的**数据面表达力缺口，逐名有据
+  assert_eq(pop_final, 15)
 }

@@ -150,6 +150,67 @@ pub fn N3Probe::slots(self : N3Probe) -> N3SlotSnapshot {
 }
 
 ///|
+/// **帧面视图**（*帧栈观测面*，§AN.13，2026-09-19 开面）：`ctx.slot_stack` 单帧的
+/// **只读值拷贝**。字段面 = 引擎 `Slot` 各字段（三槽快照 / `open_span` / `ret_state` /
+/// `as_subject` / `as_pred` / `prev_node` / `node_seq`）+ 一个**派生位** `is_formula`
+/// （= `typ is SlotType::Formula`；引擎**不存**该旗——它是生成器按行实参推的，
+/// 与模型侧 `frame.is_formula` 同义）。
+/// 缺口缘起：三表 `writes` 里 `frame.*` 条目（`frame.prev_node=arg0` /
+/// `frame.as_pred=true` / `frame.ret_state=…`）与**弹帧恢复**（`PopBnp` 把帧存的三槽写回）
+/// 此前全记"面外"——静态解析必成纸，本面让 quicktest 能**读引擎真帧**。
+/// 沿革：trig 的 `stack_view`（P4.2h 量测遗产）在役 2 因**零引用**删除；本面是同族**复活**，
+/// 但带**常驻消费者**（数据面值级对拍门 `quicktest/data_face.mbt`）。
+/// 纪律与**回收条件**（同 §N.1 / `state()` / `slots()`）：①数据面帧面消费门降级或撤销 ⇒
+/// 本面**同笔回收**；②更窄等价投影不存在（帧是**栈**，不给栈序/栈顶即无法判"弹帧恢复"
+/// 这类跨步语义）；③存量面 `new`/`step_all`/`state`/`slots` 不动。
+pub(all) struct N3FrameView {
+  is_formula : Bool // 派生：`typ is SlotType::Formula`（公式帧不占 s 槽的引擎依据）
+  open_span : Span
+  subject : Span?
+  predicate : Span?
+  graph : Span?
+  ret_state : N3State
+  as_subject : Bool
+  as_pred : Bool
+  prev_node : Span?
+  node_seq : Int
+}
+
+///|
+/// 帧栈只读读数：**自底向上**（数组序 = 压栈序，栈顶 = 末元素）。
+pub fn N3Probe::frames(self : N3Probe) -> Array[N3FrameView] {
+  let out : Array[N3FrameView] = []
+  for frame in self.ctx.slot_stack {
+    out.push({
+      is_formula: frame.typ is SlotType::Formula,
+      open_span: frame.open_span,
+      subject: frame.subject,
+      predicate: frame.predicate,
+      graph: frame.graph,
+      ret_state: frame.ret_state,
+      as_subject: frame.as_subject,
+      as_pred: frame.as_pred,
+      prev_node: frame.prev_node,
+      node_seq: frame.node_seq,
+    })
+  }
+  out
+}
+
+///|
+/// **倒装账本位读数**（`[type_mapping].inversion` 两槽，与 `frames()` 同笔开面、同纪律同回收）：
+/// `is_src` = 交换键（`is_of`/`<-` 落键的入账主语 span），`is_depth` = 结算界（落键时刻栈深）。
+pub(all) struct N3InversionView {
+  is_src : Span?
+  is_depth : Int
+}
+
+///|
+pub fn N3Probe::inversion(self : N3Probe) -> N3InversionView {
+  { is_src: self.ctx.is_src, is_depth: self.ctx.is_depth, }
+}
+
+///|
 /// 钉子①：一条完整语句 Iri Iri Iri Dot ⇒ Continue ×3 + EmitQuad（三槽齐、g 恒缺——
 /// N3 无图块口径）；随后未定义转移（ExpectSubject 位喂 Dot）⇒ Failed 原样上抛。
 test "probe: 事件驱动一条三元组" {

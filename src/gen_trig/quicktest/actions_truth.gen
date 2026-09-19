@@ -1,9 +1,11 @@
 # 数据面真值快照（生成物，DO NOT EDIT）
 # 源: ./src/rdf/fsm_out/n3_fsm.toml [[transitions]] × ./src/quick_machine/quick_machine_n3_gen.toml [actions]
-# format: v2 —— **列分隔符 = TAB**（v1 用 `|`，与 `fwd:a|b` 词表撞车 ⇒ 整行静默截断，§AN.12）
+# format: v3 —— **列分隔符 = TAB**（v1 用 `|`，与 `fwd:a|b` 词表撞车 ⇒ 整行静默截断，§AN.12）
 # 列: from+on〈TAB〉action〈TAB〉returns〈TAB〉writes〈TAB〉frame〈TAB〉push_writes〈TAB〉args
 #      （writes 逐项排序、空记 -；带行 assign 的 `nfwd:a|b` 已**编译期坍缩**；槽型分派臂已按行 SlotType 选臂）
-v2
+#      （v3 增：帧写落位**写实**——`frame.top.<位>`（后态帧顶）/ `frame.below.<位>`（效果通道压帧行的体写 = 后态次顶）/
+#       `frame.popped.<位>`（被弹帧、后态不存在）；`frame.<位>` 作**读**源时 = 行进前帧顶；`frame.ret_state=to` 已写实成态名。§AN.13）
+v3
 ExpectBaseIri+Iri	set_base	Continue	-	-	false	-
 ExpectObject+Iri	set_object	Continue	-	-	false	-
 ExpectObject+Anon	set_object	Continue	-	-	false	-

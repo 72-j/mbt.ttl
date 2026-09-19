@@ -132,10 +132,49 @@ fn scope_reset_slots(returns : String) -> Array[String] {
 }
 
 ///|
+/// 帧顶字段读数（§AN.13 帧面）：`Span` → `RefId` 归一（数组序 = 栈序，自底向上）
+priv struct FaceFrame {
+  open_span : RefId
+  subject : RefId?
+  predicate : RefId?
+  graph : RefId?
+  prev_node : RefId?
+}
+
+///|
+fn face_frames_of_engine(probe : @trig.TrigProbe) -> Array[FaceFrame] {
+  let out : Array[FaceFrame] = []
+  for frame in probe.frames() {
+    out.push({
+      open_span: ref_id_of(frame.open_span),
+      subject: frame.subject.map(ref_id_of),
+      predicate: frame.predicate.map(ref_id_of),
+      graph: frame.graph.map(ref_id_of),
+      prev_node: frame.prev_node.map(ref_id_of),
+    })
+  }
+  out
+}
+
+///|
+/// 帧顶取字段（`RefId?` 值域那几位的读取口）
+fn frame_ref_field(frame : FaceFrame, field : String) -> RefId? {
+  match field {
+    "open_span" => Some(frame.open_span)
+    "prev_node" => frame.prev_node
+    "subject" => frame.subject
+    "predicate" => frame.predicate
+    "graph" => frame.graph
+    _ => None
+  }
+}
+
+///|
 fn classify_write_source(
   target : String,
   source : String,
   before : SlotView,
+  frames : Array[FaceFrame],
   payload : RefId,
   args : Array[String],
 ) -> Result[RefId?, String] {
@@ -198,8 +237,18 @@ fn classify_write_source(
     return Err("\{source}（源槽在观测面外）")
   }
   // 帧内来源（读）：内容不在观测面内（§AN.12 口径回灌）
+  // §AN.13 帧面开面后按**行进前帧顶**取值（与 n3v2 同尺）
   if source.has_prefix("frame.") {
-    return Err("\{source}（源在帧内、观测面外）")
+    let field : String = source[6:].to_owned()
+    if !["open_span", "prev_node", "subject", "predicate", "graph"].contains(
+        field,
+      ) {
+      return Err("\{source}（帧位非 Span 值域）")
+    }
+    match frames.last() {
+      Some(top) => return Ok(frame_ref_field(top, field))
+      None => return Err("\{source}（帧栈空）")
+    }
   }
   Err("\{source}（首片不解析）")
 }
@@ -283,6 +332,8 @@ fn data_face_compare(
       }
       None => ()
     }
+    // §AN.13 帧面：行进前帧栈（`frame.*` 读源取值用；与 n3v2 同尺）
+    let frames = face_frames_of_engine(system.probe)
     let expected_items : Array[(String, RefId?)] = []
     for item in row.writes {
       let pair = item.split("=").to_array()
@@ -295,6 +346,7 @@ fn data_face_compare(
           pair[0].to_owned(),
           pair[1].to_owned(),
           before,
+          frames,
           payload,
           row.args,
         ) {
@@ -384,9 +436,9 @@ async test "数据面⟷引擎·trig 值级对拍：可比行逐槽等值 + 台�
   debug(
     "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / arg未解析 \{arg_unparsed} / 不可达 \{unreachable_rows.length()}",
   )
-  // 类计数钉死（沿革：面外 28 → **9**（§AN.12）——19 项 `argN` 缺省绑定转真判后全绿；
-  // 原先把"args 列不足"混记进面外，现单列 `arg未解析` 并清零）
-  assert_eq(off_face, 9)
+  // 类计数钉死（沿革：28 → 9（§AN.12：19 项 `argN` 缺省绑定转真判）→ **0**（§AN.13 帧面开面：
+  // 9 项 `object=frame.open_span` 按**行进前帧顶**转真判，且全绿——声明与引擎真帧同值）
+  assert_eq(off_face, 0)
   assert_eq(order_sensitive, 0)
   assert_eq(conditional, 0)
   assert_eq(arg_unparsed, 0)

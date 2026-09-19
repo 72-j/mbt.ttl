@@ -1,9 +1,11 @@
 # 数据面真值快照（生成物，DO NOT EDIT）
 # 源: ./src/rdf/fsm_out/trig_fsm.toml [[transitions]] × ./src/quick_machine/quick_machine_trig_gen.toml [actions]
-# format: v2 —— **列分隔符 = TAB**（v1 用 `|`，与 `fwd:a|b` 词表撞车 ⇒ 整行静默截断，§AN.12）
+# format: v3 —— **列分隔符 = TAB**（v1 用 `|`，与 `fwd:a|b` 词表撞车 ⇒ 整行静默截断，§AN.12）
 # 列: from+on〈TAB〉action〈TAB〉returns〈TAB〉writes〈TAB〉frame〈TAB〉push_writes〈TAB〉args
 #      （writes 逐项排序、空记 -；带行 assign 的 `nfwd:a|b` 已**编译期坍缩**；槽型分派臂已按行 SlotType 选臂）
-v2
+#      （v3 增：帧写落位**写实**——`frame.top.<位>`（后态帧顶）/ `frame.below.<位>`（效果通道压帧行的体写 = 后态次顶）/
+#       `frame.popped.<位>`（被弹帧、后态不存在）；`frame.<位>` 作**读**源时 = 行进前帧顶；`frame.ret_state=to` 已写实成态名。§AN.13）
+v3
 ExpectBaseIri+Iri	set_base	Continue	-	-	false	-
 ExpectObject+Iri	set_object	Continue	-	-	false	-
 ListAfterElem+Rparen	list_nil	PopBnp	-	-	false	-
@@ -148,7 +150,6 @@ ObjTrailExpectVerb+Iri	path_step	Continue	path_pend=arg0	-	false	payload
 ExpectPredicate+Equals	set_sameas	Continue	predicate=arg0	-	false	payload
 ExpectVerbOrDot+Equals	set_sameas	Continue	predicate=arg0	-	false	payload
 ExpectVerbOrEnd+Equals	set_sameas	Continue	predicate=arg0	-	false	payload
-ListAfterElem+Iri	list_next	Continue	frame.prev_node=arg0	-	false	payload
 PathExpectVerb+PrefName	path_step	Continue	path_pend=arg0	-	false	payload
 SubjTrailExpectVerb+Iri	path_step	Continue	path_pend=arg0	-	false	payload
 AnnotExpectVerb+Iri	annot_body_verb	Continue	predicate=arg0	-	false	payload
@@ -156,44 +157,45 @@ FormulaPathExpectVerb+Iri	path_step	Continue	path_pend=arg0	-	false	payload
 BnpExpectPredicate+Equals	set_sameas	Continue	predicate=arg0	-	false	payload
 ExpectVerbRequired+Equals	set_sameas	Continue	predicate=arg0	-	false	payload
 ExpectIsOf+Of	is_of	Continue	is_src=ctx.subject,is_depth=frames_len	-	false	-
-ListAfterElem+Literal	list_next	Continue	frame.prev_node=arg0	-	false	payload
+ListAfterElem+Iri	list_next	Continue	frame.top.prev_node=arg0	-	false	payload
 ListPathExpectVerb+PrefName	path_step	Continue	path_pend=arg0	-	false	payload
 ObjTrailExpectVerb+PrefName	path_step	Continue	path_pend=arg0	-	false	payload
 AnnotExpectVerb+Equals	annot_body_verb	Continue	predicate=arg0	-	false	payload
-ListAfterElem+KeywordX	list_next	Continue	frame.prev_node=arg0	-	false	payload
-ListAfterElem+PrefName	list_next	Continue	frame.prev_node=arg0	-	false	payload
-ListAfterElem+Variable	list_next	Continue	frame.prev_node=arg0	-	false	payload
 SubjTrailExpectVerb+PrefName	path_step	Continue	path_pend=arg0	-	false	payload
 AnnotExpectVerbTail+Iri	annot_body_verb	Continue	predicate=arg0	-	false	payload
-ListAfterElem+BlankNode	list_next	Continue	frame.prev_node=arg0	-	false	payload
 AnnotExpectVerb+KeywordA	annot_body_verb	Continue	predicate=arg0	-	false	payload
 AnnotExpectVerb+KeywordX	annot_body_verb	Continue	predicate=arg0	-	false	payload
 AnnotExpectVerb+PrefName	annot_body_verb	Continue	predicate=arg0	-	false	payload
 BnpExpectIsOf+Of	is_of	Continue	is_src=ctx.subject,is_depth=frames_len	-	false	-
 FormulaExpectPredicate+Equals	set_sameas	Continue	predicate=arg0	-	false	payload
 FormulaPathExpectVerb+PrefName	path_step	Continue	path_pend=arg0	-	false	payload
-ListAfterElem+TripleTerm	list_next	Continue	frame.prev_node=arg0	-	false	payload
-ListExpectElemOrEnd+Iri	list_first	Continue	frame.prev_node=arg0	-	false	payload
 SubjTrailExpectVerbFormula+Iri	path_step	Continue	path_pend=arg0	-	false	payload
 ExpectObject+Bang	path_fwd	Continue	path_pend=none,path_src=ctx.subject	-	false	-
-ListExpectElemOrEnd+Anon	list_first	Continue	frame.prev_node=arg0	-	false	payload
+ListAfterElem+Literal	list_next	Continue	frame.top.prev_node=arg0	-	false	payload
 AnnotExpectVerbTail+Equals	annot_body_verb	Continue	predicate=arg0	-	false	payload
 ExpectObject+Caret	path_bwd	Continue	path_pend=none,path_src=ctx.subject	-	false	-
+ListAfterElem+KeywordX	list_next	Continue	frame.top.prev_node=arg0	-	false	payload
+ListAfterElem+PrefName	list_next	Continue	frame.top.prev_node=arg0	-	false	payload
+ListAfterElem+Variable	list_next	Continue	frame.top.prev_node=arg0	-	false	payload
+ListAfterElem+BlankNode	list_next	Continue	frame.top.prev_node=arg0	-	false	payload
 AnnotExpectVerbTail+KeywordA	annot_body_verb	Continue	predicate=arg0	-	false	payload
 AnnotExpectVerbTail+KeywordX	annot_body_verb	Continue	predicate=arg0	-	false	payload
 AnnotExpectVerbTail+PrefName	annot_body_verb	Continue	predicate=arg0	-	false	payload
 FormulaExpectIsOf+Of	is_of	Continue	is_src=ctx.subject,is_depth=frames_len	-	false	-
-ListExpectElemOrEnd+Literal	list_first	Continue	frame.prev_node=arg0	-	false	payload
-ListExpectElemOrEnd+KeywordX	list_first	Continue	frame.prev_node=arg0	-	false	payload
-ListExpectElemOrEnd+PrefName	list_first	Continue	frame.prev_node=arg0	-	false	payload
-ListExpectElemOrEnd+Variable	list_first	Continue	frame.prev_node=arg0	-	false	payload
+ListAfterElem+TripleTerm	list_next	Continue	frame.top.prev_node=arg0	-	false	payload
+ListExpectElemOrEnd+Iri	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
+ListExpectElemOrEnd+Anon	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
 SubjTrailExpectVerbFormula+PrefName	path_step	Continue	path_pend=arg0	-	false	payload
-ListExpectElemOrEnd+BlankNode	list_first	Continue	frame.prev_node=arg0	-	false	payload
-ListAfterElem+BracketTripleTerm	list_next	Continue	frame.prev_node=arg0	-	false	payload
-ListExpectElemOrEnd+TripleTerm	list_first	Continue	frame.prev_node=arg0	-	false	payload
 FormulaExpectObject+Bang	path_fwd	Continue	path_pend=none,path_src=ctx.subject	-	false	-
+ListExpectElemOrEnd+Literal	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
 FormulaExpectObject+Caret	path_bwd	Continue	path_pend=none,path_src=ctx.subject	-	false	-
-ListExpectElemOrEnd+BracketTripleTerm	list_first	Continue	frame.prev_node=arg0	-	false	payload
+ListExpectElemOrEnd+KeywordX	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
+ListExpectElemOrEnd+PrefName	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
+ListExpectElemOrEnd+Variable	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
+ListExpectElemOrEnd+BlankNode	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
+ListAfterElem+BracketTripleTerm	list_next	Continue	frame.top.prev_node=arg0	-	false	payload
+ListExpectElemOrEnd+TripleTerm	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
+ListExpectElemOrEnd+BracketTripleTerm	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
 ExpectPredicate+Bang	path_subj_trail	Continue	path_pend=none,path_tail=arg0,path_src=ctx.subject	-	false	payload,true
 ExpectPredicate+Caret	path_subj_trail	Continue	path_pend=none,path_tail=arg0,path_src=ctx.subject	-	false	payload,false
 ExpectObject+Lparen	open_collection	Continue	subject=arg0,predicate=none	push	false	payload,false,state:ExpectDotOrGraph
@@ -217,51 +219,47 @@ FormulaExpectSubject+Lparen	open_collection	Continue	subject=arg0,predicate=none
 SubjTrailVerbDoneFormula+Lparen	open_collection	Continue	subject=arg0,predicate=none	push	false	payload,false,state:FormulaAfterObject
 FormulaExpectSubject+Lbracket	open_bnode_prop	Continue	subject=arg0,predicate=none	push	false	payload,true,state:FormulaExpectPredicate
 SubjTrailVerbDoneFormula+Lbracket	open_bnode_prop	Continue	subject=arg0,predicate=none	push	false	payload,false,state:FormulaAfterObject
-ExpectObject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.is_formula=true	push	false	payload,false,state:ExpectDotOrGraph
-BnpExpectObject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.is_formula=true	push	false	payload,false,state:BnpAfterObject
-ExpectPredicate+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.as_pred=true	push	false	payload,false,state:ExpectObject
-ExpectVerbOrDot+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.as_pred=true	push	false	payload,false,state:ExpectObject
-ExpectVerbOrEnd+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.as_pred=true	push	false	payload,false,state:ExpectObject
-ListAfterElem+Bang	path_elem_trail	Continue	path_pend=none,path_tail=arg0,frame.prev_node=arg0,path_src=frame.prev_node	-	false	payload,true
-ExpectSubject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.is_formula=true	push	false	payload,true,state:ExpectVerbRequired
-AnnotExpectObject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.is_formula=true	push	false	payload,false,state:AnnotExpectEnd
-ListAfterElem+Caret	path_elem_trail	Continue	path_pend=none,path_tail=arg0,frame.prev_node=arg0,path_src=frame.prev_node	-	false	payload,false
-ExpectVerbRequired+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.as_pred=true	push	false	payload,false,state:ExpectObject
-ExpectDirectiveEnd+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.is_formula=true	push	false	payload,true,state:ExpectVerbRequired
-FormulaExpectObject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.is_formula=true	push	false	payload,false,state:FormulaAfterObject
-ListAfterElem+Lbrace	list_next_nested	OpenSlot	subject=none,predicate=none,frame.prev_node=arg0	-	true	payload,SlotType::Formula,state:ListAfterElem
-ListAfterElem+Lparen	list_next_nested	OpenSlot	subject=arg0,predicate=none,frame.prev_node=arg0	-	true	payload,SlotType::Collection,state:ListAfterElem
+ExpectObject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,false,state:ExpectDotOrGraph
+BnpExpectObject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,false,state:BnpAfterObject
+ExpectPredicate+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:ExpectObject
+ExpectVerbOrDot+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:ExpectObject
+ExpectVerbOrEnd+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:ExpectObject
+ListAfterElem+Bang	path_elem_trail	Continue	path_pend=none,path_tail=arg0,frame.top.prev_node=arg0,path_src=frame.prev_node	-	false	payload,true
+ExpectSubject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,true,state:ExpectVerbRequired
+AnnotExpectObject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,false,state:AnnotExpectEnd
+ListAfterElem+Caret	path_elem_trail	Continue	path_pend=none,path_tail=arg0,frame.top.prev_node=arg0,path_src=frame.prev_node	-	false	payload,false
+ExpectVerbRequired+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:ExpectObject
+ExpectDirectiveEnd+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,true,state:ExpectVerbRequired
 SubjTrailVerbDone+Iri	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
-FormulaExpectSubject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.is_formula=true	push	false	payload,true,state:FormulaExpectPredicate
-ListAfterElem+Lbracket	list_next_nested	OpenSlot	subject=arg0,predicate=none,frame.prev_node=arg0	-	true	payload,SlotType::BnodeProp,state:ListAfterElem
+FormulaExpectObject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,false,state:FormulaAfterObject
 SubjTrailVerbDone+Anon	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
-SubjTrailVerbDoneFormula+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.is_formula=true	push	false	payload,false,state:FormulaAfterObject
-FormulaExpectPredicate+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.as_pred=true	push	false	payload,false,state:FormulaExpectObject
-ListExpectElemOrEnd+Lbrace	list_first_nested	OpenSlot	subject=none,predicate=none,frame.prev_node=arg0	-	true	payload,SlotType::Formula,state:ListAfterElem
+ListAfterElem+Lbrace	list_next_nested	OpenSlot	subject=none,predicate=none,frame.below.prev_node=arg0	-	true	payload,SlotType::Formula,state:ListAfterElem
 SubjTrailVerbDone+Literal	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
+FormulaExpectSubject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,true,state:FormulaExpectPredicate
 SubjTrailVerbDone+PrefName	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
 SubjTrailVerbDone+Variable	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
+ListAfterElem+Lparen	list_next_nested	OpenSlot	subject=arg0,predicate=none,frame.below.prev_node=arg0	-	true	payload,SlotType::Collection,state:ListAfterElem
 SubjTrailVerbDone+BlankNode	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
-ListExpectElemOrEnd+Lparen	list_first_nested	OpenSlot	subject=arg0,predicate=none,frame.prev_node=arg0	-	true	payload,SlotType::Collection,state:ListAfterElem
+SubjTrailVerbDoneFormula+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,false,state:FormulaAfterObject
+FormulaExpectPredicate+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:FormulaExpectObject
+ListAfterElem+Lbracket	list_next_nested	OpenSlot	subject=arg0,predicate=none,frame.below.prev_node=arg0	-	true	payload,SlotType::BnodeProp,state:ListAfterElem
 PathAfterStep+Lbrace	path_end_nested	OpenSlot	subject=none,path_src=none,path_pend=none,predicate=none	-	true	payload,SlotType::Formula,state:ExpectDotOrGraph
 SubjTrailVerbDone+TripleTerm	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
 SubjTrailVerbDoneFormula+Iri	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
-ListExpectElemOrEnd+Lbracket	list_first_nested	OpenSlot	subject=arg0,predicate=none,frame.prev_node=arg0	-	true	payload,SlotType::BnodeProp,state:ListAfterElem
 SubjTrailVerbDone+Bang	path_verb_hop	EmitQuad(SPO)	object=arg0,path_pend=none,path_tail=arg0,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload,true
 SubjTrailVerbDoneFormula+Anon	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
+ListExpectElemOrEnd+Lbrace	list_first_nested	OpenSlot	subject=none,predicate=none,frame.below.prev_node=arg0	-	true	payload,SlotType::Formula,state:ListAfterElem
 PathAfterStep+Lparen	path_end_nested	OpenSlot	subject=arg0,path_src=none,path_pend=none,predicate=none	-	true	payload,SlotType::Collection,state:ExpectDotOrGraph
 SubjTrailVerbDone+Caret	path_verb_hop	EmitQuad(SPO)	subject=arg0,path_pend=none,path_tail=arg0,object=ctx.path_tail,predicate=ctx.path_pend	-	false	payload,false
-ExpectPredicate+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.as_pred=true,frame.is_formula=true	push	false	payload,false,state:ExpectObject
-ExpectVerbOrDot+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.as_pred=true,frame.is_formula=true	push	false	payload,false,state:ExpectObject
-ExpectVerbOrEnd+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.as_pred=true,frame.is_formula=true	push	false	payload,false,state:ExpectObject
 PathAfterStep+Lbracket	path_end_nested	OpenSlot	subject=arg0,path_src=none,path_pend=none,predicate=none	-	true	payload,SlotType::BnodeProp,state:ExpectDotOrGraph
 SubjTrailVerbDoneFormula+Literal	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
 PathAfterStep+Iri	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
 SubjTrailVerbDoneFormula+PrefName	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
 SubjTrailVerbDoneFormula+Variable	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
+ListExpectElemOrEnd+Lparen	list_first_nested	OpenSlot	subject=arg0,predicate=none,frame.below.prev_node=arg0	-	true	payload,SlotType::Collection,state:ListAfterElem
 PathAfterStep+Anon	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
 SubjTrailVerbDoneFormula+BlankNode	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
-ExpectVerbRequired+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.as_pred=true,frame.is_formula=true	push	false	payload,false,state:ExpectObject
+ListExpectElemOrEnd+Lbracket	list_first_nested	OpenSlot	subject=arg0,predicate=none,frame.below.prev_node=arg0	-	true	payload,SlotType::BnodeProp,state:ListAfterElem
 SubjTrailVerbDone+BracketTripleTerm	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
 SubjTrailVerbDoneFormula+TripleTerm	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
 FormulaPathAfterStep+Lbrace	path_end_nested	OpenSlot	subject=none,path_src=none,path_pend=none,predicate=none	-	true	payload,SlotType::Formula,state:FormulaAfterObject
@@ -269,12 +267,16 @@ PathAfterStep+Literal	path_end	Continue	path_src=none,path_pend=none,predicate=c
 PathAfterStep+PrefName	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
 PathAfterStep+Variable	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
 PathAfterStep+BlankNode	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
+ExpectPredicate+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.top.as_pred=true,frame.top.is_formula=true	push	false	payload,false,state:ExpectObject
+ExpectVerbOrDot+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.top.as_pred=true,frame.top.is_formula=true	push	false	payload,false,state:ExpectObject
+ExpectVerbOrEnd+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.top.as_pred=true,frame.top.is_formula=true	push	false	payload,false,state:ExpectObject
 FormulaPathAfterStep+Iri	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
 FormulaPathAfterStep+Lparen	path_end_nested	OpenSlot	subject=arg0,path_src=none,path_pend=none,predicate=none	-	true	payload,SlotType::Collection,state:FormulaAfterObject
 PathAfterStep+TripleTerm	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
 FormulaPathAfterStep+Anon	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
 FormulaPathAfterStep+Lbracket	path_end_nested	OpenSlot	subject=arg0,path_src=none,path_pend=none,predicate=none	-	true	payload,SlotType::BnodeProp,state:FormulaAfterObject
 SubjTrailVerbDoneFormula+BracketTripleTerm	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
+ExpectVerbRequired+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.top.as_pred=true,frame.top.is_formula=true	push	false	payload,false,state:ExpectObject
 PathAfterStep+Bang	path_hop_fwd	EmitQuad(SPO)	path_src=arg0,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
 ExpectDotOrGraph+Bang	path_obj_trail	Continue	object=arg0,path_pend=none,path_tail=arg0,path_src=ctx.object,subject=ctx.subject,predicate=ctx.predicate	push	true	payload,true
 FormulaPathAfterStep+Literal	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
@@ -302,19 +304,19 @@ SubjTrailAfterStepFormula+Iri	path_subj_end	EmitQuad(SPO)	path_src=none,path_pen
 SubjTrailAfterStepFormula+KeywordA	path_subj_end	EmitQuad(SPO)	path_src=none,path_pend=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 SubjTrailAfterStepFormula+KeywordX	path_subj_end	EmitQuad(SPO)	path_src=none,path_pend=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 SubjTrailAfterStepFormula+PrefName	path_subj_end	EmitQuad(SPO)	path_src=none,path_pend=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
-ListPathAfterStep+Bang	path_elem_hop	EmitQuad(SPO)	path_pend=none,path_tail=arg0,frame.prev_node=arg0,object=ctx.path_tail,subject=ctx.path_src,path_src=ctx.path_tail,predicate=ctx.path_pend	-	false	payload,true
-ListPathAfterStep+Caret	path_elem_hop	EmitQuad(SPO)	path_pend=none,path_tail=arg0,object=ctx.path_src,frame.prev_node=arg0,subject=ctx.path_tail,path_src=ctx.path_tail,predicate=ctx.path_pend	-	false	payload,false
-ListPathAfterStep+Iri	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,frame.prev_node=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
-ListPathAfterStep+Literal	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,frame.prev_node=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
-ListPathAfterStep+KeywordX	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,frame.prev_node=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
-ListPathAfterStep+PrefName	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,frame.prev_node=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
-ListPathAfterStep+Variable	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,frame.prev_node=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
-ListPathAfterStep+BlankNode	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,frame.prev_node=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
-ListPathAfterStep+TripleTerm	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,frame.prev_node=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
-ListPathAfterStep+BracketTripleTerm	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,frame.prev_node=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
-ListPathAfterStep+Rparen	path_elem_close	Sequence([EmitQuad(SPO), PopBnp])	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.prev_node=ctx.path_tail,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	-
-ListPathAfterStep+Lparen	path_elem_end_nested	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,frame.prev_node=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	push	true	payload,SlotType::Collection,state:ListAfterElem
-ListPathAfterStep+Lbracket	path_elem_end_nested	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,frame.prev_node=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	push	true	payload,SlotType::BnodeProp,state:ListAfterElem
-ObjTrailAfterStep+Dot	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	path_src=none,path_pend=none,path_tail=none,frame.ret_state=to,predicate=ctx.path_pend,frame.open_span=ctx.path_tail,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	state:ExpectSubject
-ObjTrailAfterStep+Comma	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	path_src=none,path_pend=none,path_tail=none,frame.ret_state=to,predicate=ctx.path_pend,frame.open_span=ctx.path_tail,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	state:ExpectObject
-ObjTrailAfterStep+Semicolon	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	path_src=none,path_pend=none,path_tail=none,frame.ret_state=to,predicate=ctx.path_pend,frame.open_span=ctx.path_tail,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	state:ExpectVerbOrEnd
+ListPathAfterStep+Bang	path_elem_hop	EmitQuad(SPO)	path_pend=none,path_tail=arg0,object=ctx.path_tail,subject=ctx.path_src,path_src=ctx.path_tail,predicate=ctx.path_pend,frame.top.prev_node=arg0	-	false	payload,true
+ListPathAfterStep+Caret	path_elem_hop	EmitQuad(SPO)	path_pend=none,path_tail=arg0,object=ctx.path_src,subject=ctx.path_tail,path_src=ctx.path_tail,predicate=ctx.path_pend,frame.top.prev_node=arg0	-	false	payload,false
+ListPathAfterStep+Iri	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
+ListPathAfterStep+Literal	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
+ListPathAfterStep+KeywordX	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
+ListPathAfterStep+PrefName	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
+ListPathAfterStep+Variable	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
+ListPathAfterStep+BlankNode	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
+ListPathAfterStep+TripleTerm	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
+ListPathAfterStep+BracketTripleTerm	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
+ListPathAfterStep+Rparen	path_elem_close	Sequence([EmitQuad(SPO), PopBnp])	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.popped.prev_node=ctx.path_tail,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	-
+ListPathAfterStep+Lparen	path_elem_end_nested	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	push	true	payload,SlotType::Collection,state:ListAfterElem
+ListPathAfterStep+Lbracket	path_elem_end_nested	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	push	true	payload,SlotType::BnodeProp,state:ListAfterElem
+ObjTrailAfterStep+Comma	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.popped.ret_state=ExpectObject,frame.popped.open_span=ctx.path_tail,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	state:ExpectObject
+ObjTrailAfterStep+Dot	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.popped.open_span=ctx.path_tail,frame.popped.ret_state=ExpectSubject,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	state:ExpectSubject
+ObjTrailAfterStep+Semicolon	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.popped.open_span=ctx.path_tail,object=fwd:ctx.path_tail|ctx.path_src,frame.popped.ret_state=ExpectVerbOrEnd,subject=fwd:ctx.path_src|ctx.path_tail	-	false	state:ExpectVerbOrEnd

@@ -131,6 +131,46 @@ pub fn TrigProbe::slots(self : TrigProbe) -> TrigSlotSnapshot {
 }
 
 ///|
+/// **帧面视图**（帧栈观测面，§AN.13，2026-09-19 开面；与 n3v2 `N3FrameView` 同笔同位）：
+/// `ctx.slot_stack` 单帧的**只读值拷贝**——数据面 `frame.*` 条目（trig 现为
+/// `object=frame.open_span` 一族：list 族合成节点身份在 `RefId` 空间即帧 `open_span`）
+/// 与弹帧恢复要读**引擎真帧**。
+/// 沿革：本文件原有 `stack_view`（P4.2h 量测遗产）在役 2 因**零引用**删除；本面是同族**复活**，
+/// 带**常驻消费者**（`quicktest/data_face.mbt` 的数据面值级对拍门）。
+/// 纪律与**回收条件**（同 `state()` / `slots()`）：①数据面帧面消费门降级或撤销 ⇒ 本面**同笔回收**；
+/// ②更窄等价投影不存在（帧是**栈**，不给栈序/栈顶即无法判"弹帧恢复"这类跨步语义）；
+/// ③存量面 `new`/`step_all`/`state`/`slots` 不动。
+pub(all) struct TrigFrameView {
+  open_span : Span
+  subject : Span?
+  predicate : Span?
+  graph : Span?
+  ret_state : TrigState
+  as_subject : Bool
+  prev_node : Span?
+  node_seq : Int
+}
+
+///|
+/// 帧栈只读读数：**自底向上**（数组序 = 压栈序，栈顶 = 末元素）
+pub fn TrigProbe::frames(self : TrigProbe) -> Array[TrigFrameView] {
+  let out : Array[TrigFrameView] = []
+  for frame in self.ctx.slot_stack {
+    out.push({
+      open_span: frame.open_span,
+      subject: frame.subject,
+      predicate: frame.predicate,
+      graph: frame.graph,
+      ret_state: frame.ret_state,
+      as_subject: frame.as_subject,
+      prev_node: frame.prev_node,
+      node_seq: frame.node_seq,
+    })
+  }
+  out
+}
+
+///|
 /// 单步驱动（**忽略发射队列**）：喂一个事件 → 一档响应（step / interpret 同引擎同序）。
 /// `Sequence` 内的余量仍入 `ctx.emit_queue`（由调用方排空）。
 /// 收面（役 2，2026-09-18）：内部件（`step_all` / `step` 同包调它）⇒ 收 priv。

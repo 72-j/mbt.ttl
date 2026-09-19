@@ -75,6 +75,24 @@ pub(all) enum N3Event {
   N3EOF
 }
 
+pub(all) struct N3FrameView {
+  is_formula : Bool
+  open_span : (Int, Int)
+  subject : (Int, Int)?
+  predicate : (Int, Int)?
+  graph : (Int, Int)?
+  ret_state : N3State
+  as_subject : Bool
+  as_pred : Bool
+  prev_node : (Int, Int)?
+  node_seq : Int
+}
+
+pub(all) struct N3InversionView {
+  is_src : (Int, Int)?
+  is_depth : Int
+}
+
 pub struct N3LexerAdapter {
   inner : @gen_nquads.Lexermoon
   data : ArrayView[Byte]
@@ -115,6 +133,8 @@ pub(all) struct N3PendingQuad {
 pub struct N3Probe {
   // private fields
 }
+pub fn N3Probe::frames(Self) -> Array[N3FrameView]
+pub fn N3Probe::inversion(Self) -> N3InversionView
 pub fn N3Probe::new() -> Self
 pub fn N3Probe::slots(Self) -> N3SlotSnapshot
 pub fn N3Probe::state(Self) -> N3State

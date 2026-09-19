@@ -171,6 +171,17 @@ pub(all) enum TrigEvent {
 }
 pub impl Show for TrigEvent
 
+pub(all) struct TrigFrameView {
+  open_span : (Int, Int)
+  subject : (Int, Int)?
+  predicate : (Int, Int)?
+  graph : (Int, Int)?
+  ret_state : TrigState
+  as_subject : Bool
+  prev_node : (Int, Int)?
+  node_seq : Int
+}
+
 pub(all) struct TrigLexerAdapter {
   inner : @gen_nquads.Lexermoon
   data : ArrayView[Byte]
@@ -211,6 +222,7 @@ pub(all) struct TrigPendingQuad {
 pub struct TrigProbe {
   // private fields
 }
+pub fn TrigProbe::frames(Self) -> Array[TrigFrameView]
 pub fn TrigProbe::new() -> Self
 pub fn TrigProbe::slots(Self) -> TrigSlotSnapshot
 pub fn TrigProbe::state(Self) -> TrigState
