@@ -40,6 +40,7 @@ priv struct DataFaceRow {
   action : String
   returns : String
   writes : Array[String]
+  args : Array[String]
 }
 
 ///|
@@ -65,12 +66,20 @@ fn parse_data_face_rows(text : String) -> Array[DataFaceRow] {
     } else {
       writes_raw.split(",").to_array().map(fn(s) { s.to_owned() })
     }
+    // `args` 列（快照第 7 列）：`argN` 写槽来源**必须**靠它解引用（trig §AN.5 裁定教训回灌）
+    let args_raw = if parts.length() > 6 { parts[6].to_owned() } else { "-" }
+    let args : Array[String] = if args_raw == "-" {
+      []
+    } else {
+      args_raw.split(",").to_array().map(fn(s) { s.to_owned() })
+    }
     rows.push({
       from: head[0].to_owned(),
       on: head[1].to_owned(),
       action: parts[1].to_owned(),
       returns: parts[2].to_owned(),
       writes,
+      args,
     })
   }
   rows
@@ -107,6 +116,7 @@ fn classify_write_source(
   source : String,
   before : SlotView,
   payload : RefId,
+  args : Array[String],
 ) -> Result[RefId?, String] {
   if !slot_in_view(target) {
     return Err("\{target}（槽在观测面外）")
@@ -114,8 +124,37 @@ fn classify_write_source(
   if source == "none" {
     return Ok(None)
   }
-  if source == "arg0" {
-    return Ok(Some(payload))
+  // `argN` 按该行 args 列解引用（trig §AN.5：args=none ⇒ 实参 None，不是合成载荷）
+  let arg_index : Int? = match source {
+    "arg0" => Some(0)
+    "arg1" => Some(1)
+    "arg2" => Some(2)
+    "arg3" => Some(3)
+    _ => None
+  }
+  match arg_index {
+    Some(index) => {
+      if index >= args.length() {
+        return Err("\{source}（args 列不足：\{(args.join(","))}）")
+      }
+      let bound = args[index]
+      if bound == "payload" || bound == "Some(payload)" {
+        return Ok(Some(payload))
+      }
+      if bound == "none" {
+        return Ok(None)
+      }
+      for
+        other in [
+          "subject", "predicate", "object", "graph", "path_src", "path_pend", "path_tail",
+        ] {
+        if bound == "ctx." + other {
+          return Ok(slot_get(before, other))
+        }
+      }
+      return Err("arg\{index}=「\{bound}」（形态未解析）")
+    }
+    None => ()
   }
   for
     other in [
@@ -195,27 +234,44 @@ fn data_face_compare(
     // 一开即 **53 处分道**（例：`SubjTrailVerbDone+Iri·subject 期望 None 实得 Some(1)`）⇒
     // **TOML 写序 ≠ 引擎读序**（引擎多在清槽前把值读进局部变量，如 `actions.mbt:723-741`）。
     // ⇒ 该假设**回退**；清-读同槽行整行入册（理由 `需读序数据`），下一片给数据面加 `reads`/读序键再判。
-    let mut order_sensitive : String? = None
-    for item in row.writes {
-      let pair = item.split("=").to_array()
-      if pair.length() == 2 && pair[1] == "none" {
-        let cleared = pair[0].to_owned()
-        for other in row.writes {
-          let op = other.split("=").to_array()
-          if op.length() == 2 && op[1] == "ctx." + cleared {
-            order_sensitive = Some(
-              "清-读同槽（\{cleared}；需读序数据）",
-            )
-          }
-        }
+    // **分派族**（按 `SlotType` 分派，§AN.9）：`args` 含 `SlotType::` 或 `returns` 含 `OpenSlot`
+    // ⇒ 一张扁平 `writes` 列表表达不了"按值分派" ⇒ 整行入册（数据面扩容后转真判）。
+    // 注：**清-读同槽（60 行）自本笔起不再整行跳过**——门按"读前值"判（§AN.9 第一步）。
+    let mut dispatch_family : String? = None
+    if row.returns.contains("OpenSlot") {
+      dispatch_family = Some("按 SlotType 分派（returns 含 OpenSlot）")
+    }
+    for bound in row.args {
+      if bound.contains("SlotType::") {
+        dispatch_family = Some("按 SlotType 分派（args 含 SlotType::）")
       }
     }
-    match order_sensitive {
+    match dispatch_family {
       Some(why) => {
         incomparable.push("\{key}：\{why}")
         continue
       }
       None => ()
+    }
+    // 弹帧恢复（§AN.9 第一步实测 1 行）：`PopBnp` 把帧里保存的 subject/predicate/graph 写回，
+    // 而帧内容不在 `SlotView` 面内 ⇒ 含"读这三槽"的弹帧行整行入册（面外：帧）。
+    let mut pop_restore = false
+    if row.returns.contains("PopBnp") {
+      for item in row.writes {
+        let pair = item.split("=").to_array()
+        if pair.length() == 2 {
+          let src = pair[1]
+          if src == "ctx.subject" ||
+            src == "ctx.predicate" ||
+            src == "ctx.graph" {
+            pop_restore = true
+          }
+        }
+      }
+    }
+    if pop_restore {
+      incomparable.push("\{key}：弹帧恢复槽位（帧内容面外）")
+      continue
     }
     // ④ **逐项**解析期望：可比项照比，不可比项只把**该项**入册。
     // 负控①实测教训：整行入册会让"行内可比槽"也失去判据（改 `subject=none` 竟不红）⇒ 降为逐项。
@@ -226,12 +282,27 @@ fn data_face_compare(
         incomparable.push("\{key}：\{item}（非 tgt=src 形）")
         continue
       }
+      // 弹帧恢复**覆盖**三槽（帧内容面外）：含 `PopBnp` 的行，subject/predicate/graph 不可比，
+      // 其余槽（path_*）照比（§AN.9 第一步实测 1 行：path_obj_close·predicate）。
+      let raw_target = pair[0].to_owned()
+      if row.returns.contains("PopBnp") &&
+        (
+          raw_target == "subject" ||
+          raw_target == "predicate" ||
+          raw_target == "graph"
+        ) {
+        incomparable.push(
+          "\{key}·\{raw_target}：弹帧恢复覆盖（帧内容面外）",
+        )
+        continue
+      }
       match
         classify_write_source(
           pair[0].to_owned(),
           pair[1].to_owned(),
           before,
           payload,
+          row.args,
         ) {
         Ok(value) => expected_items.push((pair[0].to_owned(), value))
         Err(why) => incomparable.push("\{key}·\{pair[0]}：\{why}")
@@ -314,22 +385,27 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
   assert_eq(debt_hits, 0)
   // 台账**按类钉死**（首跑回填；任一类数字变化即红——比"只钉总数"强，能抓类间搬家）
   let mut off_face = 0 // 槽/源在观测面外（frame.* / is_depth）
-  let mut order_sensitive = 0 // 清-读同槽（第二笔起已按写序建模 ⇒ 应为 0）
+  let mut order_sensitive = 0 // 清-读同槽（需读序数据）
   let mut conditional = 0 // 条件式来源（fwd:/nfwd:）
+  let mut arg_unparsed = 0 // `argN` 指向未解析形态（state:X / 布尔 / SlotType::…）——args 列化后单列
   for site in incomparable {
     if site.contains("清-读同槽") {
       order_sensitive = order_sensitive + 1
     } else if site.contains("fwd:") || site.contains("nfwd:") {
       conditional = conditional + 1
+    } else if site.contains("形态未解析") ||
+      site.contains("args 列不足") {
+      arg_unparsed = arg_unparsed + 1
     } else {
       off_face = off_face + 1
     }
   }
   debug(
-    "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / 不可达 \{unreachable_rows.length()}",
+    "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / arg未解析 \{arg_unparsed} / 不可达 \{unreachable_rows.length()}",
   )
   assert_eq(unreachable_rows.length(), 0)
-  assert_eq(off_face, 54)
-  assert_eq(order_sensitive, 66)
-  assert_eq(conditional, 8)
+  assert_eq(off_face, 83)
+  assert_eq(order_sensitive, 0)
+  assert_eq(conditional, 52)
+  assert_eq(arg_unparsed, 66)
 }
