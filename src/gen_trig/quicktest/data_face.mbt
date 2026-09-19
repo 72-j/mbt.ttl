@@ -42,6 +42,7 @@ priv struct DataFaceRow {
   action : String
   returns : String
   writes : Array[String]
+  args : Array[String]
 }
 
 ///|
@@ -67,12 +68,19 @@ fn parse_data_face_rows(text : String) -> Array[DataFaceRow] {
     } else {
       writes_raw.split(",").to_array().map(fn(s) { s.to_owned() })
     }
+    let args_raw = if parts.length() > 6 { parts[6].to_owned() } else { "-" }
+    let args : Array[String] = if args_raw == "-" {
+      []
+    } else {
+      args_raw.split(",").to_array().map(fn(s) { s.to_owned() })
+    }
     rows.push({
       from: head[0].to_owned(),
       on: head[1].to_owned(),
       action: parts[1].to_owned(),
       returns: parts[2].to_owned(),
       writes,
+      args,
     })
   }
   rows
@@ -122,6 +130,7 @@ fn classify_write_source(
   source : String,
   before : SlotView,
   payload : RefId,
+  args : Array[String],
 ) -> Result[RefId?, String] {
   if !slot_in_view(target) {
     return Err("\{target}（槽在观测面外）")
@@ -129,8 +138,35 @@ fn classify_write_source(
   if source == "none" {
     return Ok(None)
   }
-  if source == "arg0" {
-    return Ok(Some(payload))
+  // `argN` **必须按该行 args 列解引用**（裁定结论：args=none ⇒ 实参 None，不是合成载荷——
+  // `ExpectSubject+Lbrace[enter_graph]` 的假阳即源于此）。
+  let arg_index : Int? = match source {
+    "arg0" => Some(0)
+    "arg1" => Some(1)
+    "arg2" => Some(2)
+    "arg3" => Some(3)
+    _ => None
+  }
+  match arg_index {
+    Some(index) => {
+      if index >= args.length() {
+        return Err("\{source}（args 列不足：\{(args.join(","))}）")
+      }
+      let bound = args[index]
+      if bound == "payload" || bound == "Some(payload)" {
+        return Ok(Some(payload))
+      }
+      if bound == "none" {
+        return Ok(None)
+      }
+      for other in ["subject", "predicate", "object", "graph"] {
+        if bound == "ctx." + other {
+          return Ok(slot_get(before, other))
+        }
+      }
+      return Err("arg\{index}=「\{bound}」（形态未解析）")
+    }
+    None => ()
   }
   for other in ["subject", "predicate", "object", "graph"] {
     if source == "ctx." + other {
@@ -235,6 +271,7 @@ fn data_face_compare(
           pair[1].to_owned(),
           before,
           payload,
+          row.args,
         ) {
         Ok(value) => expected_items.push((pair[0].to_owned(), value))
         Err(why) => incomparable.push("\{key}·\{pair[0]}：\{why}")
@@ -287,10 +324,14 @@ async test "数据面⟷引擎·trig 值级对拍：可比行逐槽等值 + 台�
   // 引擎未落（`graph`/`subject` 实得 None）。两个候选根因待下一役定向裁定：
   //   ① `push_writes=false` 语义（压帧行默认**不折** writes，见 QuickActionDecl 注）；
   //   ② 载荷取不到（`Lbrace`/`Lparen` 在 `all_commands()` 里是 nullary，`arg0` 无真值）。
+  // 裁定后（2026-09-19）：8 → **6**。2 个 `enter_graph` 行是**门假阳**（`args=none` ⇒ 实参 None；
+  // 已改为按 args 列解引用 `argN`）；剩 6 个是**真分歧**——TOML `open_collection.writes` 写 `subject=arg0`，
+  // 而引擎 `actions.mbt:182-195` 压帧后 `ctx.subject = None; ctx.predicate = None`（span 进帧，不落 subject）。
+  // ⇒ 待修**数据面**（`quick_machine_trig_gen.toml [actions].open_collection.writes` → `subject=none`），
+  // 属跨仓原子变更（波及生成臂与四方言同形门）⇒ 单独一役；本役只把真分歧钉成债点。
   let debt_keys : Array[String] = [
-    "ExpectSubject+Lbrace", "ExpectDirectiveEnd+Lbrace", "ExpectObject+Lparen", "BnpExpectObject+Lparen",
-    "ExpectSubject+Lparen", "ExpectDirectiveEnd+Lparen", "GraphExpectSubject+Lparen",
-    "GraphExpectObject+Lparen",
+    "ExpectObject+Lparen", "BnpExpectObject+Lparen", "ExpectSubject+Lparen", "ExpectDirectiveEnd+Lparen",
+    "GraphExpectSubject+Lparen", "GraphExpectObject+Lparen",
   ]
   let violations : Array[String] = []
   let mut debt_hits = 0
@@ -308,14 +349,14 @@ async test "数据面⟷引擎·trig 值级对拍：可比行逐槽等值 + 台�
     }
   }
   assert_eq(violations, [])
-  assert_eq(debt_hits, 8)
+  assert_eq(debt_hits, 6)
   assert_eq(unreachable_rows.length(), 0)
   let (off_face, order_sensitive, conditional) = ledger_classes(incomparable)
   debug(
     "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / 不可达 \{unreachable_rows.length()}",
   )
-  // 类计数钉死（首跑回填：面外 9 / 序敏感 0 / 条件式 0）
-  assert_eq(off_face, 9)
+  // 类计数钉死（裁定后回填：面外 28 / 序敏感 0 / 条件式 0）
+  assert_eq(off_face, 28)
   assert_eq(order_sensitive, 0)
   assert_eq(conditional, 0)
 }
