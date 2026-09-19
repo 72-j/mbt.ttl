@@ -9,11 +9,36 @@
 // 行集合 = 快照行 ∩ 可达态；不可比行、不可达行都**逐名在册**（条数钉死，新冒即红）。
 
 ///|
+/// 发射 scope → 被清的槽（引擎 `ResetScope` 口径：`Object` / `PredObj` / `SPO` / `All`）。
+/// 债点裁定（2026-09-19）：`path_subj_end` 8 行实测 post 槽为 None 而 action 明确写了值 ⇒
+/// 根因 = **发射即清槽**（`EmitQuad(SPO)` 之后 loop 按 scope 复位），首片漏了这一步。
+fn scope_reset_slots(returns : String) -> Array[String] {
+  let slots : Array[String] = []
+  if returns.contains("EmitQuad(All)") {
+    slots.push("subject")
+    slots.push("predicate")
+    slots.push("object")
+    slots.push("graph")
+  } else if returns.contains("EmitQuad(SPO)") {
+    slots.push("subject")
+    slots.push("predicate")
+    slots.push("object")
+  } else if returns.contains("EmitQuad(PredObj)") {
+    slots.push("predicate")
+    slots.push("object")
+  } else if returns.contains("EmitQuad(Object)") {
+    slots.push("object")
+  }
+  slots
+}
+
+///|
 /// 数据面快照行
 priv struct DataFaceRow {
   from : String
   on : String
   action : String
+  returns : String
   writes : Array[String]
 }
 
@@ -44,6 +69,7 @@ fn parse_data_face_rows(text : String) -> Array[DataFaceRow] {
       from: head[0].to_owned(),
       on: head[1].to_owned(),
       action: parts[1].to_owned(),
+      returns: parts[2].to_owned(),
       writes,
     })
   }
@@ -210,12 +236,20 @@ fn data_face_compare(
     // ⑤ 引擎步后逐槽比对
     let response = run_command(cmd, system)
     let actual = slot_view_of_engine(system.probe.slots())
+    // 发射 scope 复位（债点裁定的结论）：EmitQuad(<Scope>) 之后 loop 按 scope 清槽 ⇒
+    // 期望值 = 写槽后**再**按 scope 置 None。
+    let reset_slots = scope_reset_slots(row.returns)
     for entry in expected_items {
       let (target, value) = entry
+      let expected_value = if reset_slots.contains(target) {
+        None
+      } else {
+        value
+      }
       let got = slot_get(actual, target)
-      if got != value {
+      if got != expected_value {
         mismatches.push(
-          "\{key}·\{target}：期望 \{ref_id_text(value)} 实得 \{ref_id_text(got)}（响应 \{response_short(response)}）",
+          "\{key}·\{target}：期望 \{ref_id_text(expected_value)} 实得 \{ref_id_text(got)}（响应 \{response_short(response)}）",
         )
       }
     }
@@ -249,11 +283,11 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
   //   **债点**（首片待裁定，8 行）：`path_subj_end` 的**无条件 predicate 项**——TOML 期望 Some(载荷)，
   //   引擎留 None（响应 EmitQuad/Continue 均有）。与"清-读同槽"同族嫌疑（序敏感），但整行未命中该模式，
   //   故按债点入册、**不**并入序敏感类；下一片用定向探针裁定"真分歧 vs 序敏感"。
-  let debt_keys : Array[String] = [
-    "SubjTrailAfterStep+Iri", "SubjTrailAfterStep+KeywordA", "SubjTrailAfterStep+KeywordX",
-    "SubjTrailAfterStep+PrefName", "SubjTrailAfterStepFormula+Iri", "SubjTrailAfterStepFormula+KeywordA",
-    "SubjTrailAfterStepFormula+KeywordX", "SubjTrailAfterStepFormula+PrefName",
-  ]
+  // **债点台账（2026-09-19 定向裁定后归零）**：首跑 8 行 `path_subj_end·predicate`
+  // （`SubjTrailAfterStep{,Formula}+{Iri,KeywordA,KeywordX,PrefName}`）经定向探针查明 =
+  // **发射即清槽**（`EmitQuad(SPO)` 后 loop 按 scope 复位）未建模 ⇒ 已折进期望（`scope_reset_slots`），
+  // 8 行转真判且全绿。此后新冒分道一律按违例处理（债点清单保持空）。
+  let debt_keys : Array[String] = []
   let violations : Array[String] = []
   let mut debt_hits = 0
   for site in mismatches {
@@ -273,7 +307,7 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
     "  分道：债点 \{debt_hits}（首片待裁定）/ 违例 \{violations.length()}",
   )
   assert_eq(violations, [])
-  assert_eq(debt_hits, 8)
+  assert_eq(debt_hits, 0)
   // 台账**按类钉死**（首跑回填；任一类数字变化即红——比"只钉总数"强，能抓类间搬家）
   let mut off_face = 0 // 槽/源在观测面外（frame.* / is_depth）
   let mut order_sensitive = 0 // 清-读同槽（序敏感，首片不判）

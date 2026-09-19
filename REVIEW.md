@@ -72,8 +72,10 @@
    R-20 的"值级"（**模型 ⟷ 引擎**）已收口（六族清偿、台账 0）。
    现状：**n3v2 首片已落地**（2026-09-19，见活账 §AN）：外仓 `actions_truth_test.mbt` 产出快照
    `gen_n3v2/quicktest/actions_truth.gen` + 金样（快照 ≡ TOML）；子仓 `data_face.mbt` 按行复现见证路径、
-   用 `N3Probe::slots()` 逐槽对拍 ⇒ 行 314、**可比 248、违例 0**，不可比 128（面外 54 / 序敏感 66 / 条件式 8）在册，
-   **债点 8**（`path_subj_end` 的 predicate，待裁定）。**trig 仍待第二次开面**（`TrigProbe::slots`）。
+   用 `N3Probe::slots()` 逐槽对拍 ⇒ 行 314、**可比 248、违例 0、债点 0**，不可比 128（面外 54 / 序敏感 66 / 条件式 8）在册。
+   首跑 8 处债点（`path_subj_end·predicate`）已**定向裁定**：真分歧 0、TOML 错 0、引擎 bug 0——
+   根因是门缺"**发射即清槽**"（`EmitQuad(Scope)` 后按 scope 复位），已折进期望（`scope_reset_slots`）。
+   **trig 仍待第二次开面**（`TrigProbe::slots`）。
 2. **N6 宿主 CI 观测**：需在 gitlink UI 或带 token 的环境确认 static/test 作业真跑且绿。
 3. **役 15 余量**：深片排除项的权重放宽（表/IR 侧），不属于门缺陷。
 
