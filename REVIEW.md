@@ -17,8 +17,9 @@
 | 子仓 | 行覆盖棘轮 | `coverage-baseline.txt`（floor 口径） | **871‰ = 基线**（冷跑两次同值） |
 | 子仓 | 默认臂计数 | `TODO(P0):` 计数（`model_exec.mbt`） | **trig 30 / n3v2 49**（与 CI 常数一致） |
 | 子仓 | **可达命令名覆盖** | 分母 = BFS 派生；分子 = 执行记录并集；缺口清零 | **trig 25/25、nquads 8/8、n3v2 40/40，缺口 0** |
-| 子仓 | 测试 | 本机 | **436/436** |
-| 主仓 `thy7/BitBang` | 编译 + 测试 | `moon test --deny-warn` | **285/285**，`check --deny-warn` 0 |
+| 子仓 | **数据面 ⟷ 引擎 值级对拍** | 快照行 ∩ 可达态，逐槽等值；不可比逐类计数钉死 | **n3v2 314 行 / 可比 314 / 违例 0 / 债点 0；trig 136 行 / 可比 136 / 违例 0 / 债点 0**（§5①） |
+| 子仓 | 测试 | 本机 | **438/438** |
+| 主仓 `thy7/BitBang` | 编译 + 测试 | `moon test --deny-warn` | **287/287**，`check --deny-warn` 0 |
 | 主仓 | 格式 | `moon fmt --warn`（**全路径，无豁免**） | **0 offender** |
 
 两条格式豁免（`src/fsm/gen_check/gen.mbt`、`src/gen_n3v2/quicktest/`）已于本轮**清零**（§3 N5）。
@@ -72,7 +73,7 @@
    R-20 的"值级"（**模型 ⟷ 引擎**）已收口（六族清偿、台账 0）。
    现状：**n3v2 首片已落地**（2026-09-19，见活账 §AN）：外仓 `actions_truth_test.mbt` 产出快照
    `gen_n3v2/quicktest/actions_truth.gen` + 金样（快照 ≡ TOML）；子仓 `data_face.mbt` 按行复现见证路径、
-   用 `N3Probe::slots()` 逐槽对拍 ⇒ 行 314、**可比 248、违例 0、债点 0**，不可比 128（面外 54 / 序敏感 66 / 条件式 8）在册。
+   用 `N3Probe::slots()` 逐槽对拍 ⇒ 行 314、**可比 314、违例 0、债点 0**，不可比 195（面外 77 / 序敏感 0 / 条件式 52 / arg未解析 66）在册。
    首跑 8 处债点（`path_subj_end·predicate`）已**定向裁定**：真分歧 0、TOML 错 0、引擎 bug 0——
    根因是门缺"**发射即清槽**"（`EmitQuad(Scope)` 后按 scope 复位），已折进期望（`scope_reset_slots`）。
    **trig 上半已回灌**（2026-09-19，见活账 §AN.3）：`TrigProbe::slots`/`TrigSlotSnapshot` 已开（只读四槽，
@@ -82,7 +83,13 @@
    首跑 8 债点已全部裁定收口（§AN.5/§AN.6）：2 门假阳（`argN` 未按 args 列解引用）+ 6 真分歧
    （数据面 `open_collection.writes` 抄成 `subject=arg0`，引擎压帧后是 `subject=None`）——
    数据面已修 + 快照重生成 + 四钉/golden 29/29 不回退。
-   两方言现在的公共缺口只剩 **序敏感（读序数据）** 与 **这 8 债点**。
+   序敏感族已**两笔清零**：第一步（§AN.10）把"整行跳过"收窄为"仅分派族"⇒ 60 行清-读同槽改按
+   "**读前值**"真判、可比 248 → 302（1 行 `PopBnp` 弹帧恢复按面外逐项在册）；第二步（§AN.11）给数据面加
+   **`when_slot_type` 分派臂**（`QuickSlotTypeArm` + `parse_slot_type_arms`，照 `when_absent` 现成先例）⇒
+   12 行分派族（`*_nested`）转真判、**可比 302 → 314**（违例 0、债点 0）。生成器不动（模型侧 `frame_push`
+   早按 `is_formula` 分派同款语义，R-20"行级引擎真相赢过方言条目"）⇒ 产物逐字节零迁移、trig 快照不变。
+   两方言现在的公共缺口只剩 **条件式来源（`fwd:`/`nfwd:`，需读序/条件键）52 项** 与 **`argN` 未解析形态 66 项**；
+   扩容 schema 已就位 ⇒ **jsonld 接入直接沿用**。
 2. **N6 宿主 CI 观测**：需在 gitlink UI 或带 token 的环境确认 static/test 作业真跑且绿。
 3. **役 15 余量**：深片排除项的权重放宽（表/IR 侧），不属于门缺陷。
 

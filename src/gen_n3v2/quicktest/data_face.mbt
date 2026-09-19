@@ -235,24 +235,11 @@ fn data_face_compare(
     // **TOML 写序 ≠ 引擎读序**（引擎多在清槽前把值读进局部变量，如 `actions.mbt:723-741`）。
     // ⇒ 该假设**回退**；清-读同槽行整行入册（理由 `需读序数据`），下一片给数据面加 `reads`/读序键再判。
     // **分派族**（按 `SlotType` 分派，§AN.9）：`args` 含 `SlotType::` 或 `returns` 含 `OpenSlot`
-    // ⇒ 一张扁平 `writes` 列表表达不了"按值分派" ⇒ 整行入册（数据面扩容后转真判）。
+    // ——**§AN.11 已转真判**：数据面加了 `when_slot_type` 臂（外仓 `[actions]` 按行实参
+    // `SlotType::<typ>` 选臂、同目标槽覆盖基础 `writes`），快照的 `writes` 列即**该 typ 下
+    // 的最终写槽** ⇒ 本门不再整行跳过（12 行入 `compared`）。今后若某 action 真按 SlotType
+    // 分派却没声明臂，会以**分道**浮出（比静默跳过强）。
     // 注：**清-读同槽（60 行）自本笔起不再整行跳过**——门按"读前值"判（§AN.9 第一步）。
-    let mut dispatch_family : String? = None
-    if row.returns.contains("OpenSlot") {
-      dispatch_family = Some("按 SlotType 分派（returns 含 OpenSlot）")
-    }
-    for bound in row.args {
-      if bound.contains("SlotType::") {
-        dispatch_family = Some("按 SlotType 分派（args 含 SlotType::）")
-      }
-    }
-    match dispatch_family {
-      Some(why) => {
-        incomparable.push("\{key}：\{why}")
-        continue
-      }
-      None => ()
-    }
     // 弹帧恢复（§AN.9 第一步实测 1 行）：`PopBnp` 把帧里保存的 subject/predicate/graph 写回，
     // 而帧内容不在 `SlotView` 面内 ⇒ 含"读这三槽"的弹帧行整行入册（面外：帧）。
     let mut pop_restore = false
@@ -384,7 +371,10 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
   assert_eq(violations, [])
   assert_eq(debt_hits, 0)
   // 台账**按类钉死**（首跑回填；任一类数字变化即红——比"只钉总数"强，能抓类间搬家）
-  let mut off_face = 0 // 槽/源在观测面外（frame.* / is_depth）
+  // 槽/源在观测面外（frame.* / is_src / is_depth / 帧内容）。**§AN.11 后 83 → 77**：
+  // 12 行分派族不再整行入册（转真判），其中 6 行 list_*_nested 的 `frame.prev_node=arg0`
+  // 由"整行一条"降为"逐项一条"（-12 +6）。
+  let mut off_face = 0
   let mut order_sensitive = 0 // 清-读同槽（需读序数据）
   let mut conditional = 0 // 条件式来源（fwd:/nfwd:）
   let mut arg_unparsed = 0 // `argN` 指向未解析形态（state:X / 布尔 / SlotType::…）——args 列化后单列
@@ -404,7 +394,7 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
     "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / arg未解析 \{arg_unparsed} / 不可达 \{unreachable_rows.length()}",
   )
   assert_eq(unreachable_rows.length(), 0)
-  assert_eq(off_face, 83)
+  assert_eq(off_face, 77)
   assert_eq(order_sensitive, 0)
   assert_eq(conditional, 52)
   assert_eq(arg_unparsed, 66)
