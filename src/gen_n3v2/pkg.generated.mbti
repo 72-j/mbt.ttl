@@ -116,6 +116,7 @@ pub struct N3Probe {
   // private fields
 }
 pub fn N3Probe::new() -> Self
+pub fn N3Probe::slots(Self) -> N3SlotSnapshot
 pub fn N3Probe::state(Self) -> N3State
 pub fn N3Probe::step_all(Self, N3Event) -> Array[N3ProbeResponse]
 
@@ -142,6 +143,17 @@ pub fn[L] N3SliceParser::new(N3Engine[L], ArrayView[Byte], lenient? : Bool) -> S
 pub fn[L : LexerSource] N3SliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
 pub fn[L : LexerSource] N3SliceParser::parse_next(Self[L]) -> Result[QuadSpan, @gen_nquads.ParseError]?
 pub fn[L] N3SliceParser::prefixes(Self[L]) -> Array[((Int, Int), (Int, Int))]
+
+pub(all) struct N3SlotSnapshot {
+  subject : (Int, Int)?
+  predicate : (Int, Int)?
+  object : (Int, Int)?
+  graph : (Int, Int)?
+  path_src : (Int, Int)?
+  path_pend : (Int, Int)?
+  path_tail : (Int, Int)?
+  path_fwd : Bool
+}
 
 pub(all) enum N3State {
   N3ExpectSubject

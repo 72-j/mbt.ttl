@@ -612,6 +612,246 @@ fn model_state_of_engine(state : @n3.N3State) -> ModelState? {
 }
 
 ///|
+/// **值级槽位视图**（役 ③b）：引擎 `N3SlotSnapshot` 与模型 `Model` 的**同形投影**——
+/// 字段面 = 生成面 `[type_mapping]` 的 `model_slots` + `fwd_slot`（模型有的槽这里就有，
+/// 一位不多一位不少）。归一化同 `Model`：`Span` → `RefId`（取 start；与 `quad_from_pending`
+/// 的 `ref_id_of` 同一把尺子）。两侧同形即可整块 `==` 比对。
+priv struct SlotView {
+  subject : RefId?
+  predicate : RefId?
+  object : RefId?
+  graph : RefId?
+  path_src : RefId?
+  path_pend : RefId?
+  path_tail : RefId?
+  path_fwd : Bool
+} derive(Eq)
+
+///|
+fn slot_view_of_model(model : Model) -> SlotView {
+  {
+    subject: model.subject,
+    predicate: model.predicate,
+    object: model.object,
+    graph: model.graph,
+    path_src: model.path_src,
+    path_pend: model.path_pend,
+    path_tail: model.path_tail,
+    path_fwd: model.path_fwd,
+  }
+}
+
+///|
+fn slot_view_of_engine(snapshot : @n3.N3SlotSnapshot) -> SlotView {
+  {
+    subject: snapshot.subject.map(ref_id_of),
+    predicate: snapshot.predicate.map(ref_id_of),
+    object: snapshot.object.map(ref_id_of),
+    graph: snapshot.graph.map(ref_id_of),
+    path_src: snapshot.path_src.map(ref_id_of),
+    path_pend: snapshot.path_pend.map(ref_id_of),
+    path_tail: snapshot.path_tail.map(ref_id_of),
+    path_fwd: snapshot.path_fwd,
+  }
+}
+
+///|
+/// 引用值文本（判据消息用）：`None` / `Some(6)`——`RefId` 只 `derive(Debug)`
+/// （仓库口径：调试面用 Debug，不给业务类型加 Show），故门消息自备一把小尺子。
+fn ref_id_text(value : RefId?) -> String {
+  match value {
+    None => "None"
+    Some(id) => "Some(\{id.id})"
+  }
+}
+
+///|
+/// 槽位差异（空串 = 一致）：**逐槽点名**（值级门的判据本体；负控可直接喂合成视图）。
+/// 值级对拍要的正是这个粒度——"哪一槽、期望什么、实得什么"，而不是"两坨不等"。
+fn slot_view_diff(expected : SlotView, actual : SlotView) -> String {
+  let diffs : Array[String] = []
+  if expected.subject != actual.subject {
+    diffs.push(
+      "subject 期望 \{ref_id_text(expected.subject)} 实得 \{ref_id_text(actual.subject)}",
+    )
+  }
+  if expected.predicate != actual.predicate {
+    diffs.push(
+      "predicate 期望 \{ref_id_text(expected.predicate)} 实得 \{ref_id_text(actual.predicate)}",
+    )
+  }
+  if expected.object != actual.object {
+    diffs.push(
+      "object 期望 \{ref_id_text(expected.object)} 实得 \{ref_id_text(actual.object)}",
+    )
+  }
+  if expected.graph != actual.graph {
+    diffs.push(
+      "graph 期望 \{ref_id_text(expected.graph)} 实得 \{ref_id_text(actual.graph)}",
+    )
+  }
+  if expected.path_src != actual.path_src {
+    diffs.push(
+      "path_src 期望 \{ref_id_text(expected.path_src)} 实得 \{ref_id_text(actual.path_src)}",
+    )
+  }
+  if expected.path_pend != actual.path_pend {
+    diffs.push(
+      "path_pend 期望 \{ref_id_text(expected.path_pend)} 实得 \{ref_id_text(actual.path_pend)}",
+    )
+  }
+  if expected.path_tail != actual.path_tail {
+    diffs.push(
+      "path_tail 期望 \{ref_id_text(expected.path_tail)} 实得 \{ref_id_text(actual.path_tail)}",
+    )
+  }
+  if expected.path_fwd != actual.path_fwd {
+    diffs.push(
+      "path_fwd 期望 \{bool_text(expected.path_fwd)} 实得 \{bool_text(actual.path_fwd)}",
+    )
+  }
+  diffs.join("；")
+}
+
+///|
+/// 布尔文本（判据消息用；同 `ref_id_text` 的理由）。
+fn bool_text(value : Bool) -> String {
+  if value {
+    "true"
+  } else {
+    "false"
+  }
+}
+
+///|
+/// 值级根因入账（**每探针首处**；去重后逐条在册）。
+fn record_slot_root(
+  origin : String,
+  state : ModelState,
+  command : Command,
+  diff : String,
+  roots : Array[String],
+) -> Unit {
+  let site = "\{origin} \{state_name(state)}+\{command_name(command)}：\{diff}"
+  if !roots.contains(site) {
+    roots.push(site)
+  }
+}
+
+///|
+/// 集合漂移（**不排序**：`sort_by` 在本版语义不可靠，见 `codegen_test.mbt` ctx 风险④）——
+/// 长度 + 双向 contains；两向都点名：新增 = 新缺口，消失 = 已清偿（请同笔收紧台账）。
+fn site_set_drift(actual : Array[String], pinned : Array[String]) -> Array[String] {
+  let drift : Array[String] = []
+  for site in actual {
+    if !pinned.contains(site) {
+      drift.push("值级新增分道（未在册）：\{site}")
+    }
+  }
+  for site in pinned {
+    if !actual.contains(site) {
+      drift.push("值级台账条目已消失（清偿或改判 ⇒ 同笔收紧台账）：\{site}")
+    }
+  }
+  if actual.length() != pinned.length() {
+    drift.push("值级台账条数 \{actual.length()} ≠ 在册 \{pinned.length()}（集合逐名比对，重复项也算漂移）")
+  }
+  drift
+}
+
+///|
+/// **值级根因台账**（R-20 开账，2026-09-19）：首跑实测 **27 处**（全站点 355 → 根因 27）。
+/// 逐条在册 + 棘轮（`const.md` §5.2）：修好一处不改账 ⇒ 红；新冒一处 ⇒ 红。
+/// 五族归类（根因与清偿路径见 `src/ttl/todo.md` §AF）：
+///   A **公式族压帧的"当前 subject"**（11）——生成器 `frame_push` 硬编码
+///     `subject := Some(open_span)`（那是 BnodeProp/Collection 口径），引擎 `open_formula`
+///     是 `subject := None`；
+///   B **路径入口旗标**（2）——`path_fwd`/`path_bwd` 的 `when_some` 支没落 `path_fwd` 写
+///     （引擎在 match 之前无条件置旗；absent 支的旗来自 IR assign，when_some 支丢）；
+///   C **`path_subj_end` 的 when_absent 支写未物化**（10）——TOML 有数据
+///     （subject=ctx.path_tail / predicate=ctx.path_pend / object=arg0 / 清 tail·pend），
+///     生成臂只落了响应与状态；
+///   D **`path_elem_close` 清 path 三账**（1）——引擎 `clear_path()`，表零写；
+///   E **ObjTrail 收口三行**（3）——引擎 `path_obj_close` 的 `clear_path()` + 二次发射
+///     scope 清槽，模型缺。
+fn pinned_slot_roots() -> Array[String] {
+  [
+    // A 公式族压帧当前 subject（11）
+    "命令 AnnotExpectObject+Lbrace：subject 期望 Some(1) 实得 None",
+    "命令 BnpExpectObject+Lbrace：subject 期望 Some(1) 实得 None",
+    "命令 ExpectDirectiveEnd+Lbrace：subject 期望 Some(1) 实得 None",
+    "命令 ExpectObject+Lbrace：subject 期望 Some(1) 实得 None",
+    "命令 ExpectPredicate+Lbrace：subject 期望 Some(1) 实得 None",
+    "命令 ExpectSubject+Lbrace：subject 期望 Some(1) 实得 None",
+    "命令 ExpectVerbOrDot+Lbrace：subject 期望 Some(1) 实得 None",
+    "命令 ExpectVerbOrEnd+Lbrace：subject 期望 Some(1) 实得 None",
+    "命令 ListAfterElem+Lbrace：subject 期望 Some(1) 实得 None",
+    "命令 ListExpectElemOrEnd+Lbrace：subject 期望 Some(1) 实得 None",
+    "路径 ExpectSubject+Lbrace：subject 期望 Some(1) 实得 None",
+    // B 路径入口旗标（2）
+    "命令 ExpectObject+Bang：path_fwd 期望 false 实得 true",
+    "路径 ExpectObject+Bang：path_fwd 期望 false 实得 true",
+    // C path_subj_end 的 when_absent 支写未物化（10）
+    "命令 SubjTrailVerbDone+Anon：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
+    "命令 SubjTrailVerbDone+Bang：path_pend 期望 Some(1) 实得 None",
+    "命令 SubjTrailVerbDone+BlankNode：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
+    "命令 SubjTrailVerbDone+BracketTripleTerm：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
+    "命令 SubjTrailVerbDone+Caret：path_pend 期望 Some(1) 实得 None",
+    "命令 SubjTrailVerbDone+Iri：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
+    "命令 SubjTrailVerbDone+Literal：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
+    "命令 SubjTrailVerbDone+PrefName：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
+    "命令 SubjTrailVerbDone+TripleTerm：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
+    "命令 SubjTrailVerbDone+Variable：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
+    // D path_elem_close 清 path 三账（1）
+    "命令 ListPathAfterStep+Rparen：path_src 期望 Some(1) 实得 None；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
+    // E ObjTrail 收口三行（3）
+    "命令 ObjTrailAfterStep+Comma：object 期望 Some(1) 实得 None",
+    "命令 ObjTrailAfterStep+Dot：subject 期望 Some(1) 实得 None；predicate 期望 Some(1) 实得 None；object 期望 Some(1) 实得 None",
+    "命令 ObjTrailAfterStep+Semicolon：predicate 期望 Some(1) 实得 None；object 期望 Some(1) 实得 None",
+  ]
+}
+
+///|
+/// **值级门负控（判据本体）**：合成视图改一槽 ⇒ `slot_view_diff` 必须**点名该槽**
+/// （值级门的红字要能直接指出"哪一槽、期望什么、实得什么"）；等价视图 ⇒ 空串。
+/// 变异两处：一枚引用槽（`path_pend`）+ 一枚布尔槽（`path_fwd`）——两把尺都要咬。
+test "值级门负控：槽位差异逐槽点名（判据本体）" {
+  let base : SlotView = {
+    subject: Some({ id: 1 }),
+    predicate: Some({ id: 2 }),
+    object: Some({ id: 3 }),
+    graph: None,
+    path_src: None,
+    path_pend: None,
+    path_tail: None,
+    path_fwd: false,
+  }
+  // 正控：等价视图 ⇒ 无差异
+  assert_eq(slot_view_diff(base, base), "")
+  // ① 引用槽变异（`None` → `Some(9)`）
+  let pend_changed : SlotView = { ..base, path_pend: Some({ id: 9 }) }
+  let diff1 = slot_view_diff(base, pend_changed)
+  assert_true(diff1.contains("path_pend"))
+  assert_true(diff1.contains("Some(9)"))
+  assert_false(diff1.contains("subject"))
+  // ② 布尔槽变异（方向旗标反了）
+  let fwd_flipped : SlotView = { ..base, path_fwd: true }
+  let diff2 = slot_view_diff(base, fwd_flipped)
+  assert_true(diff2.contains("path_fwd"))
+  assert_true(diff2.contains("true"))
+  // ③ 多槽同时变 ⇒ 全部点名（值级门不做"首个差异就返回"的省事写法）
+  let both : SlotView = { ..pend_changed, graph: Some({ id: 4 }) }
+  let diff3 = slot_view_diff(base, both)
+  assert_true(diff3.contains("path_pend"))
+  assert_true(diff3.contains("graph"))
+  // ④ 台账集合判据：新增 / 消失 / 条数漂移，三向都要红
+  assert_eq(site_set_drift(["a", "b"], ["a", "b"]), [])
+  assert_true(site_set_drift(["a", "b", "c"], ["a", "b"]).length() > 0)
+  assert_true(site_set_drift(["a"], ["a", "b"]).length() > 0)
+  assert_true(site_set_drift(["a", "a"], ["a"]).length() > 0)
+}
+
+///|
 /// 沿路径推模型（役 7 输入件；`path_end_state` 只给终态，普查要**整模型**好续步）
 fn path_end_model(path : Array[Command]) -> Model {
   let mut model = model_empty()
@@ -669,11 +909,25 @@ fn reachable_state_witness_paths() -> Array[(ModelState, Array[Command])] {
 /// **违例**（干净领土分道 = 红线，必须空）+ **债点**（trail 族分道点 = R-17 可执行
 /// 台账，数字钉死）。分道按**分道步的当前 (状态,命令)** 归类，非见证路径终点。
 /// （trig 无此裁剪：34/34 全同步、无排除片、零分道。）
-test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状态分层一致" {
+///
+/// **值级轴（役 ③b，2026-09-19 加）**：在「响应+状态」之外，逐对比对**槽位快照**
+/// （引擎 `N3Probe::slots()` ⟷ 模型 `model_slots` + `fwd_slot` 八位，见 `SlotView`）。
+/// 缘起：三表 `writes` 的值级条目（`object=arg0` / `path_pend=none` /
+/// `subject=fwd:ctx.path_src|ctx.path_tail` …）此前只能靠人从 `actions.mbt` 抄——静态
+/// 解析必成纸（48 个 action 里 29 个含难解析写），故开引擎侧只读面 + 本轴对拍。
+/// 记账口径：**每探针（见证路径 + 一条命令）只记首处分道**（根因）；级联由根因清偿后
+/// 自动消失，台账才稳定可维护（首跑：全站点 355 → 根因 **27**，逐条在册见
+/// `pinned_slot_roots()`）。首跑即暴露五族真缺口——A 公式族压帧当前 subject /
+/// B 路径入口旗标 / C `path_subj_end` 的 when_absent 写未物化 / D `path_elem_close`
+/// 清账 / E ObjTrail 收口三行；**这些在「响应+状态」轴上全部不可见**（载荷被罩压制或
+/// 弹帧丢弃）⇒ 值级轴不是重复门。清偿节奏：逐族一笔，修一处露一处
+/// （实测：修族 A 后族 C 的**公式孪生**浮出 8 处）。
+test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状态+槽位分层一致" {
   let witnesses = reachable_state_witness_paths()
   assert_eq(witnesses.length(), 54)
   let violations : Array[String] = [] // 干净领土分道（红线，必须空）
   let debt_sites : Array[String] = [] // 深机械领土分道点（R-17 债台账，数字钉死）
+  let slot_roots : Array[String] = [] // 值级（槽位快照）根因：每探针**首处**分道（R-20 台账）
   let mut pairs = 0
   for entry in witnesses {
     let (_, path) = entry
@@ -682,6 +936,7 @@ test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状
       // 每对独立复位：新 probe（=新引擎）+ 新模型
       let system = system_init()
       let mut model = model_empty()
+      let mut slot_root_found = false // 本探针已记根因 ⇒ 后续分道是级联，不重复记账
       // 起跑：逐「响应+状态」步比对（正片全量/排除片只比状态）；分道按**当前步的
       // (状态,命令)** 归类——trail 族 = 债点（R-17 台账），干净领土 = 违例（红线）
       for step_command in path {
@@ -697,6 +952,25 @@ test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状
         if step_diverged {
           classify_divergence(model.state, step_command, violations, debt_sites)
         }
+        // 值级（役 ③b）：本次 step 之后**逐槽**比对引擎真槽位（N3Probe::slots()）
+        // ⟷ 模型槽位。三表 `writes` 值级条目（`object=arg0` / `path_pend=none` /
+        // `subject=fwd:ctx.path_src|ctx.path_tail` …）到这一层才有独立读数面。
+        // 记账口径：**每探针只记首处分道**（根因）——级联由根因清偿后自动消失，
+        // 台账才稳定可维护（首跑实测：全站点 355 → 根因 27）。
+        if !slot_root_found {
+          let expected_slots = slot_view_of_model(next_model)
+          let actual_slots = slot_view_of_engine(system.probe.slots())
+          if expected_slots != actual_slots {
+            record_slot_root(
+              "路径",
+              model.state,
+              step_command,
+              slot_view_diff(expected_slots, actual_slots),
+              slot_roots,
+            )
+            slot_root_found = true
+          }
+        }
         model = next_model
       }
       let (next_model, expected) = model_execute(model, command)
@@ -711,6 +985,19 @@ test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状
       if own_diverged {
         classify_divergence(model.state, command, violations, debt_sites)
       }
+      if !slot_root_found {
+        let own_slots_expected = slot_view_of_model(next_model)
+        let own_slots_actual = slot_view_of_engine(system.probe.slots())
+        if own_slots_expected != own_slots_actual {
+          record_slot_root(
+            "命令",
+            model.state,
+            command,
+            slot_view_diff(own_slots_expected, own_slots_actual),
+            slot_roots,
+          )
+        }
+      }
     }
   }
   debug(
@@ -722,6 +1009,12 @@ test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状
   for v in violations {
     debug("  违例：\{v}")
   }
+  debug("值级槽位根因：\{slot_roots.length()} 处（每探针首处；R-20 台账）")
+  for root in slot_roots {
+    debug("  值级根因：\{root}")
+  }
+  // 值级台账：逐条在册 + 棘轮（修好一处不修账 ⇒ 红；新增一处 ⇒ 红）
+  assert_eq(site_set_drift(slot_roots, pinned_slot_roots()), [])
   // 债钉（R-17 债台账规模）：首跑实测 14（役 7，2026-09-18）——分道步全在
   // trail/Path 深机械（prev_node 帧扩展位 territory，R-17）：值级发射/载荷改写
   // （倒装、壳交换、formula 入口等）不在模型值域内，只比状态时这些步仍对得上、

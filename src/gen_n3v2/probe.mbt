@@ -113,6 +113,43 @@ pub fn N3Probe::state(self : N3Probe) -> N3State {
 }
 
 ///|
+/// 槽位快照（**值级普查观测面**，役 ③b，2026-09-19 开面）：只读值拷贝，字段面 =
+/// 生成面 `[type_mapping]` 的 `model_slots` + `fwd_slot` 的**镜像**（模型有的槽这里就有，
+/// 模型没有的 ctx 字段——`prefixes`/`bases`/`kw_ledger`/`pred_kind`/`slot_stack`/… ——**不开**）。
+/// 缺口缘起：三表 `writes` 的值级条目（`object=arg0` / `path_pend=none` /
+/// `subject=fwd:ctx.path_src|ctx.path_tail` …）此前只能靠人从 `actions.mbt` 抄——
+/// 静态解析必成纸（48 个 action 里 29 个含难解析写）；本面让 quicktest 能**逐对读引擎真槽位**，
+/// 与模型槽位比对（见 `quicktest/metrics.mbt` 值级普查门）。
+/// 归一化（`Span` → 模型引用值）住消费侧，与 `state()` 同规：probe 只给读数，不做归一。
+/// 纪律与**回收条件**（同 §N.1 / `state()`）：①值级普查门降级或撤销 ⇒ 本面同笔回收；
+/// ②更窄等价投影不存在（8 位已是最窄——少一位即漏一类写槽；String 化会烂掉消费侧
+/// 穷尽桥的编译期保证）；③存量面 `new`/`step_all`/`state` 不动，P5.2 最小面口径仍是基调。
+pub(all) struct N3SlotSnapshot {
+  subject : Span?
+  predicate : Span?
+  object : Span?
+  graph : Span?
+  path_src : Span?
+  path_pend : Span?
+  path_tail : Span?
+  path_fwd : Bool
+}
+
+///|
+pub fn N3Probe::slots(self : N3Probe) -> N3SlotSnapshot {
+  {
+    subject: self.ctx.subject,
+    predicate: self.ctx.predicate,
+    object: self.ctx.object,
+    graph: self.ctx.graph,
+    path_src: self.ctx.path_src,
+    path_pend: self.ctx.path_pend,
+    path_tail: self.ctx.path_tail,
+    path_fwd: self.ctx.path_fwd,
+  }
+}
+
+///|
 /// 钉子①：一条完整语句 Iri Iri Iri Dot ⇒ Continue ×3 + EmitQuad（三槽齐、g 恒缺——
 /// N3 无图块口径）；随后未定义转移（ExpectSubject 位喂 Dot）⇒ Failed 原样上抛。
 test "probe: 事件驱动一条三元组" {
@@ -192,4 +229,48 @@ test "probe: state() 观测面只读随转移" {
   assert_true(probe.state() is N3State::N3ExpectSubject)
   let _ = probe.step_all(N3Event::N3Iri((0, 3)))
   assert_true(probe.state() is N3State::N3ExpectPredicate)
+}
+
+///|
+/// 观测面自证（**值级**）：`slots()` 只读、随转移逐槽落位——两枚 Iri 落 subject/predicate；
+/// 宾位路径入口 `!`（`path_obj_trail`）落 object/path_src/path_tail 并立 `path_fwd`；
+/// 押步（`path_step`）只动 `path_pend`。这正是三表 `writes` 的**读数面**：
+/// 没这条自证，"值级对拍"两边的读法就不独立（同 `state()` 的自证口径）。
+test "probe: slots() 观测面只读随转移（值级读数自证）" {
+  let probe = N3Probe::new()
+  let s0 = probe.slots()
+  assert_true(s0.subject is None)
+  assert_true(s0.predicate is None)
+  assert_true(s0.path_src is None)
+  assert_true(s0.path_pend is None)
+  assert_true(s0.path_tail is None)
+  assert_true(s0.path_fwd == false)
+  // 只读性：不喂事件再取一次，读数不变
+  let s0_again = probe.slots()
+  assert_true(s0_again.subject is None)
+  assert_true(s0_again.path_fwd == false)
+  let _ = probe.step_all(N3Event::N3Iri((0, 2))) // :a
+  assert_eq(probe.slots().subject, Some((0, 2)))
+  assert_true(probe.slots().predicate is None)
+  let _ = probe.step_all(N3Event::N3PrefName((3, 2))) // :p
+  assert_eq(probe.slots().predicate, Some((3, 2)))
+  let _ = probe.step_all(N3Event::N3Iri((6, 2))) // :o
+  assert_eq(probe.slots().object, Some((6, 2)))
+  // 宾位尾随入口 `!`：path_obj_trail——object := op、path_src := 旧 object、path_tail := op、
+  // path_pend 清、path_fwd 立（s/p 槽不动，帧快照另存）
+  let _ = probe.step_all(N3Event::N3Bang((9, 1)))
+  let s1 = probe.slots()
+  assert_eq(s1.subject, Some((0, 2)))
+  assert_eq(s1.predicate, Some((3, 2)))
+  assert_eq(s1.object, Some((9, 1)))
+  assert_eq(s1.path_src, Some((6, 2)))
+  assert_eq(s1.path_tail, Some((9, 1)))
+  assert_true(s1.path_pend is None)
+  assert_true(s1.path_fwd)
+  // 押步（ObjTrailExpectVerb + PrefName ⇒ path_step）：只动 path_pend，tail/src 不动
+  let _ = probe.step_all(N3Event::N3PrefName((11, 2)))
+  let s2 = probe.slots()
+  assert_eq(s2.path_pend, Some((11, 2)))
+  assert_eq(s2.path_tail, Some((9, 1)))
+  assert_eq(s2.path_src, Some((6, 2)))
 }
