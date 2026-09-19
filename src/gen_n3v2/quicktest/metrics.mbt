@@ -172,9 +172,9 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     // 【0 → 1（笔 3c 下半·三，2026-09-19）】：公式族放开——as_pred 弹帧回写开通后
     // 谓位反例两侧同步（锚点⑤⑥值级钉死），随机门组合路径实测通过（Lbrace=2/Rbrace=2）。
     ("Lbrace", 1),
-    ("Lparen", 0),
+    ("Lparen", 1), // 【0 → 1（Batch 3，2026-09-19）】：集合族放开——path_elem_hop 四疑点反例定夺
     ("Rbrace", 1),
-    ("Rparen", 0),
+    ("Rparen", 1), // Batch 3 同笔：list_nil/path_elem_close 收口
     ("Implies", 1), // Batch 1 前半同笔（见 Bang 行注）
     ("Literal", 3),
     ("Unknown", 0),
