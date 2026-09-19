@@ -21,8 +21,8 @@ const REF_ID_RANGE : Int = 64
 fn command_weight(name : String) -> Int {
   match name {    "At" => 1
     "Id" => 0
-    "Is" => 0
-    "Of" => 0
+    "Is" => 1
+    "Of" => 1
     "Dot" => 3
     "EOF" => 0
     "Has" => 1

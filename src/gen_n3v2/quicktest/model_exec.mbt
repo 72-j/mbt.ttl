@@ -306,7 +306,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectIsProp, KeywordX(r)) => (set_predicate(model, r, ExpectIsOf), Continue)
     // --- ExpectIsOf ---
     // @arm ExpectIsOf+Of
-    (ExpectIsOf, Of) => ({ ..model, state: ExpectObject }, Continue)
+    (ExpectIsOf, Of) => ({ ..model, state: ExpectObject, is_src: model.subject, is_depth: model.frames.length(),  }, Continue)
     // --- BnpExpectPredicate ---
     // @arm BnpExpectPredicate+Has
     (BnpExpectPredicate, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -386,7 +386,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (BnpExpectIsProp, KeywordX(r)) => (set_predicate(model, r, BnpExpectIsOf), Continue)
     // --- BnpExpectIsOf ---
     // @arm BnpExpectIsOf+Of
-    (BnpExpectIsOf, Of) => ({ ..model, state: BnpExpectObject }, Continue)
+    (BnpExpectIsOf, Of) => ({ ..model, state: BnpExpectObject, is_src: model.subject, is_depth: model.frames.length(),  }, Continue)
     // --- FormulaExpectIsProp ---
     // @arm FormulaExpectIsProp+Iri
     (FormulaExpectIsProp, Iri(r)) => (set_predicate(model, r, FormulaExpectIsOf), Continue)
@@ -398,7 +398,7 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (FormulaExpectIsProp, KeywordX(r)) => (set_predicate(model, r, FormulaExpectIsOf), Continue)
     // --- FormulaExpectIsOf ---
     // @arm FormulaExpectIsOf+Of
-    (FormulaExpectIsOf, Of) => ({ ..model, state: FormulaExpectObject }, Continue)
+    (FormulaExpectIsOf, Of) => ({ ..model, state: FormulaExpectObject, is_src: model.subject, is_depth: model.frames.length(),  }, Continue)
     // --- FormulaExpectSubject ---
     // @arm FormulaExpectSubject+At
     (FormulaExpectSubject, At) => ({ ..model, state: FormulaDirectiveKind, directive_at: true,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -755,24 +755,24 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ObjTrailAfterStep, Dot) => {
       let (next, response) = emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_open_span(frames_top_set_ret_state(model.frames, ExpectSubject), match model.path_tail { Some(t) => t; None => { id: 0 } }),  }, ExpectSubject)
       let next1 = frame_pop(next)
-      let quad1 = take_quad(next1)
-      let next2 = { ..next1, subject: None, predicate: None, object: None }
+      let quad1 = inversion_swap(next1, take_quad(next1))
+      let next2 = inversion_settle({ ..next1, subject: None, predicate: None, object: None }, false)
       (next2, Batch([response, EmitQuad(quad1)]))
     }
     // @arm ObjTrailAfterStep+Comma
     (ObjTrailAfterStep, Comma) => {
       let (next, response) = emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_open_span(frames_top_set_ret_state(model.frames, ExpectObject), match model.path_tail { Some(t) => t; None => { id: 0 } }),  }, ExpectObject)
       let next1 = frame_pop(next)
-      let quad1 = take_quad(next1)
-      let next2 = { ..next1, object: None }
+      let quad1 = inversion_swap(next1, take_quad(next1))
+      let next2 = inversion_settle({ ..next1, object: None }, true)
       (next2, Batch([response, EmitQuad(quad1)]))
     }
     // @arm ObjTrailAfterStep+Semicolon
     (ObjTrailAfterStep, Semicolon) => {
       let (next, response) = emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_open_span(frames_top_set_ret_state(model.frames, ExpectVerbOrEnd), match model.path_tail { Some(t) => t; None => { id: 0 } }),  }, ExpectVerbOrEnd)
       let next1 = frame_pop(next)
-      let quad1 = take_quad(next1)
-      let next2 = { ..next1, predicate: None, object: None }
+      let quad1 = inversion_swap(next1, take_quad(next1))
+      let next2 = inversion_settle({ ..next1, predicate: None, object: None }, false)
       (next2, Batch([response, EmitQuad(quad1)]))
     }
     // --- PathExpectVerb ---
@@ -910,44 +910,65 @@ fn set_object(model : Model, r : @qcs.Ref[RefId], to : ModelState) -> Model {
 
 ///|
 /// 发射槽位快照: 无条件 EmitQuad(快照) 并按 Object 清槽
-/// （快照档：槽位可空与引擎发射边界同口径，模型不设前置判据——ADR-QM-009）
 /// 罩内压制（笔 3c）：任一帧 `is_formula` 为真 ⇒ 只收拾不上抛（ADR-002），
-/// 与引擎 `under_formula()` 同口径（快照弃、清槽与状态照常）。
+/// 与引擎 `under_formula()` 同口径；倒装结算照常（take_pending 副作用全跑）。
 fn emit_object(model : Model, to : ModelState) -> (Model, Response) {
   if model.frames.any(fn(frame) { frame.is_formula }) {
-    ({ ..model, state: to, object: None }, Continue)
+    (inversion_settle({ ..model, state: to, object: None }, true), Continue)
   } else {
-    let quad = take_quad(model)
-    ({ ..model, state: to, object: None }, EmitQuad(quad))
+    let quad = inversion_swap(model, take_quad(model))
+    (inversion_settle({ ..model, state: to, object: None }, true), EmitQuad(quad))
   }
 }
 ///|
 /// 发射槽位快照: 无条件 EmitQuad(快照) 并按 PredObj 清槽
-/// （快照档：槽位可空与引擎发射边界同口径，模型不设前置判据——ADR-QM-009）
 /// 罩内压制（笔 3c）：任一帧 `is_formula` 为真 ⇒ 只收拾不上抛（ADR-002），
-/// 与引擎 `under_formula()` 同口径（快照弃、清槽与状态照常）。
+/// 与引擎 `under_formula()` 同口径；倒装结算照常（take_pending 副作用全跑）。
 fn emit_predobj(model : Model, to : ModelState) -> (Model, Response) {
   if model.frames.any(fn(frame) { frame.is_formula }) {
-    ({ ..model, state: to, predicate: None, object: None }, Continue)
+    (inversion_settle({ ..model, state: to, predicate: None, object: None }, false), Continue)
   } else {
-    let quad = take_quad(model)
-    ({ ..model, state: to, predicate: None, object: None }, EmitQuad(quad))
+    let quad = inversion_swap(model, take_quad(model))
+    (inversion_settle({ ..model, state: to, predicate: None, object: None }, false), EmitQuad(quad))
   }
 }
 ///|
 /// 发射槽位快照: 无条件 EmitQuad(快照) 并按 SPO 清槽
-/// （快照档：槽位可空与引擎发射边界同口径，模型不设前置判据——ADR-QM-009）
 /// 罩内压制（笔 3c）：任一帧 `is_formula` 为真 ⇒ 只收拾不上抛（ADR-002），
-/// 与引擎 `under_formula()` 同口径（快照弃、清槽与状态照常）。
+/// 与引擎 `under_formula()` 同口径；倒装结算照常（take_pending 副作用全跑）。
 fn emit_spo(model : Model, to : ModelState) -> (Model, Response) {
   if model.frames.any(fn(frame) { frame.is_formula }) {
-    ({ ..model, state: to, subject: None, predicate: None, object: None }, Continue)
+    (inversion_settle({ ..model, state: to, subject: None, predicate: None, object: None }, false), Continue)
   } else {
-    let quad = take_quad(model)
-    ({ ..model, state: to, subject: None, predicate: None, object: None }, EmitQuad(quad))
+    let quad = inversion_swap(model, take_quad(model))
+    (inversion_settle({ ..model, state: to, subject: None, predicate: None, object: None }, false), EmitQuad(quad))
   }
 }
 
+///|
+/// 倒装交换：is_src 在册且四元组主语与之同值（键 = span 身份，
+/// 嵌套 fresh 主语错键不换——引擎 take_pending 同口径）
+fn inversion_swap(model : Model, quad : Quad) -> Quad {
+  match model.is_src {
+    Some(src) =>
+      if quad.subject == Some(src) {
+        { ..quad, subject: quad.object, object: quad.subject }
+      } else {
+        quad
+      }
+    None => quad
+  }
+}
+///|
+/// 倒装结算：scope 非 Object 且栈深回到 is_depth 记录位 ⇒ 清 is_src
+/// （Comma Object 保键连换；嵌套内层发射深度不齐保键——settle_inversion 同口径）
+fn inversion_settle(model : Model, object_scope : Bool) -> Model {
+  if !object_scope && model.frames.length() == model.is_depth {
+    { ..model, is_src: None }
+  } else {
+    model
+  }
+}
 ///|
 /// 压帧（P4.2e）：记外层三槽快照 + `open_span` + `ret_state` + `as_subject`，
 /// 再把 `subject = open_span`、`predicate = None`（与引擎 open_bnode_prop/open_collection 同机械）；

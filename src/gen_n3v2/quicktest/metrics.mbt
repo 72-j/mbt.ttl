@@ -153,8 +153,8 @@ test "n3v2 全臂冒烟：55×41 全对 + 合法对 384（臂表结构钉）" {
 test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
   let expected : Array[(String, Int)] = [
     ("At", 1),
-    ("Is", 0),
-    ("Of", 0),
+    ("Is", 1), // 【0 → 1（排除片转正，2026-09-19）】：IsProp 词行 = 既有 set_predicate 面（fsm_out 同源在册），零新增机械
+    ("Of", 1), // 【0 → 1（排除片转正，2026-09-19）】：is_of 晋声明 action + 发射族倒装交换/结算（引擎 take_pending/settle_inversion 同形）
     ("Dot", 3),
     ("EOF", 0),
     ("Has", 1), // 【0 → 1（排除片转正，2026-09-19）】：六行原地 no-op（同态 Continue 无 action，现代口径 has 直读不倒装）；Is=0 下 ExpectIsProp 族不可达 ⇒ 零机械

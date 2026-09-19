@@ -155,6 +155,8 @@ priv struct Model {
   path_fwd : Bool
   directive_at : Bool
   version_lit_ok : Bool
+  is_src : RefId?
+  is_depth : Int
   frames : Array[Frame]
 } derive(Eq, Debug)
 
@@ -189,6 +191,8 @@ fn model_empty() -> Model {
     path_fwd: false,
     directive_at: false,
     version_lit_ok: false,
+    is_src: None,
+    is_depth: 0,
     frames: [],
   }
 }
