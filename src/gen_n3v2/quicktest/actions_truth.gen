@@ -1,5 +1,5 @@
-# N3 数据面真值快照（生成物，DO NOT EDIT）
-# 源: src/rdf/fsm_out/n3_fsm.toml [[transitions]] × src/quick_machine/quick_machine_n3_gen.toml [actions]
+# 数据面真值快照（生成物，DO NOT EDIT）
+# 源: ./src/rdf/fsm_out/trig_fsm.toml [[transitions]] × ./src/quick_machine/quick_machine_trig_gen.toml [actions]
 # 列: from+on|action|returns|writes|frame|push_writes|args（writes 逐项排序，空记 -）
 v1
 ExpectBaseIri+Iri|set_base|Continue|-|-|false|-

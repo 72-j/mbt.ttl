@@ -75,7 +75,10 @@
    用 `N3Probe::slots()` 逐槽对拍 ⇒ 行 314、**可比 248、违例 0、债点 0**，不可比 128（面外 54 / 序敏感 66 / 条件式 8）在册。
    首跑 8 处债点（`path_subj_end·predicate`）已**定向裁定**：真分歧 0、TOML 错 0、引擎 bug 0——
    根因是门缺"**发射即清槽**"（`EmitQuad(Scope)` 后按 scope 复位），已折进期望（`scope_reset_slots`）。
-   **trig 仍待第二次开面**（`TrigProbe::slots`）。
+   **trig 上半已回灌**（2026-09-19，见活账 §AN.3）：`TrigProbe::slots`/`TrigSlotSnapshot` 已开（只读四槽，
+   `.mbti` 恰新增所开面），`gen_trig/quicktest/actions_truth.gen`（136 行）与 n3v2 同列同口径、有金样；
+   **trig 内门（逐槽对拍）待落**——配方照抄 n3v2 的 `data_face.mbt`，四处适配（四槽 SlotView / `ref_id_of` /
+   trig 见证路径 / 行数 136）。
 2. **N6 宿主 CI 观测**：需在 gitlink UI 或带 token 的环境确认 static/test 作业真跑且绿。
 3. **役 15 余量**：深片排除项的权重放宽（表/IR 侧），不属于门缺陷。
 

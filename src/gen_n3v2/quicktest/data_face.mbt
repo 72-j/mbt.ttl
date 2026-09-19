@@ -191,8 +191,10 @@ fn data_face_compare(
       ignore(run_command(step, system))
     }
     let before = slot_view_of_engine(system.probe.slots())
-    // 首片边界：同一槽既被清（`S=none`）又被别处读（`x=ctx.S`）⇒ 语义**序敏感**，
-    // 本版按"读前值"解析会误判（首跑实测 8 行 path_end_nested 属此类）⇒ 整行入册待裁定。
+    // 序敏感（**证伪留档**，2026-09-19 第二笔）：曾按"TOML 写序依次应用"建模（`x=ctx.S` 取此刻 S），
+    // 一开即 **53 处分道**（例：`SubjTrailVerbDone+Iri·subject 期望 None 实得 Some(1)`）⇒
+    // **TOML 写序 ≠ 引擎读序**（引擎多在清槽前把值读进局部变量，如 `actions.mbt:723-741`）。
+    // ⇒ 该假设**回退**；清-读同槽行整行入册（理由 `需读序数据`），下一片给数据面加 `reads`/读序键再判。
     let mut order_sensitive : String? = None
     for item in row.writes {
       let pair = item.split("=").to_array()
@@ -201,7 +203,9 @@ fn data_face_compare(
         for other in row.writes {
           let op = other.split("=").to_array()
           if op.length() == 2 && op[1] == "ctx." + cleared {
-            order_sensitive = Some("清-读同槽（\{cleared}）")
+            order_sensitive = Some(
+              "清-读同槽（\{cleared}；需读序数据）",
+            )
           }
         }
       }
@@ -310,7 +314,7 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
   assert_eq(debt_hits, 0)
   // 台账**按类钉死**（首跑回填；任一类数字变化即红——比"只钉总数"强，能抓类间搬家）
   let mut off_face = 0 // 槽/源在观测面外（frame.* / is_depth）
-  let mut order_sensitive = 0 // 清-读同槽（序敏感，首片不判）
+  let mut order_sensitive = 0 // 清-读同槽（第二笔起已按写序建模 ⇒ 应为 0）
   let mut conditional = 0 // 条件式来源（fwd:/nfwd:）
   for site in incomparable {
     if site.contains("清-读同槽") {

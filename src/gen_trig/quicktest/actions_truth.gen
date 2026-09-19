@@ -1,0 +1,140 @@
+# 数据面真值快照（生成物，DO NOT EDIT）
+# 源: ./src/rdf/fsm_out/n3_fsm.toml [[transitions]] × ./src/quick_machine/quick_machine_n3_gen.toml [actions]
+# 列: from+on|action|returns|writes|frame|push_writes|args（writes 逐项排序，空记 -）
+v1
+ExpectBaseIri+Iri|set_base|Continue|-|-|false|-
+ExpectObject+Iri|set_object|Continue|-|-|false|-
+ExpectObject+Anon|set_object|Continue|-|-|false|-
+ExpectSubject+Iri|set_subject|Continue|-|-|false|-
+BnpExpectObject+Iri|set_object|Continue|-|-|false|-
+ExpectSubject+Anon|set_subject|Continue|-|-|false|-
+ExpectObject+Literal|set_object|Continue|-|-|false|-
+AnnotExpectObject+Iri|set_object|Continue|-|-|false|-
+ExpectObject+PrefName|set_object|Continue|-|-|false|-
+GraphExpectObject+Iri|set_object|Continue|-|-|false|-
+AnnotExpectObject+Anon|set_object|Continue|-|-|false|-
+ExpectObject+BlankNode|set_object|Continue|-|-|false|-
+ExpectPredicate+Iri|set_predicate|Continue|-|-|false|-
+ExpectVerbOrDot+Iri|set_predicate|Continue|-|-|false|-
+ExpectVerbOrEnd+Iri|set_predicate|Continue|-|-|false|-
+GraphExpectObject+Anon|set_object|Continue|-|-|false|-
+BnpExpectObject+Literal|set_object|Continue|-|-|false|-
+ExpectDirectiveEnd+Iri|set_subject|Continue|-|-|false|-
+ExpectObject+TripleTerm|set_object|Continue|-|-|false|-
+ExpectPrefixIri+Iri|declare_prefix|Continue|-|-|false|-
+ExpectSubject+PrefName|set_subject|Continue|-|-|false|-
+GraphExpectSubject+Iri|set_subject|Continue|-|-|false|-
+BnpExpectObject+PrefName|set_object|Continue|-|-|false|-
+ExpectDirectiveEnd+Anon|set_subject|Continue|-|-|false|-
+ExpectSubject+BlankNode|set_subject|Continue|-|-|false|-
+GraphExpectSubject+Anon|set_subject|Continue|-|-|false|-
+AnnotExpectObject+Literal|set_object|Continue|-|-|false|-
+BnpExpectObject+BlankNode|set_object|Continue|-|-|false|-
+BnpExpectPredicate+Iri|set_predicate|Continue|-|-|false|-
+ExpectSubject+TripleTerm|set_subject|Continue|-|-|false|-
+ExpectVerbRequired+Iri|set_predicate|Continue|-|-|false|-
+GraphExpectObject+Literal|set_object|Continue|-|-|false|-
+AnnotExpectObject+PrefName|set_object|Continue|-|-|false|-
+BnpExpectObject+TripleTerm|set_object|Continue|-|-|false|-
+GraphAnnotExpectObject+Iri|set_object|Continue|-|-|false|-
+GraphExpectObject+PrefName|set_object|Continue|-|-|false|-
+AnnotExpectObject+BlankNode|set_object|Continue|-|-|false|-
+ExpectPredicate+KeywordA|set_predicate|Continue|-|-|false|-
+ExpectPredicate+PrefName|set_predicate|Continue|-|-|false|-
+ExpectVerbOrDot+KeywordA|set_predicate|Continue|-|-|false|-
+ExpectVerbOrDot+PrefName|set_predicate|Continue|-|-|false|-
+ExpectVerbOrEnd+KeywordA|set_predicate|Continue|-|-|false|-
+ExpectVerbOrEnd+PrefName|set_predicate|Continue|-|-|false|-
+GraphAnnotExpectObject+Anon|set_object|Continue|-|-|false|-
+GraphExpectObject+BlankNode|set_object|Continue|-|-|false|-
+GraphExpectPredicate+Iri|set_predicate|Continue|-|-|false|-
+GraphExpectVerbOrDot+Iri|set_predicate|Continue|-|-|false|-
+GraphExpectVerbOrEnd+Iri|set_predicate|Continue|-|-|false|-
+AnnotExpectObject+TripleTerm|set_object|Continue|-|-|false|-
+ExpectDirectiveEnd+PrefName|set_subject|Continue|-|-|false|-
+GraphExpectObject+TripleTerm|set_object|Continue|-|-|false|-
+GraphExpectSubject+PrefName|set_subject|Continue|-|-|false|-
+ExpectDirectiveEnd+BlankNode|set_subject|Continue|-|-|false|-
+GraphExpectSubject+BlankNode|set_subject|Continue|-|-|false|-
+BnpExpectPredicate+KeywordA|set_predicate|Continue|-|-|false|-
+BnpExpectPredicate+PrefName|set_predicate|Continue|-|-|false|-
+ExpectDirectiveEnd+TripleTerm|set_subject|Continue|-|-|false|-
+ExpectObject+BracketTripleTerm|set_object|Continue|-|-|false|-
+ExpectPrefixName+PrefName|set_prefix_name|Continue|-|-|false|-
+ExpectVerbRequired+KeywordA|set_predicate|Continue|-|-|false|-
+ExpectVerbRequired+PrefName|set_predicate|Continue|-|-|false|-
+GraphAnnotExpectObject+Literal|set_object|Continue|-|-|false|-
+GraphExpectSubject+TripleTerm|set_subject|Continue|-|-|false|-
+AnnotExpectEnd+AnnotEnd|annot_end|EmitQuad(PredObj)|-|-|false|-
+GraphAnnotExpectObject+PrefName|set_object|Continue|-|-|false|-
+GraphAnnotExpectObject+BlankNode|set_object|Continue|-|-|false|-
+GraphExpectPredicate+KeywordA|set_predicate|Continue|-|-|false|-
+GraphExpectPredicate+PrefName|set_predicate|Continue|-|-|false|-
+GraphExpectVerbOrDot+KeywordA|set_predicate|Continue|-|-|false|-
+GraphExpectVerbOrDot+PrefName|set_predicate|Continue|-|-|false|-
+GraphExpectVerbOrEnd+KeywordA|set_predicate|Continue|-|-|false|-
+GraphExpectVerbOrEnd+PrefName|set_predicate|Continue|-|-|false|-
+BnpExpectObject+BracketTripleTerm|set_object|Continue|-|-|false|-
+GraphAnnotExpectObject+TripleTerm|set_object|Continue|-|-|false|-
+ExpectTildeEnd+AnnotStart|annot_open|EmitQuad(PredObj)|-|-|false|-
+AnnotExpectObject+BracketTripleTerm|set_object|Continue|-|-|false|-
+ExpectSubject+Lbrace|enter_graph|EnterGraph|graph=arg0|-|false|none
+GraphExpectObject+BracketTripleTerm|set_object|Continue|-|-|false|-
+GraphExpectSubject+Rbrace|exit_graph|ExitGraph|graph=none|-|false|-
+AnnotExpectVerbTail+AnnotEnd|annot_close_silent|Continue|-|-|false|-
+ExpectDotOrGraph+AnnotStart|annot_open|EmitQuad(PredObj)|-|-|false|-
+GraphAnnotExpectEnd+AnnotEnd|annot_end|EmitQuad(PredObj)|-|-|false|-
+AnnotExpectVerb+Iri|annot_body_verb|Continue|predicate=arg0|-|false|-
+GraphExpectTildeEnd+AnnotStart|annot_open|EmitQuad(PredObj)|-|-|false|-
+ExpectDirectiveEnd+Lbrace|enter_graph|EnterGraph|graph=arg0|-|false|none
+GraphAnnotExpectObject+BracketTripleTerm|set_object|Continue|-|-|false|-
+AnnotExpectVerbTail+Iri|annot_body_verb|Continue|predicate=arg0|-|false|-
+GraphAnnotExpectVerbTail+AnnotEnd|annot_close_silent|Continue|-|-|false|-
+GraphExpectDotOrGraph+AnnotStart|annot_open|EmitQuad(PredObj)|-|-|false|-
+AnnotExpectVerb+KeywordA|annot_body_verb|Continue|predicate=arg0|-|false|-
+AnnotExpectVerb+PrefName|annot_body_verb|Continue|predicate=arg0|-|false|-
+GraphAnnotExpectVerb+Iri|annot_body_verb|Continue|predicate=arg0|-|false|-
+ListExpectElemOrEnd+Iri|list_first|EmitQuad(PredObj)|object=arg0|-|false|-
+ListExpectElemOrEnd+Anon|list_first|EmitQuad(PredObj)|object=arg0|-|false|-
+ExpectGraphLabel+Iri|enter_graph|EnterGraph|graph=arg0|-|false|Some(payload)
+ExpectPredicate+Lbrace|enter_graph|EnterGraph|graph=arg0|-|false|ctx.subject
+ExpectGraphLabel+Anon|enter_graph|EnterGraph|graph=arg0|-|false|Some(payload)
+AnnotExpectVerbTail+KeywordA|annot_body_verb|Continue|predicate=arg0|-|false|-
+AnnotExpectVerbTail+PrefName|annot_body_verb|Continue|predicate=arg0|-|false|-
+GraphAnnotExpectVerbTail+Iri|annot_body_verb|Continue|predicate=arg0|-|false|-
+ListExpectElemOrEnd+Literal|list_first|EmitQuad(PredObj)|object=arg0|-|false|-
+GraphAnnotExpectVerb+KeywordA|annot_body_verb|Continue|predicate=arg0|-|false|-
+GraphAnnotExpectVerb+PrefName|annot_body_verb|Continue|predicate=arg0|-|false|-
+ListExpectElemOrEnd+PrefName|list_first|EmitQuad(PredObj)|object=arg0|-|false|-
+ListExpectElemOrEnd+BlankNode|list_first|EmitQuad(PredObj)|object=arg0|-|false|-
+ExpectGraphLabel+PrefName|enter_graph|EnterGraph|graph=arg0|-|false|Some(payload)
+ListExpectElemOrEnd+TripleTerm|list_first|EmitQuad(PredObj)|object=arg0|-|false|-
+ExpectGraphLabel+BlankNode|enter_graph|EnterGraph|graph=arg0|-|false|Some(payload)
+GraphAnnotExpectVerbTail+KeywordA|annot_body_verb|Continue|predicate=arg0|-|false|-
+GraphAnnotExpectVerbTail+PrefName|annot_body_verb|Continue|predicate=arg0|-|false|-
+ListExpectElemOrEnd+BracketTripleTerm|list_first|EmitQuad(PredObj)|object=arg0|-|false|-
+ListAfterElem+Rparen|list_nil|Sequence([EmitQuad(PredObj), PopBnp])|object=frame.open_span|-|false|-
+ExpectObject+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,false,state:ExpectDotOrGraph
+BnpExpectObject+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,false,state:BnpAfterObject
+ExpectSubject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,true,state:ExpectVerbOrDot
+ExpectObject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,false,state:ExpectDotOrGraph
+ExpectSubject+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,true,state:ExpectVerbRequired
+BnpExpectObject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,false,state:BnpAfterObject
+AnnotExpectObject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,false,state:AnnotExpectEnd
+ListAfterElem+Iri|list_next|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])|object=frame.open_span|-|false|-
+ExpectDirectiveEnd+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,true,state:ExpectVerbOrDot
+ExpectDirectiveEnd+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,true,state:ExpectVerbRequired
+GraphExpectSubject+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,true,state:GraphExpectPredicate
+ListAfterElem+Literal|list_next|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])|object=frame.open_span|-|false|-
+GraphExpectObject+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,false,state:GraphExpectDotOrGraph
+ListAfterElem+PrefName|list_next|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])|object=frame.open_span|-|false|-
+GraphExpectSubject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,true,state:GraphExpectVerbOrDot
+ListAfterElem+BlankNode|list_next|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])|object=frame.open_span|-|false|-
+GraphExpectObject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,false,state:GraphExpectDotOrGraph
+ListAfterElem+TripleTerm|list_next|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])|object=frame.open_span|-|false|-
+GraphAnnotExpectObject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,false,state:GraphAnnotExpectEnd
+ListAfterElem+BracketTripleTerm|list_next|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])|object=frame.open_span|-|false|-
+ListExpectElemOrEnd+Lparen|list_first_nested|Sequence([EmitQuad(PredObj), OpenSlot(elem, typ, ret_state)])|object=arg0|-|false|payload,SlotType::List,state:ListAfterElem
+ListExpectElemOrEnd+Lbracket|list_first_nested|Sequence([EmitQuad(PredObj), OpenSlot(elem, typ, ret_state)])|object=arg0|-|false|payload,SlotType::BnodeProp,state:ListAfterElem
+ListAfterElem+Lparen|list_next_nested|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj), OpenSlot(elem, typ, ret_state)])|object=frame.open_span|-|false|payload,SlotType::List,state:ListAfterElem
+ListAfterElem+Lbracket|list_next_nested|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj), OpenSlot(elem, typ, ret_state)])|object=frame.open_span|-|false|payload,SlotType::BnodeProp,state:ListAfterElem

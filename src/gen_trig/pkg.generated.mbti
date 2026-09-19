@@ -212,6 +212,7 @@ pub struct TrigProbe {
   // private fields
 }
 pub fn TrigProbe::new() -> Self
+pub fn TrigProbe::slots(Self) -> TrigSlotSnapshot
 pub fn TrigProbe::state(Self) -> TrigState
 pub fn TrigProbe::step_all(Self, TrigEvent) -> Array[TrigProbeResponse]
 
@@ -240,6 +241,13 @@ pub fn[L] TrigSliceParser::new(TrigEngine[L], ArrayView[Byte], lenient? : Bool) 
 pub fn[L : LexerSource] TrigSliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
 pub fn[L : LexerSource] TrigSliceParser::parse_next(Self[L]) -> Result[QuadSpan, @gen_nquads.ParseError]?
 pub fn[L] TrigSliceParser::prefixes(Self[L]) -> Array[((Int, Int), (Int, Int))]
+
+pub(all) struct TrigSlotSnapshot {
+  subject : (Int, Int)?
+  predicate : (Int, Int)?
+  object : (Int, Int)?
+  graph : (Int, Int)?
+}
 
 pub(all) enum TrigState {
   TrigExpectSubject

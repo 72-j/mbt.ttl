@@ -108,6 +108,29 @@ pub fn TrigProbe::state(self : TrigProbe) -> TrigState {
 }
 
 ///|
+/// **槽位快照**（值级数据面观测面，2026-09-19 开面，对齐 n3v2 `N3SlotSnapshot`）：
+/// 只读读数，字段面 = trig ctx 四槽（与模型 `Model` 同形）。
+/// 用途：**数据面（TOML `[actions]`）⟷ 引擎** 的值级对拍（见 `quicktest/data_face.mbt`）。
+/// 纪律与**回收条件**：①值级对拍门降级或撤销 ⇒ 本面**同笔回收**；②更窄等价投影不存在
+/// （四槽已是最窄——少一位即漏一类写槽）；③存量面 `new`/`step_all`/`state` 不动。
+pub(all) struct TrigSlotSnapshot {
+  subject : Span?
+  predicate : Span?
+  object : Span?
+  graph : Span?
+}
+
+///|
+pub fn TrigProbe::slots(self : TrigProbe) -> TrigSlotSnapshot {
+  {
+    subject: self.ctx.subject,
+    predicate: self.ctx.predicate,
+    object: self.ctx.object,
+    graph: self.ctx.graph,
+  }
+}
+
+///|
 /// 单步驱动（**忽略发射队列**）：喂一个事件 → 一档响应（step / interpret 同引擎同序）。
 /// `Sequence` 内的余量仍入 `ctx.emit_queue`（由调用方排空）。
 /// 收面（役 2，2026-09-18）：内部件（`step_all` / `step` 同包调它）⇒ 收 priv。
