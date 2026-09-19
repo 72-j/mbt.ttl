@@ -78,10 +78,10 @@
    **trig 上半已回灌**（2026-09-19，见活账 §AN.3）：`TrigProbe::slots`/`TrigSlotSnapshot` 已开（只读四槽，
    `.mbti` 恰新增所开面），`gen_trig/quicktest/actions_truth.gen`（136 行）与 n3v2 同列同口径、有金样；
    **trig 内门已落地**（2026-09-19，§AN.4）：`gen_trig/quicktest/data_face.mbt` 与 n3v2 **同尺**
-   （同列快照 + 同三类台账 + 同 scope 复位语义）⇒ 行 136 / 违例 0 / **债点 6** / 面外 28 在册。
-   首跑 8 债点已裁定（§AN.5）：**2 门假阳已修**（`argN` 未按 args 列解引用）+ **6 真分歧**
-   （TOML `open_collection.writes` 写 `subject=arg0`，引擎 `actions.mbt:182-195` 压帧后 `subject=None`）——
-   修数据面属跨仓原子变更，单列一役。
+   （同列快照 + 同三类台账 + 同 scope 复位语义）⇒ 行 136 / **违例 0 / 债点 0** / 面外 28 在册。
+   首跑 8 债点已全部裁定收口（§AN.5/§AN.6）：2 门假阳（`argN` 未按 args 列解引用）+ 6 真分歧
+   （数据面 `open_collection.writes` 抄成 `subject=arg0`，引擎压帧后是 `subject=None`）——
+   数据面已修 + 快照重生成 + 四钉/golden 29/29 不回退。
    两方言现在的公共缺口只剩 **序敏感（读序数据）** 与 **这 8 债点**。
 2. **N6 宿主 CI 观测**：需在 gitlink UI 或带 token 的环境确认 static/test 作业真跑且绿。
 3. **役 15 余量**：深片排除项的权重放宽（表/IR 侧），不属于门缺陷。

@@ -329,10 +329,12 @@ async test "数据面⟷引擎·trig 值级对拍：可比行逐槽等值 + 台�
   // 而引擎 `actions.mbt:182-195` 压帧后 `ctx.subject = None; ctx.predicate = None`（span 进帧，不落 subject）。
   // ⇒ 待修**数据面**（`quick_machine_trig_gen.toml [actions].open_collection.writes` → `subject=none`），
   // 属跨仓原子变更（波及生成臂与四方言同形门）⇒ 单独一役；本役只把真分歧钉成债点。
-  let debt_keys : Array[String] = [
-    "ExpectObject+Lparen", "BnpExpectObject+Lparen", "ExpectSubject+Lparen", "ExpectDirectiveEnd+Lparen",
-    "GraphExpectSubject+Lparen", "GraphExpectObject+Lparen",
-  ]
+  // **债点台账：2026-09-19 两笔裁定后归零**——① 2 个 `enter_graph` 行 = 门假阳（`args=none` ⇒ 实参 None，
+  // 已修 `argN` 按 args 列解引用）；② 6 个 `open_collection` 行 = 真分歧（数据面写 `subject=arg0`，
+  // 引擎 `actions.mbt:182-195` 压帧后 `ctx.subject = None`）⇒ 已修数据面
+  // （`quick_machine_trig_gen.toml [actions].open_collection.writes` → `subject=none`）+ 同笔重生成快照。
+  // 此后新冒分道一律按违例处理。
+  let debt_keys : Array[String] = []
   let violations : Array[String] = []
   let mut debt_hits = 0
   for site in mismatches {
@@ -349,7 +351,7 @@ async test "数据面⟷引擎·trig 值级对拍：可比行逐槽等值 + 台�
     }
   }
   assert_eq(violations, [])
-  assert_eq(debt_hits, 6)
+  assert_eq(debt_hits, 0)
   assert_eq(unreachable_rows.length(), 0)
   let (off_face, order_sensitive, conditional) = ledger_classes(incomparable)
   debug(

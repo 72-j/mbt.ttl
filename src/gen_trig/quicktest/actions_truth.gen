@@ -114,19 +114,19 @@ GraphAnnotExpectVerbTail+KeywordA|annot_body_verb|Continue|predicate=arg0|-|fals
 GraphAnnotExpectVerbTail+PrefName|annot_body_verb|Continue|predicate=arg0|-|false|-
 ListExpectElemOrEnd+BracketTripleTerm|list_first|EmitQuad(PredObj)|object=arg0|-|false|-
 ListAfterElem+Rparen|list_nil|Sequence([EmitQuad(PredObj), PopBnp])|object=frame.open_span|-|false|-
-ExpectObject+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,false,state:ExpectDotOrGraph
-BnpExpectObject+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,false,state:BnpAfterObject
+ExpectObject+Lparen|open_collection|Continue|subject=none,predicate=none|push|false|payload,false,state:ExpectDotOrGraph
+BnpExpectObject+Lparen|open_collection|Continue|subject=none,predicate=none|push|false|payload,false,state:BnpAfterObject
 ExpectSubject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,true,state:ExpectVerbOrDot
 ExpectObject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,false,state:ExpectDotOrGraph
-ExpectSubject+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,true,state:ExpectVerbRequired
+ExpectSubject+Lparen|open_collection|Continue|subject=none,predicate=none|push|false|payload,true,state:ExpectVerbRequired
 BnpExpectObject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,false,state:BnpAfterObject
 AnnotExpectObject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,false,state:AnnotExpectEnd
 ListAfterElem+Iri|list_next|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])|object=frame.open_span|-|false|-
 ExpectDirectiveEnd+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,true,state:ExpectVerbOrDot
-ExpectDirectiveEnd+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,true,state:ExpectVerbRequired
-GraphExpectSubject+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,true,state:GraphExpectPredicate
+ExpectDirectiveEnd+Lparen|open_collection|Continue|subject=none,predicate=none|push|false|payload,true,state:ExpectVerbRequired
+GraphExpectSubject+Lparen|open_collection|Continue|subject=none,predicate=none|push|false|payload,true,state:GraphExpectPredicate
 ListAfterElem+Literal|list_next|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])|object=frame.open_span|-|false|-
-GraphExpectObject+Lparen|open_collection|Continue|subject=arg0,predicate=none|push|false|payload,false,state:GraphExpectDotOrGraph
+GraphExpectObject+Lparen|open_collection|Continue|subject=none,predicate=none|push|false|payload,false,state:GraphExpectDotOrGraph
 ListAfterElem+PrefName|list_next|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])|object=frame.open_span|-|false|-
 GraphExpectSubject+Lbracket|open_bnode_prop|Continue|subject=arg0,predicate=none|push|false|payload,true,state:GraphExpectVerbOrDot
 ListAfterElem+BlankNode|list_next|Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])|object=frame.open_span|-|false|-
