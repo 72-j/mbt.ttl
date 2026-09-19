@@ -1,11 +1,12 @@
 # 数据面真值快照（生成物，DO NOT EDIT）
-# 源: ./src/rdf/fsm_out/trig_fsm.toml [[transitions]] × ./src/quick_machine/quick_machine_trig_gen.toml [actions]
+# 源: ./src/rdf/fsm_out/n3_fsm.toml [[transitions]] × ./src/quick_machine/quick_machine_n3_gen.toml [actions]
 # format: v3 —— **列分隔符 = TAB**（v1 用 `|`，与 `fwd:a|b` 词表撞车 ⇒ 整行静默截断，§AN.12）
 # 列: from+on〈TAB〉action〈TAB〉returns〈TAB〉writes〈TAB〉frame〈TAB〉push_writes〈TAB〉args
 #      （writes 逐项排序、空记 -；带行 assign 的 `nfwd:a|b` 已**编译期坍缩**；槽型分派臂已按行 SlotType 选臂）
 #      （v3 增：帧写落位**写实**——`frame.top.<位>`（后态帧顶）/ `frame.below.<位>`（效果通道压帧行的体写 = 后态次顶）/
 #       `frame.popped.<位>`（被弹帧、后态不存在）；`frame.<位>` 作**读**源时 = 行进前帧顶；`frame.ret_state=to` 已写实成态名。§AN.13）
-v3
+#      （**弹帧行**（`returns` 含 `PopBnp`）的 `writes` = **行终态**：按行 `to` 选 `pop_writes` 臂、
+#       臂内同目标覆盖基础写、`frame.popped.*` 已剔除（被弹帧后态不存在）。§AN.14）
 ExpectBaseIri+Iri	set_base	Continue	-	-	false	-
 ExpectObject+Iri	set_object	Continue	-	-	false	-
 ListAfterElem+Rparen	list_nil	PopBnp	-	-	false	-
@@ -301,12 +302,16 @@ SubjTrailAfterStep+KeywordA	path_subj_end	EmitQuad(SPO)	path_src=none,path_pend=
 SubjTrailAfterStep+KeywordX	path_subj_end	EmitQuad(SPO)	path_src=none,path_pend=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 SubjTrailAfterStep+PrefName	path_subj_end	EmitQuad(SPO)	path_src=none,path_pend=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 SubjTrailAfterStepFormula+Iri	path_subj_end	EmitQuad(SPO)	path_src=none,path_pend=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
+ListPathAfterStep+Rparen	path_elem_close	Sequence([EmitQuad(SPO), PopBnp])	object=none,path_src=none,path_pend=none,path_tail=none,graph=frame.graph,subject=frame.open_span,predicate=frame.predicate	-	false	-
 SubjTrailAfterStepFormula+KeywordA	path_subj_end	EmitQuad(SPO)	path_src=none,path_pend=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 SubjTrailAfterStepFormula+KeywordX	path_subj_end	EmitQuad(SPO)	path_src=none,path_pend=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 SubjTrailAfterStepFormula+PrefName	path_subj_end	EmitQuad(SPO)	path_src=none,path_pend=arg0,predicate=ctx.path_pend,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 ListPathAfterStep+Bang	path_elem_hop	EmitQuad(SPO)	path_pend=none,path_tail=arg0,object=ctx.path_tail,subject=ctx.path_src,path_src=ctx.path_tail,predicate=ctx.path_pend,frame.top.prev_node=arg0	-	false	payload,true
+ObjTrailAfterStep+Dot	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	object=none,subject=none,path_src=none,path_pend=none,path_tail=none,predicate=none,graph=frame.graph	-	false	state:ExpectSubject
 ListPathAfterStep+Caret	path_elem_hop	EmitQuad(SPO)	path_pend=none,path_tail=arg0,object=ctx.path_src,subject=ctx.path_tail,path_src=ctx.path_tail,predicate=ctx.path_pend,frame.top.prev_node=arg0	-	false	payload,false
+ObjTrailAfterStep+Semicolon	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	object=none,path_src=none,path_pend=none,path_tail=none,predicate=none,graph=frame.graph,subject=frame.subject	-	false	state:ExpectVerbOrEnd
 ListPathAfterStep+Iri	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
+ObjTrailAfterStep+Comma	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	object=none,path_src=none,path_pend=none,path_tail=none,graph=frame.graph,subject=frame.subject,predicate=frame.predicate	-	false	state:ExpectObject
 ListPathAfterStep+Literal	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 ListPathAfterStep+KeywordX	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 ListPathAfterStep+PrefName	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
@@ -314,9 +319,5 @@ ListPathAfterStep+Variable	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=n
 ListPathAfterStep+BlankNode	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 ListPathAfterStep+TripleTerm	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
 ListPathAfterStep+BracketTripleTerm	path_elem_end	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	payload
-ListPathAfterStep+Rparen	path_elem_close	Sequence([EmitQuad(SPO), PopBnp])	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.popped.prev_node=ctx.path_tail,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	-
 ListPathAfterStep+Lparen	path_elem_end_nested	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	push	true	payload,SlotType::Collection,state:ListAfterElem
 ListPathAfterStep+Lbracket	path_elem_end_nested	EmitQuad(SPO)	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.top.prev_node=arg0,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	push	true	payload,SlotType::BnodeProp,state:ListAfterElem
-ObjTrailAfterStep+Comma	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.popped.ret_state=ExpectObject,frame.popped.open_span=ctx.path_tail,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	state:ExpectObject
-ObjTrailAfterStep+Dot	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.popped.open_span=ctx.path_tail,frame.popped.ret_state=ExpectSubject,object=fwd:ctx.path_tail|ctx.path_src,subject=fwd:ctx.path_src|ctx.path_tail	-	false	state:ExpectSubject
-ObjTrailAfterStep+Semicolon	path_obj_close	Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])	path_src=none,path_pend=none,path_tail=none,predicate=ctx.path_pend,frame.popped.open_span=ctx.path_tail,object=fwd:ctx.path_tail|ctx.path_src,frame.popped.ret_state=ExpectVerbOrEnd,subject=fwd:ctx.path_src|ctx.path_tail	-	false	state:ExpectVerbOrEnd

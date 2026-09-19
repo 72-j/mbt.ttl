@@ -53,10 +53,8 @@ fn parse_data_face_rows(text : String) -> Array[DataFaceRow] {
   let rows : Array[DataFaceRow] = []
   for line in text.split("\n") {
     let trimmed = line.trim().to_owned()
-    if trimmed == "" ||
-      trimmed.has_prefix("#") ||
-      trimmed == "v1" ||
-      trimmed == "v2" {
+    // 头只认注释（版本号在 `# format: vN` 注释里，§AN.14 起无裸版本行）
+    if trimmed == "" || trimmed.has_prefix("#") {
       continue
     }
     // §AN.12 **列分隔符 = TAB**（v1 的 `|` 与 `fwd:a|b` 词表撞车 ⇒ 行被静默截断）；

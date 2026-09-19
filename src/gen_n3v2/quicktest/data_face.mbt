@@ -51,11 +51,8 @@ fn parse_data_face_rows(text : String) -> Array[DataFaceRow] {
   let rows : Array[DataFaceRow] = []
   for line in text.split("\n") {
     let trimmed = line.trim().to_owned()
-    if trimmed == "" ||
-      trimmed.has_prefix("#") ||
-      trimmed == "v1" ||
-      trimmed == "v2" ||
-      trimmed == "v3" {
+    // 头只认注释（版本号在 `# format: vN` 注释里，§AN.14 起无裸版本行）
+    if trimmed == "" || trimmed.has_prefix("#") {
       continue
     }
     // §AN.12 **列分隔符 = TAB**：v1 用 `|` 作分隔符，而笔 3a 起的写槽词表含 `fwd:a|b`
@@ -508,11 +505,9 @@ fn data_face_compare(
     // **面外账本**前值（§AN.13 帧面）：帧栈 + 倒装两槽——供 `frame.*` 读源、`is_src`/`is_depth`
     // 与帧写落位取值。
     let before_ledger = face_ledger_of_engine(system.probe)
-    let pop_targets : Array[String] = if row.returns.contains("PopBnp") {
-      ["subject", "predicate", "graph"]
-    } else {
-      []
-    }
+    // §AN.14：弹帧行（`returns` 有 `PopBnp`）的 `writes` 已被投影换成**行终态**
+    // （`pop_writes` 臂：弹帧恢复值 + 尾随 scope 收拾已折进声明）⇒ 下述 scope 复位**不再叠加**。
+    let pop_row = row.returns.contains("PopBnp")
     // ④ **逐项**解析期望：可比项照比，不可比项只把**该项**入册。
     // 负控①实测教训：整行入册会让"行内可比槽"也失去判据（改 `subject=none` 竟不红）⇒ 降为逐项。
     let expected_items : Array[(String, RefId?)] = []
@@ -524,19 +519,11 @@ fn data_face_compare(
         continue
       }
       let raw_target = pair[0].to_owned()
-      // 弹帧行：声明的是**弹帧前**的动作体写槽，而行终态 = 弹帧恢复 + 尾随 scope 复位
-      // （`path_obj_close` 的尾随 scope 是**运行时**由 `ret_state` 定的三态）。
-      // 数据面**尚无位置声明"行终态"** ⇒ 这三槽逐项入册（§AN.13 立项：`pop_writes` 通道）。
-      if pop_targets.contains(raw_target) {
-        incomparable.push(
-          "\{key}·\{raw_target}：弹帧行声明的是**弹帧前**写槽（行终态 = 弹帧恢复 + 尾随 scope 动态复位）⇒ 待 `pop_writes` 通道（§AN.13 立项）",
-        )
-        continue
-      }
-      // 被弹帧上的帧写：该帧后态**不存在**（同上立项；其可观测后果走 `ctx.state` 与身份落位 `object`）
+      // 防御位：被弹帧写（§AN.14 起**投影已剔**——被弹帧后态不存在 ⇒ 值级面不可读）。
+      // 若仍冒头即投影退步（本支只为把它**如实入册**，不做静默跳过；台账钉死会红）。
       if raw_target.has_prefix("frame.popped.") {
         incomparable.push(
-          "\{key}·\{raw_target}：被弹帧后态不存在（后果面 = `ctx.state`/身份落位 `object`）⇒ 待 `pop_writes` 通道（§AN.13 立项）",
+          "\{key}·\{raw_target}：被弹帧写未被投影剔除（§AN.14 退步）",
         )
         continue
       }
@@ -576,8 +563,13 @@ fn data_face_compare(
     let actual = slot_view_of_engine(system.probe.slots())
     let after_ledger = face_ledger_of_engine(system.probe)
     // 发射 scope 复位（债点裁定的结论）：EmitQuad(<Scope>) 之后 loop 按 scope 清槽 ⇒
-    // 期望值 = 写槽后**再**按 scope 置 None。
-    let reset_slots = scope_reset_slots(row.returns)
+    // 期望值 = 写槽后**再**按 scope 置 None。**§AN.14**：弹帧行的声明已是**行终态**
+    // （`pop_writes` 臂把弹帧恢复与尾随收拾一并写实）⇒ 本步跳过，免得二次清槽。
+    let reset_slots : Array[String] = if pop_row {
+      []
+    } else {
+      scope_reset_slots(row.returns)
+    }
     for entry in expected_items {
       let (target, value) = entry
       let expected_value = if reset_slots.contains(target) {
@@ -669,7 +661,6 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
   let mut order_sensitive = 0 // 清-读同槽（需读序数据）
   let mut conditional = 0 // 条件式来源（fwd:/nfwd:）
   let mut arg_unparsed = 0 // `argN` 指向未解析形态（state:X / 布尔 / SlotType::…）——args 列化后单列
-  let mut pop_final = 0 // 弹帧行终态（§AN.13 立项：待 `pop_writes` 声明通道）
   for site in incomparable {
     if site.contains("清-读同槽") {
       order_sensitive = order_sensitive + 1
@@ -678,23 +669,19 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
     } else if site.contains("形态未解析") ||
       site.contains("args 列不足") {
       arg_unparsed = arg_unparsed + 1
-    } else if site.contains("pop_writes") {
-      pop_final = pop_final + 1
     } else {
       off_face = off_face + 1
     }
   }
   debug(
-    "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / arg未解析 \{arg_unparsed} / 弹帧终态 \{pop_final}（待立项）/ 不可达 \{unreachable_rows.length()}",
+    "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / arg未解析 \{arg_unparsed} / 不可达 \{unreachable_rows.length()}",
   )
   assert_eq(unreachable_rows.length(), 0)
-  // **面外归零**（§AN.13）：帧面开面后"观测面外"这一类不再有成员
+  // **四类全零**（§AN.13 帧面 + §AN.14 终态臂）：观测面外已无成员，全部写槽皆有判据
   assert_eq(off_face, 0)
   assert_eq(order_sensitive, 0)
   // 条件式（fwd:/nfwd:）**清零**（§AN.12）：运行时旗读 + `nfwd:` 编译期坍缩
   assert_eq(conditional, 0)
   // `argN` 未解析形态**清零**（§AN.12）：缺省绑定写实（span 事件 ⇒ payload）后 76 项转真判
   assert_eq(arg_unparsed, 0)
-  // 弹帧行终态 **15 项在册**（§AN.13 立项）：这是当前**唯一的**数据面表达力缺口，逐名有据
-  assert_eq(pop_final, 15)
 }
