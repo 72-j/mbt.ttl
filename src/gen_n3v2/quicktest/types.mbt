@@ -8,11 +8,13 @@
 //   Event   → Command  （Span 载荷 → @qcs.Ref[RefId]，多载荷简化为单引用）
 //   Effect  → Response （effect_maps 归一化；错误统一 Error(Int)；其余载荷不进模型）
 //   Context → Model    （仅保留 Span 槽位字段，状态镜像为 ModelState）
+
 ///|
 /// Span 的符号替身：生成期以 Symbolic(Var) 引用，执行期解析为 Concrete(RefId)
 priv struct RefId {
   id : Int
 } derive(Eq, Debug)
+
 ///|
 /// Command - 测试命令类型（源: [[events]]）
 priv enum Command {
@@ -81,6 +83,7 @@ priv enum Response {
   // 系统侧只在 `step_all` 长度 > 1 时包批（单枚仍是原变体，旧口径零迁移）。
   Batch(Array[Response])
 } derive(Eq, Debug)
+
 ///|
 /// ModelState - 纯模型状态枚举（镜像引擎 State 枚举，独立于引擎包）
 priv enum ModelState {
@@ -196,6 +199,7 @@ fn model_empty() -> Model {
     frames: [],
   }
 }
+
 ///|
 /// 符号引用取具体值：生成期 Symbolic 返回 None，执行期 Concrete 返回 Some
 fn ref_id(reference : @qcs.Ref[RefId]) -> RefId? {
@@ -210,8 +214,8 @@ test "n3_quick_machine types: model_empty / ref_id 冒烟" {
   // 初始模型与引用解包
   let model = model_empty()
   assert_eq(model.state, ExpectSubject)
-  let concrete : @qcs.Ref[RefId] = Concrete({ id: 7 })
-  assert_eq(ref_id(concrete), Some({ id: 7 }))
-  let symbolic : @qcs.Ref[RefId] = Symbolic(@qcs.Var::{ id: 0 })
+  let concrete : @qcs.Ref[RefId] = Concrete({ id: 7, })
+  assert_eq(ref_id(concrete), Some({ id: 7, }))
+  let symbolic : @qcs.Ref[RefId] = Symbolic(@qcs.Var::{ id: 0, })
   assert_true(ref_id(symbolic) is None)
 }

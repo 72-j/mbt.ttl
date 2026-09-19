@@ -7,6 +7,7 @@
 // B 式（直接引用）: 业务函数来自 business.mbt, 组装点唯一;
 // system_call 可替换 —— 反例注入（验证机器真能发现系统漂移）
 // script 模式提供游标生成器, 供 run_assert_check 固定脚本复用同一组装
+
 ///|
 /// 命令名（覆盖率报告用, 源 [[events]]）
 fn command_name(command : Command) -> String {
@@ -54,28 +55,29 @@ fn command_name(command : Command) -> String {
     EOF => "EOF"
   }
 }
+
 ///|
 /// 组装状态机（B 式直接引用）: 业务函数来自 business.mbt;
 /// system_call 可替换 —— 反例注入（验证机器真能发现系统漂移）
 fn quick_state_machine(
-  system_call~ : (Command, System) -> Response = run_command,
-  script~ : Array[Command]? = None,
+  system_call? : (Command, System) -> Response = run_command,
+  script? : Array[Command]? = None,
 ) -> @qcs.StateMachine[
-    Model,
-    Model,
-    Command,
-    Command,
-    Response,
-    Response,
-    RefId,
-    System,
-  ] {
+  Model,
+  Model,
+  Command,
+  Command,
+  Response,
+  Response,
+  RefId,
+  System,
+] {
   let cursor : Array[Int] = [0]
   @qcs.StateMachine::new(
     init_symbolic_model=model_empty,
     init_concrete_model=model_empty,
     init_system=() => system_init(),
-    generator=(model, size, rng) =>
+    generator=(model, size, rng) => {
       match script {
         Some(commands) => {
           let index = cursor[0]
@@ -87,7 +89,8 @@ fn quick_state_machine(
           }
         }
         None => generate_command(model, size, rng)
-      },
+      }
+    },
     mock=mock_command,
     transition_symbolic=transition,
     transition_concrete=transition,
@@ -101,7 +104,7 @@ fn quick_state_machine(
     run_command=(command, system) => system_call(command, system),
     bind_response~,
     cleanup=(_model, _system) => (),
-    label=(_model, _command, response) =>
+    label=(_model, _command, response) => {
       match response {
         Continue => ["resp:Continue"]
         EmitQuad(_) => ["resp:EmitQuad"]
@@ -118,7 +121,8 @@ fn quick_state_machine(
               Batch(_) => "resp:batch"
             }
           })
-      },
+      }
+    },
     command_name~,
   )
 }
@@ -128,7 +132,7 @@ test "n3_quick_machine state_machine: 组装冒烟" {
   // 组装冒烟: 默认回调与脚本模式可构建（回调接线正确性由编译器保证）
   let sm = quick_state_machine()
   ignore(sm)
-  let scripted = quick_state_machine(script = Some([Is]))
+  let scripted = quick_state_machine(script=Some([Is]))
   ignore(scripted)
   assert_eq(command_name(Is), "Is")
 }

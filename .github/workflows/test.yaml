@@ -58,11 +58,12 @@ jobs:
       - name: Static gates
         run: |
           moon check --deny-warn
-          # 格式门：**豁免再生产物路径** `src/gen_n3v2/quicktest/`。
-          # 口径裁定（延续 §10.4 产线决定）：n3v2 实例是再生件，按**外层口径**的格式化通道落盘；
-          # 内仓口径（80 列激进折行）会把同一文件重排，两边不可能同时满足（§Q.3-F1 实测）。
-          # 用 `--warn` 而不是 `--check`：它列出**全部**未格式化文件，便于按路径豁免而不漏新目录。
-          offenders="$(moon fmt --warn 2>&1 | sed -n 's/^File not formatted: //p' | grep -v '/src/gen_n3v2/quicktest/' || true)"
+          # 格式门：**全路径，无豁免**（2026-09-19 起；N5 治本）。
+          # 勘误（§AL）：旧版按路径豁免 `src/gen_n3v2/quicktest/`，理由是"再生件按外层口径落盘、
+          # 内仓口径会重排"。实测证伪——trig 实例在 scratch 上 fmt 零变化，n3v2 实例只是**没跟工具链
+          # 格式化**（现行口径下 model_exec 1119 → 4659 行）。已按"入库形 = fmt(生成形)"统一重排，
+          # 豁免清零；用 `--warn` 而不是 `--check`：它列出全部未格式化文件，不漏新目录。
+          offenders="$(moon fmt --warn 2>&1 | sed -n 's/^File not formatted: //p' || true)"
           if [ -n "$offenders" ]; then
             echo "::error::以下文件未按内仓口径格式化（再生件路径已按 §Q.3-F1 裁定豁免）："
             echo "$offenders"

@@ -233,37 +233,110 @@ test "锚点·符号期槽位保持" {
 /// 口径）在每一行都成立，兼当全行体无爆炸的冒烟 + 帧哨兵点亮。
 test "锚点·符号期全矩阵扫: 槽位保持语义逐行成立" {
   let states = [
-    ExpectSubject, ExpectPredicate, ExpectObject, ExpectDotOrGraph,
-    ExpectDirectiveKind, ExpectPrefixName, ExpectPrefixIri, ExpectBaseIri,
-    ExpectVersionLiteral, ExpectDirectiveEnd, ExpectKeywordsList,
-    ExpectVerbOrEnd, ExpectVerbOrDot, ExpectVerbRequired, ExpectTildeEnd,
-    AnnotExpectVerb, AnnotExpectVerbTail, AnnotExpectObject, AnnotExpectEnd,
-    BnpExpectPredicate, BnpExpectIdNode, BnpExpectObject, BnpAfterObject,
-    BnpIdAfterClose, ListExpectElemOrEnd, ListAfterElem,
-    FormulaExpectSubject, FormulaExpectPredicate, FormulaExpectObject,
-    FormulaAfterObject, PathExpectVerb, PathAfterStep,
-    FormulaPathExpectVerb, FormulaPathAfterStep, ExpectIsProp, ExpectIsOf,
-    BnpExpectIsProp, BnpExpectIsOf, FormulaExpectIsProp, FormulaExpectIsOf,
-    QuantExpectVar, QuantExpectVarOrDot, FormulaDirectiveKind,
-    FormulaQuantExpectVar, FormulaQuantExpectVarOrDot, SubjTrailExpectVerb,
-    SubjTrailAfterStep, SubjTrailVerbDone, SubjTrailExpectVerbFormula,
-    SubjTrailAfterStepFormula, SubjTrailVerbDoneFormula, ListPathExpectVerb,
-    ListPathAfterStep, ObjTrailExpectVerb, ObjTrailAfterStep,
+    ExpectSubject,
+    ExpectPredicate,
+    ExpectObject,
+    ExpectDotOrGraph,
+    ExpectDirectiveKind,
+    ExpectPrefixName,
+    ExpectPrefixIri,
+    ExpectBaseIri,
+    ExpectVersionLiteral,
+    ExpectDirectiveEnd,
+    ExpectKeywordsList,
+    ExpectVerbOrEnd,
+    ExpectVerbOrDot,
+    ExpectVerbRequired,
+    ExpectTildeEnd,
+    AnnotExpectVerb,
+    AnnotExpectVerbTail,
+    AnnotExpectObject,
+    AnnotExpectEnd,
+    BnpExpectPredicate,
+    BnpExpectIdNode,
+    BnpExpectObject,
+    BnpAfterObject,
+    BnpIdAfterClose,
+    ListExpectElemOrEnd,
+    ListAfterElem,
+    FormulaExpectSubject,
+    FormulaExpectPredicate,
+    FormulaExpectObject,
+    FormulaAfterObject,
+    PathExpectVerb,
+    PathAfterStep,
+    FormulaPathExpectVerb,
+    FormulaPathAfterStep,
+    ExpectIsProp,
+    ExpectIsOf,
+    BnpExpectIsProp,
+    BnpExpectIsOf,
+    FormulaExpectIsProp,
+    FormulaExpectIsOf,
+    QuantExpectVar,
+    QuantExpectVarOrDot,
+    FormulaDirectiveKind,
+    FormulaQuantExpectVar,
+    FormulaQuantExpectVarOrDot,
+    SubjTrailExpectVerb,
+    SubjTrailAfterStep,
+    SubjTrailVerbDone,
+    SubjTrailExpectVerbFormula,
+    SubjTrailAfterStepFormula,
+    SubjTrailVerbDoneFormula,
+    ListPathExpectVerb,
+    ListPathAfterStep,
+    ObjTrailExpectVerb,
+    ObjTrailAfterStep,
   ]
   let sym : @qcs.Ref[RefId] = Symbolic(@qcs.Var::{ id: 0, })
   let commands = [
-    Iri(sym), BlankNode(sym), Literal(sym), PrefName(sym), TripleTerm(sym),
-    BracketTripleTerm(sym), KeywordA(sym), Variable(sym), KeywordX(sym),
-    Equals(sym), Is, Of, Has, At, PrefixKw, BaseKw, VersionKw, Tilde,
-    AnnotStart, AnnotEnd, ForAllKw, ForSomeKw, KeywordsKw, Comma, Semicolon,
-    Dot, Lbrace(sym), Rbrace, Lbracket(sym), Rbracket, Lparen(sym), Rparen,
-    Anon(sym), Bang(sym), Caret(sym), Implies(sym), ImpliedBy(sym),
-    Unknown(sym), Id, Invert, EOF,
+    Iri(sym),
+    BlankNode(sym),
+    Literal(sym),
+    PrefName(sym),
+    TripleTerm(sym),
+    BracketTripleTerm(sym),
+    KeywordA(sym),
+    Variable(sym),
+    KeywordX(sym),
+    Equals(sym),
+    Is,
+    Of,
+    Has,
+    At,
+    PrefixKw,
+    BaseKw,
+    VersionKw,
+    Tilde,
+    AnnotStart,
+    AnnotEnd,
+    ForAllKw,
+    ForSomeKw,
+    KeywordsKw,
+    Comma,
+    Semicolon,
+    Dot,
+    Lbrace(sym),
+    Rbrace,
+    Lbracket(sym),
+    Rbracket,
+    Lparen(sym),
+    Rparen,
+    Anon(sym),
+    Bang(sym),
+    Caret(sym),
+    Implies(sym),
+    ImpliedBy(sym),
+    Unknown(sym),
+    Id,
+    Invert,
+    EOF,
   ]
   for state in states {
     for command in commands {
       // 符号期口径：全对不炸、照常返回（穷尽性由表结构与类型保证）
-      let (next, _) = model_execute({ ..model_empty(), state: state }, command)
+      let (next, _) = model_execute({ ..model_empty(), state, }, command)
       ignore(next)
     }
   }
@@ -271,30 +344,30 @@ test "锚点·符号期全矩阵扫: 槽位保持语义逐行成立" {
   let keep = {
     ..model_empty(),
     state: ExpectPredicate,
-    predicate: Some({ id: 9 }),
+    predicate: Some({ id: 9, }),
   }
   let (kept, _) = model_execute(keep, Equals(sym))
-  assert_eq(kept.predicate, Some({ id: 9 })) // None 半区保持
+  assert_eq(kept.predicate, Some({ id: 9, })) // None 半区保持
   assert_eq(kept.state, ExpectObject) // 状态照常推进
   // 逐值锚 2：trail 行 Symbolic 载荷——path_tail 保持、fwd 照常拨真
   let trail = {
     ..model_empty(),
     state: SubjTrailAfterStep,
-    path_src: Some({ id: 1 }),
-    path_pend: Some({ id: 3 }),
-    path_tail: Some({ id: 2 }),
+    path_src: Some({ id: 1, }),
+    path_pend: Some({ id: 3, }),
+    path_tail: Some({ id: 2, }),
   }
   let (tnext, tres) = model_execute(trail, Bang(sym))
   assert_true(tres is EmitQuad(_))
-  assert_eq(tnext.path_tail, Some({ id: 2 })) // Symbolic ⇒ 保持
+  assert_eq(tnext.path_tail, Some({ id: 2, })) // Symbolic ⇒ 保持
   assert_eq(tnext.path_fwd, true) // hop 后照常拨 fwd
   // 逐值锚 3：frame_push 符号期哨兵 RefId(0)
   let (fnext, _) = model_execute(
-    { ..model_empty(), state: ExpectObject },
+    { ..model_empty(), state: ExpectObject, },
     Lparen(sym),
   )
   assert_eq(fnext.frames.length(), 1)
-  assert_eq(fnext.frames[0].open_span, { id: 0 })
+  assert_eq(fnext.frames[0].open_span, { id: 0, })
 }
 
 ///|
@@ -358,7 +431,10 @@ test "锚点·负控: 未注入脚本经全组装通过" {
 /// 占位同口径）。此五案在权重 0 时代被随机门掩盖（组合路径，census 逐对新鲜复位
 /// 看不见）：谓位案 F3 曾是**真分道**（引擎 (1,7,6) vs 模型 (1,None,6)，as_pred
 /// 缺口的公式孪生），弹帧回写占位后两侧同步。
-fn anchor_expect_quads(script : Array[Command], expected : Array[Quad]) -> Unit raise {
+fn anchor_expect_quads(
+  script : Array[Command],
+  expected : Array[Quad],
+) -> Unit raise {
   let emitted_model = anchor_model_emitted_quads(script)
   assert_eq(emitted_model.length(), expected.length())
   for i = 0; i < expected.length(); i = i + 1 {
@@ -377,42 +453,111 @@ test "锚点·公式帧族: 三位置 + 空式 + 嵌套（罩内压制 + 弹帧�
   // F1 宾位 + 罩内两条（; 续）：全压制；弹帧后 Dot 发外层 (1,2,9)
   anchor_expect_quads(
     [
-      Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbrace(Concrete({ id: 9, })),
-      Iri(Concrete({ id: 3, })), Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })),
-      Semicolon, Iri(Concrete({ id: 6, })), Iri(Concrete({ id: 7, })), Rbrace, Dot,
+      Iri(Concrete({ id: 1, })),
+      Iri(Concrete({ id: 2, })),
+      Lbrace(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 3, })),
+      Iri(Concrete({ id: 4, })),
+      Iri(Concrete({ id: 5, })),
+      Semicolon,
+      Iri(Concrete({ id: 6, })),
+      Iri(Concrete({ id: 7, })),
+      Rbrace,
+      Dot,
     ],
-    [{ subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 9 }), graph: None }],
+    [
+      {
+        subject: Some({ id: 1, }),
+        predicate: Some({ id: 2, }),
+        object: Some({ id: 9, }),
+        graph: None,
+      },
+    ],
   )
   // F2 主位：弹帧回写主槽（as_subject 既有机械），后续三元组发 (8,2,6)
   anchor_expect_quads(
     [
-      Lbrace(Concrete({ id: 8, })), Iri(Concrete({ id: 3, })), Iri(Concrete({ id: 4, })),
-      Iri(Concrete({ id: 5, })), Rbrace, Iri(Concrete({ id: 2, })), Iri(Concrete({ id: 6, })), Dot,
+      Lbrace(Concrete({ id: 8, })),
+      Iri(Concrete({ id: 3, })),
+      Iri(Concrete({ id: 4, })),
+      Iri(Concrete({ id: 5, })),
+      Rbrace,
+      Iri(Concrete({ id: 2, })),
+      Iri(Concrete({ id: 6, })),
+      Dot,
     ],
-    [{ subject: Some({ id: 8 }), predicate: Some({ id: 2 }), object: Some({ id: 6 }), graph: None }],
+    [
+      {
+        subject: Some({ id: 8, }),
+        predicate: Some({ id: 2, }),
+        object: Some({ id: 6, }),
+        graph: None,
+      },
+    ],
   )
   // F3 谓位（权重 0 时代被掩盖的真分道，历史反例族）：弹帧回写谓词槽，发 (1,7,6)
   anchor_expect_quads(
     [
-      Iri(Concrete({ id: 1, })), Lbrace(Concrete({ id: 7, })), Iri(Concrete({ id: 3, })),
-      Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })), Rbrace, Iri(Concrete({ id: 6, })), Dot,
+      Iri(Concrete({ id: 1, })),
+      Lbrace(Concrete({ id: 7, })),
+      Iri(Concrete({ id: 3, })),
+      Iri(Concrete({ id: 4, })),
+      Iri(Concrete({ id: 5, })),
+      Rbrace,
+      Iri(Concrete({ id: 6, })),
+      Dot,
     ],
-    [{ subject: Some({ id: 1 }), predicate: Some({ id: 7 }), object: Some({ id: 6 }), graph: None }],
+    [
+      {
+        subject: Some({ id: 1, }),
+        predicate: Some({ id: 7, }),
+        object: Some({ id: 6, }),
+        graph: None,
+      },
+    ],
   )
   // F4 空公式（开括号即收口）：发 (1,2,7)
   anchor_expect_quads(
-    [Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbrace(Concrete({ id: 7, })), Rbrace, Dot],
-    [{ subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 7 }), graph: None }],
+    [
+      Iri(Concrete({ id: 1, })),
+      Iri(Concrete({ id: 2, })),
+      Lbrace(Concrete({ id: 7, })),
+      Rbrace,
+      Dot,
+    ],
+    [
+      {
+        subject: Some({ id: 1, }),
+        predicate: Some({ id: 2, }),
+        object: Some({ id: 7, }),
+        graph: None,
+      },
+    ],
   )
   // F5 嵌套（公式套公式，宾位）：双层罩全压制，外层弹净后发 (1,2,9)
   anchor_expect_quads(
     [
-      Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbrace(Concrete({ id: 9, })),
-      Iri(Concrete({ id: 3, })), Iri(Concrete({ id: 4, })), Lbrace(Concrete({ id: 10, })),
-      Iri(Concrete({ id: 5, })), Iri(Concrete({ id: 6, })), Iri(Concrete({ id: 7, })),
-      Rbrace, Rbrace, Dot,
+      Iri(Concrete({ id: 1, })),
+      Iri(Concrete({ id: 2, })),
+      Lbrace(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 3, })),
+      Iri(Concrete({ id: 4, })),
+      Lbrace(Concrete({ id: 10, })),
+      Iri(Concrete({ id: 5, })),
+      Iri(Concrete({ id: 6, })),
+      Iri(Concrete({ id: 7, })),
+      Rbrace,
+      Rbrace,
+      Dot,
     ],
-    [{ subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 9 }), graph: None }],
+    [
+      {
+        subject: Some({ id: 1, }),
+        predicate: Some({ id: 2, }),
+        object: Some({ id: 9, }),
+        graph: None,
+      },
+    ],
   )
 }
 
@@ -425,13 +570,27 @@ test "锚点·公式帧族: 三位置 + 空式 + 嵌套（罩内压制 + 弹帧�
 test "锚点·谓位 Bnp 反例复跑: 内层 + 占位回写双枚值级钉死" {
   anchor_expect_quads(
     [
-      BlankNode(Concrete({ id: 3, })), Lbracket(Concrete({ id: 59, })),
-      Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })), Rbracket,
-      Literal(Concrete({ id: 58, })), Semicolon,
+      BlankNode(Concrete({ id: 3, })),
+      Lbracket(Concrete({ id: 59, })),
+      Iri(Concrete({ id: 4, })),
+      Iri(Concrete({ id: 5, })),
+      Rbracket,
+      Literal(Concrete({ id: 58, })),
+      Semicolon,
     ],
     [
-      { subject: Some({ id: 59 }), predicate: Some({ id: 4 }), object: Some({ id: 5 }), graph: None },
-      { subject: Some({ id: 3 }), predicate: Some({ id: 59 }), object: Some({ id: 58 }), graph: None },
+      {
+        subject: Some({ id: 59, }),
+        predicate: Some({ id: 4, }),
+        object: Some({ id: 5, }),
+        graph: None,
+      },
+      {
+        subject: Some({ id: 3, }),
+        predicate: Some({ id: 59, }),
+        object: Some({ id: 58, }),
+        graph: None,
+      },
     ],
   )
 }
@@ -444,58 +603,146 @@ test "锚点·Bnp 组合族九案（放开同笔确认 1）" {
   // B1 宾位：内层 (9,4,5) 在 ]（PredObj 粒度），外层 (1,2,9) 在 .（SPO 粒度）
   anchor_expect_quads(
     [
-      Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbracket(Concrete({ id: 9, })),
-      Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })), Rbracket, Dot,
+      Iri(Concrete({ id: 1, })),
+      Iri(Concrete({ id: 2, })),
+      Lbracket(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 4, })),
+      Iri(Concrete({ id: 5, })),
+      Rbracket,
+      Dot,
     ],
     [
-      { subject: Some({ id: 9 }), predicate: Some({ id: 4 }), object: Some({ id: 5 }), graph: None },
-      { subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 9 }), graph: None },
+      {
+        subject: Some({ id: 9, }),
+        predicate: Some({ id: 4, }),
+        object: Some({ id: 5, }),
+        graph: None,
+      },
+      {
+        subject: Some({ id: 1, }),
+        predicate: Some({ id: 2, }),
+        object: Some({ id: 9, }),
+        graph: None,
+      },
     ],
   )
   // B2 主位：内层 (8,4,5) 在 ]，外层 (8,2,6) 在 .
   anchor_expect_quads(
     [
-      Lbracket(Concrete({ id: 8, })), Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })),
-      Rbracket, Iri(Concrete({ id: 2, })), Iri(Concrete({ id: 6, })), Dot,
+      Lbracket(Concrete({ id: 8, })),
+      Iri(Concrete({ id: 4, })),
+      Iri(Concrete({ id: 5, })),
+      Rbracket,
+      Iri(Concrete({ id: 2, })),
+      Iri(Concrete({ id: 6, })),
+      Dot,
     ],
     [
-      { subject: Some({ id: 8 }), predicate: Some({ id: 4 }), object: Some({ id: 5 }), graph: None },
-      { subject: Some({ id: 8 }), predicate: Some({ id: 2 }), object: Some({ id: 6 }), graph: None },
+      {
+        subject: Some({ id: 8, }),
+        predicate: Some({ id: 4, }),
+        object: Some({ id: 5, }),
+        graph: None,
+      },
+      {
+        subject: Some({ id: 8, }),
+        predicate: Some({ id: 2, }),
+        object: Some({ id: 6, }),
+        graph: None,
+      },
     ],
   )
   // B4 嵌套（bnp⊃bnp 宾位）：三枚 (10,6,7) (9,4,10) (1,9,14)
   anchor_expect_quads(
     [
-      Iri(Concrete({ id: 1, })), Lbracket(Concrete({ id: 9, })), Iri(Concrete({ id: 4, })),
-      Lbracket(Concrete({ id: 10, })), Iri(Concrete({ id: 6, })), Iri(Concrete({ id: 7, })),
-      Rbracket, Rbracket, Iri(Concrete({ id: 14, })), Dot,
+      Iri(Concrete({ id: 1, })),
+      Lbracket(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 4, })),
+      Lbracket(Concrete({ id: 10, })),
+      Iri(Concrete({ id: 6, })),
+      Iri(Concrete({ id: 7, })),
+      Rbracket,
+      Rbracket,
+      Iri(Concrete({ id: 14, })),
+      Dot,
     ],
     [
-      { subject: Some({ id: 10 }), predicate: Some({ id: 6 }), object: Some({ id: 7 }), graph: None },
-      { subject: Some({ id: 9 }), predicate: Some({ id: 4 }), object: Some({ id: 10 }), graph: None },
-      { subject: Some({ id: 1 }), predicate: Some({ id: 9 }), object: Some({ id: 14 }), graph: None },
+      {
+        subject: Some({ id: 10, }),
+        predicate: Some({ id: 6, }),
+        object: Some({ id: 7, }),
+        graph: None,
+      },
+      {
+        subject: Some({ id: 9, }),
+        predicate: Some({ id: 4, }),
+        object: Some({ id: 10, }),
+        graph: None,
+      },
+      {
+        subject: Some({ id: 1, }),
+        predicate: Some({ id: 9, }),
+        object: Some({ id: 14, }),
+        graph: None,
+      },
     ],
   )
   // B5 罩内谓位（bnp-as-pred in formula）：罩内发射全压制，仅 (1,2,9) 一枚
   anchor_expect_quads(
     [
-      Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbrace(Concrete({ id: 9, })),
-      Iri(Concrete({ id: 3, })), Lbracket(Concrete({ id: 7, })), Iri(Concrete({ id: 4, })),
-      Iri(Concrete({ id: 5, })), Rbracket, Iri(Concrete({ id: 6, })), Rbrace, Dot,
+      Iri(Concrete({ id: 1, })),
+      Iri(Concrete({ id: 2, })),
+      Lbrace(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 3, })),
+      Lbracket(Concrete({ id: 7, })),
+      Iri(Concrete({ id: 4, })),
+      Iri(Concrete({ id: 5, })),
+      Rbracket,
+      Iri(Concrete({ id: 6, })),
+      Rbrace,
+      Dot,
     ],
-    [{ subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 9 }), graph: None }],
+    [
+      {
+        subject: Some({ id: 1, }),
+        predicate: Some({ id: 2, }),
+        object: Some({ id: 9, }),
+        graph: None,
+      },
+    ],
   )
   // B6 逗号：内层两枚 (9,4,5) (9,4,6) + 外层 (1,2,9)
   anchor_expect_quads(
     [
-      Iri(Concrete({ id: 1, })), Iri(Concrete({ id: 2, })), Lbracket(Concrete({ id: 9, })),
-      Iri(Concrete({ id: 4, })), Iri(Concrete({ id: 5, })), Comma, Iri(Concrete({ id: 6, })),
-      Rbracket, Dot,
+      Iri(Concrete({ id: 1, })),
+      Iri(Concrete({ id: 2, })),
+      Lbracket(Concrete({ id: 9, })),
+      Iri(Concrete({ id: 4, })),
+      Iri(Concrete({ id: 5, })),
+      Comma,
+      Iri(Concrete({ id: 6, })),
+      Rbracket,
+      Dot,
     ],
     [
-      { subject: Some({ id: 9 }), predicate: Some({ id: 4 }), object: Some({ id: 5 }), graph: None },
-      { subject: Some({ id: 9 }), predicate: Some({ id: 4 }), object: Some({ id: 6 }), graph: None },
-      { subject: Some({ id: 1 }), predicate: Some({ id: 2 }), object: Some({ id: 9 }), graph: None },
+      {
+        subject: Some({ id: 9, }),
+        predicate: Some({ id: 4, }),
+        object: Some({ id: 5, }),
+        graph: None,
+      },
+      {
+        subject: Some({ id: 9, }),
+        predicate: Some({ id: 4, }),
+        object: Some({ id: 6, }),
+        graph: None,
+      },
+      {
+        subject: Some({ id: 1, }),
+        predicate: Some({ id: 2, }),
+        object: Some({ id: 9, }),
+        graph: None,
+      },
     ],
   )
 }

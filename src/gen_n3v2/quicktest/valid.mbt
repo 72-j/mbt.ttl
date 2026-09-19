@@ -6,6 +6,7 @@
 // ========================================
 // valid 是客户端契约：只有转移表声明的 (状态, 命令) 组合合法，
 // 生成器据此避免非法命令序列（Deadlock 防护）
+
 ///|
 /// 检查命令在当前模型状态下是否合法（源: [[transitions]]）
 fn valid(model : Model, cmd : Command) -> Bool {
@@ -453,6 +454,7 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (_, _) => false
   }
 }
+
 ///|
 /// 前置条件（客户端契约, quickcheck_statemachine 接口形态）
 fn precondition(model : Model, command : Command) -> @qcs.Logic {
@@ -463,8 +465,8 @@ fn precondition(model : Model, command : Command) -> @qcs.Logic {
 test "n3_quick_machine valid: 转移表白名单冒烟" {
   // 转移表白名单冒烟
   let model = model_empty()
-  assert_true(valid(model, Iri(Concrete({ id: 1 }))))
-  assert_false(valid(model, BracketTripleTerm(Concrete({ id: 1 }))))
-  let logic = precondition(model, Iri(Concrete({ id: 1 })))
+  assert_true(valid(model, Iri(Concrete({ id: 1, }))))
+  assert_false(valid(model, BracketTripleTerm(Concrete({ id: 1, }))))
+  let logic = precondition(model, Iri(Concrete({ id: 1, })))
   assert_true(logic is @qcs.Logic::Predicate(..))
 }

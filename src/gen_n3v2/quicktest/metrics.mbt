@@ -440,9 +440,9 @@ fn reachable_coverage_account() -> (Array[String], Array[String], Array[String])
 /// 可达覆盖账的**不可达项**（不进分母，另由结构钉子钉住）：全部命令名 − 分母。
 fn unreachable_command_names() -> Array[String] {
   let denominator = reachable_witness_paths().map(fn(pair) { pair.0 })
-  all_commands().map(fn(command) { command_name(command) }).filter(fn(name) {
-    !denominator.contains(name)
-  })
+  all_commands()
+  .map(fn(command) { command_name(command) })
+  .filter(fn(name) { !denominator.contains(name) })
 }
 
 ///|
@@ -457,10 +457,15 @@ test "n3v2 P5.6 可达覆盖门（路径驱动·缺口清零）" {
   if missing.length() > 0 {
     debug("缺口清单：\{missing.join(",")}")
   }
-  debug("不可达（不进分母，结构钉子钉住）：\{unreachable_names.join(",")}")
+  debug(
+    "不可达（不进分母，结构钉子钉住）：\{unreachable_names.join(",")}",
+  )
   assert_true(denominator.length() > 0)
   assert_eq(missing, [])
-  assert_eq(denominator.length() + unreachable_names.length(), all_commands().length())
+  assert_eq(
+    denominator.length() + unreachable_names.length(),
+    all_commands().length(),
+  )
 }
 
 ///|
@@ -774,7 +779,10 @@ fn record_slot_root(
 ///|
 /// 集合漂移（**不排序**：`sort_by` 在本版语义不可靠，见 `codegen_test.mbt` ctx 风险④）——
 /// 长度 + 双向 contains；两向都点名：新增 = 新缺口，消失 = 已清偿（请同笔收紧台账）。
-fn site_set_drift(actual : Array[String], pinned : Array[String]) -> Array[String] {
+fn site_set_drift(
+  actual : Array[String],
+  pinned : Array[String],
+) -> Array[String] {
   let drift : Array[String] = []
   for site in actual {
     if !pinned.contains(site) {
@@ -783,11 +791,15 @@ fn site_set_drift(actual : Array[String], pinned : Array[String]) -> Array[Strin
   }
   for site in pinned {
     if !actual.contains(site) {
-      drift.push("值级台账条目已消失（清偿或改判 ⇒ 同笔收紧台账）：\{site}")
+      drift.push(
+        "值级台账条目已消失（清偿或改判 ⇒ 同笔收紧台账）：\{site}",
+      )
     }
   }
   if actual.length() != pinned.length() {
-    drift.push("值级台账条数 \{actual.length()} ≠ 在册 \{pinned.length()}（集合逐名比对，重复项也算漂移）")
+    drift.push(
+      "值级台账条数 \{actual.length()} ≠ 在册 \{pinned.length()}（集合逐名比对，重复项也算漂移）",
+    )
   }
   drift
 }
@@ -823,8 +835,7 @@ fn site_set_drift(actual : Array[String], pinned : Array[String]) -> Array[Strin
 fn pinned_slot_roots() -> Array[String] {
   // A+B+C+F+D+E 六族全清偿（2026-09-19 F+D+E 合笔，30→0）——空表 = 棘轮全量哨：
   // 任何新冒值级分道即红，请按 const.md §5.2 同笔入册。
-  [
-  ]
+  []
 }
 
 ///|
@@ -833,9 +844,9 @@ fn pinned_slot_roots() -> Array[String] {
 /// 变异两处：一枚引用槽（`path_pend`）+ 一枚布尔槽（`path_fwd`）——两把尺都要咬。
 test "值级门负控：槽位差异逐槽点名（判据本体）" {
   let base : SlotView = {
-    subject: Some({ id: 1 }),
-    predicate: Some({ id: 2 }),
-    object: Some({ id: 3 }),
+    subject: Some({ id: 1, }),
+    predicate: Some({ id: 2, }),
+    object: Some({ id: 3, }),
     graph: None,
     path_src: None,
     path_pend: None,
@@ -845,18 +856,18 @@ test "值级门负控：槽位差异逐槽点名（判据本体）" {
   // 正控：等价视图 ⇒ 无差异
   assert_eq(slot_view_diff(base, base), "")
   // ① 引用槽变异（`None` → `Some(9)`）
-  let pend_changed : SlotView = { ..base, path_pend: Some({ id: 9 }) }
+  let pend_changed : SlotView = { ..base, path_pend: Some({ id: 9, }), }
   let diff1 = slot_view_diff(base, pend_changed)
   assert_true(diff1.contains("path_pend"))
   assert_true(diff1.contains("Some(9)"))
   assert_false(diff1.contains("subject"))
   // ② 布尔槽变异（方向旗标反了）
-  let fwd_flipped : SlotView = { ..base, path_fwd: true }
+  let fwd_flipped : SlotView = { ..base, path_fwd: true, }
   let diff2 = slot_view_diff(base, fwd_flipped)
   assert_true(diff2.contains("path_fwd"))
   assert_true(diff2.contains("true"))
   // ③ 多槽同时变 ⇒ 全部点名（值级门不做"首个差异就返回"的省事写法）
-  let both : SlotView = { ..pend_changed, graph: Some({ id: 4 }) }
+  let both : SlotView = { ..pend_changed, graph: Some({ id: 4, }), }
   let diff3 = slot_view_diff(base, both)
   assert_true(diff3.contains("path_pend"))
   assert_true(diff3.contains("graph"))
@@ -1025,7 +1036,9 @@ test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状
   for v in violations {
     debug("  违例：\{v}")
   }
-  debug("值级槽位根因：\{slot_roots.length()} 处（每探针首处；R-20 台账）")
+  debug(
+    "值级槽位根因：\{slot_roots.length()} 处（每探针首处；R-20 台账）",
+  )
   for root in slot_roots {
     debug("  值级根因：\{root}")
   }
