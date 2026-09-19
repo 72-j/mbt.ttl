@@ -100,11 +100,10 @@ fn run_assert_check_for(
 }
 
 ///|
-/// 覆盖率门配置：单条长用例（cases=1）+ 要求覆盖全部**可达**命令名。
-/// 注意 qcs 的覆盖判定是**逐用例**的（`CoverageFailed` 一票否决），所以这里
-/// 用单条长序列而不是把要求挂到随机多用例上。
-/// 可达集合 = 转移表里有出边的命令：PrefName / EOF 在本 FSM 无转移（valid 表兜底
-/// `(_, _) => false`），因此**不能**进要求列表，否则必然 CoverageFailed。
+/// **语义路径（label）门配置**：单条长用例（cases=1）+ 要求覆盖四个真能走到的响应分档。
+/// 说明（2026-09-19 分母同源改造）：**命令名**维度已迁到 `reachable_coverage_account()`
+/// （路径驱动、分母由 `reachable_witness_paths()` 派生、分子取自执行记录）；
+/// 本 config 只保留 label 维度，避免同一个分母出现第二个手抄来源。
 fn coverage_gate_config() -> @qcs.RunConfig {
   {
     ..quick_run_config(),
@@ -116,10 +115,59 @@ fn coverage_gate_config() -> @qcs.RunConfig {
     required_labels: [
       "resp:continue", "resp:emit", "resp:emit:default", "resp:emit:graph",
     ],
-    required_command_names: [
-      "Iri", "BlankNode", "Literal", "TripleTerm", "Comma", "Semicolon", "Dot", "Unknown",
-    ],
+    required_command_names: [],
   }
+}
+
+///|
+/// 可达覆盖 **逐路径用例配置**：一条见证路径 = 一个用例，只扛它自己那一个命令名。
+/// 依据：qcs 覆盖判定是**逐用例**的（`CoverageFailed` 一票否决）⇒ 多条路径塞一个用例会互相污染状态。
+fn path_coverage_config(path : Array[Command], name : String) -> @qcs.RunConfig {
+  {
+    ..quick_run_config(),
+    cases: 1,
+    max_commands: path.length(),
+    required_labels: [],
+    required_command_names: [name],
+  }
+}
+
+///|
+/// **可达命令名覆盖账（分子必须来自执行记录）**：
+///   分母 = `reachable_witness_paths()` 派生（起点初始态、边 = `valid`，不可达项不进分母）；
+///   分子 = 各条见证路径**实际执行**后 `RunReport.command_distribution` 的并集
+///          （**不是**路径声明覆盖了谁 —— 声明与执行脱钩就是假绿）；
+///   缺口 = 分母 − 分子（逐名列出，清空即门绿）。
+/// 逐条独立起跑 + 干净复位：每条路径一个新 `check`、新状态机实例。
+/// 用例漂移（模型 ≠ 引擎）由 `assert_check` 直接抛，不混进"缺口"。
+fn reachable_coverage_account() -> (Array[String], Array[String], Array[String]) raise {
+  let witnesses = reachable_witness_paths()
+  let denominator = witnesses.map(fn(pair) { pair.0 })
+  let covered : Array[String] = []
+  for pair in witnesses {
+    let (name, path) = pair
+    let report = @qcs.assert_check(
+      quick_state_machine(script=Some(path)),
+      config=path_coverage_config(path, name),
+    )
+    for entry in report.command_distribution {
+      let (seen, _) = entry
+      if !covered.contains(seen) {
+        covered.push(seen)
+      }
+    }
+  }
+  let missing = denominator.filter(fn(name) { !covered.contains(name) })
+  (denominator, covered, missing)
+}
+
+///|
+/// 可达覆盖账的**不可达项**（不进分母，另由结构钉子钉住）：全部命令名 − 分母。
+fn unreachable_command_names() -> Array[String] {
+  let denominator = reachable_witness_paths().map(fn(pair) { pair.0 })
+  all_commands()
+  .map(fn(command) { name_of(command) })
+  .filter(fn(name) { !denominator.contains(name) })
 }
 
 ///|
@@ -155,21 +203,29 @@ test "nquads quick machine 三档重置脚本" {
 }
 
 ///|
-test "nquads quick machine 覆盖率门" {
-  match run_coverage_check() {
-    Ok(report) => {
-      // qcs 已在内部判定（缺失即 CoverageFailed）；这里用同一 helper 再钉一次，
-      // 让"覆盖了哪些命令"成为报告里可复读的事实
-      let missing = @qcs.cover_command_names(
-        report.command_distribution,
-        coverage_gate_config().required_command_names,
-      )
-      assert_eq(missing, [])
-      assert_true(report.commands_run > 0)
-    }
-    Err(failure) =>
-      fail("coverage gate failed: \{@qcs.format_failure(failure)}")
+test "nquads quick machine 覆盖率门（路径驱动·缺口清零）" {
+  let (denominator, covered, missing) = reachable_coverage_account()
+  let unreachable_names = unreachable_command_names()
+  debug(
+    "可达覆盖账 nquads：分母 \{denominator.length()} / 分子 \{covered.length()} / 缺口 \{missing.length()} / 不可达 \{unreachable_names.length()}",
+  )
+  if missing.length() > 0 {
+    debug("缺口清单：\{missing.join(",")}")
   }
+  if unreachable_names.length() > 0 {
+    debug(
+      "不可达（不进分母，结构钉子钉住）：\{unreachable_names.join(",")}",
+    )
+  }
+  // 防"分母为空"假绿（分母由 BFS 派生，表被改坏时可能整片塌掉）
+  assert_true(denominator.length() > 0)
+  // 缺口清零门：可达即必须被实际执行到
+  assert_eq(missing, [])
+  // 分母 + 不可达 = 全命令名（守恒，防"悄悄把可达项挪出分母"）
+  assert_eq(
+    denominator.length() + unreachable_names.length(),
+    all_commands().length(),
+  )
 }
 
 ///|

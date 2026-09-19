@@ -1,0 +1,42 @@
+# 可达命令名覆盖率基线（棘轮：分母不缩水 + 缺口恒 0）
+#
+# 口径（写死；改口径 = 改门，必须同笔说明）：
+#   可达 = 从初始状态出发，经 `valid` 表（= [[transitions]] 派生）合法边可达的命令名；
+#          不是"语法上存在的命令名"，也不是"任意状态有出边"。
+#   覆盖 = 该命令名在**实际执行过**的用例里出现过。
+#          分子来自 qcs `RunReport.command_distribution`（执行记录），
+#          **不是** `reachable_witness_paths()` 的路径声明——声明与执行脱钩就是假绿。
+#   分母 = 可达命令名集合；不可达项**不进分母**，另由结构钉子钉住（见下方"不进分母"节）。
+#
+# 判据（两道，红了就是红了；比率只作展示——缺口清零时恒 1000‰）：
+#   ① 缺口清零门：缺口 = 分母 − 分子，必须为空（测试内断言，缺口逐名打印）；
+#   ② 分母棘轮：`reachable_total` 只许不缩水（`unreachable_pinned` 只许不增）——
+#      低于/超过本文件即红；高于本文件打 ::notice:: 提示同笔推高。
+#   守恒：分母 + 不可达 = 全部命令名（测试内断言）。
+#
+# 不进分母的名单 + 钉子位置（**防误补不可达项**）：
+#   trig   ：Bang Caret Implies ImpliedBy ForAllKw ForSomeKw KeywordsKw Unknown EOF（9）
+#            钉子 = src/gen_trig/quicktest/metrics.mbt「指标·结构钉子：可达 36 / 命令名 25+9」
+#   nquads ：PrefName EOF（2）
+#            钉子 = src/gen_nquads/quicktest/metrics.mbt「指标·generator: 可达命令全覆盖」
+#                   （不可达命令不得出现）+ 本账测试的"不可达"打印
+#   n3v2   ：EOF（1）
+#            钉子 = src/gen_n3v2/quicktest/metrics.mbt「覆盖率门·范围断言」（witnessed/anywhere 逐名在册）
+#
+# 跑法（与 CI 同步）：moon test src/<方言>/quicktest，读输出行
+#   "可达覆盖账 <方言>：分母 N / 分子 M / 缺口 X / 不可达 U"
+#
+# 沿革：2026-09-19 立账（用户定：缺口清零门 + 分母钉子 + 比率展示；分子必须来自执行记录）。
+#   立账时实测（三方言缺口全 0）：trig 25/25、nquads 8/8、n3v2 40/40。
+
+[trig]
+reachable_total    = 25
+unreachable_pinned = 9
+
+[nquads]
+reachable_total    = 8
+unreachable_pinned = 2
+
+[n3v2]
+reachable_total    = 40
+unreachable_pinned = 1

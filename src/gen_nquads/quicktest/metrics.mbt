@@ -108,21 +108,60 @@ fn ready_model(state : ModelState) -> Model {
 }
 
 ///|
-/// 可达命令名（转移表里有出边）——与 `runner.coverage_gate_config` 同口径
-fn reachable_command_names() -> Array[String] {
-  let names : Array[String] = []
-  for command in all_commands() {
-    let mut reachable = false
-    for state in all_states() {
-      if transition_expectation(state, command) is Some(_) {
-        reachable = true
+/// 全空槽白板模型（BFS 起点用）：合法性只由 `(状态, 命令)` 决定，与槽位无关。
+fn blank_model(state : ModelState) -> Model {
+  { ..model_empty(), state, }
+}
+
+///|
+/// 沿路径推状态（只走表，不看槽位）：`reachable_witness_paths` 的定位用。
+fn path_end_state(path : Array[Command]) -> ModelState {
+  let mut state = ExpectSubject
+  for command in path {
+    let (next, _) = model_execute(blank_model(state), command)
+    state = next.state
+  }
+  state
+}
+
+///|
+/// **可达见证路径 = 覆盖率分母的唯一来源**：起点 = 初始态（`ExpectSubject`）；
+/// 边 = `valid`（= `[[transitions]]` 派生）；下一态**跑模型**取；命令名归一 = `name_of`。
+/// **纪律**：分母必须由本函数派生，**不许手抄**（trig P4.3 的教训；nquads 手抄表退役）。
+/// 口径边界：本函数只走表，返回的路径尚未经引擎验证 —— 逐条起跑验证见 runner 的路径门。
+fn reachable_witness_paths() -> Array[(String, Array[Command])] {
+  let found : Array[(String, Array[Command])] = []
+  let queue : Array[Array[Command]] = [[]]
+  let seen : Array[ModelState] = [ExpectSubject]
+  while queue.length() > 0 {
+    let path = queue.remove(0)
+    let state = path_end_state(path)
+    for command in all_commands() {
+      if valid(blank_model(state), command) {
+        let (next_model, _) = model_execute(blank_model(state), command)
+        let next_state = next_model.state
+        let new_path = path.copy()
+        new_path.push(command)
+        let name = name_of(command)
+        if !found.any(fn(pair) { pair.0 == name }) {
+          found.push((name, new_path))
+        }
+        if !seen.contains(next_state) {
+          seen.push(next_state)
+          queue.push(new_path)
+        }
       }
     }
-    if reachable {
-      names.push(name_of(command))
-    }
   }
-  names
+  found
+}
+
+///|
+/// 可达命令名（分母）：由 `reachable_witness_paths()` 派生。
+/// 旧口径是"任意状态有出边"——那会把引擎**到不了**的命令名算进分母（第二个口径来源），
+/// 2026-09-19 按"分母同源"纪律退役。
+fn reachable_command_names() -> Array[String] {
+  reachable_witness_paths().map(fn(pair) { pair.0 })
 }
 
 ///|

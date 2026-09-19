@@ -106,6 +106,51 @@ jobs:
             echo "::notice::覆盖率高于基线（${permille}‰ > ${baseline}‰）——请同笔把 coverage-baseline.txt 推上去"
           fi
 
+      - name: "Reachable command-name coverage (缺口清零 + 分母棘轮)"
+        run: |
+          # 口径见 src/ttl/reachable-coverage-baseline.txt：
+          #   分母 = reachable_witness_paths() 派生（不可达项不进分母）；
+          #   分子 = 实际执行的 RunReport.command_distribution 并集（不是路径声明）。
+          # 本步只核"缺口=0 + 分母不缩水 + 钉子数不增"；口径级断言在测试内部（更严）。
+          base_val() { # $1=方言 $2=键
+            awk -v d="$1" -v k="$2" '
+              $0 == "[" d "]" { f = 1; next }
+              /^\[/ { f = 0 }
+              f && $1 == k { print $3 }
+            ' reachable-coverage-baseline.txt
+          }
+          for d in trig nquads n3v2; do
+            out="$(moon test "src/gen_$d/quicktest" 2>&1)"
+            line="$(printf '%s\n' "$out" | grep -o "可达覆盖账 $d：分母 [0-9]* / 分子 [0-9]* / 缺口 [0-9]* / 不可达 [0-9]*" | head -n 1)"
+            if [ -z "$line" ]; then
+              echo "::error::[$d] 没有找到可达覆盖账输出行——门没跑起来？"
+              printf '%s\n' "$out" | tail -n 20
+              exit 1
+            fi
+            total="$(printf '%s\n' "$line" | sed -nE 's/.*分母 ([0-9]+) .*/\1/p')"
+            covered="$(printf '%s\n' "$line" | sed -nE 's/.*分子 ([0-9]+) .*/\1/p')"
+            missing="$(printf '%s\n' "$line" | sed -nE 's/.*缺口 ([0-9]+) .*/\1/p')"
+            pinned="$(printf '%s\n' "$line" | sed -nE 's/.*不可达 ([0-9]+)$/\1/p')"
+            base_total="$(base_val "$d" reachable_total)"
+            base_pinned="$(base_val "$d" unreachable_pinned)"
+            echo "[$d] 分母=$total 分子=$covered 缺口=$missing 不可达=$pinned（基线：分母=$base_total 钉子=$base_pinned）"
+            if [ "$missing" -ne 0 ]; then
+              echo "::error::[$d] 可达覆盖有缺口 $missing 个——补脚本，或按账头把不可达项移出分母（并给反向断言）"
+              exit 1
+            fi
+            if [ "$total" -lt "$base_total" ]; then
+              echo "::error::[$d] 分母缩水：$total < 基线 $base_total（防「把可达项挪出分母刷比率」）"
+              exit 1
+            fi
+            if [ "$total" -gt "$base_total" ]; then
+              echo "::notice::[$d] 分母涨到 $total（> 基线 $base_total）——请同笔推 reachable-coverage-baseline.txt"
+            fi
+            if [ "$pinned" -gt "$base_pinned" ]; then
+              echo "::error::[$d] 不可达钉子数增加：$pinned > $base_pinned——新增不可达项必须同笔说明并配反向断言"
+              exit 1
+            fi
+          done
+
       - name: "Default arms bookkeeping (TODO(P0) 计数门)"
         run: |
           # 默认臂 = "未识别 action/event" 的**保守臂**：能跑、但响应正确性没有判据（默认臂≠已验证）。

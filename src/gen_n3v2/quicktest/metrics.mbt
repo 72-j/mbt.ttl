@@ -408,29 +408,59 @@ fn path_coverage_config(path : Array[Command], name : String) -> @qcs.RunConfig 
 }
 
 ///|
-/// **P5.6 覆盖率门（路径驱动 + 逐条独立复位）**：每条见证路径新开一次 `check`；
-/// 返回**失败的命令名**清单（空 = 门全绿）。名单由 `reachable_witness_paths()` 派生，**不手抄**。
-/// 覆盖判据本身只证"该命令名被这条脚本走到"；语义仍由 `check` 内的「模型 ≡ 引擎」比对承担。
-fn run_path_coverage_gate() -> Array[String] {
-  let failed : Array[String] = []
-  for pair in reachable_witness_paths() {
+/// **P5.6 可达覆盖账（分子必须来自执行记录）**：
+///   分母 = `reachable_witness_paths()` 派生（起点初始态、边 = `valid`，不可达项不进分母）；
+///   分子 = 各条见证路径**实际执行**后 `RunReport.command_distribution` 的并集
+///          （**不是**路径声明覆盖了谁 —— 声明与执行脱钩就是假绿）；
+///   缺口 = 分母 − 分子（逐名列出，清空即门绿）。
+/// 逐条独立起跑（qcs 覆盖判定是逐用例的）；漂移（模型 ≠ 引擎）由 `assert_check` 直接抛。
+/// 沿革：本函数取代旧 `run_path_coverage_gate()`（原只返回失败名、丢弃 `command_distribution`）。
+fn reachable_coverage_account() -> (Array[String], Array[String], Array[String]) raise {
+  let witnesses = reachable_witness_paths()
+  let denominator = witnesses.map(fn(pair) { pair.0 })
+  let covered : Array[String] = []
+  for pair in witnesses {
     let (name, path) = pair
-    match
-      @qcs.check(
-        quick_state_machine(script=Some(path)),
-        config=path_coverage_config(path, name),
-      ) {
-      Ok(_) => ()
-      Err(_) => failed.push(name)
+    let report = @qcs.assert_check(
+      quick_state_machine(script=Some(path)),
+      config=path_coverage_config(path, name),
+    )
+    for entry in report.command_distribution {
+      let (seen, _) = entry
+      if !covered.contains(seen) {
+        covered.push(seen)
+      }
     }
   }
-  failed
+  let missing = denominator.filter(fn(name) { !covered.contains(name) })
+  (denominator, covered, missing)
 }
 
 ///|
-/// P5.6 覆盖率门（开启）：38 条见证路径各自一个用例、独立起跑；失败以"具体命令名清单"落地。
-test "n3v2 P5.6 覆盖率门（路径驱动，逐条独立复位）" {
-  assert_eq(run_path_coverage_gate(), [])
+/// 可达覆盖账的**不可达项**（不进分母，另由结构钉子钉住）：全部命令名 − 分母。
+fn unreachable_command_names() -> Array[String] {
+  let denominator = reachable_witness_paths().map(fn(pair) { pair.0 })
+  all_commands().map(fn(command) { command_name(command) }).filter(fn(name) {
+    !denominator.contains(name)
+  })
+}
+
+///|
+/// P5.6 可达覆盖门（开启）：40 条见证路径各自一个用例、独立起跑、干净复位；
+/// 缺口非空即红并打印**具体缺口名**；分母守恒断言防"把可达项挪出分母"。
+test "n3v2 P5.6 可达覆盖门（路径驱动·缺口清零）" {
+  let (denominator, covered, missing) = reachable_coverage_account()
+  let unreachable_names = unreachable_command_names()
+  debug(
+    "可达覆盖账 n3v2：分母 \{denominator.length()} / 分子 \{covered.length()} / 缺口 \{missing.length()} / 不可达 \{unreachable_names.length()}",
+  )
+  if missing.length() > 0 {
+    debug("缺口清单：\{missing.join(",")}")
+  }
+  debug("不可达（不进分母，结构钉子钉住）：\{unreachable_names.join(",")}")
+  assert_true(denominator.length() > 0)
+  assert_eq(missing, [])
+  assert_eq(denominator.length() + unreachable_names.length(), all_commands().length())
 }
 
 ///|

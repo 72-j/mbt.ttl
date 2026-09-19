@@ -315,6 +315,7 @@ fn command_name(command : Command) -> String {
 /// 供 RunConfig.required_labels 做"路径覆盖门"（命令名粒度之外的第二层覆盖）
 fn quick_state_machine(
   system_call? : (Command, System) -> Response = run_command,
+  script? : Array[Command]? = None,
 ) -> @qcs.StateMachine[
   Model,
   Model,
@@ -325,11 +326,26 @@ fn quick_state_machine(
   RefId,
   System,
 ] {
+  // script 模式（P4.3 同源）：固定脚本按游标逐条喂，供"一条见证路径一个用例"复用同一组装
+  let cursor : Array[Int] = [0]
   @qcs.StateMachine::new(
     init_symbolic_model=model_empty,
     init_concrete_model=model_empty,
     init_system=() => system_init(),
-    generator=generate_command,
+    generator=(model, size, rng) => {
+      match script {
+        Some(commands) => {
+          let index = cursor[0]
+          if index < commands.length() {
+            cursor[0] = index + 1
+            Some(commands[index])
+          } else {
+            None
+          }
+        }
+        None => generate_command(model, size, rng)
+      }
+    },
     mock=mock_command,
     transition_symbolic=transition,
     transition_concrete=transition,
