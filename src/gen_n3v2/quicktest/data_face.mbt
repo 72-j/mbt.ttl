@@ -4,8 +4,10 @@
 //         ⟷ 引擎真件（**本文件**）。
 // 与 R-20 值级普查（`metrics.mbt`：模型 ⟷ 引擎）**分开记账**：本文件管"数据面（TOML 投影）⟷ 引擎"。
 //
-// 口径（首片，写死）：只比**可解析写槽**——来源 ∈ {`none`（置空）、`arg0`（取本命令载荷）、
-// `ctx.<槽>`（保持）}；其余（`fwd:`/`nfwd:` 条件式、`frame.*` 面外、`to`/裸布尔）逐行入**不可比台账**。
+// 口径（写死）：比**可解析写槽**——来源 ∈ {`none`（置空）、`argN`（按 `args` 列解引用，
+// 缺省绑定已在投影侧写实为 `payload`/`keep`）、`ctx.<槽>`（读前值）、
+// `fwd:`/`nfwd:`（按行进前方向旗二选一后递归）}；其余（`frame.*` 面内外、`to`/裸布尔）逐项入**不可比台账**。
+// 台账**按类钉死**：面外 / 序敏感 / 条件式 / arg未解析（§AN.12 后两者已清零，仍是棘轮）。
 // 行集合 = 快照行 ∩ 可达态；不可比行、不可达行都**逐名在册**（条数钉死，新冒即红）。
 
 ///|
@@ -49,11 +51,17 @@ fn parse_data_face_rows(text : String) -> Array[DataFaceRow] {
   let rows : Array[DataFaceRow] = []
   for line in text.split("\n") {
     let trimmed = line.trim().to_owned()
-    if trimmed == "" || trimmed.has_prefix("#") || trimmed == "v1" {
+    if trimmed == "" ||
+      trimmed.has_prefix("#") ||
+      trimmed == "v1" ||
+      trimmed == "v2" {
       continue
     }
-    let parts = trimmed.split("|").to_array()
-    if parts.length() < 4 {
+    // §AN.12 **列分隔符 = TAB**：v1 用 `|` 作分隔符，而笔 3a 起的写槽词表含 `fwd:a|b`
+    // ⇒ 那些行被**静默截断**（`writes` 只到第一个 `|`，且 `frame`/`args` 列整体错位）。
+    // 列数**恰 7**（不符即跳过 ⇒ 行数钉子会红，不留静默）。
+    let parts = trimmed.split("\t").to_array()
+    if parts.length() != 7 {
       continue
     }
     let head = parts[0].split("+").to_array()
@@ -67,7 +75,7 @@ fn parse_data_face_rows(text : String) -> Array[DataFaceRow] {
       writes_raw.split(",").to_array().map(fn(s) { s.to_owned() })
     }
     // `args` 列（快照第 7 列）：`argN` 写槽来源**必须**靠它解引用（trig §AN.5 裁定教训回灌）
-    let args_raw = if parts.length() > 6 { parts[6].to_owned() } else { "-" }
+    let args_raw = parts[6].to_owned()
     let args : Array[String] = if args_raw == "-" {
       []
     } else {
@@ -144,6 +152,11 @@ fn classify_write_source(
       if bound == "none" {
         return Ok(None)
       }
+      // §AN.12：`keep` = 方言缺省绑定的"**无 span 事件**"半——生成器渲染 `model.<目标槽>`
+      // （保持既有槽）⇒ 期望值 = **行进前该槽值**。
+      if bound == "keep" {
+        return Ok(slot_get(before, target))
+      }
       for
         other in [
           "subject", "predicate", "object", "graph", "path_src", "path_pend", "path_tail",
@@ -156,6 +169,29 @@ fn classify_write_source(
     }
     None => ()
   }
+  // **条件式来源**（§AN.12）：`fwd:<a>|<b>` / `nfwd:<a>|<b>`——按**行进前方向旗**
+  // （`SlotView.path_fwd`；旗标槽名是方言数据 `[type_mapping].fwd_slot`，n3 = `path_fwd`）
+  // 二选一，选中的那一半**递归**按同一张词表解析。
+  // 注：`nfwd:` 且该行有 `assign = path_fwd=<v>` 者，其"翻后旗"是**编译期常量**
+  // ⇒ 已在投影侧（`actions_truth` 产出）坍缩成定值，快照里不会出现该形。
+  if source.has_prefix("fwd:") || source.has_prefix("nfwd:") {
+    let rest : String = if source.has_prefix("fwd:") {
+      source[4:].to_owned()
+    } else {
+      source[5:].to_owned()
+    }
+    match rest.find("|") {
+      Some(bar) => {
+        let chosen : String = if before.path_fwd {
+          rest[0:bar].to_owned()
+        } else {
+          rest[bar + 1:].to_owned()
+        }
+        return classify_write_source(target, chosen, before, payload, args)
+      }
+      None => return Err("\{source}（条件式缺 `|`）")
+    }
+  }
   for
     other in [
       "subject", "predicate", "object", "graph", "path_src", "path_pend", "path_tail",
@@ -166,6 +202,11 @@ fn classify_write_source(
   }
   if source.has_prefix("ctx.") {
     return Err("\{source}（源槽在观测面外/bool 槽）")
+  }
+  // 帧内来源（`frame.prev_node` 这类**读**）：内容不在观测面内（§AN.12 起与"面外槽"同类，
+  // 不再落进泛兜底"首片不解析"——台账才如实反映"剩下的全是面外"）。
+  if source.has_prefix("frame.") {
+    return Err("\{source}（源在帧内、观测面外）")
   }
   Err("\{source}（首片不解析）")
 }
@@ -371,9 +412,10 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
   assert_eq(violations, [])
   assert_eq(debt_hits, 0)
   // 台账**按类钉死**（首跑回填；任一类数字变化即红——比"只钉总数"强，能抓类间搬家）
-  // 槽/源在观测面外（frame.* / is_src / is_depth / 帧内容）。**§AN.11 后 83 → 77**：
-  // 12 行分派族不再整行入册（转真判），其中 6 行 list_*_nested 的 `frame.prev_node=arg0`
-  // 由"整行一条"降为"逐项一条"（-12 +6）。
+  // 槽/源在观测面外（frame.* / is_src / is_depth / 帧内容）。沿革：83（§AN.10 末）→ 77（§AN.11
+  // 分派族转真判、6 行 list_*_nested 由"整行一条"降为"逐项一条"）→ **81（§AN.12）**：
+  // v1 分隔符撞车让含 `fwd:a|b` 的行被**截断**（其 `writes` 尾部整段不可见）⇒ 修复后
+  // 那些行**多露出 4 项**面外条目（截断前的"看不见"不是通过，是**漏比**）。
   let mut off_face = 0
   let mut order_sensitive = 0 // 清-读同槽（需读序数据）
   let mut conditional = 0 // 条件式来源（fwd:/nfwd:）
@@ -394,8 +436,10 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
     "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / arg未解析 \{arg_unparsed} / 不可达 \{unreachable_rows.length()}",
   )
   assert_eq(unreachable_rows.length(), 0)
-  assert_eq(off_face, 77)
+  assert_eq(off_face, 81)
   assert_eq(order_sensitive, 0)
-  assert_eq(conditional, 52)
-  assert_eq(arg_unparsed, 66)
+  // 条件式（fwd:/nfwd:）**清零**（§AN.12）：运行时旗读 + `nfwd:` 编译期坍缩
+  assert_eq(conditional, 0)
+  // `argN` 未解析形态**清零**（§AN.12）：缺省绑定写实（span 事件 ⇒ payload）后 76 项转真判
+  assert_eq(arg_unparsed, 0)
 }

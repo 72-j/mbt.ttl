@@ -3,8 +3,10 @@
 // 三段链：`quick_machine_trig_gen.toml [actions]` ⟷ 快照 `actions_truth.gen`（**外仓**金样）
 //         ⟷ 引擎真件（**本文件**，经 `TrigProbe::slots`）。
 // 口径与 n3v2 `gen_n3v2/quicktest/data_face.mbt` **逐字对齐**：只比 4 槽（trig ctx 四槽即全部）；
-// 来源 `none`/`arg0`/`ctx.<槽>` 可解析；发射 `EmitQuad(<Scope>)` 后按 scope 清槽（`scope_reset_slots`）；
-// 面外（frame.*）、清-读同槽（需读序数据）、条件式（fwd:/nfwd:）三类逐项入册。
+// 来源 `none`/`argN`（按 `args` 列解引用；缺省绑定已在投影侧写实）/`ctx.<槽>` 可解析；
+// 发射 `EmitQuad(<Scope>)` 后按 scope 清槽（`scope_reset_slots`）；
+// 台账**四类**（面外 / 清-读同槽 / 条件式 / arg未解析）逐项入册、类计数钉死。
+// 注：trig **无方向旗标槽** ⇒ `fwd:` 词条出现即口径缺口（fail-loud 入册，不静默兜底）。
 
 ///|
 /// trig 槽位四视图（与模型 `Model` 同形；`Span` 归一为 `RefId`）
@@ -51,11 +53,16 @@ fn parse_data_face_rows(text : String) -> Array[DataFaceRow] {
   let rows : Array[DataFaceRow] = []
   for line in text.split("\n") {
     let trimmed = line.trim().to_owned()
-    if trimmed == "" || trimmed.has_prefix("#") || trimmed == "v1" {
+    if trimmed == "" ||
+      trimmed.has_prefix("#") ||
+      trimmed == "v1" ||
+      trimmed == "v2" {
       continue
     }
-    let parts = trimmed.split("|").to_array()
-    if parts.length() < 4 {
+    // §AN.12 **列分隔符 = TAB**（v1 的 `|` 与 `fwd:a|b` 词表撞车 ⇒ 行被静默截断）；
+    // 列数**恰 7**（不符即跳过 ⇒ 行数钉子会红）。trig 当前无 `fwd:` 词条，仅口径对齐。
+    let parts = trimmed.split("\t").to_array()
+    if parts.length() != 7 {
       continue
     }
     let head = parts[0].split("+").to_array()
@@ -68,7 +75,7 @@ fn parse_data_face_rows(text : String) -> Array[DataFaceRow] {
     } else {
       writes_raw.split(",").to_array().map(fn(s) { s.to_owned() })
     }
-    let args_raw = if parts.length() > 6 { parts[6].to_owned() } else { "-" }
+    let args_raw = parts[6].to_owned()
     let args : Array[String] = if args_raw == "-" {
       []
     } else {
@@ -159,6 +166,11 @@ fn classify_write_source(
       if bound == "none" {
         return Ok(None)
       }
+      // §AN.12（n3 侧先落地、口径回灌）：`keep` = 方言缺省绑定的"无 span 事件"半
+      // ⇒ 期望值 = 行进前该槽值（保持既有槽）。
+      if bound == "keep" {
+        return Ok(slot_get(before, target))
+      }
       for other in ["subject", "predicate", "object", "graph"] {
         if bound == "ctx." + other {
           return Ok(slot_get(before, other))
@@ -168,6 +180,15 @@ fn classify_write_source(
     }
     None => ()
   }
+  // **条件式来源**（§AN.12，n3 侧已落地）：n3 的 `fwd:<a>|<b>` 按**行进前方向旗**
+  // （`path_fwd`）二选一。trig **无方向旗标槽**（无路径三账，`SlotView` 里就没有该位）
+  // ⇒ 本方言词表不该出现该形；若出现即**口径缺口**（声明了读不了的旗），
+  // fail-loud 入册（比静默落进泛兜底诚实——两方言的门都**认得**这个形，只是 trig 解不了）。
+  if source.has_prefix("fwd:") || source.has_prefix("nfwd:") {
+    return Err(
+      "\{source}（条件式来源：本方言无方向旗标槽 ⇒ 口径缺口）",
+    )
+  }
   for other in ["subject", "predicate", "object", "graph"] {
     if source == "ctx." + other {
       return Ok(slot_get(before, other))
@@ -175,6 +196,10 @@ fn classify_write_source(
   }
   if source.has_prefix("ctx.") {
     return Err("\{source}（源槽在观测面外）")
+  }
+  // 帧内来源（读）：内容不在观测面内（§AN.12 口径回灌）
+  if source.has_prefix("frame.") {
+    return Err("\{source}（源在帧内、观测面外）")
   }
   Err("\{source}（首片不解析）")
 }
@@ -353,30 +378,38 @@ async test "数据面⟷引擎·trig 值级对拍：可比行逐槽等值 + 台�
   assert_eq(violations, [])
   assert_eq(debt_hits, 0)
   assert_eq(unreachable_rows.length(), 0)
-  let (off_face, order_sensitive, conditional) = ledger_classes(incomparable)
-  debug(
-    "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / 不可达 \{unreachable_rows.length()}",
+  let (off_face, order_sensitive, conditional, arg_unparsed) = ledger_classes(
+    incomparable,
   )
-  // 类计数钉死（裁定后回填：面外 28 / 序敏感 0 / 条件式 0）
-  assert_eq(off_face, 28)
+  debug(
+    "  台账：面外 \{off_face} / 序敏感 \{order_sensitive} / 条件式 \{conditional} / arg未解析 \{arg_unparsed} / 不可达 \{unreachable_rows.length()}",
+  )
+  // 类计数钉死（沿革：面外 28 → **9**（§AN.12）——19 项 `argN` 缺省绑定转真判后全绿；
+  // 原先把"args 列不足"混记进面外，现单列 `arg未解析` 并清零）
+  assert_eq(off_face, 9)
   assert_eq(order_sensitive, 0)
   assert_eq(conditional, 0)
+  assert_eq(arg_unparsed, 0)
 }
 
 ///|
-/// 台账三类计数（面外 / 序敏感 / 条件式）
-fn ledger_classes(incomparable : Array[String]) -> (Int, Int, Int) {
+/// 台账四类计数（面外 / 序敏感 / 条件式 / `argN` 未解析形态），与 n3v2 门同列（两方言一把尺子）
+fn ledger_classes(incomparable : Array[String]) -> (Int, Int, Int, Int) {
   let mut off_face = 0
   let mut order_sensitive = 0
   let mut conditional = 0
+  let mut arg_unparsed = 0
   for site in incomparable {
     if site.contains("清-读同槽") {
       order_sensitive = order_sensitive + 1
     } else if site.contains("fwd:") || site.contains("nfwd:") {
       conditional = conditional + 1
+    } else if site.contains("形态未解析") ||
+      site.contains("args 列不足") {
+      arg_unparsed = arg_unparsed + 1
     } else {
       off_face = off_face + 1
     }
   }
-  (off_face, order_sensitive, conditional)
+  (off_face, order_sensitive, conditional, arg_unparsed)
 }
