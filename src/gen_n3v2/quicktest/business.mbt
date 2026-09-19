@@ -27,8 +27,8 @@ fn command_weight(name : String) -> Int {
     "EOF" => 0
     "Has" => 0
     "Iri" => 3
-    "Anon" => 0
-    "Bang" => 0
+    "Anon" => 1
+    "Bang" => 1
     "Caret" => 0
     "Comma" => 1
     "Tilde" => 1
@@ -39,18 +39,18 @@ fn command_weight(name : String) -> Int {
     "Lparen" => 0
     "Rbrace" => 1
     "Rparen" => 0
-    "Implies" => 0
+    "Implies" => 1
     "Literal" => 3
     "Unknown" => 0
     "AnnotEnd" => 0
     "ForAllKw" => 0
-    "KeywordA" => 0
+    "KeywordA" => 1
     "KeywordX" => 0
     "Lbracket" => 1
     "PrefName" => 2
     "PrefixKw" => 1
     "Rbracket" => 1
-    "Variable" => 0
+    "Variable" => 1
     "BlankNode" => 2
     "ForSomeKw" => 0
     "ImpliedBy" => 0
@@ -58,8 +58,8 @@ fn command_weight(name : String) -> Int {
     "VersionKw" => 0
     "AnnotStart" => 0
     "KeywordsKw" => 0
-    "TripleTerm" => 0
-    "BracketTripleTerm" => 0
+    "TripleTerm" => 1
+    "BracketTripleTerm" => 1
     _ => 1
   }
 }

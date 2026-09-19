@@ -159,8 +159,11 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("EOF", 0),
     ("Has", 0),
     ("Iri", 3),
-    ("Anon", 0),
-    ("Bang", 0),
+    ("Anon", 1), // 【0 → 1（Batch 2，2026-09-19）】：`[]` 合成单事件纯槽位写（lexer_adapter:359-375）
+    // 【0 → 1（排除片转正 Batch 1 前半，2026-09-19）】：路径族**正向**放开——§V.4 两应舞；
+    // 尾随跳发射旗 `nfwd:` 词表坍缩（path_hop_tail/path_verb_hop，引擎 :580/:791 参数旗）。
+    // Caret/ImpliedBy 仍 0 = R-19（fwd 墙后 skip-to-Dot 恢复道模型无恢复位，双收缩反例实证）。
+    ("Bang", 1),
     ("Caret", 0),
     ("Comma", 1),
     ("Tilde", 1),
@@ -172,7 +175,7 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("Lparen", 0),
     ("Rbrace", 1),
     ("Rparen", 0),
-    ("Implies", 0),
+    ("Implies", 1), // Batch 1 前半同笔（见 Bang 行注）
     ("Literal", 3),
     ("Unknown", 0),
     // R-18 后 Id/Invert 行落地 ⇒ 排除理由改为 R-17 值级缺口，仍显式 0（未列默认 1 陷阱）
@@ -180,7 +183,7 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("Invert", 0),
     ("AnnotEnd", 0),
     ("ForAllKw", 0),
-    ("KeywordA", 0),
+    ("KeywordA", 1), // Batch 2：pk=引擎侧非模型槽 span 轴不可见（= SameAs 先例）；降级道需 @keywords（0 死）
     ("KeywordX", 0),
     // 【0 → 1（笔 3c 下半·四，2026-09-19）】：Bnp 族放开——as_pred 弹帧回写开通后
     // 谓位反例两侧同步双发（内 (59,4,5) + 外 (3,59,58)，锚点⑥值级钉死），组合面
@@ -189,16 +192,16 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("PrefName", 2),
     ("PrefixKw", 1),
     ("Rbracket", 1),
-    ("Variable", 0),
+    ("Variable", 1), // Batch 2：`?x` 整词单 token 槽位装词 id
     ("BlankNode", 2),
     ("ForSomeKw", 0),
-    ("ImpliedBy", 0),
+    ("ImpliedBy", 0), // R-19 恢复道（见 Bang 行注）
     ("Semicolon", 1),
     ("VersionKw", 0),
     ("AnnotStart", 0),
     ("KeywordsKw", 0),
-    ("TripleTerm", 0),
-    ("BracketTripleTerm", 0),
+    ("TripleTerm", 1), // Batch 2：`<< s p o >>` 整词单 token（lexer_mbt:315-345 平衡配对，gate_tt 验证层深验）——无内层事件道
+    ("BracketTripleTerm", 1), // Batch 2：`<<( )>>` 括号壳整词（lexer_mbt:278-313）同上
   ]
   // 权重表全量 = 命令枚举全量（两条清单漂了就红）
   assert_eq(expected.length(), 41)
