@@ -77,8 +77,10 @@
    根因是门缺"**发射即清槽**"（`EmitQuad(Scope)` 后按 scope 复位），已折进期望（`scope_reset_slots`）。
    **trig 上半已回灌**（2026-09-19，见活账 §AN.3）：`TrigProbe::slots`/`TrigSlotSnapshot` 已开（只读四槽，
    `.mbti` 恰新增所开面），`gen_trig/quicktest/actions_truth.gen`（136 行）与 n3v2 同列同口径、有金样；
-   **trig 内门（逐槽对拍）待落**——配方照抄 n3v2 的 `data_face.mbt`，四处适配（四槽 SlotView / `ref_id_of` /
-   trig 见证路径 / 行数 136）。
+   **trig 内门已落地**（2026-09-19，§AN.4）：`gen_trig/quicktest/data_face.mbt` 与 n3v2 **同尺**
+   （同列快照 + 同三类台账 + 同 scope 复位语义）⇒ 行 136 / 分道 8（**债点 8 待裁定**：压帧行 `arg0` 写槽
+   引擎未落；候选根因 = `push_writes=false` 语义 / 无载荷命令的 `arg0` 无真值）/ 面外 9 在册。
+   两方言现在的公共缺口只剩 **序敏感（读序数据）** 与 **这 8 债点**。
 2. **N6 宿主 CI 观测**：需在 gitlink UI 或带 token 的环境确认 static/test 作业真跑且绿。
 3. **役 15 余量**：深片排除项的权重放宽（表/IR 侧），不属于门缺陷。
 
