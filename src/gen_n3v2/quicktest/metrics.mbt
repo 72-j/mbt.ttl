@@ -760,54 +760,37 @@ fn site_set_drift(actual : Array[String], pinned : Array[String]) -> Array[Strin
 }
 
 ///|
-/// **值级根因台账**（R-20 开账，2026-09-19）：首跑实测 **27 处**（全站点 355 → 根因 27）。
+/// **值级根因台账**（R-20 开账，2026-09-19）：首跑实测 **27 处**（全站点 355 → 根因 27）；**A+B+C+F+D+E 六族全清偿，台账归零**（A 笔消失 11 = A 全族；C 笔消失 18 = C 全族含孪生 8；B 笔消失 4 = B 全族、同笔浮出 26 = 新族 F；F+D+E 合笔消失 30 = F 26 + D 1 + E 3，**新增 0**——开括号站首版外层折写被普查红牌（帧内 s/p 被盖回装槽值），改写后快照无折写形后归零）。
 /// 逐条在册 + 棘轮（`const.md` §5.2）：修好一处不改账 ⇒ 红；新冒一处 ⇒ 红。
 /// 五族归类（根因与清偿路径见 `src/ttl/todo.md` §AF）：
-///   A **公式族压帧的"当前 subject"**（11）——生成器 `frame_push` 硬编码
+///   A **公式族压帧的"当前 subject"**（11，**已清偿** 2026-09-19：frame_push 体按 is_formula 位分派 + open_slot 行吃 IR SlotType::Formula 旗；trig/nquads 字节零迁移）——生成器 `frame_push` 硬编码
 ///     `subject := Some(open_span)`（那是 BnodeProp/Collection 口径），引擎 `open_formula`
 ///     是 `subject := None`；
-///   B **路径入口旗标**（2）——`path_fwd`/`path_bwd` 的 `when_some` 支没落 `path_fwd` 写
-///     （引擎在 match 之前无条件置旗；absent 支的旗来自 IR assign，when_some 支丢）；
+///   B **路径入口旗标**（2，**已清偿** 2026-09-19：生成器有值支同吃行 assign——行
+///     assign 是引擎 match 之前的无条件置写【actions.mbt:408/:434】，absent 支原已
+///     落、present 支补齐；trig/nquads 无 when_some，构造性死路）——原 `when_some`
+///     支丢旗；
 ///   C **`path_subj_end` 的 when_absent 支写未物化**（10）——TOML 有数据
 ///     （subject=ctx.path_tail / predicate=ctx.path_pend / object=arg0 / 清 tail·pend），
 ///     生成臂只落了响应与状态；
-///   D **`path_elem_close` 清 path 三账**（1）——引擎 `clear_path()`，表零写；
-///   E **ObjTrail 收口三行**（3）——引擎 `path_obj_close` 的 `clear_path()` + 二次发射
-///     scope 清槽，模型缺。
+///   D **`path_elem_close` 清 path 三账**（1，**已清偿** 2026-09-19：TOML 转写
+///     s/p/o fwd 排布 + 清三账 + `frame.prev_node=ctx.path_tail`【引擎 :893-928
+///     直证；node_seq+1 模型 Frame 无此位，普查八槽不可见不建模】）——引擎 `clear_path()`，表零写；
+///   E **ObjTrail 收口三行**（3，**已清偿** 2026-09-19：生成器**末枚 EmitQuad 后**
+///     按行 to-state 派 scoped 清槽步【引擎 :967-971 同源镜像：`,` 清 object /
+///     `;` 清 p+o / `.` 全清；仅末枚，中间枚 = 列表双发桥接位无独立 reset】）——
+///     引擎 `path_obj_close` 的 `clear_path()` + 二次发射 scope 清槽，模型缺；
+///   F **PathAfterStep 写槽面**（26，**已清偿** 2026-09-19：`path_end`/`path_hop_fwd·bwd`
+///     族 C 同款 TOML 转写【引擎 :482-507/:459-475 直证】+ `path_end_nested` 补
+///     `push_writes` 旗 + 生成器**单意图 OpenSlot 触 s/p ⇒ 写后快照形无外层折写**
+///     【引擎 :544-548 先装槽后推帧，帧快照携重排 s/p；与 trail 族压帧序反，
+///     frame_push 体分派即引擎忠形】）——原 `[actions]` 对 `path_end`/
+///     `path_end_nested`/`path_hop_fwd`/`path_hop_bwd` 裸声明零写槽；
+///     反跳拒 = R-03-2 负例道不建模。
 fn pinned_slot_roots() -> Array[String] {
+  // A+B+C+F+D+E 六族全清偿（2026-09-19 F+D+E 合笔，30→0）——空表 = 棘轮全量哨：
+  // 任何新冒值级分道即红，请按 const.md §5.2 同笔入册。
   [
-    // A 公式族压帧当前 subject（11）
-    "命令 AnnotExpectObject+Lbrace：subject 期望 Some(1) 实得 None",
-    "命令 BnpExpectObject+Lbrace：subject 期望 Some(1) 实得 None",
-    "命令 ExpectDirectiveEnd+Lbrace：subject 期望 Some(1) 实得 None",
-    "命令 ExpectObject+Lbrace：subject 期望 Some(1) 实得 None",
-    "命令 ExpectPredicate+Lbrace：subject 期望 Some(1) 实得 None",
-    "命令 ExpectSubject+Lbrace：subject 期望 Some(1) 实得 None",
-    "命令 ExpectVerbOrDot+Lbrace：subject 期望 Some(1) 实得 None",
-    "命令 ExpectVerbOrEnd+Lbrace：subject 期望 Some(1) 实得 None",
-    "命令 ListAfterElem+Lbrace：subject 期望 Some(1) 实得 None",
-    "命令 ListExpectElemOrEnd+Lbrace：subject 期望 Some(1) 实得 None",
-    "路径 ExpectSubject+Lbrace：subject 期望 Some(1) 实得 None",
-    // B 路径入口旗标（2）
-    "命令 ExpectObject+Bang：path_fwd 期望 false 实得 true",
-    "路径 ExpectObject+Bang：path_fwd 期望 false 实得 true",
-    // C path_subj_end 的 when_absent 支写未物化（10）
-    "命令 SubjTrailVerbDone+Anon：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
-    "命令 SubjTrailVerbDone+Bang：path_pend 期望 Some(1) 实得 None",
-    "命令 SubjTrailVerbDone+BlankNode：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
-    "命令 SubjTrailVerbDone+BracketTripleTerm：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
-    "命令 SubjTrailVerbDone+Caret：path_pend 期望 Some(1) 实得 None",
-    "命令 SubjTrailVerbDone+Iri：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
-    "命令 SubjTrailVerbDone+Literal：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
-    "命令 SubjTrailVerbDone+PrefName：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
-    "命令 SubjTrailVerbDone+TripleTerm：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
-    "命令 SubjTrailVerbDone+Variable：subject 期望 None 实得 Some(1)；predicate 期望 None 实得 Some(1)；object 期望 None 实得 Some(1)；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
-    // D path_elem_close 清 path 三账（1）
-    "命令 ListPathAfterStep+Rparen：path_src 期望 Some(1) 实得 None；path_pend 期望 Some(1) 实得 None；path_tail 期望 Some(1) 实得 None",
-    // E ObjTrail 收口三行（3）
-    "命令 ObjTrailAfterStep+Comma：object 期望 Some(1) 实得 None",
-    "命令 ObjTrailAfterStep+Dot：subject 期望 Some(1) 实得 None；predicate 期望 Some(1) 实得 None；object 期望 Some(1) 实得 None",
-    "命令 ObjTrailAfterStep+Semicolon：predicate 期望 Some(1) 实得 None；object 期望 Some(1) 实得 None",
   ]
 }
 
