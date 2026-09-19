@@ -25,7 +25,7 @@ fn command_weight(name : String) -> Int {
     "Of" => 0
     "Dot" => 3
     "EOF" => 0
-    "Has" => 0
+    "Has" => 1
     "Iri" => 3
     "Anon" => 1
     "Bang" => 1
