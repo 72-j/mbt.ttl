@@ -1,6 +1,6 @@
 # gen_n3v2 架构一页
 
-N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态机 + 用户实现层；
+N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态机 + 装配层（Assembly）；
 生成件 `n3.mbt` 由外层仓表源再生，禁手编。细节卷：`spec.md`（架构规格）、`adr.md`（役录裁决）、
 `todo.md`（整改立项）、`ctx.md`（上下文与工程经验）。用户指南：`guides/n3/`。
 
@@ -10,7 +10,7 @@ N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态�
 词法复用   @nquads.Lexermoon            bytes → Token（与 C 版同型同宽）
 事件适配   lexer_adapter.mbt            Token → N3Event（?x/[] 合并、@prefix:/<- 拆字）
 状态机     n3.mbt（生成·G9 禁手编）      41 事件 × 55 状态 × 384 转移的 step；类型/ctx/业务面 trait
-用户机械   engine.mbt + actions.mbt     主循环/效果解释/恢复 + 48 action 落槽/压栈/路径 desugar
+装配层机械   engine.mbt + actions.mbt     主循环/效果解释/恢复 + 48 action 落槽/压栈/路径 desugar
 组装下游   parser_slice → materialize_n3 → serialize_n3
            QuadSpan（轻验）→ QuadEmit（四门深验）→ N-Triples 文本（拒 PrefName/图名残留）
 ```

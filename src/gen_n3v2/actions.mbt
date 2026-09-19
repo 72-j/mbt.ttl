@@ -1,4 +1,4 @@
-// ===== 用户补充：Actions 实现（mutable 契约，与 trig N3ActionsImpl 同构） =====
+// ===== 装配层补充（Assembly）：Actions 实现（mutable 契约，与 trig N3ActionsImpl 同构） =====
 // 口径（与 n3.mbt 头注 / trig actions.mbt 同宪法）：
 //   - action 只写槽位/账本，返回意图；永不重置 ctx，也拿不到数据视图
 //   - 与 trig 的语义差全部落在本文件（表形状同源，ADR-003a）：

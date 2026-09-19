@@ -11,7 +11,7 @@
 
 **评审纠偏（2026-09-11 用户定案）**：原始评审把 `N3EffectHandler` 判为"死模板 / 建议删除"。
 用户定案翻转：该层是**架构维度的扩展位**（效果面切面挂点），定案 = **保留 + 简化 + 接活**，
-不得删除；`N3LoopPolicy` 定案 = **第三条业务面**，将来承载 **Test & Fallback（容灾）** 与
+不得删除；`N3Supervisor`（旧名 `N3LoopPolicy`，2026-09-13 改名，见 ADR-33）定案 = **第三条业务面**，将来承载 **Test & Fallback（容灾）** 与
 **Observability（可观测）** 切面。本文件与 `ctx.md` 一律按此口径书写。
 
 仓界事实（改代码前先确认落到哪个仓）：本包在**嵌套仓** `src/ttl`（独立 `.git`）；
@@ -31,8 +31,8 @@
 | 词法复用 | `@nquads.Lexermoon`（gen_nquads 包） | bytes → token；与 C 版 `lexerc_ffi.c` 同型同宽 | `Token` |
 | 事件适配 | `lexer_adapter.mbt` | token → 事件；`?x`/`[]` 合并、`@prefix:`/`<-` 拆字、langtag 子 span | `N3Event` |
 | 状态机（生成） | `n3.mbt` | 41 事件 × 55 状态 × 384 转移的 `step`；类型/ctx/三业务面 trait | `N3Effect` |
-| 主循环（用户） | `engine.mbt` | 驱动 step、解释 Effect、尾标点合成、错误恢复、EOF 判脏 | `N3PendingQuad` |
-| 语义实现（用户） | `actions.mbt` | 48 个 action：落槽 / 压栈 / 路径 desugar / 倒装 / 注解 | 槽位与账本 |
+| 主循环（装配层） | `engine.mbt` | 驱动 step、解释 Effect、尾标点合成、错误恢复、EOF 判脏 | `N3PendingQuad` |
+| 语义实现（装配层） | `actions.mbt` | 48 个 action：落槽 / 压栈 / 路径 desugar / 倒装 / 注解 | 槽位与账本 |
 | 组装校验 | `parser_slice.mbt` | 缺槽检测 + 轻验（IRI/BNode/PrefName/TT 壳） | `QuadSpan` |
 | 物化 | `materialize_n3.mbt` | span → `QuadEmit`；四门深验在构词点就地执行 | `QuadEmit` |
 | 序列化 | `serialize_n3.mbt` | 字节保真回写；拒绝 PrefName/图名残留 | `String` |
@@ -56,7 +56,7 @@ src/rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
 ```
 
 规模事实：41 事件 / 55 状态 / 384 转移 / 48 动作 / 27 ctx 字段（役26 删 variable_name/rule_side）/ 5 快照 extras
-（`pk`/`pver`/`bver`/`iver`/`subj_shell`）/ capabilities 14 项。生成面 2.2k 行、用户面约 5.2k 行、
+（`pk`/`pver`/`bver`/`iver`/`subj_shell`）/ capabilities 14 项。生成面 2.2k 行、装配面约 5.2k 行、
 测试 116 个 test 块 + 4 个套件 runner。
 
 ---
@@ -67,15 +67,15 @@ src/rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
 |---|---|---|---|---|---|
 | ① 语义落点 | `N3Actions`（48 方法） | `n3.mbt:301` | `actions.mbt` 全文 | 只写槽位/账本，返回意图；永不重置 ctx、拿不到数据视图 | 新语义优先扩 action，不动 Gen 枚举 |
 | ② 效果执行面 | `N3EffectHandler`（14 方法） | `n3.mbt:2045`（套装 `emit.mbt:1083` verbatim 定格） | **当前无实现**（`engine.next` 自建解释器，见 C-02） | **架构维度扩展位**（用户定案）：效果执行阶段的切面挂点；形态可简化 | 观测（emit 埋点）、容灾（效果降级/丢弃/改写）、审计 |
-| ③ 控制流面 | `N3LoopPolicy`（4 钩子） | `n3.mbt:284` | `engine.mbt:345/364/416/447` | **第三条业务面**（用户定案）：主循环领域钩子 | **Test & Fallback（容灾）+ Observability** 切面 |
+| ③ 控制流面 | `N3Supervisor`（4 钩子；旧名 `N3LoopPolicy`，ADR-33） | `n3.mbt:282` | `engine.mbt:346/366/423/454` | **第三条业务面**（用户定案）：主循环领域钩子 | **Test & Fallback（容灾）+ Observability** 切面 |
 
 切面挂点表（要挂什么 → 挂哪个面 → 现状能不能挂）：
 
 | 切面需求 | 挂点 | 现状 |
 |---|---|---|
-| 语句计数 / 吞吐 / 耗时 | `LoopPolicy.begin_record` / `finish_at_end` | 部分（无 emit 计数） |
-| 错误分类、容灾决策（跳过/重同步/降级） | `LoopPolicy.recover` / `on_business_failed` | 可以（但恢复策略目前写死） |
-| 截断 / 脏尾 / 输入损坏兜底 | `LoopPolicy.finish_at_end` | 可以 |
+| 语句计数 / 吞吐 / 耗时 | `Supervisor.begin_record` / `finish_at_end` | 部分（无 emit 计数） |
+| 错误分类、容灾决策（跳过/重同步/降级） | `Supervisor.recover` / `on_business_failed` | 可以（但恢复策略目前写死） |
+| 截断 / 脏尾 / 输入损坏兜底 | `Supervisor.finish_at_end` | 可以 |
 | 每 quad 观测（emit 埋点） | `EffectHandler`（`EmitQuad` 执行点） | **不可以**——`engine.next` 绕过 EffectHandler |
 | 效果降级（`EmitQuad` 丢弃/改写） | `EffectHandler` | **不可以**（同上） |
 | 步级 trace `(state,event,effect)` | 需新钩子（挂 ② 或 ③） | 不可以（无钩子） |
@@ -117,7 +117,7 @@ cp src/rdf/n3gen/n3v2_out.gen src/ttl/src/gen_n3v2/n3.mbt
 cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 ```
 
-- emit 面锚点：`src/rdf/n3gen/emit.mbt:657`（LoopPolicy 模板）、`emit.mbt:1083`（`n3_emit_handler_suite`：
+- emit 面锚点：`src/rdf/n3gen/emit.mbt:657`（Supervisor 模板；名字由数据键 `{base.meta_prefix}Supervisor` 给）、`emit.mbt:1083`（`n3_emit_handler_suite`：
   EffectHandler 套装 verbatim 固化——**改它的形态 = 改 emit + 再生 + 对拍显式翻新**）。
 - 耦合提示：表内嵌 MoonBit 字面量（`assign = "directive_at=..."`、`action_args = ["payload","false","state:ExpectObject"]`、
   `"SlotType::BnodeProp"`），重命名枚举/状态/字段必须同改表（见 R-10 影响面）。
@@ -215,7 +215,7 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 | C-05 | 错误通道二制：~~`last_error` 单槽~~ **役24 整改**：`error_spans` 累积数组 + BusinessFailed 复位续解 + drain 三点（入口/Some(Err)/终态）——多坏语句逐条落账且文件序 | `engine.mbt`（字段/recover_cleanup）；`parser_slice.mbt`（drain_engine_errors） | ~~多坏语句只报最后一条、业务错带病停机~~ 双通道语义对齐 | [债]→**已清偿（役24）** |
 | C-06 | 零长 span（`len == 0`）重载为 `rdf:nil` 标记——**役24 验形门收口**：in-band 通道保留（API 不变），物化层双门 `data[offset]=='('` 校验，事故零长 ValidationErr | `materialize_n3.mbt`（materialize_quad 入口）；构造点 `actions.mbt` pop_bnode_prop（唯一） | ~~事故静默变 nil~~ 合法标记可验形、事故报错 | [债]→**已收口（役24）** |
 | C-07 | 证据面缺口：~~三 runner 全 `lenient=true`（旁路 `validate_term`）；N3Tests 有断言无桶闭合；examples print-only~~ **役25 双判落地**：主判定链 + 影子扫描（严格 `lenient=false`）并行；N3Tests skip 名单钉；examples 升格 pinned（A=13/B=0/C=0 + 桶闭合断言） | `rdf_suite_wbtest.mbt:116/118`、`n3tests_suite_wbtest.mbt:50`、`examples_wbtest.mbt:9` | ~~316/75/205 不覆盖校验层；清单漂移不报警~~ 影子缺口被量化冻结（5/0/123/13）⇒ 可作 R-16 的修口基线 | [债]→**已收口（役25，ADR-23）** |
-| C-08 | 公共面过宽：`.mbti` 暴露 `N3Context`（29 mut 字段）、`N3Actions`（48 方法）、`N3EffectHandler`、`N3LoopPolicy`、`N3Engine` | `pkg.generated.mbti` 全量 38 个 `pub` 项 | 内部重构 = 破坏性 API 变更；公共面无法收敛 | [债]→**已收口（役28，题2=B）** |
+| C-08 | 公共面过宽：`.mbti` 暴露 `N3Context`（29 mut 字段）、`N3Actions`（48 方法）、`N3EffectHandler`、`N3Supervisor`、`N3Engine` | `pkg.generated.mbti` 全量 38 个 `pub` 项 | 内部重构 = 破坏性 API 变更；公共面无法收敛 | [债]→**已收口（役28，题2=B）** |
 | C-09 | 死字段/死 helper/警告：`variable_name`/`rule_side` 永不被读；~~`iri_upcast` 只写不自增~~（**写实修正：活机制**，表源 expr + iver 快照消费）；`mat_graph`/`mat_has_graph` 未用；`bench` 导入未用；4×`starts_with`、未用 `self`、2 处多余 trait bound | 役26 实测：编译 11 warning（本包） | ~~阅读噪声~~ **役26 全模块 30 条清零**（17 unused_package / 3 trait bound / 6 deprecated / 4 unused_value）；死字段走表源再生删 | [债]→**已收口（役26，ADR-26）** |
 | C-10 | 命名与宪法冲突：`pver/bver/iver`（应为 `prefix_version/base_version/iri_version`）、`fr`、`mat_*`、`Hooks`（实为 action 语义实现体） | `types.mbt:50`（QuadSpan）、`actions.mbt:14` | 违反"名字自带语义"；跨包重命名是原子变更 | [债] |
 | C-11 | 测试位置：~~`materialize_n3.mbt` 内联 23 个 test + 约 500 行辅助；`serialize_n3.mbt` 内联 4 个~~ **役27a 归位**：27 test 迁 `materialize_n3_wbtest.mbt`(538 行) / `serialize_n3_wbtest.mbt`(64 行)，生产件纯实现（1396/101 行） | 两新件；`grep '^test '` = 0 | ~~生产文件被辅助污染~~ 归位后 `.mbti` 零 diff（纯私有面） | [债]→**已收口（役27a，ADR-27）** |
@@ -242,7 +242,7 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 | R-05 | **错误累积**：`error_spans : Array[Span]` 累积 + recover 拆层（record/cleanup）+ BusinessFailed 臂 cleanup 后 return（复位续解）+ drain 三点保文件序 | **✅ 已落地（役24，ADR-25）** | engine.mbt + parser_slice.mbt | 双坏语句 `errors.length()==2` 行序正确（钉）；业务错后续语句照出（钉）；116/116 | C-05 |
 | R-06 | **nil 标记验形**：~~显式标记~~ API 不变约束下 in-band 通道保留，物化层验形双门（`len==0 && data[offset]!='('` → ValidationErr）；构造点唯一（pop_bnode_prop） | **✅ 已落地（役24，ADR-25）** | materialize_n3.mbt + actions.mbt 注释 | 人为事故零长 span 报错（钉）；空集合 rdf:nil 照常（钉） | C-06 |
 | R-07 | **证据面补齐**：三 runner 双判（主判定链 + 影子扫描）；绝对计数钉（316/75/205/13）；N3Tests skip 名单 + 桶闭合；examples 升格 pinned | **✅ 已落地（役25，ADR-23）** | 三个 `*_suite_wbtest.mbt` | 加/删文件即红（演练过）；影子缺口基线冻结（5/0/123/13） | C-07、C-16、C-17 |
-| R-08 | **公共面收窄**：FSM 机械全降包内（生成件经 emit.mbt 模板 `priv` 化再生；用户层 `N3ActionsImpl`/Slot 族手降；`N3Engine`/`N3LexerAdapter` 字段级 `priv`）；mbti 只留入口（Engine/SliceParser/Materializer/Serializer）+ 数据面（QuadSpan/N3PendingQuad/PredKind/N3Event/N3Dialect/LexerSource/ErrOut）；题2=B（零外部消费者 + 扩展面外部本不可达） | **✅ 已落地（役28，ADR-28）** | emit.mbt + lexer_adapter/actions/types + `moon info` 对 diff | mbti `pub` 55→29 行；0 warning；329/329 | C-08 |
+| R-08 | **公共面收窄**：FSM 机械全降包内（生成件经 emit.mbt 模板 `priv` 化再生；装配层 `N3ActionsImpl`/Slot 族手降；`N3Engine`/`N3LexerAdapter` 字段级 `priv`）；mbti 只留入口（Engine/SliceParser/Materializer/Serializer）+ 数据面（QuadSpan/N3PendingQuad/PredKind/N3Event/N3Dialect/LexerSource/ErrOut）；题2=B（零外部消费者 + 扩展面外部本不可达） | **✅ 已落地（役28，ADR-28）** | emit.mbt + lexer_adapter/actions/types + `moon info` 对 diff | mbti `pub` 55→29 行；0 warning；329/329 | C-08 |
 | R-09 | **清账**：删死字段/死 helper/未用导入；修 4×`starts_with`、未用 `self`、2 处多余 trait bound | **✅ 已落地（役26，ADR-26）**（全模块 30 条清零） | 见 `ctx.md` 4.1 行 | `moon check` 0 warning | C-09 |
 | R-10 | **重命名**（原子）：`pver/bver/iver → prefix_version/base_version/iri_version`；`fr → frame`；`Hooks → N3ActionsImpl`（或去 trait 化）；`mat_*` 测试辅助随测试归位改名 | **✅ 已落地（役27a fr + 役28 余项，经表源再生）** | 本包 types/materialize/parser_slice/tests + `.mbti` 同笔 | `moon info` diff 只含预期重命名 | C-10 |
 | R-11 | **测试归位**：`materialize_n3.mbt`/`serialize_n3.mbt` 的内联 test 移入 `_wbtest.mbt`；`mat_*` 辅助抽到测试支持文件 | **✅ 已落地（役27a，ADR-27）** | 新建 `materialize_n3_wbtest.mbt` / `serialize_n3_wbtest.mbt` | 生产文件只剩实现（`grep '^test '` = 0）；116/116；mbti 零 diff | C-11 |

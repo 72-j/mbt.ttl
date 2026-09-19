@@ -1,4 +1,4 @@
-// ===== 用户补充：N3 主循环引擎（薄机械层，trig engine.mbt 同模板） =====
+// ===== 装配层补充（Assembly）：N3 主循环引擎（薄机械层，trig engine.mbt 同模板） =====
 // 职责切分（与 trig/nquads engine.mbt 同宪法）：
 //   - 本文件只做状态机机械：取事件（synth 回灌 / EOF 判脏收尾）→ step →
 //     效果交 interpret 解释上抛（役22 接活·题1=A：解释器 = n3.mbt 套装
@@ -459,7 +459,7 @@ impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn on_business_failed(
 }
 
 ///|
-/// 模板内方法可见性：把 LoopPolicy 四钩子提升为 N3Engine 的扩展方法
+/// 模板内方法可见性：把 Supervisor 四钩子提升为 N3Engine 的扩展方法
 extend N3Engine with N3Supervisor::{
   recover,
   begin_record,
@@ -607,7 +607,7 @@ pub fn[L : LexerSource] N3Engine::next(
           Stop => return None
         }
       Err(N3ActionError::UnexpectedEvent(_, event)) => {
-        // 无转移兜底：取事件载荷位置（缺失则词法位置）；恢复策略在 LoopPolicy
+        // 无转移兜底：取事件载荷位置（缺失则词法位置）；恢复策略在 Supervisor
         synth = None // 恢复消费整段，待发 synth 事件一并作废
         let span = span_of_event(event)
         let span = if span == (0, 0) { (self.lexer.pos(), 0) } else { span }

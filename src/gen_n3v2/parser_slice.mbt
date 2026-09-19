@@ -1,4 +1,4 @@
-// ===== 用户部分：N3SliceParser 切片解析器（trig parser_slice.mbt 同构） =====
+// ===== 装配层（Assembly）：N3SliceParser 切片解析器（trig parser_slice.mbt 同构） =====
 // 组装机械唯一地点：N3PendingQuad 快照 → QuadSpan；验证在组装之后（view 直查）。
 // 与 trig 的差异（均有据可查）：
 //   - TT 壳独立成句臂已补（rdf12 syntax-basic-04/05/06 驱动，trig 同款拆壳递归

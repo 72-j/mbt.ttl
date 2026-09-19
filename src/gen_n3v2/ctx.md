@@ -78,7 +78,7 @@
   ⚠ `dispatch` 已不存在（旧卷记载作废）。
 - 挂点用途：观测（quad 计数 / span 范围）与容灾（丢弃 / 改写 / 降级）都经此面。
 
-### 成员 ③ `N3LoopPolicy`（控制流 Hook；**world 正名 `Supervisor`，代码待改名**）
+### 成员 ③ `N3Supervisor`（控制流 Hook；旧名 `N3LoopPolicy`，2026-09-13 已改名）
 
 - 声明 / 实现锚点：`n3.mbt:282` / `engine.mbt:350`（`begin_record`）、`:366`（`recover`）、
   `:423`（`finish_at_end`）、`:454`（`on_business_failed`）；模板注释 `emit.mbt:660`。
@@ -86,10 +86,11 @@
 - 钩子语义：`begin_record` 会话起点（计数器/trace 注入）｜`recover` 容灾决策点（现行 = 记录 +
   清栈 + `consume_to_recover_point`，`engine.mbt:388`）｜`finish_at_end` 脏尾兜底（⚠ 自排水不许破坏，
   否则 `parse_all` 死循环）｜`on_business_failed` 失败映射（现行 = `ParseError::SyntaxErr`）。
-- **命名欠账**：world 词表（v2.0）把 `LoopPolicy` 列为废弃别名、正名 `Supervisor`；
-  本包代码仍是 `N3LoopPolicy`（`.mbt` 命中 7 处：`n3.mbt:282` 声明 + `engine.mbt` 四 impl 与 extend 块），
-  生成侧模板在 `emit.mbt:660`。改名是跨包原子变更（trig 侧 `TrigLoopPolicy` 命中 26 处），
-  列为候选**役34**，与 gen_trig 的 T13 同源，建议**同笔**做。
+- **命名已对齐（沿革）**：world 词表（v2.0）把 `LoopPolicy` 列为废弃别名、正名为 `Supervisor`；
+  本包已于 **2026-09-13 落地改名**（**ADR-33** + **役34**）：`N3LoopPolicy → N3Supervisor`——
+  生成侧数据化（`emit.mbt:660` 一带的模板名改由数据键 `{base.meta_prefix}Supervisor` 给）+ `engine.mbt` 六处
+  + G9 再生交付；gen_trig 的 `TrigLoopPolicy → TrigSupervisor` 同笔（T13 / ADR-TRIG-015）。
+  本条只留指向，不再作欠账。
 
 **切点表（要挂什么 → 挂哪 → 现状能不能挂）**：
 
@@ -142,7 +143,7 @@
 | R-05 | 役24 | ADR-25 | `error_spans` 累积 + recover 拆层 + drain 三点保文件序 | `parser_slice.mbt:52`；`engine.mbt:366` |
 | R-06 | 役24 | ADR-25 | 零长 span 带内通道保留 + 物化验形双门（唯一构造点 `pop_bnode_prop`） | `materialize_n3.mbt:683`；`actions.mbt:137` |
 | R-07 | 役25 | ADR-23 | 三 runner 双判 + 绝对计数钉 + 桶闭合钉 | `rdf_suite_wbtest.mbt:116/118`；`n3tests_suite_wbtest.mbt:50` |
-| R-08 | 役28 | ADR-28 | 生成件与用户层机械降 `priv`；`.mbti` 只留入口 + 数据面（pub 55→29 行） | `emit.mbt`（模板 priv 化）；`pkg.generated.mbti` |
+| R-08 | 役28 | ADR-28 | 生成件与装配层机械降 `priv`；`.mbti` 只留入口 + 数据面（pub 55→29 行） | `emit.mbt`（模板 priv 化）；`pkg.generated.mbti` |
 | R-09 | 役26 | ADR-26 | 0 warning（全模块 30 条清零）；死字段先改表源再生 | `n3v2_base.toml`；`moon check` |
 | R-10 | 役27a/28 | ADR-27·28 | `prefix_version/base_version/iri_version`；`fr→frame`；`Hooks→N3ActionsImpl` | `types.mbt`；`actions.mbt`；trig 同笔 |
 | R-11 | 役27a | ADR-27 | 27 test 迁 `materialize_n3_wbtest.mbt` / `serialize_n3_wbtest.mbt`，生产件纯实现 | 两新件；`grep '^test '` = 0 |
@@ -248,7 +249,7 @@
 
 | 主题 | 锚点 |
 |---|---|
-| 契约成员声明 | `n3.mbt:282`（Supervisor/trait 名 `N3LoopPolicy`）、`:299`（Actions）、`:2044`（EffectHandler） |
+| 契约成员声明 | `n3.mbt:282`（trait 名 `N3Supervisor`，旧名 `N3LoopPolicy`）、`:299`（Actions）、`:2044`（EffectHandler） |
 | 效果解释器 | `n3.mbt:2128`（impl `interpret`）、`:2108`（`apply_scope`）、`:2100`（`N3EffectOutcome`）；`emit.mbt:1085`（套装生成） |
 | ctx 基座 | `n3.mbt:148`（struct）、`:216`（reset）、`:264`（snapshot）；`engine.mbt:517`（take_pending） |
 | 主循环 | `engine.mbt:577`（`next`）、`:336`（under_formula）、`:388`（consume_to_recover_point） |
@@ -315,7 +316,7 @@
 - `grep -c` 数行不数处（`\bfr\b` 55 行实为 71 处）——原子断言以匹配总数计。
 - 复用前先对语义：`mat_vs`=decode_lossy、`view_str`=逐字节 `to_char`，名异实异；盲替会烂掉多字节断言。
 - 跨文件同名消费先盘再迁（`mat_*` 不止一个文件用）——迁移脚本必须同笔扫全包，漏一处即编译错。
-- 侦察"全表唯一 X"要含用户层动态构造（役22：表内唯一 `Sequence` ≠ 全系统单发，`path_obj_close` 三发在
+- 侦察"全表唯一 X"要含装配层动态构造（役22：表内唯一 `Sequence` ≠ 全系统单发，`path_obj_close` 三发在
   `actions.mbt`）。
 - 全仓 `moon test` 触发生成器自写盘（quick_machine / fsm / mdlex 产物）——提交前盘点 `git status`，
   非本役面的改动单独说明。

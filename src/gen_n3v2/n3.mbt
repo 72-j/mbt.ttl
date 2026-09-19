@@ -236,7 +236,7 @@ fn N3Context::reset(self : N3Context, scope : ResetScope) -> Unit {
 
 ///|
 /// 发射边界快照类型：发射槽位 span（offset,length）原样上抛，未切片。
-/// 主循环模板的返回载荷；组装与缺槽检测在切片组装层（用户区）。
+/// 主循环模板的返回载荷；组装与缺槽检测在切片组装层（装配区）。
 /// 字段只收链 resets 点名的发射槽——簿记槽位（prefix_name/base 族）不入快照。
 pub(all) struct N3PendingQuad {
   subj : Span?
@@ -291,7 +291,7 @@ priv trait N3Supervisor {
 /// pub(all)：probe 响应 Failed 载荷跨包可见（quicktest P5.2；与 trig TrigActionError 同形）
 pub(all) enum N3ActionError {
   UnexpectedEvent(N3State, N3Event) // 状态机引擎抛出：当前状态未定义该事件的转移
-  BusinessFailed(String) // 用户业务逻辑抛出：Action 执行失败（如解析格式错误）
+  BusinessFailed(String) // 装配层业务逻辑抛出：Action 执行失败（如解析格式错误）
 }
 
 ///|

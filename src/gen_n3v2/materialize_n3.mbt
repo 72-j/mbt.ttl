@@ -1,4 +1,4 @@
-// ===== 用户部分：N3 物化器（表下游：span 四元组 → 可序列化 QuadEmit） =====
+// ===== 装配层（Assembly）：N3 物化器（表下游：span 四元组 → 可序列化 QuadEmit） =====
 // 复用 @nquads 的 QuadEmit/Subject/Object/GraphName 模型与 Serializer 输出口；
 // view 保真路线（trig materialize_trig.mbt 同构：物化只搬运 + 标注）。
 // 深验单遍口径同 trig：校验经 gate_iri/gate_bnode/gate_tt/gate_literal 四门在

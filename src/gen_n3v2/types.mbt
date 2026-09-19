@@ -1,4 +1,4 @@
-// ===== 用户部分：基础类型 =====
+// ===== 装配层（Assembly）：基础类型 =====
 // 复用 @nquads 的共享词表（Token/Lexermoon/ParseError/Span/TermType），
 // 本包保留 N3 自身的类型面：方言开关 / PredKind / QuadSpan /
 // SlotType / Slot / ErrOut 外观 / Show（Step 4 表役自 n3.mbt 手稿收编至此，

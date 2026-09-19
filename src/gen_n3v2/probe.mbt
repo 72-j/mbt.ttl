@@ -1,4 +1,4 @@
-// ===== 用户部分：测试驱动面（probe）=====
+// ===== 装配层（Assembly）：测试驱动面（probe）=====
 // P5.2（2026-09-17）：给跨包 quicktest 一个**窄入口**——喂一个 N3Event，回一档归一化响应。
 // 照 trig TrigProbe 复刻（P4.2 同构），三处 n3 化裁剪（P5.1 面清单定案）：
 //   ① handler 只覆盖 `on_pop_bnp` + `on_open_slot` 两钩子（n3 无 exit_graph/list_step；
