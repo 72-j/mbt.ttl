@@ -276,6 +276,11 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 3. **注释文案不改**：生成注释里的 "第三条业务面：LoopPolicy" 保持原文——改它会连带改动
    **nquads 冻结产物**（首轮实测撞红产物黄金门，遂回退）。措辞迁移留给 world 卷的下一轮统一。
 
+   > **W10 翻案（2026-09-20）**：上面的"下一轮统一"即本轮落地——表源注释名改随
+   > `policy_trait_name` 数据键（trig ⇒ `TrigSupervisor`；nquads ⇒ 派生名 `NQuadsLoopPolicy`
+   > 各随码名自洽，定位 B 不破），trig/nquads **同笔再生**、两道产物黄金门同绿——
+   > T13 时"连带撞红"的约束因同笔再生而解除。
+
 **验证**：`gen_trig` **80/80**（四套件 357/316/36/75 不变）；`src/rdf` **23/23**（trig/nquads 两道
 产物门 + G9 同绿）；模块 **330/330**；`.mbti` diff = 预期改名（6 行）；`rg TrigLoopPolicy|Hooks\b`
 在包内零残留。

@@ -1,4 +1,4 @@
-// ===== 用户部分：基础类型 =====
+// ===== 装配层（Assembly）：基础类型 =====
 // 复用 @nquads 的共享词表（Span/PendingQuad/ResetScope/TermType/ParseError/Token/Lexermoon），
 // 本包只保留 TriG 自身的输出形状 QuadSpan（纯 span 四元组）与 ErrOut 错误外观。
 // todo：生成器回灌后 using 清单由 spec 的 imports 段生成。
@@ -13,7 +13,7 @@ pub using @nquads {
 }
 
 ///|
-/// 方言开关（用户补充面桩：生成契约不引用，引擎 loop 用）：
+/// 方言开关（装配层补充面桩：生成契约不引用，引擎 loop 用）：
 /// TriG = 超集；Turtle 禁图块区（Lbrace 走 Unknown 恢复路径）
 pub(all) enum TrigDialect {
   TriG

@@ -82,7 +82,7 @@
 
 ## 5 检查清单（本包任何改动前）
 
-- [ ] 确认改的是**生成面**（`src/rdf/domain2/*`、`src/fsm`）还是**用户层**（本包 `.mbt`）。
+- [ ] 确认改的是**生成面**（`src/rdf/domain2/*`、`src/fsm`）还是**装配层**（本包 `.mbt`）。
 - [ ] 生成面改动后：`moon test src/rdf`（三腿 + 反门 + **产物黄金门**）→ 按配方再生 → `moon fmt`。
 - [ ] `moon test src/gen_nquads` 124/124 且套件数字（89/29/27/72）不变。
 - [ ] `moon check src/gen_nquads/quicktest`（`(open)` 载荷面的直接哨兵）。

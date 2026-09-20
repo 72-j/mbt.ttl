@@ -1,4 +1,4 @@
-// ===== 用户部分：TriG 物化器（表下游：span 四元组 → 可序列化 QuadEmit） =====
+// ===== 装配层补充（Assembly）：TriG 物化器（表下游：span 四元组 → 可序列化 QuadEmit） =====
 // 复用 @nquads 的 QuadEmit/Subject/Object/GraphName 模型与 Serializer 输出口；
 // view 保真路线（与 nquads materialize_quad 同构：物化只搬运 + 标注）。
 // 深验定案（2026-09-02"轻嗅探 + 按需深验"单遍化）：深验不再是 materialize_all

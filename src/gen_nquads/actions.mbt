@@ -1,4 +1,4 @@
-// ===== 用户部分：Actions 与 Effect 回调（mutable 契约） =====
+// ===== 装配层补充（Assembly）：Actions 与 Effect 回调（mutable 契约） =====
 // 参考手写版 src/moon_ttl/src/parser_nquads.mbt 的 step 各分支语义：
 //   set_subject  ← (ExpectSubject, Iri|BlankNode) => pending.subj = span
 //   set_predicate← (ExpectPredicate, Iri)         => pending.pred = span

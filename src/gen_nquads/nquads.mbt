@@ -93,7 +93,7 @@ pub fn NQuadsContext::reset(self : NQuadsContext, scope : ResetScope) -> Unit {
 
 ///|
 /// 发射边界快照类型：发射槽位 span（offset,length）原样上抛，未切片。
-/// 主循环模板的返回载荷；组装与缺槽检测在切片组装层（用户区）。
+/// 主循环模板的返回载荷；组装与缺槽检测在切片组装层（装配区）。
 /// 字段只收链 resets 点名的发射槽——簿记槽位（prefix_name/base 族）不入快照。
 pub(all) struct NQuadsPendingQuad {
   subj : Span?
@@ -123,7 +123,7 @@ pub fn NQuadsContext::snapshot(self : NQuadsContext) -> NQuadsPendingQuad {
 }
 
 ///|
-/// 第三条业务面：LoopPolicy —— 主循环模板的领域钩子（生成契约，Engine 提供实现）。
+/// 第三条业务面：NQuadsLoopPolicy —— 主循环模板的领域钩子（生成契约，Engine 提供实现）。
 /// 循环骨架是固定模板（engine：入口/终止 → step 步进 → Effect 分发 → 错误降级），
 /// 领域知识（入口重置/行恢复/EOF 判脏/失败映射）全部收敛到本 trait。
 pub trait NQuadsLoopPolicy {
@@ -137,7 +137,7 @@ pub trait NQuadsLoopPolicy {
 /// Action 执行或状态转移阶段的错误
 pub(all) enum NQuadsActionError {
   UnexpectedEvent(NQuadsState, NQuadsEvent) // 状态机引擎抛出：当前状态未定义该事件的转移
-  BusinessFailed(String) // 用户业务逻辑抛出：Action 执行失败（如解析格式错误）
+  BusinessFailed(String) // 装配层业务逻辑抛出：Action 执行失败（如解析格式错误）
 }
 
 ///|
@@ -241,7 +241,7 @@ pub(all) enum NQuadsEffectError {
 ///|
 /// 第二层 EffectHandler：真正的 match effect 发生在 step 外部
 /// handle_* 模板方法默认 Ok(())；dispatch 默认解构意图并分发
-/// 用户 impl 覆盖需要的 handle_*，通常无需覆盖 dispatch
+/// 装配层 impl 覆盖需要的 handle_*，通常无需覆盖 dispatch
 pub trait NQuadsEffectHandler {
   fn handle_continue(Self) -> Result[Unit, NQuadsEffectError] = _
   fn handle_emit_quad(Self, ResetScope) -> Result[Unit, NQuadsEffectError] = _

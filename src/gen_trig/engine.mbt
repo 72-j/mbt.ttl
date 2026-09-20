@@ -1,11 +1,11 @@
-// ===== 用户部分：解析引擎主循环（薄机械层，与 nquads 同模板） =====
+// ===== 装配层补充（Assembly）：解析引擎主循环（薄机械层，与 nquads 同模板） =====
 // 职责切分（与 nquads engine.mbt 同宪法）：
 //   - 本文件只做状态机机械：驱动 step、按 Effect 意图执行（发射 snapshot+按
 //     scope 重置、Enter/ExitGraph 通知）、错误恢复、EOF 判脏收尾。
 //   - 切片组装/验证/物化全部上移 SliceParser；层间只传 span 快照（TrigPendingQuad）。
 //   - trig 与 nquads 模板的差异点（均有据可查）：
 //     1) 无 per-next begin_record：TriG 状态连续（图块/前缀账本跨 quad 存续），
-//        begin_record 仅在引擎构造时调用一次（LoopPolicy 契约不变，实现换语义）。
+//        begin_record 仅在引擎构造时调用一次（Supervisor 契约不变，实现换语义）。
 //     2) Sequence 意图串列：loop 顺序解释，EmitQuad 组装上抛后继续执行余下意图
 //        （`}` 前省点 = [EmitQuad(SPO), ExitGraph]）。
 //     3) 恢复停在 Dot 或 Rbrace：图块内保 graph 槽位回 GraphExpectSubject；
@@ -347,7 +347,7 @@ impl[L : LexerSource] TrigSupervisor for TrigEngine[L] with fn on_business_faile
 }
 
 ///|
-/// 模板内方法可见性：把 LoopPolicy 四钩子提升为 TrigEngine 的扩展方法
+/// 模板内方法可见性：把 Supervisor 四钩子提升为 TrigEngine 的扩展方法
 extend TrigEngine with TrigSupervisor::{
   recover,
   begin_record,
@@ -407,7 +407,7 @@ pub fn[L : LexerSource] TrigEngine::next(
           Stop => return None
         }
       Err(TrigActionError::UnexpectedEvent(_, event)) => {
-        // 无转移兜底：取事件载荷位置（缺失则词法位置）；恢复策略在 LoopPolicy
+        // 无转移兜底：取事件载荷位置（缺失则词法位置）；恢复策略在 Supervisor
         synth_dot = false // 恢复消费整段，待发 Dot 一并作废
         let span = span_of_event(event)
         let span = if span == (0, 0) { (self.lexer.pos(), 0) } else { span }

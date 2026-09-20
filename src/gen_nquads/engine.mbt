@@ -1,4 +1,4 @@
-// ===== 用户部分：解析引擎主循环（薄机械层） =====
+// ===== 装配层补充（Assembly）：解析引擎主循环（薄机械层） =====
 // 参考手写版 src/moon_ttl/src/parser_nquads.mbt 的 NQuadsEngine::next：
 //   lexer.next() → EOF 由词法器吞掉（None），loop 判脏收尾
 // 与手写版的差异：状态转移表来自生成的 step()（见 nquads.mbt）。

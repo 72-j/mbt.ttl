@@ -1,7 +1,7 @@
-// ===== 用户部分：测试驱动面（probe）=====
+// ===== 装配层补充（Assembly）：测试驱动面（probe）=====
 // P4.2（2026-09-14）：给跨包 quicktest 一个**窄入口**——喂一个 TrigEvent，回一档归一化响应。
 //
-// 为什么不是"把 internals 全开 pub"：trig 的 Context/Effect 传递依赖用户层类型
+// 为什么不是"把 internals 全开 pub"：trig 的 Context/Effect 传递依赖装配层类型
 // （SlotType/Slot/PredKind），全开面既污染公共面、又会让 public-depends-on-private 复现。
 // 本 probe 复用**引擎真件**（`TrigActionsImpl` + handler 钩子 + `interpret`），
 // 只暴露一对入出类型 + 两个方法：

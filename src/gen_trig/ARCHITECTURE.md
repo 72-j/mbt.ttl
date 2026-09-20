@@ -41,7 +41,7 @@ src/rdf/domain/trig_domain.toml
 |---|---|---|---|
 | `TrigActions`（语义落点） | `trig.mbt:240` | `actions.mbt`（`Hooks`） | 已接活 |
 | `TrigEffectHandler`（效果面 Hook） | `trig.mbt:1138` + 默认 impl `:1172` 起 | **无**（引擎自带效果语义） | **孤儿挂点**（T11） |
-| `TrigSupervisor`（控制流 Hook，代码现名 `TrigLoopPolicy`） | `trig.mbt:223` | `engine.mbt:227/240/314/344` + `extend:353` | 已接活；改名归 T13 |
+| `TrigSupervisor`（控制流 Hook，正名 `Supervisor`；T13 已落地） | `trig.mbt:223` | `engine.mbt:227/240/314/344` + `extend:353` | 已接活 |
 
 ## 不变量（速查，详 `spec.md` §3）
 

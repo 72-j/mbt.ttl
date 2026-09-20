@@ -1,4 +1,4 @@
-// ===== 用户部分：TrigSliceParser 切片解析器（与 nquads 分层同构） =====
+// ===== 装配层补充（Assembly）：TrigSliceParser 切片解析器（与 nquads 分层同构） =====
 // 组装机械唯一地点：TrigPendingQuad 快照 → QuadSpan；验证在组装之后（view 直查）。
 // 本轮验证面（骨架口径，回灌后对齐 nquads validate_helper 深度）：
 //   - 缺槽检测（s/p/o 必须齐）

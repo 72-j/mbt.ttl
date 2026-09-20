@@ -1,4 +1,4 @@
-// ===== 用户部分：基础类型 =====
+// ===== 装配层（Assembly）：基础类型 =====
 // 参考 src/moon_ttl/src/term.mbt 与 error.mbt（手写版）
 // Span / QuadSpan 由生成的 nquads.mbt（NQuadsEvent / NQuadsEffect）引用
 

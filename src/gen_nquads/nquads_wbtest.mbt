@@ -1,5 +1,5 @@
 // ===== gen_nquads 解析测试 =====
-// 验证：fsm 生成器产出的状态机（nquads.mbt）+ 用户补充部分（Actions/引擎/SliceParser）
+// 验证：fsm 生成器产出的状态机（nquads.mbt）+ 装配层补充部分（Actions/引擎/SliceParser）
 // 能正确解析真实 N-Quads 输入 —— 检验 fsm 生成器的生成效果
 
 ///|

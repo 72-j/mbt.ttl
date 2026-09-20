@@ -1,4 +1,4 @@
-// ===== 用户部分：Actions 实现（mutable 契约，与 nquads TrigActionsImpl 同构） =====
+// ===== 装配层补充（Assembly）：Actions 实现（mutable 契约，与 nquads TrigActionsImpl 同构） =====
 // 口径（与 trig.mbt 头注一致）：
 //   - action 只写槽位/账本，返回意图；永不重置 ctx，也拿不到数据视图
 //   - 命名在 nquads 词汇基础上追加：set_subject/predicate/object 原样，

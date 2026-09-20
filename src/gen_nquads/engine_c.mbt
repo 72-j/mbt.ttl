@@ -1,4 +1,4 @@
-// ===== 用户部分：C FFI 词法适配（对比版） =====
+// ===== 装配层（Assembly）：C FFI 词法适配（对比版） =====
 // 状态机与 loop 均复用 engine.mbt；本文件只做 C 词法器侧的适配：
 //   - Token → NQuadsEvent 共用 engine.mbt 的 token_to_event
 //     （Lexermoon 的 Token 类型与 span 口径已与 C 版对齐，映射零补偿透传）

@@ -38,7 +38,7 @@
 | 外仓门 | `moon test src/rdf` **20/20**（含 IR 侧 trig 对照）、`moon test src/rdf/n3gen` **12/12** | 外层仓根 |
 | 公共面 | `.mbti` **349 行 / 54 顶层 `pub` 行**（同口径：n3v2 收窄后 166 行 / 29 行） | `grep -c '^pub' pkg.generated.mbti` |
 | 表规模 | **36 态 / 34 事件 / 10 效果 / 195 转移** | `grep -c '^\[\[\*\]\]' src/rdf/fsm_out/trig_fsm.toml` |
-| 用户层体量 | actions 417 / engine 531 / lexer_adapter 333 / parser_slice 603 / materialize 1645 / serialize 375 / types 160 = **4064 行** | `wc -l` |
+| 装配层体量 | actions 417 / engine 531 / lexer_adapter 333 / parser_slice 603 / materialize 1645 / serialize 375 / types 160 = **4064 行** | `wc -l` |
 | 生产文件内联 test | **21**（materialize 16 + serialize 5） | `grep -c '^test '` |
 | 包内死件 | **5 个 `.bak`**（`trig.mbt.bak` 36 KB、`engine.mbt.bak` 15 KB、`lexer_mbt*.bak` ×2、`nquads_test.mbt.bak`） | `ls *.bak` |
 
@@ -194,12 +194,12 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 
 #### R-T8 双包重复治理 `[立案]`
 
-- 目标：n3v2 与 trig 是同一模板的两个实例，用户层已出现大规模并行副本。
+- 目标：n3v2 与 trig 是同一模板的两个实例，装配层已出现大规模并行副本。
 - 证据：同名 helper 交集 20 个（`at_style_kw` / `classify_prefname` / `classify_structural` / `check_iri_view` /
   `check_bnode_view` / `deep_check_literal` / `deep_check_tt` / `eq_lower` / `eq_ignore_case` / `is_pn_local_esc` /
   `is_scheme_byte` / `list_top` / `literal_body_end` / `prefix_declared` / `slice_span` / `span_of_event` /
-  `triple_term_inner_terms` / `tt_bool_word` / `bytes_of` / `ctx_span`）；用户层 ≈4064（trig）vs ≈4381（n3v2）行。
-- 动作（二选一，先出评估）：**A** 抽共享用户层件（上移 `gen_nquads` 或新 `gen_shared`）——**B** 明确有意分叉 +
+  `triple_term_inner_terms` / `tt_bool_word` / `bytes_of` / `ctx_span`）；装配层 ≈4064（trig）vs ≈4381（n3v2）行。
+- 动作（二选一，先出评估）：**A** 抽共享装配层件（上移 `gen_nquads` 或新 `gen_shared`）——**B** 明确有意分叉 +
   差异写进各自 `spec.md`。
 - 验收：评估 + 决策（`adr.md`）；若选 A，两包 helper 各只剩方言特有部分。
 - 风险：跨包 + 跨仓，大役；**不得与 T11–T13 同笔**。
@@ -230,7 +230,7 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
    观察者注册表（改动小，能力弱）。→ 建议 **A**（与 n3v2 役22 同口径）。
 2. **题T2 公共面收窄范围**：A) 只收 FSM 机械、留三 trait `pub`——B) 连 trait 一起降包内（白盒测试足够）。
    → 建议 **B**（与 n3v2 役28 题2=B 同口径）。
-3. **题T3 双包重复（R-T8）**：A) 抽共享用户层件——B) 有意分叉 + 差异入 spec。→ 建议先 **B**（登记差异），
+3. **题T3 双包重复（R-T8）**：A) 抽共享装配层件——B) 有意分叉 + 差异入 spec。→ 建议先 **B**（登记差异），
    保留 A 为立项选项（跨包大役，风险高）。
 4. **题T4 生成门落点**：A) 在 `trig_domain_toml_gen.mbt` 扩孪生门（与 n3gen G9 同构）——B) 在 `src/fsm` 侧建
    通用产物门（波及 nquads，而 nquads 为 TOML 1.0 冻结口径）。→ **裁断：A 落地**（T10 ✅）——
@@ -242,7 +242,7 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 
 动手前：
 
-- [ ] 确认改的是**生成面**（外仓 `src/rdf` / `src/fsm`）还是**用户层**（子仓 `src/ttl/src/gen_trig`）。
+- [ ] 确认改的是**生成面**（外仓 `src/rdf` / `src/fsm`）还是**装配层**（子仓 `src/ttl/src/gen_trig`）。
 - [ ] 生成面改动 → 先确认 T10 门状态（**无门不改**）。
 - [ ] 读 `const.md` 相关红线（三条线 / 口径铁律 / action-effect 边界）。
 - [ ] 跑基线：`moon check` / `moon test src/gen_trig` / 四套件数字记录（§1.2）。
@@ -263,7 +263,7 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 
 | 主题 | 锚点 |
 |---|---|
-| 契约成员声明 | `trig.mbt:223`（Supervisor/trait 名 `TrigLoopPolicy`）、`:240`（Actions）、`:1138`（EffectHandler） |
+| 契约成员声明 | `trig.mbt:223`（Supervisor，trait 名 `TrigSupervisor`）、`:240`（Actions）、`:1138`（EffectHandler） |
 | 效果面默认 impl / 解释器 | `trig.mbt:1172` 起（impl）、`:1166`（interpret）、`:1167`（dispatch） |
 | 主循环 | `engine.mbt:364`（`next`）、`:175`（`emit_queue`）、`:504`（`settle_shell`）、`:524`（`settle_annotation`） |
 | Supervisor 四钩子 | `engine.mbt:227` / `:240` / `:314` / `:344`、`extend:353` |

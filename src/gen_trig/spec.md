@@ -23,10 +23,10 @@
 | `materialize_trig.mbt` | 物化层 | 1645 | span→QuadEmit + 深验四门（单遍） |
 | `serialize_trig.mbt` | 序列化层 | 375 | 只吃 QuadEmit，字节保真回写 + 图归并 |
 | `actions.mbt` | 契约实现层 | 417 | `Hooks` 单载体（`TrigActions` + `TrigEffectHandler`） |
-| `types.mbt` | 契约补充 | 160 | `Slot` / `SlotType` / `PredKind` 等用户侧类型 |
+| `types.mbt` | 契约补充 | 160 | `Slot` / `SlotType` / `PredKind` 等装配侧类型 |
 | `trig_wbtest.mbt` / `trig_annotation_wbtest.mbt` / `trig_bench_wbtest.mbt` / `rdf_suite_wbtest.mbt` | 测试面 | 944 / 132 / 401 / 140 | 白盒钉 / 注解钉 / 双词法 bench / 四套件 runner |
 
-用户层（除生成物与测试）合计 **4064 行**；`trig.mbt` 由生成面产出，**唯一允许的修改路径是改生成面 + 再生**。
+装配层（除生成物与测试）合计 **4064 行**；`trig.mbt` 由生成面产出，**唯一允许的修改路径是改生成面 + 再生**。
 
 ## 2 生成链与再生
 
@@ -216,7 +216,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 | C-T5 | 包内死件：5 个 `.bak`（`trig.mbt.bak` 36 KB、`engine.mbt.bak` 15 KB、`lexer_mbt*.bak` ×2、`nquads_test.mbt.bak`） | `ls *.bak` | [债]（R-T5 / T15） |
 | C-T6 | 测试位置：生产文件内联 21 个 test（`materialize_trig.mbt` 16 + `serialize_trig.mbt` 5） | `grep -c '^test '` 两文件 | [债]（R-T6 / T14） |
 | C-T7 | 卷面违规（**2026-09-12 已收口**）：`todo.md` 曾同时承载宪法（§1）与规格（§2） | 旧 `todo.md` §1/§2；`bangto/world/const.md` §5.2 | [债]→**已收口（T16）** |
-| C-T8 | 双包重复：与 gen_n3v2 用户层同名 helper 交集 20 个；用户层体量 ≈4064 vs ≈4381 行 | `ctx.md` §4 T17 清单 | [债]（R-T8 / T17 [立案]） |
+| C-T8 | 双包重复：与 gen_n3v2 装配层同名 helper 交集 20 个；装配层体量 ≈4064 vs ≈4381 行 | `ctx.md` §4 T17 清单 | [债]（R-T8 / T17 [立案]） |
 | C-T9 | `moon.pkg:1` 头注漂移：仍写"gen_nquads：…"（复制残留） | `moon.pkg:1` | [债]（R-T9，微） |
 | C-T10 | `<< >>` 壳内 `^^datatype` 误拒：`triple_term_inner_terms` 按顶层空白切项，`^^xsd:date` 被拆成第 4 项 | `parser_slice.mbt`（`triple_term_inner_terms`）；bench 语料规避 | [债]（R-T10 [立案]） |
 | C-T11 | 三引号规范化未设计：serializer 原样保真回写 | `serialize_trig.mbt` | [设计]→R-T11 [立案] |
@@ -237,7 +237,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 | R-T5 | 清包内死件：5 个 `.bak` 归档（禁静默删） | 建议 | T15 | C-T5 |
 | R-T6 | 测试归位：16+5 个内联 test 迁 `_wbtest.mbt`，辅助去重 | 建议 | T14 | C-T6 |
 | R-T7 | 卷面补全：拆 const/spec/adr，todo 只留役与账本 | **✅ 已落地（T16，2026-09-12）** | T16 | C-T7 |
-| R-T8 | 双包重复治理：共享用户层件 或 有意分叉入 spec | 立案 | T17 | C-T8 |
+| R-T8 | 双包重复治理：共享装配层件 或 有意分叉入 spec | 立案 | T17 | C-T8 |
 | R-T9 | `moon.pkg` 头注改 gen_trig 实况 | 建议 | T15（搭车） | C-T9 |
 | R-T10 | `<< >>` 内 `^^datatype` 修口：切项时闭壳后右扩后缀 | 立案 | — | C-T10 |
 | R-T11 | 三引号规范化设计（serializer 侧） | 立案 | — | C-T11 |
