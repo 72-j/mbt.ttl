@@ -11,6 +11,14 @@
 # 留证位置：CI test 作业日志（同上命令）；本地复跑同命令即可复现（2026-09-20 连跑两次逐字节一致）。
 # 缺口清零：由各套件测试**自身断言**（缺口/失败非零即 `moon test` 红），本表只做"可复现"这一半。
 # 缺口解释表：见 `review.md` §1.2（逐条引模块台账编号，不复制正文）。
+#
+# 覆盖边界（**必写**：复核面只覆盖"它覆盖的那部分"，读者不得误以为覆盖全；`const.md` §6.5.7）
+#   本面 = **套件自报行面**：三方言套件（N3Tests / rdf-turtle / rdf-* / rdf12-*）的 `=== … ===` 自报行。
+#   **不覆盖**：① **IR/产物面**（表源 → IR → 生成件 → 产物黄金门：G9 逐字节 / ts 钉 / `moon fmt` 幂等）——
+#     本轮起**另立面**（`src/quick_machine/gen-review.txt` + 主仓 CI 步「复核面·产物/IR」）；
+#     ② **覆盖率面**（行覆盖 / 可达命令名覆盖 —— 由**基线棘轮**管：`coverage-baseline.txt`、`reachable-coverage-baseline.txt`）；
+#     ③ **方言语义面**（`validate_term` / `classify_structural` 等**有意分叉件**的内部语义 —— 由各包 wbtest 管）；
+#     ④ **性能面**（bench：`trig_bench_wbtest` / nquads 基准）。
 [n3v2]
 N3Tests parser sweep: neg 23ok/0miss, pos+eval 205clean 0mat-only 0parse-fail, strict-gap 0
 examples: A=13 B=0 C=0 strict-gap=0
