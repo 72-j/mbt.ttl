@@ -14,6 +14,24 @@ pub using @nquads {
 }
 
 ///|
+/// **共享装配层件再导出**（T17 / C-T8）：纯函数面自 `gen_shared` 引入，本地调用点零改写。
+/// 注：MoonBit 的 `using` 属**包级**作用域 ⇒ 每包只声明一次，且函数名**不加 `fn`**。
+using @gs {
+  at_style_kw,
+  check_bnode_view,
+  check_iri_view,
+  deep_check_literal,
+  deep_check_tt,
+  eq_ignore_case,
+  eq_lower,
+  is_pn_local_esc,
+  literal_body_end,
+  slice_span,
+  triple_term_inner_terms,
+  view_has_scheme,
+}
+
+///|
 /// 方言开关（生成契约不引用，引擎 loop 用）：N3 = 默认扩展；RDF-star 暂不开放。
 /// 所有权：手写面持有（n3_domain.toml 里 emit = false，生成器只记账不发射——
 /// 与 PredKind 的生成器发射成对照，两栖开关在表）。
@@ -106,14 +124,4 @@ pub impl ErrOut for ParseError with fn err_kind(self : ParseError) -> String {
 pub trait ErrOut {
   fn message(self : Self) -> String
   fn err_kind(self : Self) -> String
-}
-
-///|
-/// 按 span 安全切分数据（越界返回空视图）。
-fn slice_span(data : ArrayView[Byte], span : Span) -> ArrayView[Byte] {
-  let (off, len) = span
-  if off < 0 || len < 0 || off + len > data.length() {
-    return data[0:0]
-  }
-  data[off:off + len]
 }

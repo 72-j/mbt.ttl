@@ -18,6 +18,9 @@
 //   - emits 生命周期 = 物化器生命周期
 
 ///|
+/// 共享件再导出（T17 / C-T8）：纯函数面自 `gen_shared` 引入，本地调用点零改写。
+
+///|
 /// N3 物化器：持数据视图 + 前缀账本 + @base 声明链 + 展开缓冲
 ///
 /// prefixes 账本生命周期约定（trig 同款）：调用方在 parse_all 返回后传入
@@ -93,55 +96,6 @@ fn N3Materializer::push_vocab(
     self.arena.push(nn.iri[i].to_byte())
   }
   self.push_byte(b'>')
-}
-
-///|
-/// PN_LOCAL_ESC 字符集（parser_slice validate_prefname 同口径，跨层双份：
-/// 轻验层与展开层各一份，展开层这份在条件性跳过轻验时兜底 bad-pname 族）
-fn is_pn_local_esc(e : Byte) -> Bool {
-  e == b'_' ||
-  e == b'~' ||
-  e == b'.' ||
-  e == b'-' ||
-  e == b'!' ||
-  e == b'$' ||
-  e == b'&' ||
-  e == b'\'' ||
-  e == b'(' ||
-  e == b')' ||
-  e == b'*' ||
-  e == b'+' ||
-  e == b',' ||
-  e == b';' ||
-  e == b'=' ||
-  e == b'/' ||
-  e == b'?' ||
-  e == b'#' ||
-  e == b'@' ||
-  e == b'%'
-}
-
-///|
-/// scheme 嗅探（iri.mbt parse_scheme 同文法：is_scheme_char+ 后紧跟 ':'；
-/// 本解析器口径数字可开头——嗅探必须与 @nquads.parse 路由等价，防分歧）
-fn is_scheme_byte(b : Byte) -> Bool {
-  (b >= b'0' && b <= b'9') ||
-  (b >= b'A' && b <= b'Z') ||
-  (b >= b'a' && b <= b'z') ||
-  b == b'+' ||
-  b == b'-' ||
-  b == b'.'
-}
-
-///|
-/// 对剥壳 IRI body（不含 <>）嗅探 scheme
-fn view_has_scheme(view : ArrayView[Byte]) -> Bool {
-  let len = view.length()
-  let mut i = 0
-  while i < len && is_scheme_byte(view[i]) {
-    i = i + 1
-  }
-  i > 0 && i < len && view[i] == b':'
 }
 
 ///|
@@ -548,42 +502,6 @@ fn N3Materializer::expand_boolean(self : N3Materializer, span : Span) -> Span {
   self.push_str("^^")
   self.push_vocab(@nquads.rdf_boolean)
   (start, self.arena.length() - start)
-}
-
-///|
-/// 字面量闭引号位置：返回引号体结束（闭引号后一字节）的偏移。
-/// 三引号/单引号配对、反斜杠转义感知；找不到返回 span 末尾（防御，词法已配对）
-fn literal_body_end(data : ArrayView[Byte], span : Span) -> Int {
-  let (off, len) = span
-  let q = data[off]
-  if off + 2 < off + len && data[off + 1] == q && data[off + 2] == q {
-    // 三引号长串：扫配对 """
-    let mut i = off + 3
-    while i + 2 < off + len {
-      if data[i] == q && data[i + 1] == q && data[i + 2] == q {
-        return i + 3
-      }
-      if data[i] == b'\\' {
-        i = i + 2
-      } else {
-        i = i + 1
-      }
-    }
-    return off + len // 防御路径也须返回绝对偏移（off>0 时 len 是错位）
-  }
-  // 单引号串
-  let mut i = off + 1
-  while i < off + len {
-    if data[i] == b'\\' {
-      i = i + 2
-      continue
-    }
-    if data[i] == q {
-      return i + 1
-    }
-    i = i + 1
-  }
-  off + len // 同上：绝对偏移
 }
 
 ///|
@@ -1046,35 +964,6 @@ pub fn N3Materializer::materialize_all(
 // ============================================================
 
 ///|
-/// 深验 IRI 词项（`<...>` 形态 view）
-fn check_iri_view(view : ArrayView[Byte]) -> Result[Unit, ParseError] {
-  let len = view.length()
-  if len < 3 || view[0] != b'<' || view[len - 1] != b'>' {
-    return Err(ParseError::ValidationErr("IRI must be wrapped in <>"))
-  }
-  // 绝对性：相对 IRI 已由 iri_term 按 base 改写，无 scheme 即拒（防御臂）
-  if !view_has_scheme(view[1:len - 1]) {
-    return Err(ParseError::ValidationErr("Relative IRI not allowed"))
-  }
-  // 禁字符 / UCHAR 转义（内容区 [1, len-1)，闭 '>' 由约定排除）
-  match @nquads.validate_iri_body(view, 0, 1, len) {
-    Ok(_) => ()
-    Err(e) => return Err(ParseError::ValidationErr("Bad IRI: \{e}"))
-  }
-  Ok(())
-}
-
-///|
-/// 深验 bnode 词项（view 口径，融合单遍）
-fn check_bnode_view(view : ArrayView[Byte]) -> Result[Unit, ParseError] {
-  match @nquads.validate_bnode(view, 0) {
-    Ok(_) => ()
-    Err(e) => return Err(ParseError::ValidationErr("Bad blank node: \{e}"))
-  }
-  Ok(())
-}
-
-///|
 /// 深验变量词项（ADR-004：只记身份——语法面收紧在此）：`?` + varname，
 /// varname 字符集 [A-Za-z0-9_]、首字符不许数字（N3 VARNAME 口径；词法
 /// PrefName 合成已保证 `?` 后零空格邻接，此处只收词形）。变量不进谓词位
@@ -1180,189 +1069,6 @@ fn N3Materializer::gate_literal(
   } else {
     Ok(view)
   }
-}
-
-///|
-/// 深验字面量词项（引号体 + 可选 @lang / ^^dt 后缀）
-fn deep_check_literal(
-  view : ArrayView[Byte],
-  rdf12 : Bool,
-) -> Result[Unit, ParseError] {
-  let len = view.length()
-  if len < 2 {
-    return Err(ParseError::ValidationErr("Literal too short"))
-  }
-  let q = view[0]
-  if q != b'"' && q != b'\'' {
-    return Err(ParseError::ValidationErr("Literal must start with a quote"))
-  }
-  let quote_run = if len >= 3 && view[1] == q && view[2] == q { 3 } else { 1 }
-  // 引号体：转义序列合法性 + 闭引号定位（bad-esc / bad-string 桶）。
-  // 贪左返回首个 quote_run 连续引号；三引号串闭定界向右扩到连跑尽头
-  let close0 = match @nquads.scan_string_body(view, 0, quote_run, quote_run) {
-    Ok(pos) => pos
-    Err(e) => return Err(ParseError::ValidationErr("Bad literal body: \{e}"))
-  }
-  let mut close = close0
-  if quote_run == 3 {
-    while close + 3 < len && view[close + 3] == q {
-      close = close + 1
-    }
-  }
-  // W3C bad-string-06/07 口径：闭壳连跑被右扩且紧跟 @lang / ^^dt 后缀 → 非法；
-  // 无后缀时扩并合法
-  if close > close0 && close + quote_run < len {
-    return Err(ParseError::ValidationErr("Malformed literal suffix"))
-  }
-  // \u/\U 孤代理；rdf12（语法版本开关）：1.2 ⇒ 代理一律拒，成对也不收；
-  // 1.1 宽容口径成对合法
-  match
-    @nquads.validate_escapes_unicode(
-      view,
-      0,
-      quote_run,
-      close,
-      scalar_only=rdf12,
-    ) {
-    Ok(_) => ()
-    Err(e) => return Err(ParseError::ValidationErr("Bad literal escape: \{e}"))
-  }
-  let at = close + quote_run
-  if at >= len {
-    return Ok(()) // 无后缀：simple literal
-  }
-  if view[at] == b'@' {
-    // langtag 全量 RFC 5646；RDF 1.2 方向后缀（小写精确）拆出后验基础标签。
-    // 语法版本门控：`--ltr/--rtl` 是 1.2 特征——1.1 模式显式拒（与 nquads 口径一致）
-    let tag_str = @utf8.decode_lossy(Bytes::from_array(view[at + 1:len]))
-    let has_dir = tag_str.has_suffix("--ltr") || tag_str.has_suffix("--rtl")
-    if has_dir && !rdf12 {
-      return Err(
-        ParseError::ValidationErr(
-          "Language direction suffix (--ltr/--rtl) requires RDF 1.2",
-        ),
-      )
-    }
-    let base_tag = if has_dir {
-      tag_str[:tag_str.length() - 5]
-    } else {
-      tag_str[:]
-    }
-    match @nquads.LanguageTag::parse(base_tag) {
-      Ok(_) => ()
-      Err(e) => return Err(ParseError::ValidationErr("Bad language tag: \{e}"))
-    }
-    return Ok(())
-  }
-  if view[at] == b'^' && at + 1 < len && view[at + 1] == b'^' {
-    let dt = view[at + 2:len]
-    if dt.length() > 1 && dt[0] == b'<' {
-      // banned datatype（rdf:langString / rdf:dirLangString 不可显式使用）
-      if @nquads.is_banned_langstring_iri(dt) {
-        return Err(
-          ParseError::ValidationErr(
-            "rdf:langString / rdf:dirLangString must not be used as explicit datatype",
-          ),
-        )
-      }
-      check_iri_view(dt)
-    } else {
-      // ^^PrefName 泄漏兜底（组装层应已展开或拒绝）
-      Err(ParseError::ValidationErr("Literal datatype must be an IRI"))
-    }
-  } else {
-    Err(ParseError::ValidationErr("Malformed literal suffix"))
-  }
-}
-
-///|
-/// 布尔词零分配比对（span 原字节 vs ASCII 串）
-fn tt_bool_word(v : ArrayView[Byte], word : String) -> Bool {
-  if v.length() != word.length() {
-    return false
-  }
-  for i in 0..<word.length() {
-    if v[i] != word[i].to_byte() {
-      return false
-    }
-  }
-  true
-}
-
-///|
-/// 深验引用三元组壳（term-kind 核验）：结构（项数=3、壳配对）parse 层已验；
-/// 这里核验三个槽位的词项种类——主语拒字面量族；谓词只许 IRI/PrefName 形；
-/// 宾语全种类合法。壳内 PrefName/相对 IRI 保持原文（壳整段保真不改写）
-fn deep_check_tt(view : ArrayView[Byte]) -> Result[Unit, ParseError] {
-  let len = view.length()
-  if len < 5 ||
-    view[0] != b'<' ||
-    view[1] != b'<' ||
-    view[len - 1] != b'>' ||
-    view[len - 2] != b'>' {
-    return Err(ParseError::ValidationErr("Malformed triple-term shell"))
-  }
-  let terms = triple_term_inner_terms(view, (0, len))
-  if terms.length() != 3 {
-    return Err(
-      ParseError::ValidationErr("Triple term must have exactly 3 terms"),
-    )
-  }
-  // 主语位：字面量族（引号 / 数值首字节 / true/false）拒绝；嵌套壳递归
-  let s = slice_span(view, terms[0])
-  if s.length() > 0 {
-    let c0 = s[0]
-    if c0 == b'"' ||
-      c0 == b'\'' ||
-      c0 == b'.' ||
-      c0 == b'+' ||
-      c0 == b'-' ||
-      (c0 >= b'0' && c0 <= b'9') ||
-      tt_bool_word(s, "true") ||
-      tt_bool_word(s, "false") {
-      return Err(
-        ParseError::ValidationErr("Triple term subject must not be a literal"),
-      )
-    }
-  }
-  if s.length() >= 2 && s[0] == b'<' && s[1] == b'<' {
-    match deep_check_tt(s) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
-  }
-  // 谓词位：IRI 直过；嵌套壳 / bnode（_: 也含冒号，须显式排除）拒；其余须 PrefName 形
-  let p = slice_span(view, terms[1])
-  let p_ok = if p.length() >= 2 && p[0] == b'<' && p[1] == b'<' {
-    false
-  } else if p.length() > 0 && p[0] == b'<' {
-    true
-  } else if p.length() >= 2 && p[0] == b'_' && p[1] == b':' {
-    false
-  } else {
-    let mut has_colon = false
-    for b in p {
-      if b == b':' {
-        has_colon = true
-        break
-      }
-    }
-    has_colon
-  }
-  if !p_ok {
-    return Err(
-      ParseError::ValidationErr("Triple term predicate must be an IRI"),
-    )
-  }
-  // 宾语位：全种类合法，仅嵌套壳递归
-  let o = slice_span(view, terms[2])
-  if o.length() >= 2 && o[0] == b'<' && o[1] == b'<' {
-    match deep_check_tt(o) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
-  }
-  Ok(())
 }
 
 ///|

@@ -227,6 +227,7 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 | C-17 | `<=` raw 谓词被 validate_pred 拒（ADR-005 操作符=谓词身份 vs "IRI must be wrapped in <>"） | 役25 影子扫描 extras-10（`=>` 同构未露头） | 操作符谓词语义与组装校验冲突 | [债]（役25 立项） |
 
 ---
+| C-18 | 双包重复（与 `gen_trig`）：14 项纯函数已抽 `src/gen_shared/`（≈445 行/包），其余**有意分叉**入册 | 裁定表 = `../gen_trig/spec.md` §7.1；决策 = `../gen_trig/adr.md` ADR-TRIG-017 | 两包装配层各减 ≈445 行；一处真分歧（`deep_check_literal` 的 `rdf12` 门控）**取严者**归一 | [债]→**已收口（T17，2026-09-20）** |
 
 ## 8. 整改裁决台账（R）
 

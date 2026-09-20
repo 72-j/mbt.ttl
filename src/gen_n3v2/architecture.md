@@ -23,6 +23,10 @@ N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态�
 数据流：`Lexermoon → N3LexerAdapter → N3Engine.next → step(表) → N3Effect → interpret
 → N3PendingQuad → assemble/validate → QuadSpan → N3Materializer → QuadEmit → N3Serializer`。
 
+> **装配层共享件**：`../gen_shared/`（14 项纯函数，T17 / C-T8 抽件；包级 `using @gs` 引入，调用点零改写）。
+> 语义层（`validate_term` / `classify_structural` / `classify_prefname` / `span_of_event`）与方言 ctx 件**有意分叉**，
+> 逐条理由见 `spec.md` §7.1（trig 侧）/ 对侧 ADR-TRIG-017。
+
 ## 生成链（parse → **compose** → validate → emit；黄金门 G9）
 
 ```

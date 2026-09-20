@@ -192,9 +192,10 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 - 验收：`@keywords` 正例钉 + 未声明时 `a` 仍 `KeywordA` 的负例钉。
 - 依赖：T10。
 
-#### R-T8 双包重复治理 `[立案]`
+#### R-T8 双包重复治理 ✅ 2026-09-20（T17，ADR-TRIG-017 混合制）
 
-- 目标：n3v2 与 trig 是同一模板的两个实例，装配层已出现大规模并行副本。
+- **结果**：14 项**零方言语义纯函数**抽入新包 `src/gen_shared/`（≈445 行/包；包级 `using @gs` ⇒ 零改调用点）；其余**有意分叉**（逐条理由见 `spec.md` §7.1 裁定表）；一处真分歧（`deep_check_literal` 的 `rdf12` 门控）**取严者**归一（n3v2 侧落后副本）。
+- 目标（原）：n3v2 与 trig 是同一模板的两个实例，装配层已出现大规模并行副本。
 - 证据：同名 helper 交集 20 个（`at_style_kw` / `classify_prefname` / `classify_structural` / `check_iri_view` /
   `check_bnode_view` / `deep_check_literal` / `deep_check_tt` / `eq_lower` / `eq_ignore_case` / `is_pn_local_esc` /
   `is_scheme_byte` / `list_top` / `literal_body_end` / `prefix_declared` / `slice_span` / `span_of_event` /

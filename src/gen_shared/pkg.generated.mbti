@@ -1,0 +1,43 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "thy1016/moonttl/gen_shared"
+
+import {
+  "thy1016/moonttl/gen_nquads",
+}
+
+// Values
+pub fn at_style_kw(ArrayView[Byte], Int) -> Bool
+
+pub fn check_bnode_view(ArrayView[Byte]) -> Result[Unit, @gen_nquads.ParseError]
+
+pub fn check_iri_view(ArrayView[Byte]) -> Result[Unit, @gen_nquads.ParseError]
+
+pub fn deep_check_literal(ArrayView[Byte], Bool) -> Result[Unit, @gen_nquads.ParseError]
+
+pub fn deep_check_tt(ArrayView[Byte]) -> Result[Unit, @gen_nquads.ParseError]
+
+pub fn eq_ignore_case(ArrayView[Byte], Int, Bytes) -> Bool
+
+pub fn eq_lower(ArrayView[Byte], Int, Bytes) -> Bool
+
+pub fn is_pn_local_esc(Byte) -> Bool
+
+pub fn is_scheme_byte(Byte) -> Bool
+
+pub fn literal_body_end(ArrayView[Byte], (Int, Int)) -> Int
+
+pub fn slice_span(ArrayView[Byte], (Int, Int)) -> ArrayView[Byte]
+
+pub fn triple_term_inner_terms(ArrayView[Byte], (Int, Int)) -> Array[(Int, Int)]
+
+pub fn tt_bool_word(ArrayView[Byte], String) -> Bool
+
+pub fn view_has_scheme(ArrayView[Byte]) -> Bool
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

@@ -305,3 +305,36 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 
 **保留的公共面（有意）**：`trig_parser`、`TrigEngine`、`TrigSliceParser`、`TrigMaterializer`、
 `TrigSerializer` 及其方法（外部入口）+ 数据面 `QuadSpan`/`PredKind`/`TrigDialect`/`SerializeFormat`/`GraphPolicy`。
+
+---
+
+## ADR-TRIG-017：双包重复治理（T17 / R-T8，题T3 = **混合制**）——✅ 2026-09-20
+
+**背景**：`gen_trig` 与 `gen_n3v2` 是同一模板的两个实例，装配层（Assembly）出现并行副本
+（旧册记"同名 helper 交集 20 个"）。题T3 原为二选一（**A** 抽共享件 / **B** 有意分叉登记）。
+
+**决策（混合制：按项二选一，逐项理由见 `spec.md` §7.1 裁定表）**：
+
+- **A：抽共享件** —— 新建 `src/gen_shared/`，收**零方言语义纯函数** 14 项（≈445 行/包）：
+  `deep_check_literal` / `deep_check_tt` / `literal_body_end` / `is_pn_local_esc` / `check_iri_view` /
+  `check_bnode_view` / `tt_bool_word` / `is_scheme_byte` / `view_has_scheme` / `eq_ignore_case` /
+  `eq_lower` / `at_style_kw` / `triple_term_inner_terms` / `slice_span`。
+  引入方式 = 每包**一条包级** `using @gs { … }` ⇒ **本地调用点零改写**
+  （纪律：MoonBit 的 `using` 属**包级**作用域，函数名**不加 `fn`**）。
+- **A + 取严者（一处真分歧）**：`deep_check_literal` 的方向后缀门控——trig 侧 `has_dir && rdf12`、
+  n3v2 侧仅 `has_dir` ⇒ 判 n3v2 侧**落后**（ADR-TRIG-014 单开关未落到该副本）⇒ 抽件取**严者**（trig 版）；
+  同笔验证：`moon test` **473/473**，四套件自报行**逐字节不变**（`suite-review.txt` diff 空）。
+- **B：有意分叉**（逐条理由在 §7.1）：`classify_structural` / `validate_term`（方言语义显著）·
+  `prefix_declared`（隐式空前缀 = N3/cwm 语义）· `classify_prefname` / `span_of_event`（签名含方言事件类型）·
+  `ctx_span` / `list_top`（签名含方言 ctx/Slot）· `message`（`ErrOut` impl 属方言错误外观）·
+  `begin_record` / `set_subject`（**生成件**内，同模板产出 ⇒ 已同源）· `bytes_of`（测试助手）。
+
+**后果**：两包装配层各减 ≈445 行；重复面从"两份并行"降为"一份 + 语义分叉"；
+`gen_shared` 成为**共享词表（`@nquads`）之后的第二层共享**（纯函数面）；
+行覆盖基线 905 → **906‰**（去重复分母；分子 10030→9887、分母 11074→10906，同笔推高）。
+
+**重评估条件**：① 分叉项方言差异**收敛**（如 `validate_term` 判定表统一）⇒ 重估抽件；
+② `gen_shared` 出现"只为某一方言所用"的件 ⇒ 退回该方言。
+
+**风险/纪律**：本包**只收"两包逐字同源"的函数**（新增件必须先做去注释比对 + 同笔门绿）；
+**方言语义件不进本包**（否则共享件退化为方言开关垃圾场）。

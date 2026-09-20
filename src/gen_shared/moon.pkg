@@ -1,0 +1,16 @@
+// gen_shared：**跨方言共享装配层件**（T17 / C-T8 双包重复治理，2026-09-20 立）
+//
+// 定位：n3v2 与 trig 是同一模板的两个实例，装配层（Assembly）里"零方言语义的纯函数"
+// 曾各存一份并行副本（实测 14 项同名 / ≈445 行/包）。本包收**纯函数面**：
+//   · 只依赖 `@nquads` 共享词表（`Span` = (Int,Int) / `ParseError` / `Bytes` / `ArrayView[Byte]`）
+//   · **不含**方言类型（`N3Event` / `TrigEvent` / `N3Context` / `TrigContext` / `Slot`）与方言语义分支
+// 语义层（`validate_term` / `classify_structural` / `classify_prefname` / `span_of_event` …）与
+// 方言 ctx 相关件（`ctx_span` / `list_top`）**有意分叉**，逐条理由见两包 `spec.md` 的 C-T8 裁定表。
+//
+// 纪律：本包只收"两包逐字节同源"的函数；新增件必须**先证明同源**（两包摘除本地副本 → 同笔再生门绿）。
+// 生成物无关（本包不参与 FSM 生成链；G9 / 产物黄金门不受影响）。
+
+import {
+  "moonbitlang/core/encoding/utf8",
+  "thy1016/moonttl/gen_nquads" @nquads,
+}

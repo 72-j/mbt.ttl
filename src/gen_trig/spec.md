@@ -216,13 +216,29 @@ quad.o 形如 << ... >> 且语句无图名位:
 | C-T5 | 包内死件：5 个 `.bak`（`trig.mbt.bak` 36 KB、`engine.mbt.bak` 15 KB、`lexer_mbt*.bak` ×2、`nquads_test.mbt.bak`） | ~~`ls *.bak`~~ **实况：`ls src/gen_trig/*.bak` 无匹配（2026-09-20 复核）** | [债]→**已清（T15）** |
 | C-T6 | 测试位置：生产文件内联 21 个 test（`materialize_trig.mbt` 16 + `serialize_trig.mbt` 5） | ~~`grep -c '^test '` 两文件~~ **实况：两文件各 0 个 `test`（2026-09-20 复核）** | [债]→**已清（T14：迁 `_wbtest.mbt`）** |
 | C-T7 | 卷面违规（**2026-09-12 已收口**）：`todo.md` 曾同时承载宪法（§1）与规格（§2） | 旧 `todo.md` §1/§2；`bangto/world/const.md` §5.2 | [债]→**已收口（T16）** |
-| C-T8 | 双包重复：与 gen_n3v2 装配层同名 helper 交集 20 个；装配层体量 ≈4064 vs ≈4381 行 | `ctx.md` §4 T17 清单 | [债]（R-T8 / T17 [立案]） |
+| C-T8 | 双包重复：与 gen_n3v2 装配层同名 helper 交集 20 个；装配层体量 ≈4064 vs ≈4381 行 | **裁定表 §7.1**；实现 = 新包 `src/gen_shared/`（14 项纯函数，≈445 行/包） | [债]→**已收口（T17，2026-09-20；ADR-TRIG-017 混合制：工具层抽件 + 语义层有意分叉）** |
 | C-T9 | `moon.pkg:1` 头注漂移：仍写"gen_nquads：…"（复制残留） | ~~`moon.pkg:1`~~ **实况：已写 `gen_trig`（2026-09-20 复核）** | [债]→**已修（R-T9）** |
 | C-T10 | `<< >>` 壳内 `^^datatype` 误拒：`triple_term_inner_terms` 按顶层空白切项，`^^xsd:date` 被拆成第 4 项 | `parser_slice.mbt`（`triple_term_inner_terms`）；bench 语料规避 | [债]（R-T10 [立案]） |
 | C-T11 | 三引号规范化未设计：serializer 原样保真回写 | `serialize_trig.mbt` | [设计]→R-T11 [立案] |
 | C-T12 | MoonBit 词法落后 C 侧 2.3–2.6×（简单 4006 token：434 µs vs 1117 µs；复杂 9046：907 vs 2056） | `trig_bench_wbtest.mbt` | [债]（R-T12 [立案]） |
 | C-T13 | `@keywords` 语义豁免未接：适配层无跨 token 状态，`@keywords` 下 `'a'` 仍出 KeywordA | `lexer_adapter.mbt`；表未接 | [设计]→R-T13 [立案] |
 | C-T14 | 陈数已澄清：旧 `todo.md` §5 item 6 记 deferred 2/1/5/6（predates ★1/★3 收口）；实测四套件 deferred 全零 | 套件输出 357/316/36/75，failed 0 | [债]→**已澄清（T16）** |
+
+### 7.1 T17 双包重复**裁定表**（2026-09-20；C-T8 收口依据）
+
+| 项 | 裁定 | 理由 |
+|---|---|---|
+| 14 项纯函数（`deep_check_literal` / `deep_check_tt` / `literal_body_end` / `is_pn_local_esc` / `check_iri_view` / `check_bnode_view` / `tt_bool_word` / `is_scheme_byte` / `view_has_scheme` / `eq_ignore_case` / `eq_lower` / `at_style_kw` / `triple_term_inner_terms` / `slice_span`） | **A 抽共享件** | 去注释后两包**逐字同源**；零方言类型耦合（只吃 `Byte` / `ArrayView[Byte]` / `Bytes` / `String` / `Span` / `ParseError`）；包级 `using @gs` ⇒ **零改调用点** |
+| `deep_check_literal` 的 `rdf12` 门控 | **A + 取严者** | trig = `has_dir && rdf12`、n3v2 = `has_dir` ⇒ n3v2 落后的单开关副本；取严者后 473/473 + 四套件自报行不变 |
+| `classify_structural` / `validate_term` | **B 有意分叉** | 方言语义显著（n3v2 388/361 行含 path/集合/公式；trig 53/78 行含图块/注解） |
+| `prefix_declared` | **B 有意分叉** | 差异 = 隐式空前缀放行（N3/cwm 语义，R-16 / C-16），非工具差异 |
+| `classify_prefname` / `span_of_event` | **B 有意分叉** | 签名含**方言事件类型**；抽件需中间枚举 + 双向映射，代价 > 收益 |
+| `ctx_span` / `list_top` | **B 有意分叉** | 签名含**方言 ctx / Slot**；抽件需改签名拆参 |
+| `message`（`ErrOut` impl） | **B 有意分叉** | impl 属方言包的错误外观（7 行收益低） |
+| `begin_record` / `set_subject`（生成件内） | **B 生成面** | 由**同一模板**产出 ⇒ 已同源；不入抽件范围（改它走表源 + 产物黄金门） |
+| `bytes_of`（`*_wbtest` 内） | **B 有意分叉** | 测试助手；跨包共享需公开面（污染 `.mbti`），不值 |
+
+> 口径：本表只列**裁定 + 一句理由**；决策全文 = `adr.md` ADR-TRIG-017；实现 = `src/gen_shared/`。
 
 ## 8 整改裁决台账（R）
 

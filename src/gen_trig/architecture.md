@@ -26,6 +26,10 @@ TrigMaterializer           物化 + 深验四门（单遍；arena 只追加）
 serialize_trig.mbt         序列化：字节保真回写 + 图归并
 ```
 
+> **装配层共享件**：`../gen_shared/`（14 项纯函数，T17 / C-T8 抽件；包级 `using @gs` 引入，调用点零改写）。
+> 语义层（`validate_term` / `classify_structural` / `classify_prefname` / `span_of_event`）与方言 ctx 件**有意分叉**，
+> 逐条理由见 `spec.md` §7.1（trig 侧）/ 对侧 ADR-TRIG-017。
+
 ## 生成链（三方言里最绕的一条）
 
 ```

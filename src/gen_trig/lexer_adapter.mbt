@@ -192,40 +192,6 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> TrigEvent {
 }
 
 ///|
-/// @ 风格指令嗅探：keyword token 前一字节是否 '@'（向后窥一字节，零跨 token 状态）
-fn at_style_kw(data : ArrayView[Byte], off : Int) -> Bool {
-  off > 0 && data[off - 1] == b'@'
-}
-
-///|
-/// 精确小写比对（@ 风格指令名口径：@prefix/@base/@version 小写精确）
-fn eq_lower(data : ArrayView[Byte], off : Int, kw : Bytes) -> Bool {
-  for i in 0..<kw.length() {
-    if data[off + i] != kw[i] {
-      return false
-    }
-  }
-  true
-}
-
-///|
-/// 大小写不敏感字节比较（零分配；kw 为 ASCII 字节字面量）
-fn eq_ignore_case(data : ArrayView[Byte], off : Int, kw : Bytes) -> Bool {
-  let n = kw.length()
-  for i in 0..<n {
-    let c = data[off + i]
-    let k = kw[i]
-    // 归一大小写后比对
-    let c1 = if c >= b'A' && c <= b'Z' { c + 32 } else { c }
-    let k1 = if k >= b'A' && k <= b'Z' { k + 32 } else { k }
-    if c1 != k1 {
-      return false
-    }
-  }
-  true
-}
-
-///|
 /// LexerSource 实现：逐 token 分类；TrigEOF 合法送达一次，其后 None=枯竭
 pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) -> TrigEvent? {
   // 拆分槽先兑现：`@prefix:` 的冒号半边（声明名 PrefName）排在关键词事件之后

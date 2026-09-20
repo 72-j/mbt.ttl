@@ -5,6 +5,7 @@ import {
   // "moonbitlang/core/array",
   "moonbitlang/core/encoding/utf8",
   "thy1016/moonttl/gen_nquads" @nquads,
+  "thy1016/moonttl/gen_shared" @gs,
 }
 
 import {
