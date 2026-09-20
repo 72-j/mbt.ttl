@@ -174,6 +174,7 @@ pub(all) struct N3FrameView {
   as_pred : Bool
   prev_node : Span?
   node_seq : Int
+  id_subject : Span? // R-17 数据面开面（2026-09-20）：`[ id :X … ]` 语义主语（None = fresh）
 }
 
 ///|
@@ -192,6 +193,7 @@ pub fn N3Probe::frames(self : N3Probe) -> Array[N3FrameView] {
       as_pred: frame.as_pred,
       prev_node: frame.prev_node,
       node_seq: frame.node_seq,
+      id_subject: frame.id_subject,
     })
   }
   out

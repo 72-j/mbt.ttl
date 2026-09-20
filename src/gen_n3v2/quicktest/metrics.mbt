@@ -178,8 +178,9 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("Implies", 1), // Batch 1 前半同笔（见 Bang 行注）
     ("Literal", 3),
     ("Unknown", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
-    // R-18 后 Id/Invert 行落地 ⇒ 排除理由改为 R-17 值级缺口，仍显式 0（未列默认 1 陷阱）
-    ("Id", 0),
+    // R-17 转正（2026-09-20）：set_id_subject 真臂入模（帧位 id_subject + 条件
+    // ret_state）⇒ 权重放开与 TOML/business 同笔；原排除理由（R-17 值级缺口）退役
+    ("Id", 1),
     ("Invert", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
     ("AnnotEnd", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
     ("ForAllKw", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
@@ -500,6 +501,11 @@ test "n3v2 覆盖率门范围: 见证名单 = 表上有出边的命令名（差�
 /// 结构钉子用的可达状态集（BFS，边口径同上）
 fn reachable_states() -> Array[ModelState] {
   let seen : Array[ModelState] = [ExpectSubject]
+  // 帧感知签名（R-17 转正，2026-09-20）：去重键 = (态, 帧顶 ret_state)。只按态去重
+  // 会把"代表路径塌缩"带进来：BnpIdAfterClose 唯一入口 = set_id_subject **条件写**
+  // 帧 ret_state（表外运行时改写），而通往 BnpAfterObject 的首达路径从不含该绕道
+  // ⇒ 绕道路径不入队、pop 永远探不到（役 7 槽盲 artifact 同族，故本笔再翻案）。
+  let sigs : Array[(ModelState, ModelState?)] = [(ExpectSubject, None)]
   let queue : Array[Array[Command]] = [[]]
   while queue.length() > 0 {
     let path = queue.remove(0)
@@ -511,8 +517,16 @@ fn reachable_states() -> Array[ModelState] {
       if valid(model, command) {
         let (next_model, _) = model_execute(model, command)
         let next_state = next_model.state
-        if !seen.contains(next_state) {
-          seen.push(next_state)
+        let top_ret : ModelState? = match next_model.frames.last() {
+          Some(fr) => Some(fr.ret_state)
+          None => None
+        }
+        let sig = (next_state, top_ret)
+        if !sigs.contains(sig) {
+          sigs.push(sig)
+          if !seen.contains(next_state) {
+            seen.push(next_state)
+          }
           let new_path = path.copy()
           new_path.push(command)
           queue.push(new_path)
@@ -534,11 +548,10 @@ test "n3v2 结构钉子: 可达状态 / 可达命令名 / 死态" {
   // ——ExpectVerbRequired 唯一入口 = frame_push 的 ret_state 帧弹回（model_exec:66/78），
   // 槽盲探不到。槽感知后 53/53 全可达（"不可达"清单应为空）。
   // 【53 → 54（R-18，2026-09-18）】：+BnpExpectIdNode（入口 = BnpExpectPredicate+Id 表行）
-  // 可达；**BnpIdAfterClose 死态（54/55）**：其唯一入边不在表上——引擎运行时
-  // set_id_subject 的 as_subject 特例改写帧 ret_state（actions.mbt:200），与
-  // ExpectVerbRequired 帧弹回同族；模型未识别 set_id_subject（R-17 浅半，TODO(P0)）
-  // 故探不到 = 债点计入普查，清偿后即 55/55。
-  assert_eq(states.length(), 54)
+  // 【54 → 55（R-17 转正，2026-09-20）】：BnpIdAfterClose 死态清偿——模型识别
+  // set_id_subject 真臂，条件写 frame.ret_state=flag:as_subject?BnpIdAfterClose
+  // （帧感知探针按帧旗可探）⇒ 55/55 全可达（"不可达"清单应为空）。
+  assert_eq(states.length(), 55)
   assert_eq(witnesses.length(), 40)
   debug(
     "n3v2 结构钉：可达状态 \{states.length()}/\{all_states().length()}；可达命令名 \{witnesses.length()}/\{all_commands().length()}",
@@ -895,6 +908,11 @@ fn path_end_model(path : Array[Command]) -> Model {
 /// （按**命令名**记账，役 14）同边口径（边 = `valid`，下一态跑模型），差别只在记账键。
 fn reachable_state_witness_paths() -> Array[(ModelState, Array[Command])] {
   let found : Array[(ModelState, Array[Command])] = [(ExpectSubject, [])]
+  // 帧感知签名（R-17 转正，2026-09-20）：与 `reachable_states` 同键（态, 帧顶
+  // ret_state）——**队列**按签名去重（可达性完备：条件帧改写的绕道路径得以入队），
+  // **found 只记每态首达**（普查规模 = 态数，不随签名爆炸）。BnpIdAfterClose 由此
+  // 以自己的首达签名（pop 弹出、帧栈已空）入册，普查能把"条件帧改写"态开进探针。
+  let sigs : Array[(ModelState, ModelState?)] = [(ExpectSubject, None)]
   let queue : Array[Array[Command]] = [[]]
   while queue.length() > 0 {
     let path = queue.remove(0)
@@ -902,11 +920,19 @@ fn reachable_state_witness_paths() -> Array[(ModelState, Array[Command])] {
     for command in all_commands() {
       if valid(model, command) {
         let (next, _) = model_execute(model, command)
-        if !found.any(fn(pair) { pair.0 == next.state }) {
+        let top_ret : ModelState? = match next.frames.last() {
+          Some(fr) => Some(fr.ret_state)
+          None => None
+        }
+        let sig = (next.state, top_ret)
+        if !sigs.contains(sig) {
+          sigs.push(sig)
           let new_path = path.copy()
           new_path.push(command)
-          found.push((next.state, new_path))
           queue.push(new_path)
+          if !found.any(fn(pair) { pair.0 == next.state }) {
+            found.push((next.state, new_path))
+          }
         }
       }
     }
@@ -929,7 +955,8 @@ fn reachable_state_witness_paths() -> Array[(ModelState, Array[Command])] {
 ///
 /// **裁剪②（Option 桥）**：沿革（R-18 清偿，2026-09-18）——两枚切片态原桥返 None，
 /// 同源刷新后桥已 `Some` 收编；Id/Invert 已入 41 命令词表，`BnpExpectIdNode` 入
-/// 见证清单（54 态），`BnpIdAfterClose` 因入边是运行时帧改写仍不可达（结构钉子 54/55）。
+/// 见证清单（54 态）；【R-17 转正（2026-09-20）】`BnpIdAfterClose` 亦入（55 态，
+/// 结构钉子 55/55）——原"入边是运行时帧改写不可达"的说法随真臂化退役。
 ///
 /// **裁剪③（分类门）**：首跑实测 92 分道**全部**落在 6 个 trail/Path 态（尾随/路径
 /// 深机械 = prev_node 帧扩展位，R-17 领土），干净领土零分道 ⇒ 门形分两向：
@@ -949,9 +976,9 @@ fn reachable_state_witness_paths() -> Array[(ModelState, Array[Command])] {
 /// 清账 / E ObjTrail 收口三行；**这些在「响应+状态」轴上全部不可见**（载荷被罩压制或
 /// 弹帧丢弃）⇒ 值级轴不是重复门。清偿节奏：逐族一笔，修一处露一处
 /// （实测：修族 A 后族 C 的**公式孪生**浮出 8 处）。
-test "指标·引擎侧普查: 54 可达态 × 41 命令 = 2214 对，响应+状态+槽位分层一致" {
+test "指标·引擎侧普查: 55 可达态 × 41 命令 = 2255 对，响应+状态+槽位分层一致" {
   let witnesses = reachable_state_witness_paths()
-  assert_eq(witnesses.length(), 54)
+  assert_eq(witnesses.length(), 55)
   let violations : Array[String] = [] // 干净领土分道（红线，必须空）
   let debt_sites : Array[String] = [] // 深机械领土分道点（R-17 债台账，数字钉死）
   let slot_roots : Array[String] = [] // 值级（槽位快照）根因：每探针**首处**分道（R-20 台账）

@@ -7,6 +7,8 @@
 #       `frame.popped.<位>`（被弹帧、后态不存在）；`frame.<位>` 作**读**源时 = 行进前帧顶；`frame.ret_state=to` 已写实成态名。§AN.13）
 #      （**弹帧行**（`returns` 含 `PopBnp`）的 `writes` = **行终态**：按行 `to` 选 `pop_writes` 臂、
 #       臂内同目标覆盖基础写、`frame.popped.*` 已剔除（被弹帧后态不存在）。§AN.14）
+#      （**帧旗条件臂**（§AN.15，R-17）：`when_frame_flag` 投影成条件条目 `<目标>=flag:<位>?<来源>`——
+#       行进前帧顶 `<位>`（Bool）为真 ⇒ 按 `<来源>` 判；为假 ⇒ 引擎不写 = 目标位当前值。分类器验证不豁免）
 ExpectBaseIri+Iri	set_base	Continue	-	-	false	-
 ExpectObject+Iri	set_object	Continue	-	-	false	-
 ListAfterElem+Rparen	list_nil	PopBnp	-	-	false	-
@@ -70,7 +72,6 @@ FormulaAfterObject+Rbrace	close_formula	PopBnp	-	-	false	-
 FormulaExpectIsProp+Iri	set_predicate	Continue	-	-	false	-
 FormulaExpectSubject+Anon	set_subject	Continue	-	-	false	-
 AnnotExpectObject+BlankNode	set_object	Continue	-	-	false	-
-BnpExpectIdNode+PrefName	set_id_subject	-	-	-	false	payload
 BnpExpectIsProp+KeywordA	set_predicate	Continue	-	-	false	-
 BnpExpectIsProp+KeywordX	set_predicate	Continue	-	-	false	-
 BnpExpectIsProp+PrefName	set_predicate	Continue	-	-	false	-
@@ -268,6 +269,7 @@ PathAfterStep+Literal	path_end	Continue	path_src=none,path_pend=none,predicate=c
 PathAfterStep+PrefName	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
 PathAfterStep+Variable	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
 PathAfterStep+BlankNode	path_end	Continue	path_src=none,path_pend=none,predicate=ctx.path_pend,object=fwd:arg0|ctx.path_src,subject=fwd:ctx.path_src|arg0	-	false	payload
+BnpExpectIdNode+PrefName	set_id_subject	Continue	subject=arg0,predicate=none,frame.top.id_subject=arg0,frame.top.ret_state=flag:as_subject?BnpIdAfterClose	-	false	payload
 ExpectPredicate+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.top.as_pred=true,frame.top.is_formula=true	push	false	payload,false,state:ExpectObject
 ExpectVerbOrDot+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.top.as_pred=true,frame.top.is_formula=true	push	false	payload,false,state:ExpectObject
 ExpectVerbOrEnd+Lbrace	open_formula_pred	Continue	subject=none,predicate=none,frame.top.as_pred=true,frame.top.is_formula=true	push	false	payload,false,state:ExpectObject

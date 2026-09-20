@@ -84,6 +84,7 @@ fn wb_frame() -> FaceFrame {
     as_pred: false,
     prev_node: Some(wb_rid(23)),
     node_seq: 7,
+    id_subject: Some(wb_rid(24)),
   }
 }
 

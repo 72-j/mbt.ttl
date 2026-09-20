@@ -7,6 +7,8 @@
 #       `frame.popped.<位>`（被弹帧、后态不存在）；`frame.<位>` 作**读**源时 = 行进前帧顶；`frame.ret_state=to` 已写实成态名。§AN.13）
 #      （**弹帧行**（`returns` 含 `PopBnp`）的 `writes` = **行终态**：按行 `to` 选 `pop_writes` 臂、
 #       臂内同目标覆盖基础写、`frame.popped.*` 已剔除（被弹帧后态不存在）。§AN.14）
+#      （**帧旗条件臂**（§AN.15，R-17）：`when_frame_flag` 投影成条件条目 `<目标>=flag:<位>?<来源>`——
+#       行进前帧顶 `<位>`（Bool）为真 ⇒ 按 `<来源>` 判；为假 ⇒ 引擎不写 = 目标位当前值。分类器验证不豁免）
 ExpectBaseIri+Iri	set_base	Continue	-	-	false	-
 ExpectObject+Iri	set_object	Continue	-	-	false	-
 ExpectObject+Anon	set_object	Continue	-	-	false	-

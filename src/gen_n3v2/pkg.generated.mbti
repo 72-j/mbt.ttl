@@ -86,6 +86,7 @@ pub(all) struct N3FrameView {
   as_pred : Bool
   prev_node : (Int, Int)?
   node_seq : Int
+  id_subject : (Int, Int)?
 }
 
 pub(all) struct N3InversionView {

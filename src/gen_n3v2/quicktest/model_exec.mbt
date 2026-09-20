@@ -905,8 +905,33 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_predicate(model, r, BnpExpectObject), Continue)
     // --- BnpExpectIdNode ---
     // @arm BnpExpectIdNode+PrefName
-    (BnpExpectIdNode, PrefName(_)) =>
-      ({ ..model, state: BnpExpectPredicate, }, Continue) // TODO(P0): 未识别 action set_id_subject，默认响应请人工确认
+    (BnpExpectIdNode, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectPredicate,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+          frames: {
+            let fs = frames_top_set_id_subject(
+              model.frames,
+              match ref_id(r) {
+                Some(id) => Some(id)
+                None => None
+              },
+            )
+            if fs.length() > 0 && fs[fs.length() - 1].as_subject {
+              frames_top_set_ret_state(fs, BnpIdAfterClose)
+            } else {
+              fs
+            }
+          },
+        },
+        Continue,
+      )
     // --- BnpIdAfterClose ---
     // @arm BnpIdAfterClose+Dot
     (BnpIdAfterClose, Dot) =>
@@ -4523,6 +4548,7 @@ fn frame_push(
     prev_node: None,
     is_formula: f0,
     as_pred: f1,
+    id_subject: None,
   })
   // 状态由**转移表**给（`to`）；`ret_state` 只是压进帧、弹帧时才兑现
   {
@@ -4547,7 +4573,11 @@ fn frame_pop(model : Model) -> Model {
   let frames = model.frames.copy()
   match frames.pop() {
     Some(fr) => {
-      let target = fr.open_span
+      let target = match fr.id_subject {
+        Some(id) => id
+        None => fr.open_span
+      }
+
       // 弹帧回写（笔 3c 下半·三）：谓位帧弹帧把占位回写谓词槽（引擎 pop 尾行同机械）。
       if fr.as_pred {
         return {
@@ -4621,6 +4651,19 @@ fn frames_top_set_open_span(
   let frames = frames.copy()
   if frames.length() > 0 {
     frames[frames.length() - 1] = { ..frames[frames.length() - 1], open_span, }
+  }
+  frames
+}
+
+///|
+/// 帧顶写助手（笔 3a 起；笔 3b 改为按声明字段逐支发射）：`frame.id_subject=<来源>` 声明时生成。
+fn frames_top_set_id_subject(
+  frames : Array[Frame],
+  id_subject : RefId?,
+) -> Array[Frame] {
+  let frames = frames.copy()
+  if frames.length() > 0 {
+    frames[frames.length() - 1] = { ..frames[frames.length() - 1], id_subject, }
   }
   frames
 }

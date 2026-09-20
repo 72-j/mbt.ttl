@@ -129,6 +129,7 @@ priv struct FaceFrame {
   as_pred : Bool
   prev_node : RefId?
   node_seq : Int
+  id_subject : RefId?
 }
 
 ///|
@@ -159,6 +160,7 @@ fn face_ledger_of_engine(probe : @n3.N3Probe) -> FaceLedger {
       as_pred: frame.as_pred,
       prev_node: frame.prev_node.map(ref_id_of),
       node_seq: frame.node_seq,
+      id_subject: frame.id_subject.map(ref_id_of),
     })
   }
   let inversion = probe.inversion()
@@ -208,6 +210,7 @@ fn frame_ref_field(frame : FaceFrame, field : String) -> RefId? {
     "subject" => frame.subject
     "predicate" => frame.predicate
     "graph" => frame.graph
+    "id_subject" => frame.id_subject
     _ => None
   }
 }
@@ -266,7 +269,46 @@ fn classify_face_expect(
     }
     return Err("\{source}（布尔帧位只认 true/false 字面）")
   }
-  // `frame.ret_state`：投影侧已把 `to` 写实成**行目标态名**（§AN.13）
+  // `frame.ret_state`：投影侧已把 `to` 写实成**行目标态名**（§AN.13）。
+  // §AN.15 条件形（R-17）：`flag:<位>?<then>` —— 行进前帧顶 `<位>`（Bool 帧位）为真
+  // ⇒ 按 `<then>` 判（递归同一张词表）；为假 ⇒ 引擎不写 ⇒ 期望 = 目标位**行进前当前值**
+  // （真判不豁免：台账"条件式"类保 0）。判据读行进前帧顶，与 `fwd:` 的行进前旗同规。
+  if source.has_prefix("flag:") {
+    let rest : String = source[5:].to_owned()
+    return match rest.find("?") {
+      Some(q) => {
+        let flag_field : String = rest[0:q].to_owned()
+        let then_source : String = rest[q + 1:].to_owned()
+        if !(flag_field == "is_formula" ||
+          flag_field == "as_pred" ||
+          flag_field == "as_subject") {
+          return Err("\{source}（flag 判据位非 Bool 帧位）")
+        }
+        match before.frames.last() {
+          Some(top) => {
+            let flag_on = match flag_field {
+              "is_formula" => top.is_formula
+              "as_pred" => top.as_pred
+              _ => top.as_subject
+            }
+            if flag_on {
+              classify_face_expect(
+                target, then_source, before_slots, before, payload, args,
+              )
+            } else {
+              match face_target_value(before, target) {
+                Some(current) => Ok(current)
+                None =>
+                  Err("\{source}（假支目标位不可读：\{target}）")
+              }
+            }
+          }
+          None => Err("\{source}（帧栈空）")
+        }
+      }
+      None => Err("\{source}（flag 条件式缺 `?`）")
+    }
+  }
   if field == "ret_state" {
     return Ok(FState(source))
   }
@@ -303,8 +345,12 @@ fn face_target_value(ledger : FaceLedger, target : String) -> FaceValue? {
         "as_subject" => Some(FBool(frame.as_subject))
         "ret_state" => Some(FState(frame.ret_state_name))
         "node_seq" => Some(FInt(frame.node_seq))
-        "open_span" | "prev_node" | "subject" | "predicate" | "graph" =>
-          Some(FRef(frame_ref_field(frame, field)))
+        "open_span"
+        | "prev_node"
+        | "subject"
+        | "predicate"
+        | "graph"
+        | "id_subject" => Some(FRef(frame_ref_field(frame, field)))
         _ => None
       }
     }
