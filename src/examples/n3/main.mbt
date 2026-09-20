@@ -2,6 +2,12 @@
 /// N3 示例总入口：顺序跑若干 N3 特性 case（公式/规则/集合/属性列表/路径/@keywords），
 /// 每个 case 走"解析 → 物化 → 序列化打印"同一条管线（API 全部来自 `gen_n3v2` 公共面）。
 async fn main {
+  demo_all()
+}
+
+///|
+/// 冒烟/演示本体（wbtest 直调同链；main 只留进程入口）
+async fn demo_all() -> Unit {
   let path = "./example.n3"
   @async.with_task_group() <| root => {
     root.add_defer(() => @fs.remove(path))

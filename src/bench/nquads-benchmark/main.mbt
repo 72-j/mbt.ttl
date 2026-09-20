@@ -1,12 +1,16 @@
 ///|
-/// Parse N-Quads file example
+/// Parse N-Quads 文件示例：main 只留 argv/路径解析；计时管线在 `bench_all`（wbtest 直调同链）
 async fn main {
+  let argv = @env.args()
+  let path = if argv.length() > 1 { argv[1] } else { "./test_1000.nq" }
+  let path = if @fs.exists(path) { path } else { "./src/bench/" + path }
+  bench_all(path, @fs.read_file(path).binary())
+}
+
+///|
+/// 四段管线计时（wbtest 直调同链；main 只留 argv/路径解析）
+async fn bench_all(path : String, content : Bytes) -> Unit {
   @async.with_task_group() <| _root => {
-    // 可选：命令行给文件路径（默认 1k）；便于 10k 档与交叉测试
-    let argv = @env.args()
-    let path = if argv.length() > 1 { argv[1] } else { "./test_1000.nq" }
-    let path = if @fs.exists(path) { path } else { "./src/bench/" + path }
-    let content = @fs.read_file(path).binary()
     let data = content.to_fixedarray()
 
     // 1. 仅词法（纯 MoonBit Lexermoon；C FFI 对照见 gen_nquads 的 lexer_bench_wbtest）

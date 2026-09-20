@@ -4,6 +4,12 @@
 /// This example demonstrates how to parse N-Quads format RDF data from a file.
 /// N-Quads is a line-based format for RDF triples/quads.
 async fn main {
+  demo_all()
+}
+
+///|
+/// 冒烟/演示本体（wbtest 直调同链；main 只留进程入口）
+async fn demo_all() -> Unit {
   // Create a task group for cleanup
   @async.with_task_group() <| root => {
     let path = "./example.nq"

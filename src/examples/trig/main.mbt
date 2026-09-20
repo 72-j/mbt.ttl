@@ -1,6 +1,12 @@
 ///|
 /// TriG 示例总入口，顺序执行多个 case
 async fn main {
+  demo_all()
+}
+
+///|
+/// 冒烟/演示本体（wbtest 直调同链；main 只留进程入口）
+async fn demo_all() -> Unit {
   let path = "./example.trig"
   @async.with_task_group() <| root => {
     root.add_defer(() => @fs.remove(path))

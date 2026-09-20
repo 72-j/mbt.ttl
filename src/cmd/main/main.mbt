@@ -5,9 +5,17 @@ async fn main {
 
 ///|
 async fn cmd_parser() -> Unit {
+  let args = @env.args()
+  let argv = if args.length() > 1 { args[1:] } else { [] }
+  cmd_parse_argv(argv)
+}
+
+///|
+/// argv 解析与分发（白盒冒烟直调同链；`cmd_parser` 只留进程 argv 获取）
+async fn cmd_parse_argv(argv : ArrayView[String]) -> Unit {
   let cmd = @argparse.Command(
     "moonttl",
-    about="A RDF parser CLI for N-Quads format",
+    about="A RDF parser CLI 壳（N-Quads 解析管线演示）",
     flags=[
       FlagArg(
         "verbose",
@@ -24,18 +32,13 @@ async fn cmd_parser() -> Unit {
     ],
   )
 
-  let args = @env.args()
-  let argv = if args.length() > 1 { args[1:] } else { [] }
-
   let result = (cmd.parse(argv~, env=Map([])) |> Ok) catch { e => Err(e) }
 
   match result {
     Ok(matches) => {
       let has_verbose = matches.flags.get("verbose")
-
       let has_file = matches.values.get("file")
       let has_input = matches.values.get("input")
-
       let verbose = match has_verbose {
         Some(_) => true
         None => false
@@ -44,22 +47,13 @@ async fn cmd_parser() -> Unit {
         Some(v) => Some(v[0])
         None => None
       }
-
       let input = match has_input {
         Some(v) => Some(v[0])
         None => None
       }
-
       match (file_path, input) {
         (Some(path), _) => parse_file(path, verbose)
-        (None, Some(text)) => parse_content(@utf8.encode(text), verbose)
-        (None, None) => {
-          println("Error: Please provide input via -f <file> or <string>")
-          println("Usage: moon run src/cmd/main -- -f <file>")
-          println(
-            "       moon run src/cmd/main -- '<subject> <predicate> <object> .'",
-          )
-        }
+        (None, argv_input) => parse_content_or_usage(argv_input, verbose)
       }
     }
     Err(e) => println("Error: \{e}")
@@ -67,6 +61,22 @@ async fn cmd_parser() -> Unit {
 }
 
 ///|
+/// 内联输入分发（有 positional 走解析管线；无则打 usage）
+async fn parse_content_or_usage(input : String?, verbose : Bool) -> Unit {
+  match input {
+    Some(text) => parse_content(@utf8.encode(text), verbose)
+    None => {
+      println("Error: Please provide input via -f <file> or <string>")
+      println("Usage: moon run src/cmd/main -- -f <file>")
+      println(
+        "       moon run src/cmd/main -- '<subject> <predicate> <object> .'",
+      )
+    }
+  }
+}
+
+///|
+/// 文件入口（verbose 打头两行；内容进同一条解析管线）
 async fn parse_file(path : String, verbose : Bool) -> Unit {
   let content = @fs.read_file(path).binary()
   if verbose {
@@ -79,42 +89,30 @@ async fn parse_file(path : String, verbose : Bool) -> Unit {
 ///|
 async fn parse_content(content : Bytes, verbose : Bool) -> Unit {
   @async.with_task_group() <| _root => {
-
     // Create parser
     let engine = @nquads.NQuadsEngine::from_bytes(content.to_array())
     let slice = @nquads.SliceParser::new(engine, Bytes::to_array(content))
-
     // Parse all quads
     println("")
     println("=== Parsing N-Quads ===")
-
     let (quad_spans, parse_errors) = slice.parse_all()
-
     // Print parse errors
     for err in parse_errors {
       println("Parse Error: \{err}")
     }
-
     println("Parsed \{quad_spans.length()} quads")
-
     // Materialize
     println("")
     println("=== Materializing ===")
-
     let (quads, mat_errors) = @nquads.materialize_all(quad_spans)
-
     println("Materialized \{quads.length()} quads")
-    // Print materialize errors
-
     for err in mat_errors {
       println("Materialize Error: \{err}")
     }
     if !verbose {
-
       // Serialize and print
       println("")
       println("=== Serialized Output ===")
-
       let output = match
         @nquads.Serializer::new(format=@nquads.SerializeFormat::Quad).serialize_all(
           quads,
@@ -127,8 +125,5 @@ async fn parse_content(content : Bytes, verbose : Bool) -> Unit {
       }
       println(output)
     }
-
-    println("")
-    println("Serialized \{quads.length()} quads")
   }
 }
