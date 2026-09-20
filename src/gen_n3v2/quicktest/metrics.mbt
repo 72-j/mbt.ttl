@@ -177,14 +177,14 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("Rparen", 1), // Batch 3 同笔：list_nil/path_elem_close 收口
     ("Implies", 1), // Batch 1 前半同笔（见 Bang 行注）
     ("Literal", 3),
-    ("Unknown", 0),
+    ("Unknown", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
     // R-18 后 Id/Invert 行落地 ⇒ 排除理由改为 R-17 值级缺口，仍显式 0（未列默认 1 陷阱）
     ("Id", 0),
-    ("Invert", 0),
-    ("AnnotEnd", 0),
-    ("ForAllKw", 0),
+    ("Invert", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
+    ("AnnotEnd", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
+    ("ForAllKw", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
     ("KeywordA", 1), // Batch 2：pk=引擎侧非模型槽 span 轴不可见（= SameAs 先例）；降级道需 @keywords（0 死）
-    ("KeywordX", 0),
+    ("KeywordX", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
     // 【0 → 1（笔 3c 下半·四，2026-09-19）】：Bnp 族放开——as_pred 弹帧回写开通后
     // 谓位反例两侧同步双发（内 (59,4,5) + 外 (3,59,58)，锚点⑥值级钉死），组合面
     // 九案探针全绿（宾/主/嵌套/罩内谓位/逗号/bnp⊃formula/formula⊃formula/谓位公式⊃bnp）。
@@ -194,12 +194,12 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("Rbracket", 1),
     ("Variable", 1), // Batch 2：`?x` 整词单 token 槽位装词 id
     ("BlankNode", 2),
-    ("ForSomeKw", 0),
+    ("ForSomeKw", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
     ("ImpliedBy", 0), // R-19 恢复道（见 Bang 行注）
     ("Semicolon", 1),
-    ("VersionKw", 0),
-    ("AnnotStart", 0),
-    ("KeywordsKw", 0),
+    ("VersionKw", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
+    ("AnnotStart", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
+    ("KeywordsKw", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
     ("TripleTerm", 1), // Batch 2：`<< s p o >>` 整词单 token（lexer_mbt:315-345 平衡配对，gate_tt 验证层深验）——无内层事件道
     ("BracketTripleTerm", 1), // Batch 2：`<<( )>>` 括号壳整词（lexer_mbt:278-313）同上
   ]

@@ -51,7 +51,6 @@ FormulaExpectObject+Anon	set_object	Continue	-	-	false	-
 AnnotExpectObject+Literal	set_object	Continue	-	-	false	-
 BnpExpectObject+BlankNode	set_object	Continue	-	-	false	-
 BnpExpectPredicate+Iri	set_predicate	Continue	-	-	false	-
-ExpectPredicate+Invert	set_inversion	Continue	-	-	false	-
 ExpectSubject+TripleTerm	set_subject	Continue	-	-	false	-
 ExpectVerbRequired+Iri	set_predicate	Continue	-	-	false	-
 FormulaExpectSubject+Iri	set_subject	Continue	-	-	false	-
@@ -131,7 +130,6 @@ FormulaExpectIsProp+PrefName	set_predicate	Continue	-	-	false	-
 FormulaExpectSubject+BlankNode	set_subject	Continue	-	-	false	-
 ExpectKeywordsList+KeywordA	declare_keyword	Continue	-	-	false	-
 ExpectKeywordsList+KeywordX	declare_keyword	Continue	-	-	false	-
-FormulaExpectPredicate+Invert	set_inversion	Continue	-	-	false	-
 BnpExpectObject+BracketTripleTerm	set_object	Continue	-	-	false	-
 FormulaExpectPredicate+Implies	set_predicate	Continue	-	-	false	-
 FormulaExpectPredicate+Literal	set_predicate	Continue	-	-	false	-
@@ -196,7 +194,9 @@ ListExpectElemOrEnd+Variable	list_first	Continue	frame.top.prev_node=arg0	-	fals
 ListExpectElemOrEnd+BlankNode	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
 ListAfterElem+BracketTripleTerm	list_next	Continue	frame.top.prev_node=arg0	-	false	payload
 ListExpectElemOrEnd+TripleTerm	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
+ExpectPredicate+Invert	set_inversion	Continue	is_src=ctx.subject,is_depth=frames_len	-	false	-
 ListExpectElemOrEnd+BracketTripleTerm	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
+FormulaExpectPredicate+Invert	set_inversion	Continue	is_src=ctx.subject,is_depth=frames_len	-	false	-
 ExpectPredicate+Bang	path_subj_trail	Continue	path_pend=none,path_tail=arg0,path_src=ctx.subject	-	false	payload,true
 ExpectPredicate+Caret	path_subj_trail	Continue	path_pend=none,path_tail=arg0,path_src=ctx.subject	-	false	payload,false
 ExpectObject+Lparen	open_collection	Continue	subject=arg0,predicate=none	push	false	payload,false,state:ExpectDotOrGraph

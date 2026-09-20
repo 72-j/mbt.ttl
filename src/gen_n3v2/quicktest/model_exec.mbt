@@ -120,7 +120,16 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectPredicate+Has
     (ExpectPredicate, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectPredicate+Invert
-    (ExpectPredicate, Invert) => (model, Continue)
+    (ExpectPredicate, Invert) =>
+      (
+        {
+          ..model,
+          state: ExpectPredicate,
+          is_src: model.subject,
+          is_depth: model.frames.length(),
+        },
+        Continue,
+      )
     // @arm ExpectPredicate+Equals
     (ExpectPredicate, Equals(r)) =>
       (
@@ -918,7 +927,16 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (FormulaExpectPredicate, Is) =>
       ({ ..model, state: FormulaExpectIsProp, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm FormulaExpectPredicate+Invert
-    (FormulaExpectPredicate, Invert) => (model, Continue)
+    (FormulaExpectPredicate, Invert) =>
+      (
+        {
+          ..model,
+          state: FormulaExpectPredicate,
+          is_src: model.subject,
+          is_depth: model.frames.length(),
+        },
+        Continue,
+      )
     // @arm FormulaExpectPredicate+Equals
     (FormulaExpectPredicate, Equals(r)) =>
       (

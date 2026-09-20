@@ -47,6 +47,9 @@
   ②结构性 0 覆盖裁决·补测路（bench/cmd/examples 四个 main 提取冒烟入口 wbtest 直调 +
   gen_nquads Token Show 十臂钉 ≈ 250 行入分子；argv/env 进程态胶水 ~10 行结构性不可宿主，
   如实留残差，见 review.md §1 注）。
+→ 2026-09-20 同日追补（**HOLD 族转正役同笔复算**）：
+  Invert 真臂化（set_inversion 升全形声明，model_exec +2 行净增）⇒ 分母 11072 → 11074、
+  分子 10029 → 10030，floor(10030*1000/11074) = 905 ⇒ 判据字段 905 **保持**（复算留痕，非下调）。
 covered_permille = 905
-covered_lines = 10029
-total_lines = 11072
+covered_lines = 10030
+total_lines = 11074
