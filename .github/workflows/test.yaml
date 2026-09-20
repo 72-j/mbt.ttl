@@ -171,6 +171,28 @@ jobs:
           fi
           echo "复核面：同命令重生成 ≡ 入库复核表（逐字节）⇒ 可复现 ✓"
 
+      - name: "复核面·覆盖率（可复现性检查，§6.5）"
+        run: |
+          # 复核面判据（世界宪法 §6.5）= **可复现 + 缺口有解释**（禁止"分数不降"作判据）。
+          # 本步 = 面三（覆盖率读数面）：同命令（冷口径两量）重生成 ≡ 入库 `coverage-review.txt`（逐字节）。
+          # 注意：读数随代码变化 ⇒ 改代码**必须同笔重生成**本表（否则本步红，报错文案已写明）。
+          # 棘轮（时间维度）不归本面：基线文件管（§6.5.6 二者不可互替）。
+          gen="$(mktemp)"
+          moon clean
+          moon coverage clean
+          moon test --enable-coverage > /dev/null 2>&1
+          {
+            echo "[行覆盖]"
+            moon coverage report -f summary | tail -n 1
+            echo "[可达命令名覆盖]"
+            moon test 2>&1 | grep -o '可达覆盖账 [a-z0-9]*：分母 [0-9]* / 分子 [0-9]* / 缺口 [0-9]* / 不可达 [0-9]*' | sort -u
+          } > "$gen"
+          if ! diff -u <(grep -v '^#' coverage-review.txt | sed '/^$/d') "$gen"; then
+            echo "::error::覆盖率复核表不可复现：同命令重生成与入库 coverage-review.txt 不一致——请同笔重生成并刷新 review.md §1.2"
+            exit 1
+          fi
+          echo "复核面·覆盖率：同命令重生成 ≡ 入库表（逐字节）⇒ 可复现 ✓"
+
       - name: "Default arms bookkeeping (TODO(P0) 计数门)"
         run: |
           # 默认臂 = "未识别 action/event" 的**保守臂**：能跑、但响应正确性没有判据（默认臂≠已验证）。

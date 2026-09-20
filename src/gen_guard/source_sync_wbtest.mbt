@@ -163,3 +163,32 @@ async test "复核面账钉子：覆盖边界必须写明（覆盖什么 / 不�
   assert_true(table.contains("IR/产物"))
   assert_true(table.contains("覆盖率"))
 }
+
+///|
+async test "复核面账钉子（面二 / 面三）：各自边界成要件 + 棘轮与复核面不互替" {
+  // 面二（产物/IR）：表在主仓根；子仓根 = `<主仓>/src/ttl` ⇒ 相对路径为 `../../gen-review.txt`
+  let gen = @fs.read_file("../../gen-review.txt").text()
+  assert_true(gen.contains("# 覆盖边界"))
+  assert_true(gen.contains("不覆盖"))
+  assert_true(gen.contains("套件自报行面"))
+  // 面二**边界收口**（W17）：IR 校验族自报行已装 ⇒ 表内必须在册，且边界不得再声明"未装"。
+  // 钉子 = 防"边界回退"：把已覆盖的族从表里删掉 / 或把边界改回"不覆盖"即红。
+  assert_true(gen.contains("IR 校验：G1"))
+  assert_true(
+    gen.contains("IR 校验：G11") || gen.contains("G11 可达性门"),
+  )
+  assert_true(gen.contains("IR 校验：G13"))
+  // 边界必须留**收口沿革**（"原先未装 ⇒ 本轮装行 ⇒ 转覆盖"），且**不覆盖节**不得再把 IR 校验族列为不覆盖
+  assert_true(gen.contains("边界收口"))
+  assert_true(!gen.contains("不覆盖**：① **IR"))
+  // 面三（覆盖率读数面）：边界须写明"棘轮（时间维度）不归本面"——二者不可互替（§6.5.6）
+  let cov = @fs.read_file("coverage-review.txt").text()
+  assert_true(cov.contains("# 覆盖边界"))
+  assert_true(cov.contains("棘轮"))
+  assert_true(cov.contains("不可互替"))
+  assert_true(cov.contains("不覆盖"))
+  // 面三两量必在表内（行覆盖 + 可达命令名覆盖）
+  assert_true(cov.contains("[行覆盖]"))
+  assert_true(cov.contains("[可达命令名覆盖]"))
+  assert_true(cov.contains("可达覆盖账"))
+}
