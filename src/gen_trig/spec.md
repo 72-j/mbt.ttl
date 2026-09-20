@@ -213,11 +213,11 @@ quad.o 形如 << ... >> 且语句无图名位:
 | C-T2 | ~~产物无黄金门~~ **已收口（T10，2026-09-13）**：`Generated at:` 墙钟值改由 `generate_with_ts` 显式注入（CLI `--ts`）；形态差由工具链 `moon fmt` 在管线末端收敛——钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节，门在 `src/rdf/trig_domain_toml_gen.mbt`。**遗留**：nquads 同类形态差 68 行（其 check-in 同为 fmt 形），产物门待补（另役） | 门：`trig 产物黄金门`；`src/fsm/codegen.mbt`（`generate_with_ts`）；`src/rdf/adr.md` ADR-6 | [债]→**已收口（T10）** |
 | C-T3 | ~~公共面过宽~~ **已收口（T12，2026-09-13）**：`internals_priv` 数据键 ⇒ 内部声明 `priv`（`Event`/`PendingQuad` 例外）+ 死面同收；`.mbti` **349→172 行 / 54→37 pub 行** | `pkg.generated.mbti`；`domain2/trig_base.toml`（`[meta] internals_priv`）；ADR-TRIG-016 / src/rdf ADR-11 | [债]→**已收口（T12）** |
 | C-T4 | ~~命名未回灌~~ **已收口（T13，2026-09-13）**：`TrigSupervisor`（数据键 `[meta] policy_trait_name`）+ `TrigActionsImpl`（`actions.mbt`）+ 字段 `actions`；产物已再生 | `trig.mbt`（trait 头）；`engine.mbt`；ADR-TRIG-015 / src/rdf ADR-10 | [债]→**已收口（T13）** |
-| C-T5 | 包内死件：5 个 `.bak`（`trig.mbt.bak` 36 KB、`engine.mbt.bak` 15 KB、`lexer_mbt*.bak` ×2、`nquads_test.mbt.bak`） | `ls *.bak` | [债]（R-T5 / T15） |
-| C-T6 | 测试位置：生产文件内联 21 个 test（`materialize_trig.mbt` 16 + `serialize_trig.mbt` 5） | `grep -c '^test '` 两文件 | [债]（R-T6 / T14） |
+| C-T5 | 包内死件：5 个 `.bak`（`trig.mbt.bak` 36 KB、`engine.mbt.bak` 15 KB、`lexer_mbt*.bak` ×2、`nquads_test.mbt.bak`） | ~~`ls *.bak`~~ **实况：`ls src/gen_trig/*.bak` 无匹配（2026-09-20 复核）** | [债]→**已清（T15）** |
+| C-T6 | 测试位置：生产文件内联 21 个 test（`materialize_trig.mbt` 16 + `serialize_trig.mbt` 5） | ~~`grep -c '^test '` 两文件~~ **实况：两文件各 0 个 `test`（2026-09-20 复核）** | [债]→**已清（T14：迁 `_wbtest.mbt`）** |
 | C-T7 | 卷面违规（**2026-09-12 已收口**）：`todo.md` 曾同时承载宪法（§1）与规格（§2） | 旧 `todo.md` §1/§2；`bangto/world/const.md` §5.2 | [债]→**已收口（T16）** |
 | C-T8 | 双包重复：与 gen_n3v2 装配层同名 helper 交集 20 个；装配层体量 ≈4064 vs ≈4381 行 | `ctx.md` §4 T17 清单 | [债]（R-T8 / T17 [立案]） |
-| C-T9 | `moon.pkg:1` 头注漂移：仍写"gen_nquads：…"（复制残留） | `moon.pkg:1` | [债]（R-T9，微） |
+| C-T9 | `moon.pkg:1` 头注漂移：仍写"gen_nquads：…"（复制残留） | ~~`moon.pkg:1`~~ **实况：已写 `gen_trig`（2026-09-20 复核）** | [债]→**已修（R-T9）** |
 | C-T10 | `<< >>` 壳内 `^^datatype` 误拒：`triple_term_inner_terms` 按顶层空白切项，`^^xsd:date` 被拆成第 4 项 | `parser_slice.mbt`（`triple_term_inner_terms`）；bench 语料规避 | [债]（R-T10 [立案]） |
 | C-T11 | 三引号规范化未设计：serializer 原样保真回写 | `serialize_trig.mbt` | [设计]→R-T11 [立案] |
 | C-T12 | MoonBit 词法落后 C 侧 2.3–2.6×（简单 4006 token：434 µs vs 1117 µs；复杂 9046：907 vs 2056） | `trig_bench_wbtest.mbt` | [债]（R-T12 [立案]） |

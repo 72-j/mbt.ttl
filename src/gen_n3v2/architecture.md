@@ -64,6 +64,19 @@ N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态�
 | I-8 | TOML 契约兼容演进（新键可选、未知键忽略、删键需同改手写文件） |
 | I-9 | 错误通道单一：`error_spans` 累积 + drain 同序（役24） |
 
+## 验收门（只引出处，不抄数字）
+
+| 门 | 判据 / 命令 | 数字出处 |
+|---|---|---|
+| 静态 | `moon check --deny-warn` | CI `static` 作业（0 条即绿） |
+| 测试 | `moon test src/gen_n3v2` | CI `test` 作业日志（0 failed） |
+| 套件（N3Tests / rdf-turtle / rdf12-turtle） | `moon test src/gen_n3v2`（自报行 `=== … ===`） | **复核表 `../suite-review.txt`**（`[n3v2]` 节） |
+| 值级对拍 | `moon test src/gen_n3v2/quicktest`（台账五类计数钉死） | 门内打印（不可比/违例/债点全 0） |
+| 覆盖率棘轮 | `coverage-baseline.txt` / `reachable-coverage-baseline.txt` | 两基线文件（**只引用字段名**） |
+| 生成链 | `moon test src/rdf/n3gen`（G9 字节对拍） | 12/12 即绿 |
+
+> 口径：**数字不落在导读卷**（`bangto/world/const.md` §5.6.3 单一数字源）；自报行看复核表，基线看基线文件。
+
 ## 术语
 
 Span（`(offset,len)` 对）/ 槽（`Slot`，bnp/集合/公式帧）/ 快照四槽（`pk`/`prefix_version`/`base_version`/`iri_version`）

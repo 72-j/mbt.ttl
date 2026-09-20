@@ -55,15 +55,19 @@ I-3 `serialize ∘ parse = 恒等`｜I-4 fresh 身份 = 开括号 offset，集�
 I-5 `data` 只读 / `arena` 只追加（span 可能指向 arena）｜I-6 图块区域封闭（无 `Lbrace` 出边）｜
 I-7 单遍深验｜I-8 合成谓词 `pk` 读出即归 `Normal`。
 
-## 验收门（当前数字）
+## 验收门（只引出处，不抄数字）
 
-| 门 | 命令 | 数字 |
+| 门 | 判据 / 命令 | 数字出处 |
 |---|---|---|
-| 单元 | `cd src/ttl && moon test src/gen_trig` | **80/80** |
-| 警告 | `moon check src/gen_trig` | 0 |
-| 套件 | `moon test src/gen_trig`（四套 `pin=true`） | rdf-trig **357/357** · rdf-turtle **316/316** · rdf12-trig **36/36** · rdf12-turtle **75/75** |
-| IR 侧 | `cd moonttl && moon test src/rdf` | 20/20 |
-| 产物侧 | — | **缺（T10）** |
+| 单元 | `cd src/ttl && moon test src/gen_trig` | CI `test` 作业日志（命令即判据：0 failed） |
+| 警告 | `moon check --deny-warn` | CI `static` 作业（0 条即绿） |
+| 套件（四套 `pin=true`） | `moon test src/gen_trig`（自报行 `=== … ===`） | **复核表 `../suite-review.txt`**（`[trig]` 节；同命令可复现） |
+| IR 侧 | `cd moonttl && moon test src/rdf` | CI/home 日志（0 failed） |
+| 产物侧 | — | **缺**（`spec.md` §8 C-T10 族 `[立案]`） |
+
+> 口径：**数字不落在导读卷**（`bangto/world/const.md` §5.6.3 单一数字源）；门清单只写"判据/命令 + 出处"，
+> 数字与自报行一律看**复核表**（`../suite-review.txt`）与**基线文件**（`../coverage-baseline.txt`、
+> `../reachable-coverage-baseline.txt`）。
 
 ## 已知缺陷 / 预留下（详 `spec.md` §7 台账）
 

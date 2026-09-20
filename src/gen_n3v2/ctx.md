@@ -29,7 +29,7 @@
     └── src/gen_n3v2/
         ├── n3.mbt                  ⚠ 生成物，禁手编；改它 = 改表 + 再生
         ├── engine.mbt / actions.mbt / lexer_adapter.mbt / parser_slice.mbt / materialize_n3.mbt / serialize_n3.mbt
-        └── spec.md / ctx.md / todo.md / adr.md / architecture.md
+        └── const.md / spec.md / ctx.md / todo.md / adr.md / architecture.md
 ```
 
 基线（2026-09-12 实测；整改前后都要对得上）：

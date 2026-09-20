@@ -152,6 +152,25 @@ jobs:
             fi
           done
 
+      - name: "复核面（可复现性检查，§6.5）"
+        run: |
+          # 复核面判据（世界宪法 §6.5）= **可复现 + 缺口有解释**（禁止"分数不降"作判据）。
+          # 本步只做"可复现"这一半：同命令重生成（零纸解析：原样收纳套件自报行）≡ 入库复核表（逐字节）。
+          # "缺口有解释"这一半 = `review.md` §1.2 缺口解释表（人工复核面，随 review 换版刷新）。
+          # 缺口清零这一半 = 各套件测试**自身断言**（非零即 `moon test` 红，见 test 作业）。
+          gen="$(mktemp)"
+          {
+            for d in n3v2 nquads trig; do
+              echo "[$d]"
+              moon test "src/gen_$d" 2>&1 | grep -oE '=== [^"]+ ===' | sed 's/^=== //;s/ ===$//' | sort -u
+            done
+          } > "$gen"
+          if ! diff -u <(grep -v '^#' suite-review.txt | sed '/^$/d') "$gen"; then
+            echo "::error::复核表不可复现：同命令重生成与入库 suite-review.txt 不一致——若确为预期变更（套件增删行），请同笔重生成复核表并刷新 review.md §1.2"
+            exit 1
+          fi
+          echo "复核面：同命令重生成 ≡ 入库复核表（逐字节）⇒ 可复现 ✓"
+
       - name: "Default arms bookkeeping (TODO(P0) 计数门)"
         run: |
           # 默认臂 = "未识别 action/event" 的**保守臂**：能跑、但响应正确性没有判据（默认臂≠已验证）。

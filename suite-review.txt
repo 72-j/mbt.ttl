@@ -1,0 +1,31 @@
+# 复核表（生成物，DO NOT EDIT MANUALLY）
+# 口径：`bangto/world/const.md` §6.5「复核面」（判据 = **可复现 + 缺口有解释**；**禁止**以"分数不降"作判据）
+# 生成命令（**必须原样复跑**；同一命令 + 同一留证 ⇒ 第三方应得到同一张表）：
+#   cd src/ttl
+#   for d in n3v2 nquads trig; do
+#     echo "[$d]"
+#     moon test src/gen_$d 2>&1 | grep -oE '=== [^"]+ ===' | sed 's/^=== //;s/ ===$//' | sort -u
+#   done > suite-review.txt
+# 说明：本表**原样收纳套件自报行**（零纸解析：不拆数字、不重算比率）——行的顺序由 sort -u 固定，
+#       集合内容由套件决定；套件增删行即本表变化 ⇒ 与入库表逐字节比对即"可复现性检查"。
+# 留证位置：CI test 作业日志（同上命令）；本地复跑同命令即可复现（2026-09-20 连跑两次逐字节一致）。
+# 缺口清零：由各套件测试**自身断言**（缺口/失败非零即 `moon test` 红），本表只做"可复现"这一半。
+# 缺口解释表：见 `review.md` §1.2（逐条引模块台账编号，不复制正文）。
+[n3v2]
+N3Tests parser sweep: neg 23ok/0miss, pos+eval 205clean 0mat-only 0parse-fail, strict-gap 0
+examples: A=13 B=0 C=0 strict-gap=0
+rdf-turtle: 316/316 (failed 0, strict-gap 0)
+rdf12-turtle: 75/75 (failed 0, strict-gap 0)
+[nquads]
+MoonBit 解析 test_1000.nq
+Result: 89/89 (failed 0)
+rdf12-nq: 27/27 (failed 0)
+rdf12-nt: 29/29 (failed 0)
+对比: 72 段, mismatch=0, failed=0
+循环读文件: 72/72 (failed 0)
+性能数据
+[trig]
+rdf-trig: 357/357 (failed 0)
+rdf-turtle: 316/316 (failed 0)
+rdf12-trig: 36/36 (failed 0)
+rdf12-turtle: 75/75 (failed 0)
