@@ -4,7 +4,7 @@
 
 **卷面分工**（同一信息只在一处详写）：`const.md` = 红线（冻结）；**本卷** = 结构事实 + 不变量 +
 机械约束 + 已定语义口径 + C/R 台账 + 验收口径；`ctx.md` = 整改项工作上下文（锚点/证据/动作/验收/风险）；
-`adr.md` = 决策（为什么）；`todo.md` = 战役路线与账本；`ARCHITECTURE.md` = 一页导读。
+`adr.md` = 决策（为什么）；`todo.md` = 战役路线与账本；`architecture.md` = 一页导读。
 术语以 `bangto/world/vocabulary.spec.md` 为准（契约成员 = `Actions` / `EffectHandler` / `Supervisor`）。
 
 ---

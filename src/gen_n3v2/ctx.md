@@ -29,7 +29,7 @@
     └── src/gen_n3v2/
         ├── n3.mbt                  ⚠ 生成物，禁手编；改它 = 改表 + 再生
         ├── engine.mbt / actions.mbt / lexer_adapter.mbt / parser_slice.mbt / materialize_n3.mbt / serialize_n3.mbt
-        └── spec.md / ctx.md / todo.md / adr.md / ARCHITECTURE.md
+        └── spec.md / ctx.md / todo.md / adr.md / architecture.md
 ```
 
 基线（2026-09-12 实测；整改前后都要对得上）：
@@ -147,7 +147,7 @@
 | R-09 | 役26 | ADR-26 | 0 warning（全模块 30 条清零）；死字段先改表源再生 | `n3v2_base.toml`；`moon check` |
 | R-10 | 役27a/28 | ADR-27·28 | `prefix_version/base_version/iri_version`；`fr→frame`；`Hooks→N3ActionsImpl` | `types.mbt`；`actions.mbt`；trig 同笔 |
 | R-11 | 役27a | ADR-27 | 27 test 迁 `materialize_n3_wbtest.mbt` / `serialize_n3_wbtest.mbt`，生产件纯实现 | 两新件；`grep '^test '` = 0 |
-| R-12 | 役26 | ADR-26 | `ARCHITECTURE.md` 一页 + guides 实名化 + 役21 跨卷注记 | `ARCHITECTURE.md`；`src/ttl/guides/n3/*` |
+| R-12 | 役26 | ADR-26 | `architecture.md` 一页 + guides 实名化 + 役21 跨卷注记 | `architecture.md`；`src/ttl/guides/n3/*` |
 | R-13 | 役28 | ADR-28 | 组清方法：`clear_annotation`（四件套）/ `clear_path`（三槽）；keywords/directive 不立项 | `engine.mbt` ctx 方法区；`actions.mbt` |
 | R-14 | 役30 | ADR-30 | 交叉族全部改为**子机声明 + 构建期求积**；G10 装配门；声明面 schema 见 `spec.md` §10.6 | `compose.mbt:161`；`validate.mbt:687`；`n3v2_base.toml` |
 | R-15 | 役29 | ADR-29 | 识别件单点 `gen_nquads/numeric.mbt`（八消费点三面收编；展开件留各物化层） | `numeric.mbt`；`rg "has_digit" src` 单点 |

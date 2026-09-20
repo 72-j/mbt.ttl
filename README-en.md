@@ -147,7 +147,7 @@ src/
 
 Each dialect package carries the same five-volume documentation set (`const.md` red lines /
 `spec.md` structural facts / `adr.md` decisions / `todo.md` roadmap / `ctx.md` working context;
-`gen_n3v2` additionally ships a one-page `ARCHITECTURE.md`). The generation surface lives in the
+`gen_n3v2` additionally ships a one-page `architecture.md`). The generation surface lives in the
 outer repository under `src/rdf` and `src/fsm`.
 
 ## Example Programs

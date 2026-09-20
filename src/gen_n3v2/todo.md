@@ -28,7 +28,7 @@ ADR 随役次（详见 `adr.md` 卷首）。原始底稿：2026-09-11 评审全�
 
 | # | 资产（一句话） | 详证 |
 |---|---|---|
-| A1 | 分层单一职责：词法 → 事件适配 → 表驱动 `step` → 主循环 → 动作语义 → 组装校验 → 物化 → 序列化 | `ARCHITECTURE.md`；`spec.md` §1 |
+| A1 | 分层单一职责：词法 → 事件适配 → 表驱动 `step` → 主循环 → 动作语义 → 组装校验 → 物化 → 序列化 | `architecture.md`；`spec.md` §1 |
 | A2 | span 唯一身份 + 零拷贝：`(offset,len)` 为词项与 fresh 节点身份，`ArrayView[Byte]` 直引 + `arena` append-only | `spec.md` §1/§6 |
 | A3 | 表驱动 + 生成期门 G1–G13（引用完整性 / 唯一性 / 白名单 / 黄金对拍 / 装配 / 可达性 / 锚点漂移） | `spec.md` §4；`src/rdf/n3gen/n3gen_test.mbt` |
 | A4 | 三成员契约面：`Actions` / `EffectHandler` / `Supervisor`（声明属 `Contract`，实现属 `Assembly`） | `spec.md` §2；`ctx.md` §2 |

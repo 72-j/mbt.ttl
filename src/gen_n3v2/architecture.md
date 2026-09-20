@@ -1,5 +1,10 @@
 # gen_n3v2 架构一页
 
+> **定位**：本卷是**入口导读**（一页看懂）：只速查、不落正文。结构事实看 `spec.md`，决策看 `adr.md`，
+> 红线看 `const.md`，门与数字看各门文件与基线文件（模板：`bangto/world/architecture-template.meta.md`）。
+> **卷名沿革**：本卷 2026-09-20 由 `ARCHITECTURE.md` 更名 `architecture.md`（世界宪法 v2.6「实例卷名一律小写规范名」
+> + v2.8 立 `architecture` 卷位）；`adr.md` 里旧名出现处为**历史语境**，按规保留。
+
 N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态机 + 装配层（Assembly）；
 生成件 `n3.mbt` 由外层仓表源再生，禁手编。细节卷：`spec.md`（架构规格）、`adr.md`（役录裁决）、
 `todo.md`（整改立项）、`ctx.md`（上下文与工程经验）。用户指南：`guides/n3/`。

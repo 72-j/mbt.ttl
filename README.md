@@ -145,7 +145,7 @@ src/
 ```
 
 每个方言包内并列五卷文档（`const.md` 红线 / `spec.md` 结构事实 / `adr.md` 决策 /
-`todo.md` 路线账本 / `ctx.md` 整改上下文；`gen_n3v2` 另有 `ARCHITECTURE.md` 一页导读）；
+`todo.md` 路线账本 / `ctx.md` 整改上下文；`gen_n3v2` 另有 `architecture.md` 一页导读）；
 生成面（表源/生成器）在主仓 `src/rdf`、`src/fsm`。
 
 

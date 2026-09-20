@@ -97,7 +97,7 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 
 | R | 役 | 现口径 | 证据 |
 |---|---|---|---|
-| R-T7 卷面补全 | T16 ✅ | 五卷 + 一页：`const` / `spec` / `adr`（ADR-TRIG-001…011）/ `todo` / 本卷 / `ARCHITECTURE.md` | `todo.md` 472 → 现版；拆卷留痕见 ADR-TRIG-011 |
+| R-T7 卷面补全 | T16 ✅ | 五卷 + 一页：`const` / `spec` / `adr`（ADR-TRIG-001…011）/ `todo` / 本卷 / `architecture.md` | `todo.md` 472 → 现版；拆卷留痕见 ADR-TRIG-011 |
 | R-T2 产物黄金门 | **T10 ✅ 2026-09-13** | 钉 ts 再生（`generate_with_ts` + CLI `--ts`）+ 工具链 `moon fmt` ≡ check-in `trig.mbt` 逐字节 + 强幂等；金样 ts `1788654011855`；形态口径 = 原始形 + `moon fmt` | 门：`src/rdf/trig_domain_toml_gen.mbt` `trig 产物黄金门`（`src/rdf` 21/21）；决策 `src/rdf/adr.md` ADR-6；禁令解除见 `const.md` §5 |
 | R-T1 效果面接活 | **T11 ✅ 2026-09-13** | `interpret` 唯一解释器（`engine.mbt:404` 调用点）；`emit_queue` 下沉 ctx；引擎实现 `snapshot`/`on_exit_graph`/`on_pop_bnp`/`on_list_step`/`on_open_slot`（`:476/489/496/504/513`）——观测/容灾切面可挂 | ADR-TRIG-013；生成器侧开关 `src/rdf` ADR-7；验收 `gen_trig` 80/80 + 模块 329/329 + `src/rdf` 21/21 |
 | R-T3 公共面收窄 | **T12 ✅ 2026-09-13** | `[meta] internals_priv` ⇒ 内部 `priv` + 死面同收（handle_*/dispatch/EffectError/derive(Debug)）；`.mbti` 349→172 行 / 54→37 pub；新增 `TrigSliceParser::prefixes/bases` 窄入口 | ADR-TRIG-016；生成器侧 `src/rdf` ADR-11；nquads 产物门证明零波及 |
