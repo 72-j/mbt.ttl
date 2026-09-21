@@ -162,7 +162,9 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("Anon", 1), // 【0 → 1（Batch 2，2026-09-19）】：`[]` 合成单事件纯槽位写（lexer_adapter:359-375）
     // 【0 → 1（排除片转正 Batch 1 前半，2026-09-19）】：路径族**正向**放开——§V.4 两应舞；
     // 尾随跳发射旗 `nfwd:` 词表坍缩（path_hop_tail/path_verb_hop，引擎 :580/:791 参数旗）。
-    // Caret/ImpliedBy 仍 0 = R-19（fwd 墙后 skip-to-Dot 恢复道模型无恢复位，双收缩反例实证）。
+    // `ImpliedBy` 已零机械转正（役 2 / 2a，2026-09-21）：IR 全 5 行 = `set_predicate`，
+    // 与 `Implies` 逐行同形（无反向旗、不涉恢复道）。
+    // `Caret` 仍 0 = R-19（fwd 墙后 skip-to-Dot 恢复道模型无恢复位；役 2 / 2b 在办——D1 入模 / D2 探针同扩）。
     ("Bang", 1),
     ("Caret", 0),
     ("Comma", 1),
@@ -196,7 +198,7 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     ("Variable", 1), // Batch 2：`?x` 整词单 token 槽位装词 id
     ("BlankNode", 2),
     ("ForSomeKw", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
-    ("ImpliedBy", 0), // R-19 恢复道（见 Bang 行注）
+    ("ImpliedBy", 1), // 【0 → 1（役 2 / 2a，2026-09-21）】：与 Implies 逐行同形（5 行 set_predicate）⇒ 零机械；Caret 仍 0（R-19 恢复道，2b）
     ("Semicolon", 1),
     ("VersionKw", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）
     ("AnnotStart", 1), // HOLD 族转正（2026-09-20，与 TOML 权重同笔）

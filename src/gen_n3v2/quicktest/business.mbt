@@ -56,7 +56,7 @@ fn command_weight(name : String) -> Int {
     "Variable" => 1
     "BlankNode" => 2
     "ForSomeKw" => 1
-    "ImpliedBy" => 0
+    "ImpliedBy" => 1
     "Semicolon" => 1
     "VersionKw" => 1
     "AnnotStart" => 1

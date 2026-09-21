@@ -1172,6 +1172,41 @@ test "R-05: mixed error kinds keep statement order" {
 }
 
 ///|
+/// **R-19 反例固化**（役 2 阶段 0.2，2026-09-21）——"恢复道"**引擎侧真值钉**。
+///
+/// **证伪对象**：「错误后模型 ⟷ 引擎同步」这一假设。引擎 driver 在 BusinessFailed 之后走
+/// `recover_cleanup`（`slot_stack.clear()` / `pred_kind=Normal` / `is_src=None` /
+/// `clear_annotation()` 四件套）+ `consume_to_recover_point`（**吞事件**到 Dot ⇒
+/// `ExpectSubject` + `reset(All)`；EOF ⇒ `reset(SPO)`；**不调 clear_path**）；而模型只有
+/// `refuse_when`（错误**当刻**的 state + 两账清），**没有恢复位**。
+///
+/// **该红在哪一步**：**墙后第一个事件**（本例 `<r>`）——引擎把它吞掉（零响应/零错误/零发射），
+/// 模型与探针则各给 `Error(0)`（`ExpectDotOrGraph` 无该行）。本钉钉引擎侧真值；
+/// 模型侧同一步的翻转点见 `quicktest/r19_probe_wbtest.mbt`（2b 落地同笔翻转）。
+test "R-19: 反例固化——反向链撞复合节点墙后，墙后事件被吞（skip-to-Dot）" {
+  // 反例输入（记为 **R-19 反例形**）：`<a> <b> ^<q>[` 撞 fwd 墙（`[` 处 Error(1)），
+  // 墙后 `<r> <s> ] <t> <u>` 全在 skip-to-Dot 段内，`.` 后接一条正常语句。
+  let input = "<a> <b> ^<q>[ <r> <s> ] <t> <u> .\n<d> <e> <f> .\n"
+  let data = bytes_of(input)
+  let parser = N3SliceParser::new(N3Engine::from_bytes(data), data[:])
+  let (quads, errors) = parser.parse_all()
+  // ① 墙：恰一条业务错——墙后 5 个事件**不入错误账**（吞事件的第一重证据）
+  assert_eq(errors.length(), 1)
+  assert_eq(errors[0].message(), "Reverse path cannot end at a composite node")
+  // ② 出账恰两枚：墙前的路径跳边 + `.` 复位后下一条语句（恢复续解的第二重证据）
+  assert_eq(quads.length(), 2)
+  assert_eq(view_str(data[:], quads[0].s), "<a>")
+  assert_eq(view_str(data[:], quads[1].s), "<d>")
+  // ③ 吞事件实证（第三重，值级）：墙后原子在任何四元组的任何槽位都不出现
+  for q in quads {
+    for span in [q.s, q.p, q.o] {
+      let text = view_str(data[:], span)
+      assert_true(text != "<r>" && text != "<t>" && text != "<u>")
+    }
+  }
+}
+
+///|
 /// 役24 R-06：事故零长 span 物化报错（原行为：静默变 rdf:nil）——offset
 /// 处非 `(` 即拒绝，nil 验形门活体
 test "R-06: zero-length span at non-lparen offset is rejected" {
