@@ -376,15 +376,46 @@ impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn recover(
 /// 报出，不入 error_spans；复位后 parse_all 可继续解析后续语句，引擎不再
 /// 带病停机）。UnexpectedEvent 与 BusinessFailed 的恢复语义自此同径。
 fn[L : LexerSource] N3Engine::recover_cleanup(self : N3Engine[L]) -> Unit {
-  self.ctx.slot_stack.clear()
-  self.ctx.pred_kind = Normal
-  self.ctx.is_src = None // 役6：倒装交换键随错恢复回收
-  self.ctx.clear_annotation()
+  self.ctx.recover_cleanup_half()
   self.consume_to_recover_point()
 }
 
 ///|
+/// **恢复清理半边（唯一实现）**：R-19 役 2b 抽件——driver（`recover_cleanup`）与
+/// 探针面（`N3Probe::step_all` 恢复窗）共用，防两处各写一份恢复语义。
+/// 字段面 = `slot_stack`（模型侧映射 `frames`）/ `pred_kind`（模型无位）/
+/// `is_src`（模型有位）/ 注解四件套（模型无位）；**不调 `clear_path`**（路径账不随错回收）。
+fn N3Context::recover_cleanup_half(self : N3Context) -> Unit {
+  self.slot_stack.clear()
+  self.pred_kind = Normal
+  self.is_src = None // 役6：倒装交换键随错恢复回收
+  self.clear_annotation()
+}
+
+///|
+/// **恢复消费单步（唯一实现）**：吃一个事件，返 `true` = 恢复道就此结束
+/// （`Dot` ⇒ `ExpectSubject` + `reset(All)`；`EOF`/枯竭 ⇒ `ExpectSubject` + `reset(SPO)`），
+/// 返 `false` = 该事件被吞、继续等下一个（**不经转移表**）。R-19 役 2b 抽件：
+/// lexer 主循环与探针面共用**同一判据**（D2「同扩」的接缝；非两处各写一份）。
+fn N3Context::recover_consume(self : N3Context, event : N3Event) -> Bool {
+  match event {
+    N3Event::N3Dot => {
+      self.state = N3ExpectSubject
+      self.reset(ResetScope::All)
+      true
+    }
+    N3Event::N3EOF => {
+      self.state = N3ExpectSubject
+      self.reset(ResetScope::SPO)
+      true
+    }
+    _ => false
+  }
+}
+
+///|
 /// 恢复消费机械：只停 Dot（回 ExpectSubject，语句全清）。EOF 兜底归 finish_at_end。
+/// 判据与归位走 `N3Context::recover_consume`（唯一实现）——本函数只管事件流。
 fn[L : LexerSource] N3Engine::consume_to_recover_point(
   self : N3Engine[L],
 ) -> Unit {
@@ -396,12 +427,8 @@ fn[L : LexerSource] N3Engine::consume_to_recover_point(
       ev
     } else {
       match self.pull() {
-        None | Some(N3Event::N3EOF) => {
-          // EOF：归位交 finish_at_end 判脏；此处只收拾槽位
-          self.ctx.state = N3ExpectSubject
-          self.ctx.reset(ResetScope::SPO)
-          return
-        }
+        None => N3Event::N3EOF // 枯竭兜底与 EOF 同径（口径不变）
+        Some(N3Event::N3EOF) => N3Event::N3EOF // EOF 不进场化（口径不变）
         Some(ev) => {
           let (ev2, synth_ev) = self.normalize_term_span(ev)
           synth = synth_ev
@@ -409,9 +436,7 @@ fn[L : LexerSource] N3Engine::consume_to_recover_point(
         }
       }
     }
-    if event is N3Event::N3Dot {
-      self.ctx.state = N3ExpectSubject
-      self.ctx.reset(ResetScope::All)
+    if self.ctx.recover_consume(event) {
       return
     }
   }
