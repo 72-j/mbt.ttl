@@ -110,6 +110,7 @@ fn quick_state_machine(
         EmitQuad(_) => ["resp:EmitQuad"]
         Done => ["resp:Done"]
         Error(_) => ["resp:error"]
+        Skip => ["resp:skip"]
         // P4.2h ③ 同款（trig 先例）：有序批按**批内每一枚**打标签（单枚仍是 resp:EmitQuad）
         Batch(items) =>
           items.map(fn(item) {
@@ -118,6 +119,7 @@ fn quick_state_machine(
               EmitQuad(_) => "resp:EmitQuad"
               Done => "resp:Done"
               Error(_) => "resp:error"
+              Skip => "resp:skip"
               Batch(_) => "resp:batch"
             }
           })

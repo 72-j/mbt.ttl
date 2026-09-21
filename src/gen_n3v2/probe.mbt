@@ -55,12 +55,16 @@ impl N3EffectHandler for N3ProbeHandler with fn on_open_slot(
 pub struct N3Probe {
   priv ctx : N3Context
   priv handler : N3ProbeHandler
+  // R-19 恢复窗旗（役 2b，D2「探针面同扩」）：错误之后，事件**不进表**直到收窗点
+  // （Dot/EOF）。判据与归位复用引擎唯一实现 `N3Context::recover_consume`
+  // （engine.mbt）——探针只做"窗开/关"的记账，**不复制恢复语义**。
+  priv mut recovering : Bool
 }
 
 ///|
 pub fn N3Probe::new() -> N3Probe {
   let ctx = N3Context::new()
-  { ctx, handler: { actions: N3ActionsImpl::new(), }, }
+  { ctx, handler: { actions: N3ActionsImpl::new(), }, recovering: false, }
 }
 
 ///|
@@ -74,7 +78,13 @@ fn N3Probe::step_once(self : N3Probe, event : N3Event) -> N3ProbeResponse {
         YieldQuad(quad) => EmitQuad(quad)
         Stop => Done
       }
-    Err(error) => Failed(error)
+    Err(error) => {
+      // R-19：错误 ⇒ 开恢复窗（清账半边与引擎 `recover_cleanup_half` 同一实现；
+      // 吞事件半边在 `step_all` 逐事件兑现）。错误本身照常上抛。
+      self.ctx.recover_cleanup_half()
+      self.recovering = true
+      Failed(error)
+    }
   }
 }
 
@@ -89,6 +99,15 @@ pub fn N3Probe::step_all(
   self : N3Probe,
   event : N3Event,
 ) -> Array[N3ProbeResponse] {
+  // R-19 恢复窗（D2 同扩）：窗内事件**不进表**（≠ 走表后报 Error）——与引擎 driver
+  // 的 skip-to-Dot 同语义；命中收窗点（Dot/EOF）关窗，返回空批（零响应）。
+  // 判据与归位 = `N3Context::recover_consume`（engine.mbt 唯一实现）。
+  if self.recovering {
+    if self.ctx.recover_consume(event) {
+      self.recovering = false
+    }
+    return []
+  }
   let responses : Array[N3ProbeResponse] = []
   while self.ctx.emit_queue.length() > 0 {
     responses.push(EmitQuad(self.ctx.emit_queue.remove(0)))

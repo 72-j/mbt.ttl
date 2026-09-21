@@ -164,9 +164,11 @@ test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
     // 尾随跳发射旗 `nfwd:` 词表坍缩（path_hop_tail/path_verb_hop，引擎 :580/:791 参数旗）。
     // `ImpliedBy` 已零机械转正（役 2 / 2a，2026-09-21）：IR 全 5 行 = `set_predicate`，
     // 与 `Implies` 逐行同形（无反向旗、不涉恢复道）。
-    // `Caret` 仍 0 = R-19（fwd 墙后 skip-to-Dot 恢复道模型无恢复位；役 2 / 2b 在办——D1 入模 / D2 探针同扩）。
+    // `Caret` 已转正（役 2 / 2b，2026-09-21）：fwd 墙后 skip-to-Dot 恢复道**入模**
+    // （`[type_mapping.recovery_close]` 声明门：recovering + Skip + recovery_enter/swallow，
+    // 探针面同扩 ⇒ 随机门/普查门自此能判恢复道）；IR 行与 Bang 共用，零新增机械。
     ("Bang", 1),
-    ("Caret", 0),
+    ("Caret", 1),
     ("Comma", 1),
     ("Tilde", 1),
     ("BaseKw", 1),

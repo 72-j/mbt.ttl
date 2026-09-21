@@ -32,7 +32,7 @@ fn command_weight(name : String) -> Int {
     "Iri" => 3
     "Anon" => 1
     "Bang" => 1
-    "Caret" => 0
+    "Caret" => 1
     "Comma" => 1
     "Tilde" => 1
     "BaseKw" => 1

@@ -6,7 +6,7 @@
 // （**吞事件**到 Dot ⇒ ExpectSubject + reset(All)；EOF ⇒ reset(SPO)）；模型只有 `refuse_when`
 // （错误**当刻**的 state + 两账清），**没有恢复位**；探针 `step_all` 亦无恢复道（D2 前）。
 //
-// **实测轨迹**（反例输入 `<a> <b> ^<q>[ <r> <s> ] <t> <u> .` + 后继语句；探针 ⟷ 模型**逐步全同**）：
+// **实测轨迹（2b 前）**（反例输入 `<a> <b> ^<q>[ <r> <s> ] <t> <u> .` + 后继语句；探针 ⟷ 模型逐步全同）：
 //   [0] Iri      probe=Continue @ExpectPredicate        | model 同
 //   [1] Iri      probe=Continue @ExpectObject           | model 同
 //   [2] Caret    probe=EmitQuad(0,4,8,-) @PathExpectVerb | model 同（路径跳边，墙前合法出账）
@@ -17,10 +17,12 @@
 //   [10] Dot     probe=EmitQuad(-,-,-,-) @ExpectSubject | model 同 ← 复位点（reset(All)）
 //   [11..14] 后继语句照常出账（末步 EmitQuad(28,31,34,-)）
 //
-// **该红在哪一步 / 翻转点**：真驱动在 [5]–[9] **零响应**（吞事件，见 `../../engine_wbtest.mbt`
-// "R-19: 反例固化" 三重实证），模型/探针却各给 `Error(0)` ⇒ 分道点 = **墙后第一个事件**。
-// 2b 落地（模型加恢复位 + 探针面同扩，D2）后，[5]–[9] 必须变为**无响应**（吞事件）——
-// 本钉的 [5]–[9] 断言即**翻转点**：改对了这段必红，同笔改成"无响应"断言。
+// **该红在哪一步 / 翻转点（已翻转，2b 落地 2026-09-21）**：真驱动在 [5]–[9] **零响应**（吞事件，
+// 见 `../../engine_wbtest.mbt` "R-19: 反例固化" 三重实证），2b 前两侧各给 `Error(0)` ⇒
+// **分道点 = 墙后第一个事件**。2b 落地（模型加恢复位 + 探针面同扩，D2）后本钉同笔翻转：
+// [5]–[9] 断言 `Skip`、[10] 断言 `Skip` + `ExpectSubject`（收窗点本身也被吞，**不发空槽 quad**）。
+// **负控（实测留痕）**：2b 中途"只改模型、探针未扩"时，本钉恰在 **[5] 处红**
+// （`Error(0) != Skip`）⇒ 门有牙且红点 = 分道点，与设计一致。
 // ============================================================
 
 ///|
@@ -46,6 +48,7 @@ fn r19_resp(r : Response) -> String {
     EmitQuad(q) => "EmitQuad\{r19_quad(q)}"
     Done => "Done"
     Error(n) => "Error(\{n})"
+    Skip => "Skip"
     Batch(rs) => "Batch(\{rs.map(r19_resp).join(",")})"
   }
 }
@@ -74,8 +77,8 @@ fn r19_script() -> Array[Command] {
 }
 
 ///|
-/// **R-19 反例钉**：探针 ⟷ 模型逐步全同（当前口径）+ 分道点 / 复位点 / 翻转点写死。
-test "R-19 反例钉：探针⟷模型逐步全同，分道点 = 墙后第一个事件" {
+/// **R-19 恢复道门（2b 后口径）**：探针 ⟷ 模型逐步全同（**含恢复窗**）+ 分道点 / 收窗点写死。
+test "R-19 恢复道门：探针⟷模型逐步全同（窗内 Skip / 收窗归位）" {
   let system = system_init()
   let mut model = model_empty()
   let responses : Array[Response] = []
@@ -83,7 +86,7 @@ test "R-19 反例钉：探针⟷模型逐步全同，分道点 = 墙后第一个
   for cmd in r19_script() {
     let engine_resp = run_command(cmd, system)
     let (next, expected) = model_execute(model, cmd)
-    // 双执行逐步一致（**当前口径**：探针与模型同缺恢复位 ⇒ 随机门/普查门对恢复道无判别力）
+    // 双执行逐步一致（2b 后口径：探针面同扩恢复道 ⇒ 随机门/普查门自此**能判**恢复道）
     assert_eq(engine_resp, expected)
     responses.push(engine_resp)
     states.push(next.state)
@@ -92,18 +95,15 @@ test "R-19 反例钉：探针⟷模型逐步全同，分道点 = 墙后第一个
   // ① 墙（命令序 4 = `[`）：业务错 + 归位 ExpectDotOrGraph
   assert_eq(r19_resp(responses[4]), "Error(1)")
   assert_eq(states[4], ExpectDotOrGraph)
-  // ② **分道点**（命令序 5 = 墙后第一个事件 `<r>`）与吞事件窗 5–9：
-  //    模型/探针各给 Error(0) 且停在 ExpectDotOrGraph；**真驱动此处零响应**。
-  //    ⚠ 翻转点：2b 落地后本段改"无响应"断言（改对即红）。
+  // ② **吞事件窗**（命令序 5–9 = 墙后到 Dot 前）：两侧**同报 Skip**且停在 ExpectDotOrGraph
+  //    （= 真驱动"零响应"的模型/探针面）。**负控已实测**：拆探针吞事件 ⇒ 本段在 [5] 处红。
   for k in [5, 6, 7, 8, 9] {
-    assert_eq(r19_resp(responses[k]), "Error(0)")
+    assert_eq(r19_resp(responses[k]), "Skip")
     assert_eq(states[k], ExpectDotOrGraph)
   }
-  // ③ 复位点（命令序 10 = `.`）：空槽发射 + 回 ExpectSubject（reset(All) 的可见面）
-  assert_eq(
-    responses[10],
-    EmitQuad({ subject: None, predicate: None, object: None, graph: None, }),
-  )
+  // ③ 收窗点（命令序 10 = `.`）：**本身也被吞**（Skip，不发空槽 quad）+ 归位 ExpectSubject
+  //    （reset(All) 的可见面；真驱动同刻做 reset(All)）
+  assert_eq(r19_resp(responses[10]), "Skip")
   assert_eq(states[10], ExpectSubject)
   // ④ 恢复后照常出账（命令序 14 = 后继语句的 `.`）
   assert_eq(

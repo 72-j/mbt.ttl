@@ -124,7 +124,11 @@ fn run_command(command : Command, system : System) -> Response {
   let responses = batch.map(fn(response) {
     probe_response_to_response(response)
   })
-  if responses.length() == 1 {
+  // R-19 恢复窗（役 2b，D2 同扩）：空批 = 引擎在恢复道里把这枚事件**吞掉**
+  // （零响应）——归一为 `Skip`（≠ Continue：Continue = 进了表）。单枚/多枚口径不变。
+  if responses.length() == 0 {
+    Skip
+  } else if responses.length() == 1 {
     responses[0]
   } else {
     Batch(responses)

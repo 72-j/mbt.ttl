@@ -62,6 +62,13 @@
   business.mbt 权重臂 `"ImpliedBy" => 1` 由不可达变可达 + 钉表/注释净增 ⇒ 分子 9937 → **9939**、
   分母 **10965 不变**，floor(9939*1000/10965) = **906** ⇒ 判据字段 906 **保持**（复算留痕，非调数）。
   冷口径连跑两次均 9939/10965；面三 `coverage-review.txt` 同笔重生成（仅 Total 行随读数）。
-covered_permille = 906
-covered_lines = 9939
-total_lines = 10965
+→ 2026-09-21 役 2 / 2b 复算（恢复道入模 + `Caret` 转正同笔）：
+  模型新增恢复机件（`recovery_enter` / `recovery_swallow` / `model_execute` 包装 + 冲烟）
+  + 探针面恢复窗（`recovering` / `recover_consume` 复用）+ 新门（`r19_probe_wbtest`）——
+  分子 9939 → **9982**、分母 10965 → **10998**，floor(9982*1000/10998) = **907**
+  ⇒ 判据字段 906 → **907 同笔推高**（补测试/新机件被走到，非调数）。
+  冷口径连跑两次均 9982/10998；面三 `coverage-review.txt` 同笔重生成（仅 Total 行随读数）；
+  可达覆盖账三方言（40/8/25 缺口全 0）逐字节不变。
+covered_permille = 907
+covered_lines = 9982
+total_lines = 10998

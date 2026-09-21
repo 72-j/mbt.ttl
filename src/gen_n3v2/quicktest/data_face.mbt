@@ -486,6 +486,7 @@ fn response_short(response : Response) -> String {
     EmitQuad(_) => "EmitQuad"
     Done => "Done"
     Error(code) => "Error(\{code})"
+    Skip => "Skip" // R-19 恢复窗吞咽（声明门开启后出现；面内短文本口径与 Response 变体同名）
     Batch(items) => "Batch(\{items.length()})"
   }
 }

@@ -21,7 +21,7 @@ fn take_quad(model : Model) -> Quad {
 ///|
 /// 纯模型执行: (Model, Command) -> (Model, Response)
 /// 兜底 (_, _) => Error(0) 为非法转移
-fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
+fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
   match (model.state, cmd) {
     // --- ExpectSubject ---
     // @arm ExpectSubject+Iri
@@ -4391,6 +4391,22 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
 }
 
 ///|
+/// 纯模型执行（R-19 恢复窗包装）：窗内事件**不进表**（`recovery_swallow` 收窗/吞咽），
+/// 错误响应 ⇒ 开窗清账（`recovery_enter`）——与引擎 `recover_consume` /
+/// `recover_cleanup_half`（engine.mbt，唯一实现）同面。窗内恒报 `Skip`
+/// （≠ `Continue`：`Continue` = 进了表）。
+fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
+  if model.recovering {
+    return recovery_swallow(model, cmd)
+  }
+  let (next, resp) = model_execute_core(model, cmd)
+  match resp {
+    Error(_) => (recovery_enter(next), resp)
+    _ => (next, resp)
+  }
+}
+
+///|
 /// 槽位更新辅助: subject（action set_subject）
 /// 目标态由调用臂传入（规则 to=），同一 action 的多目标复用由此消解
 fn set_subject(model : Model, r : @qcs.Ref[RefId], to : ModelState) -> Model {
@@ -4669,6 +4685,47 @@ fn frames_top_set_id_subject(
 }
 
 ///|
+/// 恢复窗开窗（R-19）：任何 Error 响应后的可观测清账面——帧栈/倒装交换键随错回收
+/// （引擎 recover_cleanup_half 同面；path 三账不清），并置 recovering 旗开窗。
+fn recovery_enter(model : Model) -> Model {
+  { ..model, recovering: true, frames: [], is_src: None, }
+}
+
+///|
+/// 恢复窗吞咽（R-19）：窗内事件不进表；收窗事件按声明清槽归位（引擎
+/// recover_consume 同判据）。恒报 Skip（≠ Continue：Continue = 进了表）。
+fn recovery_swallow(model : Model, cmd : Command) -> (Model, Response) {
+  match cmd {
+    Dot =>
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+          graph: None,
+          recovering: false,
+        },
+        Skip,
+      )
+    EOF =>
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+          recovering: false,
+        },
+        Skip,
+      )
+    _ => ({ ..model, recovering: true, }, Skip)
+  }
+}
+
+///|
 /// 模型推进（quickcheck_statemachine transition_symbolic/concrete 接口形态）
 /// 恒按模型自臂推进：建模错误臂（旗拒/值支）自报拒绝态（引擎 Err 后净态 =
 /// row.to）；catch-all/守卫错误臂 .0 = model，冻结语义不变
@@ -4686,9 +4743,14 @@ test "n3_quick_machine model_exec: 非法转移兜底 / transition 不推进" {
     BracketTripleTerm(Concrete({ id: 1, })),
   )
   assert_eq(resp_bad, Error(0))
-  assert_eq(m_bad, m)
+  assert_eq(m_bad, recovery_enter(m)) // R-19：错误一步即在 model_execute 内开窗
   let t_err = transition(m, BracketTripleTerm(Concrete({ id: 1, })), Error(0))
-  assert_eq(t_err, m)
+  assert_true(t_err != m) // R-19：错误响应 ⇒ 开窗（recovering 已置）
+  let (m_sw, resp_sw) = model_execute(t_err, Iri(Concrete({ id: 3, })))
+  assert_eq(resp_sw, Skip) // 窗内吞咽：不进表
+  let (m_close, resp_close) = model_execute(m_sw, Dot)
+  assert_eq(resp_close, Skip) // 收窗事件也不进表
+  assert_eq(m_close, model_empty()) // 归位：与初始模型全等
   // transition: 正常推进
   let t_ok = transition(m, Iri(Concrete({ id: 1, })), Continue)
   assert_true(t_ok != m)
