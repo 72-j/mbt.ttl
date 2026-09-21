@@ -18,6 +18,13 @@ pub impl LexerSource for Lexerc with fn next(self : Lexerc) -> NQuadsEvent? {
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+// 注：本文件是 **native-only**（`moon.pkg` 的 `targets` 里限 "native"）⇒ 默认 wasm 档的
+// `moon check` 看不见它；CI 的 `moon test --deny-warn --target native` 会看见——故必须在此补齐
+// （**口径**：诊断核查要**按档跑**，wasm 绿 ≠ native 绿）。
+pub extend Lexerc with LexerSource::{byte_at, pos}
+
+///|
 pub impl LexerSource for Lexerc with fn pos(self : Lexerc) -> Int {
   Lexerc::position(self)
 }
