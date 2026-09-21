@@ -28,6 +28,10 @@ pub(all) enum Token {
 } derive(Debug)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Token with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub impl Show for Token with fn output(self : Token, logger : &Logger) -> Unit {
   match self {
     Token::Dot(span) => {
@@ -69,3 +73,7 @@ pub impl Show for Token with fn output(self : Token, logger : &Logger) -> Unit {
     Token::EOF(offset) => logger.write_string("EOF(\{offset})")
   }
 }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Token with Show::{output, to_string}

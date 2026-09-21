@@ -8,6 +8,10 @@ pub(all) suberror ParseError {
 } derive(Debug)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend ParseError with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub fn ParseError::to_span(err : ParseError) -> Span {
   match err {
     ValidationErr(_) => (0, 0)
@@ -26,6 +30,10 @@ pub impl ErrOut for ParseError with fn message(self : ParseError) -> String {
     ParseError::IriErr(message) => message
   }
 }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend ParseError with ErrOut::{err_kind, message}
 
 ///|
 pub impl ErrOut for ParseError with fn err_kind(self : ParseError) -> String {
@@ -63,6 +71,10 @@ pub impl Show for ParseError with fn output(self : ParseError, logger : &Logger)
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend ParseError with Show::{output, to_string}
+
+///|
 pub(all) suberror IriError {
   /// 没有 scheme
   NoScheme(Int)
@@ -79,6 +91,10 @@ pub(all) suberror IriError {
   /// 意外的结束
   UnexpectedEnd(Int)
 } derive(Debug)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend IriError with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 pub trait ErrOut {
@@ -114,6 +130,10 @@ pub impl ErrOut for IriError with fn message(self : IriError) -> String {
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend IriError with ErrOut::{err_kind, message}
+
+///|
 pub impl ErrOut for IriError with fn err_kind(self : IriError) -> String {
   match self {
     NoScheme(_) => "NoScheme"
@@ -146,6 +166,10 @@ pub impl Show for IriError with fn output(self : IriError, logger : &Logger) -> 
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend IriError with Show::{output, to_string}
+
+///|
 pub(all) suberror TagParseErr {
   EmptyTag
   EmptySubtag
@@ -158,6 +182,10 @@ pub(all) suberror TagParseErr {
   InvalidVariant
   InvalidPrivateUsePrefix
 } derive(Debug)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TagParseErr with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 pub impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
@@ -179,6 +207,10 @@ pub impl Show for TagParseErr with fn output(self, logger : &Logger) -> Unit {
       logger.write_string("InvalidLanguageLength")
   }
 }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TagParseErr with Show::{output, to_string}
 
 ///|
 //

@@ -28,6 +28,10 @@ pub impl Show for QuadSpan with fn output(self : QuadSpan, logger : &Logger) -> 
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend QuadSpan with Show::{output, to_string}
+
+///|
 pub impl Show for TermType with fn output(self : TermType, logger : &Logger) -> Unit {
   match self {
     Iri => logger.write("Iri")
@@ -36,6 +40,10 @@ pub impl Show for TermType with fn output(self : TermType, logger : &Logger) -> 
     TripleTerm => logger.write("TripleTerm")
   }
 }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TermType with Show::{output, to_string}
 
 ///|
 /// 主语类型
@@ -53,6 +61,14 @@ pub(all) enum Subject {
 } derive(Debug, Eq)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Subject with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Subject with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 /// 宾语类型
 pub(all) enum Object {
   Iri(ArrayView[Byte])
@@ -64,6 +80,14 @@ pub(all) enum Object {
   Formula(ArrayView[Byte]) // { ... }（N3 ADR-002：GraphTerm 不透明，整段原文持有；
   // nquads/trig 方言不产出，序列化侧防御拒臂钉住）
 } derive(Debug, Eq)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Object with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Object with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 /// Predicate = BytesView（只能是 IRI）
@@ -78,6 +102,14 @@ pub(all) enum GraphName {
 } derive(Debug, Eq)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend GraphName with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend GraphName with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 /// N-Quads Quad
 pub(all) struct QuadEmit {
   subject : Subject
@@ -86,6 +118,14 @@ pub(all) struct QuadEmit {
   graph : GraphName
   // line : Int
 } derive(Debug, Eq)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend QuadEmit with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend QuadEmit with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> Unit {
@@ -151,6 +191,10 @@ pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> 
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend QuadEmit with Show::{output, to_string}
+
+///|
 pub impl Show for Subject with fn output(self : Subject, logger : &Logger) -> Unit {
   match self {
     Subject::Iri(span) => {
@@ -171,6 +215,10 @@ pub impl Show for Subject with fn output(self : Subject, logger : &Logger) -> Un
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Subject with Show::{output, to_string}
+
+///|
 pub impl Show for Object with fn output(self : Object, logger : &Logger) -> Unit {
   match self {
     Object::Iri(span) => {
@@ -189,3 +237,7 @@ pub impl Show for Object with fn output(self : Object, logger : &Logger) -> Unit
     Object::Variable(span) => logger.write_string("?\{span.length()}")
   }
 }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Object with Show::{output, to_string}

@@ -21,6 +21,8 @@ pub(all) enum N3Dialect {
   N3
   RDFStarOff
 } derive(Eq)
+pub fn N3Dialect::equal(Self, Self) -> Bool
+pub fn N3Dialect::not_equal(Self, Self) -> Bool
 
 pub struct N3Engine[L] {
   lexer : L
@@ -101,6 +103,9 @@ pub struct N3LexerAdapter {
   mut anon_swallow : Bool
   // private fields
 }
+pub fn N3LexerAdapter::byte_at(Self, Int) -> Byte
+pub fn N3LexerAdapter::next(Self) -> N3Event?
+pub fn N3LexerAdapter::pos(Self) -> Int
 pub impl LexerSource for N3LexerAdapter
 
 pub struct N3Materializer {
@@ -130,6 +135,8 @@ pub(all) struct N3PendingQuad {
   iri_version : Int
   subj_shell : Bool
 } derive(Eq)
+pub fn N3PendingQuad::equal(Self, Self) -> Bool
+pub fn N3PendingQuad::not_equal(Self, Self) -> Bool
 
 pub struct N3Probe {
   // private fields
@@ -241,6 +248,8 @@ pub(all) enum PredKind {
   KwA
   SameAs
 } derive(Eq)
+pub fn PredKind::equal(Self, Self) -> Bool
+pub fn PredKind::not_equal(Self, Self) -> Bool
 
 pub(all) struct QuadSpan {
   s : (Int, Int)

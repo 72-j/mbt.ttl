@@ -9,6 +9,22 @@ pub(all) enum BaseDirection {
 } derive(Eq, Debug, Hash, ToJson)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend BaseDirection with ToJson::{to_json}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend BaseDirection with Hash::{hash, hash_combine}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend BaseDirection with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend BaseDirection with Eq::{equal, not_equal}
+
+///|
 pub impl Show for BaseDirection with fn output(
   self : BaseDirection,
   f : &Logger,
@@ -20,15 +36,39 @@ pub impl Show for BaseDirection with fn output(
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend BaseDirection with Show::{output, to_string}
+
+///|
 /// IRI 引用
 pub(all) struct NamedNodeRef {
   iri : StringView
 } derive(Debug, Eq, Hash)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend NamedNodeRef with Hash::{hash, hash_combine}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend NamedNodeRef with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend NamedNodeRef with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub impl Show for NamedNodeRef with fn output(self, logger) {
   logger.write(self.iri)
 }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend NamedNodeRef with Show::{to_string}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend NamedNodeRef with Show::{output}
 
 ///|
 /// 创建 NamedNodeRef (不验证)
@@ -39,6 +79,18 @@ pub fn NamedNodeRef::new_unchecked(iri : StringView) -> NamedNodeRef {
 ///|
 /// 字面量引用 (无所有权)
 pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Debug, Hash)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LiteralRef with Hash::{hash, hash_combine}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LiteralRef with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LiteralRef with Eq::{equal, not_equal}
 
 ///|
 /// 字面量引用内容
@@ -52,6 +104,18 @@ pub(all) enum LiteralRefContent {
   )
   TypedLiteral(value~ : StringView, datatype~ : NamedNodeRef)
 } derive(Eq, Debug, Hash)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LiteralRefContent with Hash::{hash, hash_combine}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LiteralRefContent with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LiteralRefContent with Eq::{equal, not_equal}
 
 ///|
 /// 创建简单字面量
@@ -253,6 +317,14 @@ pub impl Show for LiteralRef with fn to_string(self) {
     }
   }
 }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LiteralRef with Show::{to_string}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LiteralRef with Show::{output}
 
 ///|
 /// 转义 N-Triples 特殊字符

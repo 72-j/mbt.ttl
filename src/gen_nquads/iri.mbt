@@ -12,6 +12,18 @@ pub(all) struct Iri {
 } derive(Debug, Eq, Default)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Iri with Default::{default}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Iri with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Iri with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub fn Iri::Iri(
   scheme : StringView,
   authority : StringView,
@@ -33,6 +45,14 @@ struct IriSpan {
   mut fragment : Span? // None = 未出现
   mut pos : Int // 当前解析位置
 } derive(Eq, Default)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend IriSpan with Default::{default}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend IriSpan with Eq::{equal, not_equal}
 
 // ============================================================
 // 公共 API

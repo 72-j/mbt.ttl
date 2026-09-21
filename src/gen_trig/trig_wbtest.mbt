@@ -431,9 +431,8 @@ test "方言守卫: Turtle 禁图块区（裸 { } / <g> { }），TriG 默认放�
 /// N3 预埋分类 pin：适配层发出新事件（表未接走兜底，不进任何 quad）。
 /// 量化指令要求 @ 邻接精确拼写；适配层无跨 token 状态，
 /// @keywords 模式下 'a' 仍出 KeywordA（语义豁免归表/物化层，将来接表再定）。
-extend TrigLexerAdapter with LexerSource::{next}
-
-///|
+/// W18（2026-09-21）：原 `extend TrigLexerAdapter with LexerSource::{next}` 已归位到
+/// 主文件 `lexer_adapter.mbt`（`pub extend`）——wbtest 里重复声明会撞车（[4056]）。
 test "N3 预埋: ! ^ => <= 与 @forAll/@forSome/@keywords 分类" {
   let input = "! ^ => <=\n@forAll :x .\n@forSome :y .\n@keywords a.\n"
   let data = bytes_of(input)

@@ -46,7 +46,10 @@ jobs:
           moon --version
           moon version --all
           installed="$(moon --version | head -n 1 | awk '{print $2}')"
-          known_good="0.1.20260915"
+          # W18（2026-09-21，用户拍"CI 跟升"）：钉版 20260915 → **20260920**——
+          # 与"弃用诊断清偿（implicit_impl_as_method 70+16 处）"**同笔**（跟升即红，不许分两笔）。
+          # 跟随口径：CI 取**最新**已知良好版（本地钉回旧版会制造口径分叉）。
+          known_good="0.1.20260920"
           if [ "$installed" != "$known_good" ]; then
             echo "::warning::MoonBit 工具链 $installed ≠ 本地已知良好 $known_good——先在本地复跑 check/test，再按需更新本文件"
           fi

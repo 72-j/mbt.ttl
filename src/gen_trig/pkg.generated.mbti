@@ -18,12 +18,17 @@ pub(all) enum GraphPolicy {
   Strict
   Drop
 } derive(Eq, @debug.Debug)
+pub fn GraphPolicy::equal(Self, Self) -> Bool
+pub fn GraphPolicy::not_equal(Self, Self) -> Bool
+pub fn GraphPolicy::to_repr(Self) -> @debug.Repr
 
 pub(all) enum PredKind {
   Normal
   RDFFirst
   RDFRest
 } derive(Eq)
+pub fn PredKind::equal(Self, Self) -> Bool
+pub fn PredKind::not_equal(Self, Self) -> Bool
 
 pub(all) struct QuadSpan {
   s : (Int, Int)
@@ -42,11 +47,15 @@ pub(all) enum ResetScope {
   SPO
   All
 } derive(@debug.Debug)
+pub fn ResetScope::to_repr(Self) -> @debug.Repr
 
 pub(all) enum SerializeFormat {
   Turtle
   TriG
 } derive(Eq, @debug.Debug)
+pub fn SerializeFormat::equal(Self, Self) -> Bool
+pub fn SerializeFormat::not_equal(Self, Self) -> Bool
+pub fn SerializeFormat::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Slot {
   typ : SlotType
@@ -99,6 +108,8 @@ pub(all) enum TrigDialect {
   TriG
   Turtle
 } derive(Eq)
+pub fn TrigDialect::equal(Self, Self) -> Bool
+pub fn TrigDialect::not_equal(Self, Self) -> Bool
 
 pub(all) enum TrigEffect {
   Continue
@@ -169,6 +180,8 @@ pub(all) enum TrigEvent {
   TrigUnknown
   TrigEOF
 }
+pub fn TrigEvent::output(Self, &Logger) -> Unit
+pub fn TrigEvent::to_string(Self) -> String
 pub impl Show for TrigEvent
 
 pub(all) struct TrigFrameView {
@@ -189,7 +202,10 @@ pub(all) struct TrigLexerAdapter {
   mut pending : TrigEvent?
   mut anon_swallow : Bool
 }
+pub fn TrigLexerAdapter::byte_at(Self, Int) -> Byte
 pub fn TrigLexerAdapter::new(ArrayView[Byte]) -> Self
+pub fn TrigLexerAdapter::next(Self) -> TrigEvent?
+pub fn TrigLexerAdapter::pos(Self) -> Int
 pub impl LexerSource for TrigLexerAdapter
 
 pub struct TrigMaterializer {
@@ -218,6 +234,8 @@ pub(all) struct TrigPendingQuad {
   base_version : Int
   subj_shell : Bool
 } derive(Eq)
+pub fn TrigPendingQuad::equal(Self, Self) -> Bool
+pub fn TrigPendingQuad::not_equal(Self, Self) -> Bool
 
 pub struct TrigProbe {
   // private fields

@@ -15,6 +15,14 @@ pub struct Extension {
 } derive(Debug, Eq)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Extension with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Extension with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub impl Show for Extension with fn output(self : Extension, logger : &Logger) -> Unit {
   logger.write("Extension:")
   logger.write("  { ")
@@ -27,12 +35,24 @@ pub impl Show for Extension with fn output(self : Extension, logger : &Logger) -
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend Extension with Show::{output, to_string}
+
+///|
 /// 私有使用 (x- 前缀 + 多个子标签)
 /// 例如: x-mycorp-private → prefix='x', subtags=["mycorp", "private"]
 pub struct PrivateUse {
   prefix : TagSpan // "x" 的位置
   subtags : Array[TagSpan]
 } derive(Debug, Eq)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend PrivateUse with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend PrivateUse with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 pub impl Show for PrivateUse with fn output(self : PrivateUse, logger : &Logger) -> Unit {
@@ -47,12 +67,24 @@ pub impl Show for PrivateUse with fn output(self : PrivateUse, logger : &Logger)
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend PrivateUse with Show::{output, to_string}
+
+///|
 /// 语言标签 (RFC 5646 / BCP 47)
 /// 结构: language ["-" extlang] ["-" script] ["-" region] *("-" variant) *("-" extension) ["-" privateuse]
 pub struct LanguageTag {
   tag : StringView // 原始输入
   state : TagState
 } derive(Debug, Eq)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LanguageTag with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LanguageTag with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 pub impl Show for LanguageTag with fn output(
@@ -72,6 +104,10 @@ pub impl Show for LanguageTag with fn output(
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend LanguageTag with Show::{output, to_string}
+
+///|
 pub struct TagState {
   // 必选 + 位置固定的部分
   language : TagSpan // 主语言 (2-3位 或 5-8位字母)
@@ -86,6 +122,14 @@ pub struct TagState {
   // 元信息
   is_grandfathered : Bool // 是否是祖父标签
 } derive(Debug, Eq)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TagState with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TagState with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 // pub fn TagState::new(tag : StringView) -> TagState {
@@ -122,6 +166,10 @@ pub impl Show for TagState with fn output(self : TagState, logger : &Logger) -> 
 
   logger.write("  }")
 }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TagState with Show::{output, to_string}
 
 ///|
 pub fn LanguageTag::to_tagstr(self : LanguageTag) -> String {

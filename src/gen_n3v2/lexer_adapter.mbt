@@ -422,6 +422,10 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend N3LexerAdapter with LexerSource::{byte_at, next, pos}
+
+///|
 pub impl LexerSource for N3LexerAdapter with fn pos(self : N3LexerAdapter) -> Int {
   self.inner.current_pos()
 }

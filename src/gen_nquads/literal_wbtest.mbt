@@ -1,10 +1,5 @@
-///|
-extend LiteralRef with Show::{to_string}
-
-///|
-
-///|
-extend NamedNodeRef with Show::{to_string}
+// W18（2026-09-21）：此处的两条 `extend ... with Show::{to_string}` 已**归位到主文件**
+// （`literal.mbt` 的显式提升，`pub extend`）——wbtest 里重复声明会与新提升撞车（[4056]）。
 
 ///|
 test "simple literal creation" {

@@ -286,6 +286,11 @@ pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) 
 }
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+// 注：`next` 在 TrigLexerAdapter 上另有私有方法（诊断原文已提示），此处显式提升与私有方法并存。
+pub extend TrigLexerAdapter with LexerSource::{next, byte_at, pos}
+
+///|
 pub impl LexerSource for TrigLexerAdapter with fn pos(self : TrigLexerAdapter) -> Int {
   self.inner.current_pos()
 }

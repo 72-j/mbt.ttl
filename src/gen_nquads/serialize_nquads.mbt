@@ -19,11 +19,27 @@ pub(all) enum SerializeFormat {
 } derive(Debug, Eq)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend SerializeFormat with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend SerializeFormat with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 /// graph 字段策略（仅 format=Triple 时生效；format=Quad 下空转）
 pub(all) enum GraphPolicy {
   Strict // graph 存在 → 报错（拒绝有损）
   Drop // graph 存在 → 丢弃（有损导出）
 } derive(Debug, Eq)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend GraphPolicy with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend GraphPolicy with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 pub struct Serializer {

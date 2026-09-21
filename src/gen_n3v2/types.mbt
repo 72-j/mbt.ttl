@@ -41,6 +41,10 @@ pub(all) enum N3Dialect {
 } derive(Eq)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend N3Dialect with Eq::{equal, not_equal}
+
+///|
 /// 谓词来源标记（管线同源快照槽，随 quad 带出）。
 /// N3 按 ADR-003a：集合语法 ( ... ) 展开为单一 BNode，无合成链——恒 Normal；
 /// RDFFirst/RDFRest 变体仅为 ADR-003b 显式链物化预留。
@@ -125,3 +129,13 @@ pub trait ErrOut {
   fn message(self : Self) -> String
   fn err_kind(self : Self) -> String
 }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+// 归位说明：`PredKind`（`n3.mbt` 直产件内声明）与 `N3PendingQuad`（同）的 Eq 提升
+// **必须写在手写件**（生成物禁手写；`n3.mbt` 由 n3gen 直产，G9 黄金门比对）。
+pub extend PredKind with Eq::{equal, not_equal}
+
+///|
+// W18 同上：`N3PendingQuad` 的 Eq 提升（`pub extend` 与声明同包即可，无需改产线）。
+pub extend N3PendingQuad with Eq::{equal, not_equal}

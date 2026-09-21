@@ -16,6 +16,14 @@ pub(all) enum TermType {
 } derive(Debug, Eq)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TermType with Eq::{equal, not_equal}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TermType with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 /// 已切片的四元组（span → 数据视图 + 词项类型）
 pub struct QuadSpan {
   subj : ArrayView[Byte]
@@ -25,6 +33,10 @@ pub struct QuadSpan {
   subj_type : TermType
   obj_type : TermType
 } derive(Debug)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend QuadSpan with @moonbitlang/core/debug.Debug::{to_repr}
 
 // PendingQuad 已由生成的 nquads.mbt 自带（槽位名 subject/predicate/object/graph），
 // 此处手抄副本退役——字段名以生成契约为准。
@@ -45,3 +57,13 @@ pub struct QuadSpan {
 //   }
 //   data[off:off + len]
 // }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+// 归位说明：`ResetScope`/`NQuadsPendingQuad` 声明在直产件 `nquads.mbt`（G9 黄金门逐字节比它）
+// ⇒ 提升**必须写在手写件**（生成物禁手写）。
+pub extend ResetScope with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+// W18 同上：`NQuadsPendingQuad` 的 Eq 提升。
+pub extend NQuadsPendingQuad with Eq::{equal, not_equal}

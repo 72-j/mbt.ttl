@@ -39,6 +39,10 @@ pub(all) enum TrigDialect {
 } derive(Eq)
 
 ///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TrigDialect with Eq::{equal, not_equal}
+
+///|
 /// 合成谓词标记（★3 集合链）：链节点 rdf:first/rdf:rest 谓词在数据中无字节，
 /// 表在合成发射行把标记写 ctx.pred_kind，快照时随 quad 带出（快照即消费——
 /// 读后归 Normal，恰覆盖一次发射），物化层据此合成词表 IRI。Normal = 原文谓词
@@ -47,6 +51,10 @@ pub(all) enum PredKind {
   RDFFirst
   RDFRest
 } derive(Eq)
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend PredKind with Eq::{equal, not_equal}
 
 ///|
 /// 已切片前的四元组（纯 span + 谓词标记；组装/验证在 SliceParser，与 nquads 分层一致）
@@ -171,3 +179,16 @@ pub impl Show for TrigEvent with fn output(self : TrigEvent, logger : &Logger) -
       logger.write("BracketTripleTerm \{@debug.to_string(span)}")
   }
 }
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TrigEvent with Show::{output, to_string}
+
+///|
+// W18 同上：`ResetScope`（@nquads 词表）与 `TrigPendingQuad`（`trig.mbt` 直产件内声明）
+// 的提升**写在手写件**（生成物禁手写；`trig.mbt` 由 triggen 直产）。
+pub extend ResetScope with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+// W18 同上：`TrigPendingQuad` 的 Eq 提升。
+pub extend TrigPendingQuad with Eq::{equal, not_equal}

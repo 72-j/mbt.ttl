@@ -188,7 +188,12 @@ pub(all) suberror IriError {
   InvalidPercentEncoding(Int)
   UnexpectedEnd(Int)
 } derive(@debug.Debug)
+pub fn IriError::err_kind(Self) -> String
+pub fn IriError::message(Self) -> String
+pub fn IriError::output(Self, &Logger) -> Unit
 pub fn IriError::position(Self) -> Int
+pub fn IriError::to_repr(Self) -> @debug.Repr
+pub fn IriError::to_string(Self) -> String
 pub impl Show for IriError
 pub impl ErrOut for IriError
 
@@ -198,7 +203,12 @@ pub(all) suberror ParseError {
   ValidationErr(String)
   IriErr(String)
 } derive(@debug.Debug)
+pub fn ParseError::err_kind(Self) -> String
+pub fn ParseError::message(Self) -> String
+pub fn ParseError::output(Self, &Logger) -> Unit
+pub fn ParseError::to_repr(Self) -> @debug.Repr
 pub fn ParseError::to_span(Self) -> (Int, Int)
+pub fn ParseError::to_string(Self) -> String
 pub impl Show for ParseError
 pub impl ErrOut for ParseError
 
@@ -214,6 +224,9 @@ pub(all) suberror TagParseErr {
   InvalidVariant
   InvalidPrivateUsePrefix
 } derive(@debug.Debug)
+pub fn TagParseErr::output(Self, &Logger) -> Unit
+pub fn TagParseErr::to_repr(Self) -> @debug.Repr
+pub fn TagParseErr::to_string(Self) -> String
 pub impl Show for TagParseErr
 
 // Types and methods
@@ -221,12 +234,25 @@ pub(all) enum BaseDirection {
   Ltr
   Rtl
 } derive(Eq, Hash, ToJson, @debug.Debug)
+pub fn BaseDirection::equal(Self, Self) -> Bool
+pub fn BaseDirection::hash(Self) -> Int
+pub fn BaseDirection::hash_combine(Self, Hasher) -> Unit
+pub fn BaseDirection::not_equal(Self, Self) -> Bool
+pub fn BaseDirection::output(Self, &Logger) -> Unit
+pub fn BaseDirection::to_json(Self) -> Json
+pub fn BaseDirection::to_repr(Self) -> @debug.Repr
+pub fn BaseDirection::to_string(Self) -> String
 pub impl Show for BaseDirection
 
 pub struct Extension {
   ident : (Int, Int)
   subtags : Array[(Int, Int)]
 } derive(Eq, @debug.Debug)
+pub fn Extension::equal(Self, Self) -> Bool
+pub fn Extension::not_equal(Self, Self) -> Bool
+pub fn Extension::output(Self, &Logger) -> Unit
+pub fn Extension::to_repr(Self) -> @debug.Repr
+pub fn Extension::to_string(Self) -> String
 pub impl Show for Extension
 
 pub struct ExtensionIter {
@@ -241,11 +267,17 @@ pub(all) enum GraphName {
   Iri(ArrayView[Byte])
   BNode(ArrayView[Byte])
 } derive(Eq, @debug.Debug)
+pub fn GraphName::equal(Self, Self) -> Bool
+pub fn GraphName::not_equal(Self, Self) -> Bool
+pub fn GraphName::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GraphPolicy {
   Strict
   Drop
 } derive(Eq, @debug.Debug)
+pub fn GraphPolicy::equal(Self, Self) -> Bool
+pub fn GraphPolicy::not_equal(Self, Self) -> Bool
+pub fn GraphPolicy::to_repr(Self) -> @debug.Repr
 
 pub struct Hooks {
 }
@@ -258,17 +290,25 @@ pub(all) struct Iri {
   fragment : StringView?
 } derive(Default, Eq, @debug.Debug)
 pub fn Iri::Iri(StringView, StringView, StringView, StringView?, StringView?) -> Self
+pub fn Iri::default() -> Self
+pub fn Iri::equal(Self, Self) -> Bool
 pub fn Iri::into_string(Self) -> String
+pub fn Iri::not_equal(Self, Self) -> Bool
 pub fn Iri::relativize(Self, Self) -> Result[Self, ParseError]
 pub fn Iri::resolve(Self, BytesView, remove_dot_segments? : Bool) -> Result[Self, ParseError]
 pub fn Iri::resolve_unchecked(Self, BytesView, remove_dot_segments? : Bool) -> Self
+pub fn Iri::to_repr(Self) -> @debug.Repr
 
 type IriSpan derive(Default, Eq)
+pub fn IriSpan::default() -> Self
+pub fn IriSpan::equal(Self, Self) -> Bool
+pub fn IriSpan::not_equal(Self, Self) -> Bool
 
 pub struct LanguageTag {
   tag : StringView
   state : TagState
 } derive(Eq, @debug.Debug)
+pub fn LanguageTag::equal(Self, Self) -> Bool
 pub fn LanguageTag::extended_language(Self) -> StringView?
 pub fn LanguageTag::extended_language_subtags(Self) -> Array[StringView]
 pub fn LanguageTag::extension_subtags(Self) -> ExtensionIter
@@ -276,12 +316,16 @@ pub fn LanguageTag::extensions(Self) -> ExtensionIter
 pub fn LanguageTag::full_language(Self) -> StringView
 pub fn LanguageTag::has_extensions(Self) -> Bool
 pub fn LanguageTag::has_private_use(Self) -> Bool
+pub fn LanguageTag::not_equal(Self, Self) -> Bool
+pub fn LanguageTag::output(Self, &Logger) -> Unit
 pub fn LanguageTag::parse(StringView) -> Result[Self, TagParseErr]
 pub fn LanguageTag::parse_and_normalize(StringView) -> Result[Self, TagParseErr]
 pub fn LanguageTag::primary_language(Self) -> StringView
 pub fn LanguageTag::private_use_subtags(Self) -> Array[StringView]
 pub fn LanguageTag::region(Self) -> StringView?
 pub fn LanguageTag::script(Self) -> StringView?
+pub fn LanguageTag::to_repr(Self) -> @debug.Repr
+pub fn LanguageTag::to_string(Self) -> String
 pub fn LanguageTag::to_tagstr(Self) -> String
 pub fn LanguageTag::variant_subtags(Self) -> Array[StringView]
 pub impl Show for LanguageTag
@@ -291,11 +335,13 @@ pub(all) struct Lexermoon {
   mut pos : Int
   mut len : Int
 }
+pub fn Lexermoon::byte_at(Self, Int) -> Byte
 pub fn Lexermoon::current_pos(Self) -> Int
 pub fn Lexermoon::extract(Self, Int, Int) -> String
 pub fn Lexermoon::extract_iri(Self, Token) -> String
 pub fn Lexermoon::new(ArrayView[Byte]) -> Self
 pub fn Lexermoon::next(Self) -> Token?
+pub fn Lexermoon::pos(Self) -> Int
 pub impl LexerSource for Lexermoon
 
 pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Hash, @debug.Debug)
@@ -303,6 +349,9 @@ pub fn LiteralRef::as_value(Self) -> StringView
 pub fn LiteralRef::datatype(Self) -> NamedNodeRef
 pub fn LiteralRef::destruct(Self) -> (StringView, NamedNodeRef?, StringView?, BaseDirection?)
 pub fn LiteralRef::direction(Self) -> BaseDirection?
+pub fn LiteralRef::equal(Self, Self) -> Bool
+pub fn LiteralRef::hash(Self) -> Int
+pub fn LiteralRef::hash_combine(Self, Hasher) -> Unit
 pub fn LiteralRef::language(Self) -> StringView?
 pub fn LiteralRef::new_directional_language_tagged_literal(String, String, BaseDirection) -> Result[Self, TagParseErr]
 pub fn LiteralRef::new_directional_language_tagged_literal_unchecked(StringView, LanguageTag, BaseDirection) -> Self
@@ -311,6 +360,10 @@ pub fn LiteralRef::new_language_tagged_literal_unchecked(String, String) -> Self
 pub fn LiteralRef::new_simple_literal(String) -> Self
 pub fn LiteralRef::new_simple_literal_unchecked(String) -> Self
 pub fn LiteralRef::new_typed_literal_unchecked(String, NamedNodeRef) -> Self
+pub fn LiteralRef::not_equal(Self, Self) -> Bool
+pub fn LiteralRef::output(Self, &Logger) -> Unit
+pub fn LiteralRef::to_repr(Self) -> @debug.Repr
+pub fn LiteralRef::to_string(Self) -> String
 pub fn LiteralRef::value(Self) -> StringView
 pub impl Show for LiteralRef
 
@@ -320,6 +373,11 @@ pub(all) enum LiteralRefContent {
   DirectionalLanguageTaggedString(value~ : StringView, language~ : StringView, direction~ : BaseDirection)
   TypedLiteral(value~ : StringView, datatype~ : NamedNodeRef)
 } derive(Eq, Hash, @debug.Debug)
+pub fn LiteralRefContent::equal(Self, Self) -> Bool
+pub fn LiteralRefContent::hash(Self) -> Int
+pub fn LiteralRefContent::hash_combine(Self, Hasher) -> Unit
+pub fn LiteralRefContent::not_equal(Self, Self) -> Bool
+pub fn LiteralRefContent::to_repr(Self) -> @debug.Repr
 
 pub(all) enum NQuadsActionError {
   UnexpectedEvent(NQuadsState, NQuadsEvent)
@@ -378,6 +436,8 @@ pub(all) struct NQuadsPendingQuad {
   obj : (Int, Int)?
   graph : (Int, Int)?
 } derive(Eq)
+pub fn NQuadsPendingQuad::equal(Self, Self) -> Bool
+pub fn NQuadsPendingQuad::not_equal(Self, Self) -> Bool
 
 pub(all) enum NQuadsState {
   NQuadsExpectSubject
@@ -390,7 +450,14 @@ pub(all) enum NQuadsState {
 pub(all) struct NamedNodeRef {
   iri : StringView
 } derive(Eq, Hash, @debug.Debug)
+pub fn NamedNodeRef::equal(Self, Self) -> Bool
+pub fn NamedNodeRef::hash(Self) -> Int
+pub fn NamedNodeRef::hash_combine(Self, Hasher) -> Unit
 pub fn NamedNodeRef::new_unchecked(StringView) -> Self
+pub fn NamedNodeRef::not_equal(Self, Self) -> Bool
+pub fn NamedNodeRef::output(Self, &Logger) -> Unit
+pub fn NamedNodeRef::to_repr(Self) -> @debug.Repr
+pub fn NamedNodeRef::to_string(Self) -> String
 pub impl Show for NamedNodeRef
 
 pub(all) enum Object {
@@ -402,12 +469,22 @@ pub(all) enum Object {
   Variable(ArrayView[Byte])
   Formula(ArrayView[Byte])
 } derive(Eq, @debug.Debug)
+pub fn Object::equal(Self, Self) -> Bool
+pub fn Object::not_equal(Self, Self) -> Bool
+pub fn Object::output(Self, &Logger) -> Unit
+pub fn Object::to_repr(Self) -> @debug.Repr
+pub fn Object::to_string(Self) -> String
 pub impl Show for Object
 
 pub struct PrivateUse {
   prefix : (Int, Int)
   subtags : Array[(Int, Int)]
 } derive(Eq, @debug.Debug)
+pub fn PrivateUse::equal(Self, Self) -> Bool
+pub fn PrivateUse::not_equal(Self, Self) -> Bool
+pub fn PrivateUse::output(Self, &Logger) -> Unit
+pub fn PrivateUse::to_repr(Self) -> @debug.Repr
+pub fn PrivateUse::to_string(Self) -> String
 pub impl Show for PrivateUse
 
 pub(all) struct QuadEmit {
@@ -416,6 +493,11 @@ pub(all) struct QuadEmit {
   object : Object
   graph : GraphName
 } derive(Eq, @debug.Debug)
+pub fn QuadEmit::equal(Self, Self) -> Bool
+pub fn QuadEmit::not_equal(Self, Self) -> Bool
+pub fn QuadEmit::output(Self, &Logger) -> Unit
+pub fn QuadEmit::to_repr(Self) -> @debug.Repr
+pub fn QuadEmit::to_string(Self) -> String
 pub impl Show for QuadEmit
 
 pub struct QuadSpan {
@@ -426,6 +508,9 @@ pub struct QuadSpan {
   subj_type : TermType
   obj_type : TermType
 } derive(@debug.Debug)
+pub fn QuadSpan::output(Self, &Logger) -> Unit
+pub fn QuadSpan::to_repr(Self) -> @debug.Repr
+pub fn QuadSpan::to_string(Self) -> String
 pub impl Show for QuadSpan
 
 pub(all) enum ResetScope {
@@ -434,11 +519,15 @@ pub(all) enum ResetScope {
   SPO
   All
 } derive(@debug.Debug)
+pub fn ResetScope::to_repr(Self) -> @debug.Repr
 
 pub(all) enum SerializeFormat {
   Triple
   Quad
 } derive(Eq, @debug.Debug)
+pub fn SerializeFormat::equal(Self, Self) -> Bool
+pub fn SerializeFormat::not_equal(Self, Self) -> Bool
+pub fn SerializeFormat::to_repr(Self) -> @debug.Repr
 
 pub struct Serializer {
   format : SerializeFormat
@@ -470,6 +559,11 @@ pub(all) enum Subject {
   Literal(ArrayView[Byte])
   Formula(ArrayView[Byte])
 } derive(Eq, @debug.Debug)
+pub fn Subject::equal(Self, Self) -> Bool
+pub fn Subject::not_equal(Self, Self) -> Bool
+pub fn Subject::output(Self, &Logger) -> Unit
+pub fn Subject::to_repr(Self) -> @debug.Repr
+pub fn Subject::to_string(Self) -> String
 pub impl Show for Subject
 
 pub struct TagState {
@@ -482,6 +576,11 @@ pub struct TagState {
   private_use : PrivateUse?
   is_grandfathered : Bool
 } derive(Eq, @debug.Debug)
+pub fn TagState::equal(Self, Self) -> Bool
+pub fn TagState::not_equal(Self, Self) -> Bool
+pub fn TagState::output(Self, &Logger) -> Unit
+pub fn TagState::to_repr(Self) -> @debug.Repr
+pub fn TagState::to_string(Self) -> String
 pub impl Show for TagState
 
 pub(all) enum TermType {
@@ -490,6 +589,11 @@ pub(all) enum TermType {
   Literal
   TripleTerm
 } derive(Eq, @debug.Debug)
+pub fn TermType::equal(Self, Self) -> Bool
+pub fn TermType::not_equal(Self, Self) -> Bool
+pub fn TermType::output(Self, &Logger) -> Unit
+pub fn TermType::to_repr(Self) -> @debug.Repr
+pub fn TermType::to_string(Self) -> String
 pub impl Show for TermType
 
 pub(all) enum Token {
@@ -504,6 +608,9 @@ pub(all) enum Token {
   Unknown((Int, Int))
   EOF(Int)
 } derive(@debug.Debug)
+pub fn Token::output(Self, &Logger) -> Unit
+pub fn Token::to_repr(Self) -> @debug.Repr
+pub fn Token::to_string(Self) -> String
 pub impl Show for Token
 
 // Type aliases
