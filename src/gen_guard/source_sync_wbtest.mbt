@@ -165,22 +165,12 @@ async test "复核面账钉子：覆盖边界必须写明（覆盖什么 / 不�
 }
 
 ///|
-async test "复核面账钉子（面二 / 面三）：各自边界成要件 + 棘轮与复核面不互替" {
-  // 面二（产物/IR）：表在主仓根；子仓根 = `<主仓>/src/ttl` ⇒ 相对路径为 `../../gen-review.txt`
-  let gen = @fs.read_file("../../gen-review.txt").text()
-  assert_true(gen.contains("# 覆盖边界"))
-  assert_true(gen.contains("不覆盖"))
-  assert_true(gen.contains("套件自报行面"))
-  // 面二**边界收口**（W17）：IR 校验族自报行已装 ⇒ 表内必须在册，且边界不得再声明"未装"。
-  // 钉子 = 防"边界回退"：把已覆盖的族从表里删掉 / 或把边界改回"不覆盖"即红。
-  assert_true(gen.contains("IR 校验：G1"))
-  assert_true(
-    gen.contains("IR 校验：G11") || gen.contains("G11 可达性门"),
-  )
-  assert_true(gen.contains("IR 校验：G13"))
-  // 边界必须留**收口沿革**（"原先未装 ⇒ 本轮装行 ⇒ 转覆盖"），且**不覆盖节**不得再把 IR 校验族列为不覆盖
-  assert_true(gen.contains("边界收口"))
-  assert_true(!gen.contains("不覆盖**：① **IR"))
+async test "复核面账钉子（面三）：边界成要件 + 棘轮与复核面不互替" {
+  // 【归位沿革（2026-09-22 CI 实红）】面二（产物/IR）的钉子原在此（面二/三合并测试），
+  // 读 `../../gen-review.txt`——该路径只在**嵌套布局**成立（子仓根 = `<主仓>/src/ttl`）；
+  // 子仓 CI 独立 checkout 下逃出仓库根 ⇒ OSError。表是主仓产物 ⇒ **钉随表走，归位主仓**
+  // （`src/quick_machine/codegen_test.mbt`「复核面账钉子·面二（主仓侧）」）。
+  // 教训入册：子仓套件只钉**子仓产物**，禁止跨仓相对路径。
   // 面三（覆盖率读数面）：边界须写明"棘轮（时间维度）不归本面"——二者不可互替（§6.5.6）
   let cov = @fs.read_file("coverage-review.txt").text()
   assert_true(cov.contains("# 覆盖边界"))
@@ -191,4 +181,44 @@ async test "复核面账钉子（面二 / 面三）：各自边界成要件 + �
   assert_true(cov.contains("[行覆盖]"))
   assert_true(cov.contains("[可达命令名覆盖]"))
   assert_true(cov.contains("可达覆盖账"))
+}
+
+///|
+async test "复核面账钉子（面四 / 性能读数面）：口径 + 命令 + 边界 + 相对判据成要件" {
+  // 面四（性能读数面）：表在子仓根。判据 = ① 比较体（机器无关相对判据）逐字节可复现；
+  // ② 相对判据全 true。**性能读数有抖动/跨机不可比** ⇒ 绝对读数只作留证、不进比较体——
+  // 本钉把"表结构成要件"钉住：缺口径/缺命令/缺边界/比较体丢节 一律红（防回退）。
+  let perf = @fs.read_file("perf-review.txt").text()
+  // ① 口径必写（正式数字只取 native release；debug 不作结论）
+  assert_true(perf.contains("--target native --release"))
+  assert_true(perf.contains("debug"))
+  // ② 生成命令必在表头（原样可复跑：两命令）
+  assert_true(
+    perf.contains(
+      "moon run src/bench/nquads-benchmark --target native --release",
+    ),
+  )
+  assert_true(
+    perf.contains("moon test --target native --release src/gen_nquads"),
+  )
+  // ③ 覆盖边界成要件（§6.5.7）：不覆盖其它机型/规模 + 不可与三家直比 + 棘轮不归本面
+  assert_true(perf.contains("# 覆盖边界"))
+  assert_true(perf.contains("不覆盖"))
+  assert_true(perf.contains("棘轮"))
+  assert_true(perf.contains("不可互替"))
+  // ④ 比较体两节必在（段序判据 + 档位与词法判据），且**只装机器无关相对判据**
+  assert_true(perf.contains("[段序判据（10k / native release）]"))
+  assert_true(perf.contains("[档位与词法判据]"))
+  assert_true(perf.contains("词法(Lexermoon) > C-FFI(Lexerc)")) // C-T12 结案的常驻判据
+  // ⑤ 比较体内**不得**出现绝对读数：µs 一律禁；含 `quads/s` 的行只许是**阈值判据行**
+  //    （`吞吐 > 0.5M quads/s = …`）——防止把机器相关的实测吞吐写进比较体。
+  for line in perf.split("\n") {
+    let t = line.trim()
+    if !t.has_prefix("#") && t.length() > 0 {
+      assert_true(!t.contains("µs"))
+      if t.contains("quads/s") {
+        assert_true(t.has_prefix("吞吐 > 0.5M quads/s ="))
+      }
+    }
+  }
 }

@@ -196,6 +196,41 @@ jobs:
           fi
           echo "复核面·覆盖率：同命令重生成 ≡ 入库表（逐字节）⇒ 可复现 ✓"
 
+      - name: "复核面·性能（可复现性检查，§6.5）"
+        run: |
+          # 复核面判据（世界宪法 §6.5）= **可复现 + 缺口有解释**。
+          # 本步 = 面四（性能读数面）：性能读数**有抖动、跨机不可比** ⇒
+          #   **比较体只放机器无关的相对判据**（同机同命令下的序关系 + 量级带）；
+          #   **绝对读数只作留证**（::notice:: 打印 + 表内 `#` 注释），**不参与逐字节比对**。
+          # 判据：① 比较体同命令重生成**逐字节一致**；② 相对判据**全为 true**（false 即 diff 红）。
+          # 口径：正式数字只取 `--target native --release`（debug 慢 4.6×，不作结论）。
+          gen="$(mktemp)"
+          bench="$(moon run src/bench/nquads-benchmark --target native --release src/bench/test_10000.nq 2>/dev/null)"
+          lex="$(moon test --target native --release src/gen_nquads -f "*词法役 P1*" 2>/dev/null)"
+          lx=$(printf '%s\n' "$bench" | awk '/^Lexer:/{print $2}')
+          en=$(printf '%s\n' "$bench" | awk '/^Parser:/{print $2}')
+          va=$(printf '%s\n' "$bench" | awk '/^验证:/{print $2}')
+          ma=$(printf '%s\n' "$bench" | awk '/^物化:/{print $2}')
+          tps=$(printf '%s\n' "$bench" | awk '/^每秒解析:/{printf "%.2f", $2/1000000}')
+          lm=$(printf '%s\n' "$lex" | awk '/10k 真实语料/{print $8}')
+          lc=$(printf '%s\n' "$lex" | awk '/10k 真实语料/{print $17}')
+          gt() { awk -v a="$1" -v b="$2" 'BEGIN{print (a>b)?"true":"false"}'; }
+          {
+            echo "[段序判据（10k / native release）]"
+            echo "验证 > 引擎 = $(gt "$va" "$en")"
+            echo "引擎 > 物化 = $(gt "$en" "$ma")"
+            echo "验证 > 词法 = $(gt "$va" "$lx")"
+            echo "[档位与词法判据]"
+            echo "吞吐 > 0.5M quads/s = $(gt "$tps" 0.5)"
+            echo "词法(Lexermoon) > C-FFI(Lexerc) = $(gt "$lm" "$lc")"
+          } > "$gen"
+          echo "::notice::性能留证读数（机器相关，只作展示）：词法 ${lx}µs / 引擎 ${en}µs / 验证 ${va}µs / 物化 ${ma}µs / 吞吐 ${tps}M quads/s / Lexermoon ${lm}M vs Lexerc ${lc}M tok/s"
+          if ! diff -u <(grep -v '^#' perf-review.txt | sed '/^$/d') "$gen"; then
+            echo "::error::性能复核表不可复现：同命令重生成的**相对判据体**与入库 perf-review.txt 不一致——若判据确已改变，请同笔刷新本表并更新 review.md §1.2；若只是读数异常，查档位（必须 native + release）"
+            exit 1
+          fi
+          echo "复核面·性能：相对判据体同命令重生成 ≡ 入库表（逐字节）⇒ 可复现 ✓"
+
       - name: "Default arms bookkeeping (TODO(P0) 计数门)"
         run: |
           # 默认臂 = "未识别 action/event" 的**保守臂**：能跑、但响应正确性没有判据（默认臂≠已验证）。
