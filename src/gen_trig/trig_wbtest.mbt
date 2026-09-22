@@ -116,8 +116,8 @@ test "役35 A1 钉1（负例·载体 = pk ∧ 物化 IRI）：TriG 档未声明 
 
 ///|
 test "役35 A1 钉2（正例·载体 = pk）：N3 档 ∧ @keywords 已受理 ⇒ 'a' 失效" {
-  // A1 中间口径（列表区归 A2）：`@keywords` 被受理并吞掉，其后按常规语句解析
-  let input = "@keywords <http://e/s> a <http://e/o> .\n"
+  // **A2 口径**：`@keywords` 后的声明列表区由 `.` 收区（空列表用 `@keywords .`）
+  let input = "@keywords .\n<http://e/s> a <http://e/o> .\n"
   let (quads, errors) = trig_parser(bytes_of(input), dialect=N3)
   assert_eq(errors.length(), 0)
   assert_eq(quads.length(), 1)
@@ -127,12 +127,45 @@ test "役35 A1 钉2（正例·载体 = pk）：N3 档 ∧ @keywords 已受理 �
 
 ///|
 test "役35 A1 钉3（边界·列表区外仍失效）：声明后**跨语句**仍失效（旗持久非单步）" {
-  let input = "@keywords <http://e/s> a <http://e/o> .\n<http://e/t> a <http://e/u> .\n"
+  let input = "@keywords .\n<http://e/s> a <http://e/o> .\n<http://e/t> a <http://e/u> .\n"
   let (quads, errors) = trig_parser(bytes_of(input), dialect=N3)
   assert_eq(errors.length(), 0)
   assert_eq(quads.length(), 2)
   assert_true(quads[0].pk is PredKind::Normal)
   assert_true(quads[1].pk is PredKind::Normal) // 跨语句：旗持久
+}
+
+///|
+test "役35 A2 钉4（边界·多关键词）：@keywords a b . ⇒ 两词均入列表且其后均失效" {
+  // ① 多词声明区 ⇒ **零 quad 零错**（词是声明，不出句）
+  let (q_decl, e_decl) = trig_parser(bytes_of("@keywords a b .\n"), dialect=N3)
+  assert_eq(e_decl.length(), 0)
+  assert_eq(q_decl.length(), 0)
+  // ② 声明后 `a` 作谓词 ⇒ **pk Normal**（失效）
+  //    ⚠ 边界：**`b` 作谓词**须走 35-B（listed 裸词 ⇒ `KeywordX`——trig 侧裸词现为 `Unknown`
+  //    ⇒ A1/A2 口径下仍拒）⇒ 该支的门况归 **35-B**，不在 A2 硬凑。
+  let (quads, errors) = trig_parser(
+    bytes_of("@keywords a b .\n<http://e/s> a <http://e/o> .\n"),
+    dialect=N3,
+  )
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  assert_true(quads[0].pk is PredKind::Normal)
+}
+
+///|
+test "役35 A2 钉7（列表区吞词）：声明区内零 quad（含多词与裸词混列）" {
+  for
+    input in [
+      "@keywords .\n", "@keywords a .\n", "@keywords a b .\n", "@keywords <http://e/kw> a .\n",
+    ] {
+    let (quads, errors) = trig_parser(bytes_of(input), dialect=N3)
+    assert_eq(errors.length(), 0)
+    assert_eq(quads.length(), 0)
+  }
+  // 反向：TriG 档同输入仍拒（W3C `bad-n3-extras` 口径不变）
+  let (_, e_trig) = trig_parser(bytes_of("@keywords a b .\n"))
+  assert_true(e_trig.length() > 0)
 }
 
 ///|

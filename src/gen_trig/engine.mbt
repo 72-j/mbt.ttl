@@ -206,6 +206,10 @@ pub struct TrigEngine[L] {
   // 口径 = n3v2 同源"引擎侧纯形态标记"：只置旗 + 归位点事件改写，**词性决策仍留表行**
   //（`a` 失效后走既有 `PrefName` 行；本档当前不建列表区 ⇒ 列表词处理归 A2）。
   priv mut kw_directive_seen : Bool
+  // 役35 **A2**（列表区层）：N3 档 `@keywords` 之后的**声明列表区**——区内的词是**声明**
+  //（不入表、不出 quad），只等 `.` 收区。零表源实现（同 A1 路线：引擎守卫 + 状态机自治）。
+  // 口径：区内**一切事件吞掉**；`Dot` ⇒ 收区并归位语句起点。
+  priv mut kw_list_mode : Bool
 }
 
 ///|
@@ -222,6 +226,7 @@ pub fn[L : LexerSource] TrigEngine::new(
     last_error: None,
     pending: None,
     kw_directive_seen: false,
+    kw_list_mode: false,
   }
   engine.begin_record()
   engine
@@ -441,11 +446,22 @@ pub fn[L : LexerSource] TrigEngine::next(
     if self.dialect is N3 && event is TrigEvent::TrigKeywordsKw {
       synth_dot = false
       self.kw_directive_seen = true
+      self.kw_list_mode = true // A2：进入声明列表区（见下方守卫）
       // A1 受理层收尾：`@keywords` 是 **`@`（At 行→ExpectDirectiveKind）+ 本事件** 两拍，
       // 故受理后须把状态归位到**语句起点**（等价"指令已结束"）；列表区与尾随 `.` 的
       // 正确处理归 **A2**（A1 期间 `@keywords` 之后的词按常规语句解析，见 §AS.2 钉 2/3）。
       self.ctx.state = TrigState::TrigExpectSubject
       self.ctx.directive_at = false
+      continue
+    }
+    // 役35 **A2 列表区守卫**（N3 档）：`@keywords` 之后到 `.` 之间的词是**声明**——
+    // 一律吞掉（不入表、不出 quad）；`Dot` 收区并归位语句起点。零表源（同 A1 路线）。
+    if self.dialect is N3 && self.kw_list_mode {
+      synth_dot = false
+      if event is TrigEvent::TrigDot {
+        self.kw_list_mode = false
+      }
+      self.ctx.state = TrigState::TrigExpectSubject
       continue
     }
     // 役35 A1（R-T13/C-T13）：**谓词位 `pk` 归属**（与语义决策同层；零表源改动）。
