@@ -56,6 +56,10 @@ let lexer_cls : FixedArray[Int] = {
     if is_hex {
       cls = cls | 4
     }
+    // 位 8 = IRI 扫描终止符（`>` 收口 / 空白视为未闭合——IRI 热循环的同一判据）
+    if c == b'>' || c == b' ' || c == b'\t' || c == b'\r' || c == b'\n' {
+      cls = cls | 8
+    }
     t[i] = cls
   }
   t
@@ -377,18 +381,19 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
       self.pos = self.pos + 2
       return Some(Token::Unknown((start, 2)))
     }
-    self.pos = self.pos + 1
-    while self.pos < l {
-      let ch = v[self.pos]
-      // 内联判别：'>' 收口，空白视为未闭合（热路径不做函数调用）
-      if ch == b'>' || ch == b' ' || ch == b'\t' || ch == b'\r' || ch == b'\n' {
+    // P4 第二刀：`self.pos` 局部化为 `p` + `unsafe_get` + 类表终止位（同一判据的查表实现，
+    // 逐字节同义）⇒ 每字节省一次边界检查与一次字段 load/store。
+    let mut p = self.pos + 1
+    while p < l {
+      if (lexer_cls.unsafe_get(v.unsafe_get(p).to_int()) & 8) != 0 {
         break
       }
-      self.pos = self.pos + 1
+      p = p + 1
     }
-    if self.pos < l && v[self.pos] == b'>' {
-      self.pos = self.pos + 1
+    if p < l && v.unsafe_get(p) == b'>' {
+      p = p + 1
     }
+    self.pos = p
     return Some(Token::Iri((start, self.pos - start)))
   }
   // > → Unknown(1)（>> 收尾等）
@@ -403,27 +408,30 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
   let lead = utf8_name_advance(v, self.pos, l)
   if lead > 0 || is_alpha(c) || c == b':' {
     self.pos = self.pos + (if lead > 0 { lead } else { 1 })
-    while self.pos < l {
-      let ch = v[self.pos]
-      if ch == b'\\' && self.pos + 1 < l {
+    // P4 第二刀：同一循环体，`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
+    let mut p = self.pos
+    while p < l {
+      let ch = v.unsafe_get(p)
+      if ch == b'\\' && p + 1 < l {
         // 转义对整段并入（PN_LOCAL_ESC 字符集校验在验证层）
-        self.pos = self.pos + 2
+        p = p + 2
       } else if ch == b'%' &&
-        self.pos + 2 < l &&
-        is_hex(v[self.pos + 1]) &&
-        is_hex(v[self.pos + 2]) {
+        p + 2 < l &&
+        is_hex(v.unsafe_get(p + 1)) &&
+        is_hex(v.unsafe_get(p + 2)) {
         // %HH 百分号对整段并入（不足两 hex 位时 '%' 到 break，负例 bad-pname-02）
-        self.pos = self.pos + 3
+        p = p + 3
       } else if ch == b':' || is_name_char(ch) {
-        self.pos = self.pos + 1
+        p = p + 1
       } else {
-        let adv = utf8_name_advance(v, self.pos, l)
+        let adv = utf8_name_advance(v, p, l)
         if adv == 0 {
           break
         }
-        self.pos = self.pos + adv
+        p = p + adv
       }
     }
+    self.pos = p
     // 尾部裸 '.' 回退（PN_LOCAL/PN_PREFIX 不得以裸点收尾）；转义点不回退
     while self.pos > start + 1 &&
           v[self.pos - 1] == b'.' &&
