@@ -32,10 +32,16 @@ using @gs {
 
 ///|
 /// 方言开关（装配层补充面桩：生成契约不引用，引擎 loop 用）：
-/// TriG = 超集；Turtle 禁图块区（Lbrace 走 Unknown 恢复路径）
+/// TriG = 超集；Turtle 禁图块区（Lbrace 走 Unknown 恢复路径）；
+/// **N3 = 役35 A1 新补档**（R-T13/C-T13）：当前**只开** `@keywords` 指令受理 +
+/// 其后的 `a` 失效（降 PrefName）；**其余 N3 语法一律"未受理"**（仍按拒/恢复走，
+/// 钉 6 防过度受理）。**套件**：N3 档**无 W3C 套件**（Turtle/TriG 套件不含 N3 档）⇒
+/// 入册为覆盖缺口（面一侧）。口径依据：`@keywords` 在 Turtle/TriG 套件里是
+/// `bad-n3-extras` **负例**（期望拒）⇒ 受理必须由档位表达（甲案，用户 2026-09-22 拍）。
 pub(all) enum TrigDialect {
   TriG
   Turtle
+  N3
 } derive(Eq)
 
 ///|
@@ -50,6 +56,10 @@ pub(all) enum PredKind {
   Normal
   RDFFirst
   RDFRest
+  // 役35 A1（R-T13/C-T13）：谓词位 `a` **保留**为 turtle `rdf:type` 简写时的标记。
+  // 与 n3v2 的 `PredKind::KwA` 同名同义（收敛：**判据落在产物可判的 pk 面**）。
+  // 失效（N3 档 ∧ `@keywords` 已受理）时不置位 ⇒ 物化层按 PrefName 展开。
+  KwA
 } derive(Eq)
 
 ///|

@@ -68,6 +68,102 @@ test "骨架: 'a' 缩写走谓词位" {
 }
 
 ///|
+/// **役35 A1 钉族（R-T13/C-T13）**：`@keywords` = **N3 档专有**（甲案），
+/// `a` 失效边界 = **仅 N3 档 ∧ `@keywords` 已受理后**（未声明/其余档恒为 turtle `rdf:type` 简写）。
+/// **判据载体逐条分开**（用户 2026-09-22 要求，见 `todo.md` §AS.4）：
+/// 钉 1 = `pk` ∧ 物化 IRI；钉 2/3/6 = `pk` / 错误面；钉 5 = 错误面（W3C 档回归）。
+/// 钉 4（多关键词均失效）归 **A2**（列表区层）。
+
+///|
+/// A1 辅助：按档物化（N3 档需要显式传档；`mat_chain` 恒走默认 TriG）
+fn a1_mat(
+  input : String,
+  dialect : TrigDialect,
+) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
+  let data = mat_bytes(input)
+  let engine = TrigEngine::from_bytes(data, dialect~)
+  let sec = data[:]
+  let slice = TrigSliceParser::new(engine, sec, lenient=true)
+  let (quads, errors) = slice.parse_all()
+  if errors.length() > 0 {
+    return ([], errors)
+  }
+  let mat = TrigMaterializer::new(
+    sec,
+    slice.engine.ctx.prefixes,
+    bases=slice.engine.ctx.bases,
+  )
+  mat.materialize_all(quads)
+}
+
+///|
+test "役35 A1 钉1（负例·载体 = pk ∧ 物化 IRI）：TriG 档未声明 ⇒ 'a' 仍 rdf:type" {
+  let input = "<http://e/s> a <http://e/o> .\n"
+  let (quads, errors) = trig_parser(bytes_of(input))
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // 载体①：产物 pk 面 = KwA（`a` 保留为 rdf:type 简写）
+  assert_true(quads[0].pk is PredKind::KwA)
+  // 载体②：物化谓词 IRI = rdf:type（既有行为不破）
+  let (emits, errs) = a1_mat(input, TriG)
+  assert_eq(errs.length(), 0)
+  assert_eq(emits.length(), 1)
+  assert_eq(
+    mat_vs(emits[0].predicate),
+    "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+  )
+}
+
+///|
+test "役35 A1 钉2（正例·载体 = pk）：N3 档 ∧ @keywords 已受理 ⇒ 'a' 失效" {
+  // A1 中间口径（列表区归 A2）：`@keywords` 被受理并吞掉，其后按常规语句解析
+  let input = "@keywords <http://e/s> a <http://e/o> .\n"
+  let (quads, errors) = trig_parser(bytes_of(input), dialect=N3)
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // 载体：pk = Normal（`a` 已失效 ⇒ 物化层按 PrefName 展开，不再 rdf:type）
+  assert_true(quads[0].pk is PredKind::Normal)
+}
+
+///|
+test "役35 A1 钉3（边界·列表区外仍失效）：声明后**跨语句**仍失效（旗持久非单步）" {
+  let input = "@keywords <http://e/s> a <http://e/o> .\n<http://e/t> a <http://e/u> .\n"
+  let (quads, errors) = trig_parser(bytes_of(input), dialect=N3)
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 2)
+  assert_true(quads[0].pk is PredKind::Normal)
+  assert_true(quads[1].pk is PredKind::Normal) // 跨语句：旗持久
+}
+
+///|
+test "役35 A1 钉5（套件红线·载体 = 错误面）：TriG/Turtle 档 @keywords 仍拒" {
+  let input = "@keywords <http://e/s> a <http://e/o> .\n"
+  let (_, e_trig) = trig_parser(bytes_of(input)) // 默认 TriG 档
+  assert_true(e_trig.length() > 0)
+  let (_, e_turtle) = trig_parser(bytes_of(input), dialect=Turtle)
+  assert_true(e_turtle.length() > 0)
+  // 反向：N3 档同输入零错（受理层生效）
+  let (_, e_n3) = trig_parser(bytes_of(input), dialect=N3)
+  assert_eq(e_n3.length(), 0)
+}
+
+///|
+test "役35 A1 钉6（防过度受理·载体 = 错误面）：N3 档其余 N3 语法仍拒" {
+  // 样本 = `@forAll`（trig 表上**不可达**：无行）⇒ N3 档也必须拒（只开 @keywords）
+  let (_, e_forall) = trig_parser(
+    bytes_of("@forAll <http://e/x> .\n"),
+    dialect=N3,
+  )
+  assert_true(e_forall.length() > 0)
+  // `@forSome` 同款
+  let (_, e_forsome) = trig_parser(
+    bytes_of("@forSome <http://e/y> .\n"),
+    dialect=N3,
+  )
+  assert_true(e_forsome.length() > 0)
+}
+
+///|
 test "图块: 默认图块进出，g=None，块后顶层语句恢复" {
   let data = bytes_of(
     "{ <http://example.org/s> <http://example.org/p> <http://example.org/o> . } <http://example.org/s2> <http://example.org/p2> <http://example.org/o2> .\n",

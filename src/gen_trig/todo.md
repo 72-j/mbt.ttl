@@ -59,7 +59,7 @@ ADR 用 `ADR-TRIG-nnn`（世界卷前缀制）。原始底稿：旧 `todo.md` §
 | C-T10 | `<< >>` 壳内 `^^datatype` 误拒 | [立案] | R-T10 |
 | C-T11 | 三引号规范化未设计 | [立案] | R-T11 |
 | C-T12 | MoonBit 词法落后 C 侧 2.3–2.6× | [立案] | R-T12 |
-| C-T13 | `@keywords` 语义豁免未接表 | [立案] | R-T13 |
+| C-T13 | `@keywords` 语义豁免未接表 | **✅ 役35 A1 已落**（N3 档受理 + `a` 失效；`pk` 载体；（A2 列表区另笔） | R-T13 |
 | C-T14 | 陈数已澄清：旧 §5 item 6 记 deferred 2/1/5/6，实测全零 | **已澄清·T16** | — |
 
 ## 3 整改建议（R 台账索引）
@@ -80,7 +80,7 @@ ADR 用 `ADR-TRIG-nnn`（世界卷前缀制）。原始底稿：旧 `todo.md` §
 | R-T10 | `<< >>` 内 `^^datatype` 修口 | [立案] | — |
 | R-T11 | 三引号规范化设计 | [立案] | — |
 | R-T12 | MoonBit 词法性能 | [立案] | — |
-| R-T13 | `@keywords` 语义豁免 | [立案] | — |
+| R-T13 | `@keywords` 语义豁免 | **✅ A1 已落（甲案）**；A2 列表区层待打 | — |
 
 ---
 
@@ -227,6 +227,7 @@ T16 ✅ 已完成（本卷即其产物）。**R-T10–R-T13 的修口一律排�
 ## 6 执行记录（滚动追加）
 
 | 日期 | 役 | 范围 | 结果 / 验收数字 | 备注 |
+| 2026-09-22 | **役35 A1** | **R-T13/C-T13 `@keywords` 受理层**（甲案：加 `TrigDialect::N3` 档） | ① `types.mbt`：`TrigDialect` 加 `N3`；`PredKind` 加 `KwA`（谓词位 `a` 保留标记）。② `engine.mbt`：N3 档受理 `TrigKeywordsKw`（吞事件 + 归位语句起点；`@keywords` = `At`+`Kw` **两拍**）→ 置 `kw_directive_seen`；**谓词态**（表上 `KeywordA` 有行的 12 态）下按事件种类归 `pk`（`a` ⇒ `KwA`，其余 ⇒ `Normal`；失效支已被改写成 `PrefName` ⇒ `Normal`）。③ `materialize_trig.mbt`：谓位判定**改读 `pk`**（删载荷文本判）。④ **顺链修**：`parser_slice.mbt` 的"合成谓词归一"由"非 `Normal` 即合成"改为**显式合成族**（`RDFFirst`/`RDFRest`）——否则 `KwA` 会把 `a` 的 p 槽置 `(0,0)`。 | 验收：`gen_trig` **92/92**（含 **5 钉**：钉1 负例 pk∧物化 IRI / 钉2 正例 pk / 钉3 跨语句持久 / 钉5 W3C 档仍拒（反向 N3 零错）/ 钉6 `@forAll/@forSome` 仍拒）· 子仓 **487/487** · `check --deny-warn` 0 · 行覆盖 **10025/11047 = 907‰**（保持，面三+基线同笔） · TriG/Turtle 档**逐字未变**（套件/黄金门零波及） | 钉4（多关键词均失效）归 **A2**；`pk` 同形判据三条见 `src/ttl/todo.md` §AS.4 |
 |---|---|---|---|---|
 | 2026-09-03 | — | T-1..T-9 全链落地 | 事件词表 / Effect / State / 转移表 / ContextProtocol / Action / EffectHandler / 对拍 / Turtle 方言 | 旧清单已删；见 `adr.md` ADR-TRIG-001/002 |
 | 2026-09-03 | — | ★3 `[]` 属性列表（阶段 1+2） | 三态区域 + 5 入口行；空 fresh 独立成句 | ADR-TRIG-003 |

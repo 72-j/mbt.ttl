@@ -262,12 +262,16 @@ fn[L] TrigSliceParser::assemble(
   self : TrigSliceParser[L],
   pending : TrigPendingQuad,
 ) -> Result[QuadSpan, ParseError] {
-  // ★3 合成谓词归一：集合链 quad 谓词无字节（p 槽 None + pk 标记），
-  // 以 (0,0) 占位过缺槽检测——物化层按 pk 合成词表 IRI，永不读 p 字节
-  let pending = if pending.pk is PredKind::Normal {
-    pending
-  } else {
+  // ★3 合成谓词归一：**只有"合成谓词族"**（`RDFFirst`/`RDFRest`——集合链 quad 谓词无字节，
+  // p 槽 None + pk 标记）才以 (0,0) 占位过缺槽检测，物化层据 pk 合成词表 IRI、永不读 p 字节。
+  // 役35 A1（R-T13/C-T13）**顺链修正**：新族 `KwA`（谓词位 `a` = turtle `rdf:type` 简写）
+  // **有真实字节**（p 槽就是 `a` 的 span）⇒ 不得入此归一（否则 p 被置 (0,0)、字节丢失）。
+  // 口径：**按族显式分派**，不用 `非 Normal 即合成` 的隐式判据（pk 加族时由本处与门共同把关）。
+  let pending = if pending.pk is PredKind::RDFFirst ||
+    pending.pk is PredKind::RDFRest {
     { ..pending, pred: Some((0, 0)), }
+  } else {
+    pending
   }
   match (pending.subj, pending.pred, pending.obj) {
     (Some(s), Some(p), Some(o)) => {

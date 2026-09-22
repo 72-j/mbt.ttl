@@ -112,7 +112,15 @@ fn[L : LexerSource] TrigEngine::normalize_term_span(
     }
     TrigKeywordA(span) => {
       let (s2, dot) = trim_trailing_dot(self.lexer, span)
-      (TrigKeywordA(s2), dot)
+      // 役35 A1（R-T13/C-T13，照 n3v2 口径）：**N3 档**下，`@keywords` 已受理后
+      // `a` **失效** —— 改写为 `TrigPrefName`（物化层按默认前缀展开），
+      // 不再走 turtle 的 `a` = `rdf:type` 简写。TriG/Turtle 档**恒不失效**
+      //（未声明档位口径 = `a` 仍是 `rdf:type` 简写；负例钉钉这个）。
+      if self.dialect is N3 && self.kw_directive_seen {
+        (TrigPrefName(s2), dot)
+      } else {
+        (TrigKeywordA(s2), dot)
+      }
     }
     other => (other, false)
   }
@@ -163,6 +171,28 @@ fn[L : LexerSource] TrigEngine::pull(self : TrigEngine[L]) -> TrigEvent? {
 }
 
 ///|
+/// **谓词候选态**（役35 A1）：表上 `KeywordA` 有行的那 12 个状态——即"这一位可以出现谓词"。
+/// 引擎用**表管的 state** 判定"本事件是否落在谓词位"，据此归属 `pk`（`a` ⇒ `KwA`，其余 ⇒ `Normal`）。
+/// 名单**与表源逐名对照**（表源增删 `KeywordA` 行时本名单须同笔跟）。
+fn predicate_state(state : TrigState) -> Bool {
+  match state {
+    TrigExpectPredicate
+    | TrigExpectVerbOrEnd
+    | TrigExpectVerbRequired
+    | TrigExpectVerbOrDot
+    | TrigBnpExpectPredicate
+    | TrigGraphExpectPredicate
+    | TrigGraphExpectVerbOrDot
+    | TrigGraphExpectVerbOrEnd
+    | TrigAnnotExpectVerb
+    | TrigAnnotExpectVerbTail
+    | TrigGraphAnnotExpectVerb
+    | TrigGraphAnnotExpectVerbTail => true
+    _ => false
+  }
+}
+
+///|
 /// TrigEngine[L] - 驱动生成的 step 状态机（薄机械层，不持有 data）
 /// 词法器可插拔：L = TrigLexerAdapter（当前唯一实现）
 pub struct TrigEngine[L] {
@@ -172,6 +202,10 @@ pub struct TrigEngine[L] {
   dialect : TrigDialect // 方言开关（默认 TriG 超集；Turtle 禁图块区）
   priv mut last_error : Span? // 最近一次错误位置（行号由上层按 data 统计）
   priv mut pending : TrigEvent? // 恢复推回的单 token（"停 Rbrace 前界"的兑现机制）
+  // 役35 A1（R-T13/C-T13）：N3 档 `@keywords` **指令已受理**标记。
+  // 口径 = n3v2 同源"引擎侧纯形态标记"：只置旗 + 归位点事件改写，**词性决策仍留表行**
+  //（`a` 失效后走既有 `PrefName` 行；本档当前不建列表区 ⇒ 列表词处理归 A2）。
+  priv mut kw_directive_seen : Bool
 }
 
 ///|
@@ -187,6 +221,7 @@ pub fn[L : LexerSource] TrigEngine::new(
     dialect,
     last_error: None,
     pending: None,
+    kw_directive_seen: false,
   }
   engine.begin_record()
   engine
@@ -396,6 +431,35 @@ pub fn[L : LexerSource] TrigEngine::next(
       synth_dot = false
       self.recover(span_of_event(event))
       continue
+    }
+    // 役35 A1（R-T13/C-T13）：**N3 档 `@keywords` 受理层**——
+    //   本档收到 `TrigKeywordsKw` ⇒ 置"已受理"旗并**吞掉本事件**（不进表、不出 quad）。
+    //   **列表词处理不在本层**（A2 建列表区；A1 期间名单词按常规路径解析，已由
+    //   §AS.2 钉清单第 3/4 条与本层边界共同钉住）。
+    //   TriG/Turtle 档**维持现状**：表上无该行 ⇒ `UnexpectedEvent` 干净拒 + 恢复
+    //（W3C `bad-n3-extras-07/13` 负例口径不变）。
+    if self.dialect is N3 && event is TrigEvent::TrigKeywordsKw {
+      synth_dot = false
+      self.kw_directive_seen = true
+      // A1 受理层收尾：`@keywords` 是 **`@`（At 行→ExpectDirectiveKind）+ 本事件** 两拍，
+      // 故受理后须把状态归位到**语句起点**（等价"指令已结束"）；列表区与尾随 `.` 的
+      // 正确处理归 **A2**（A1 期间 `@keywords` 之后的词按常规语句解析，见 §AS.2 钉 2/3）。
+      self.ctx.state = TrigState::TrigExpectSubject
+      self.ctx.directive_at = false
+      continue
+    }
+    // 役35 A1（R-T13/C-T13）：**谓词位 `pk` 归属**（与语义决策同层；零表源改动）。
+    // 判据：**位置由表管状态给**（`predicate_state`），本事件若落在谓词候选态，
+    // 则按事件种类记 `pk`——`TrigKeywordA` ⇒ `KwA`（`a` 保留 = turtle `rdf:type` 简写），
+    // 其余 ⇒ `Normal`（含"N3 档已受理后 `a` 被改写为 PrefName"的失效支）。
+    // 口径：`pred_kind` 由 `snapshot` 读出即归 `Normal`（spec **I-8**），跨语句不残留；
+    // n3v2 把这一步放在手写 action（其 ctx 有 `kw_a_live` 旗）——trig 无该字段且
+    // 加字段须动表源，故改用"**表管状态 ⇒ 引擎按状态定归属**"的等价形（pk 面逐字同形）。
+    if predicate_state(self.ctx.state) {
+      self.ctx.pred_kind = match event {
+        TrigEvent::TrigKeywordA(_) => PredKind::KwA
+        _ => PredKind::Normal
+      }
     }
     match step(self.ctx, event, self.actions) {
       Ok(effect) =>

@@ -591,7 +591,11 @@ pub fn TrigMaterializer::materialize_quad(
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_rest)
     slice_span(self.arena[:], (start, self.arena.length() - start))
-  } else if quad.p.1 == 1 && self.data[quad.p.0] == b'a' {
+  } else if quad.pk is PredKind::KwA {
+    // 役35 A1（R-T13/C-T13）：**判据载体 = `pk`**（原先按载荷文本 `p.1==1 && data=='a'` 判，
+    // 属"决策漂在物化层"——(Ⅱ) 形态）。**语义决策与判据同层**：谓词位 `a` 是否仍为
+    // turtle `rdf:type` 简写，由引擎在**表管谓词态**下记入 `pk`（`KwA` = 保留）；
+    // N3 档 `@keywords` 已受理后引擎把事件改写为 `PrefName` 且不置 `KwA` ⇒ 走下方 PrefName 展开。
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_type)
     let pspan = (start, self.arena.length() - start)
