@@ -28,7 +28,7 @@
 // ========================================
 
 ///|
-/// 全部状态（源 [[states]]，36 个）
+/// 全部状态（源 [[states]]，37 个；役35 35-B1 增 `ExpectKeywordsList`）
 fn all_states() -> Array[ModelState] {
   [
     ExpectSubject,
@@ -41,6 +41,7 @@ fn all_states() -> Array[ModelState] {
     ExpectBaseIri,
     ExpectVersionLiteral,
     ExpectDirectiveEnd,
+    ExpectKeywordsList,
     ExpectGraphLabel,
     ExpectGraphLbrace,
     ExpectVerbOrEnd,
@@ -71,7 +72,7 @@ fn all_states() -> Array[ModelState] {
 }
 
 ///|
-/// 全部命令构造子（各带具体载荷；源 [[events]]，34 个）
+/// 全部命令构造子（各带具体载荷；源 [[events]]，35 个；役35 35-B1 增 `KeywordX`）
 fn all_commands() -> Array[Command] {
   [
     Iri(Concrete({ id: 1, })),
@@ -106,6 +107,7 @@ fn all_commands() -> Array[Command] {
     ForAllKw,
     ForSomeKw,
     KeywordsKw,
+    KeywordX(Concrete({ id: 1, })),
     Unknown,
     EOF,
   ]
@@ -199,7 +201,7 @@ fn explore() -> (
 }
 
 ///|
-/// ① 转移普查门：全部 (状态, 命令) 对（36 × 34 = 1224）从全空槽模型逐对判定——
+/// ① 转移普查门：全部 (状态, 命令) 对（37 × 35 = 1295）从全空槽模型逐对判定——
 /// valid 表与 model_exec 表是 [[transitions]] 的两份独立生成物，任一单方面改动
 /// （部分再生 / 手改漂移）都会在这里红。
 test "指标·转移普查: valid ⟺ model_exec 全对一致 + 计数守恒" {
@@ -229,10 +231,11 @@ test "指标·转移普查: valid ⟺ model_exec 全对一致 + 计数守恒" {
       }
     }
   }
-  // 组合数守恒（改表即变，写死防漏）：36 状态 × 34 命令 = 1224，合法 195 / 非法 1029
-  assert_eq(legal + illegal, 36 * 34)
-  assert_eq(legal, 195)
-  assert_eq(illegal, 1029)
+  // 组合数守恒（改表即变，写死防漏）：37 状态 × 35 命令 = 1295，合法 206 / 非法 1089
+  // （役35 35-B1：+1 状态 × +1 命令 + 11 行 ⇒ 合法 195 → 206）
+  assert_eq(legal + illegal, 37 * 35)
+  assert_eq(legal, 206)
+  assert_eq(illegal, 1089)
 }
 
 ///|
@@ -434,9 +437,10 @@ fn transition_expectation_is_anywhere(name : String) -> Bool {
 ///     引擎发射的 graph=Some 模型看不见——P4.2d 已知边界，非缺陷，钉成事实）。
 ///   - 可达命令名恰 25 个（与 runner 的可达覆盖账（`reachable_coverage_account`）同口径）；
 ///     不可达 9 个（valid 无臂 ⇒ 生成器永不产出）。
-test "指标·结构钉子: 可达 36 / 无死态（ExpectVerbRequired、ListAfterElem 皆可达）/ graph 可达 / 命令名 25+9" {
+test "指标·结构钉子: 可达 37 / 无死态（ExpectVerbRequired、ListAfterElem 皆可达）/ graph 可达 / 命令名 28+7" {
   let (seen, state_models, names) = explore()
-  // 状态可达性：36 / 36（P4.2f 快照档后 list 内层路径打通 ⇒ 盲区消失）
+  // 状态可达性：37 / 37（P4.2f 快照档后 list 内层路径打通 ⇒ 盲区消失；
+  // 役35 35-B1 增 `ExpectKeywordsList`（经 `At → KeywordsKw` 受理行可达））
   let mut reachable_states = 0
   let mut missing_states = 0
   for state in all_states() {
@@ -449,8 +453,8 @@ test "指标·结构钉子: 可达 36 / 无死态（ExpectVerbRequired、ListAft
     }
   }
   // P4.2f 重标（2026-09-17，ADR-QM-009）：快照档后 `ListAfterElem` 不再被 Error(1) 吸收
-  // ⇒ 36 个状态全部可达、无模型侧死态。少一个即结构被破坏（钉子只升级、不删）。
-  assert_eq(reachable_states, 36)
+  // ⇒ 37 个状态全部可达、无模型侧死态。少一个即结构被破坏（钉子只升级、不删）。
+  assert_eq(reachable_states, 37)
   assert_eq(missing_states, 0)
   // P4.2d 第二步（2026-09-15）：`[actions].writes` 落地后，模型有了 `enter_graph` → `graph`
   // 的写入臂 ⇒ 旧钉子"graph 恒空"**升级为正向断言**：可达状态里必须出现 graph 非空
@@ -468,12 +472,14 @@ test "指标·结构钉子: 可达 36 / 无死态（ExpectVerbRequired、ListAft
   // "盲区/死态"升级为"可达且被钉住"。
   assert_true(state_model_of(state_models, ExpectVerbRequired) is Some(_))
   assert_true(state_model_of(state_models, ListAfterElem) is Some(_))
-  // 可达命令名 = 覆盖门要求集（25）；不可达 = 9（与 runner 注释口径互证）
+  // 可达命令名 = 覆盖门要求集（28）；不可达 = 7（与 runner 注释口径互证）
+  // 役35 35-B1：`KeywordsKw`（受理行）/ `Unknown`（列表申报行）/ `KeywordX`（词位行）
+  // 三条命令随表源化由"无臂"转**可达** ⇒ 25 + 3 = 28。
   let required = [
     "Iri", "BlankNode", "Literal", "PrefName", "TripleTerm", "BracketTripleTerm",
     "KeywordA", "At", "PrefixKw", "BaseKw", "GraphKw", "VersionKw", "Tilde", "AnnotStart",
     "AnnotEnd", "Comma", "Semicolon", "Dot", "Lbrace", "Rbrace", "Lbracket", "Rbracket",
-    "Lparen", "Rparen", "Anon",
+    "Lparen", "Rparen", "Anon", "KeywordX", "KeywordsKw", "Unknown",
   ]
   assert_eq(names.length(), required.length())
   for name in required {
@@ -485,8 +491,7 @@ test "指标·结构钉子: 可达 36 / 无死态（ExpectVerbRequired、ListAft
     assert_eq(names.contains(name), required.contains(name))
   }
   let armless = [
-    "Bang", "Caret", "Implies", "ImpliedBy", "ForAllKw", "ForSomeKw", "KeywordsKw",
-    "Unknown", "EOF",
+    "Bang", "Caret", "Implies", "ImpliedBy", "ForAllKw", "ForSomeKw", "EOF",
   ]
   for name in armless {
     assert_false(names.contains(name)) // 无臂命令：valid 恒假 ⇒ BFS 与生成器都不产出
@@ -540,7 +545,7 @@ test "指标·generator: 可达状态恒有候选（多种子）+ 双死态 None
 /// set_* 或从同一形态来），这些状态的形态可以钉死——形态被手改破坏即红。
 /// 多形态状态（ExpectSubject 族：图块 Rbrace/Dot 不清槽的保守臂让残留槽位合法）
 /// 与死态不进矩阵，显式豁免而非悄悄跳过（P4.2d 清账后扩全表）。
-test "指标·强制形态: 22 态单形态（BFS 派生 ⟺ 声明表）+ 负例矩阵" {
+test "指标·强制形态: 23 态单形态（BFS 派生 ⟺ 声明表）+ 负例矩阵" {
   let (seen, state_models, _) = explore()
   // 声明表：强制形态状态 → 唯一合法槽位形态 (s, p, o)
   let forced : Array[(ModelState, Bool, Bool, Bool)] = [
@@ -551,6 +556,8 @@ test "指标·强制形态: 22 态单形态（BFS 派生 ⟺ 声明表）+ 负�
     (ExpectBaseIri, false, false, false),
     (ExpectVersionLiteral, false, false, false),
     (ExpectDirectiveEnd, false, false, false),
+    // 役35 35-B1：`@keywords` 声明列表区（受理行清槽后进区 ⇒ 全空）
+    (ExpectKeywordsList, false, false, false),
     // 单主语族：subject 已填
     (ExpectPredicate, true, false, false),
     (ExpectVerbOrEnd, true, false, false),
@@ -612,7 +619,7 @@ test "指标·强制形态: 22 态单形态（BFS 派生 ⟺ 声明表）+ 负�
   ]
   assert_false(multi_form.contains(ExpectVerbRequired)) // 死态不在豁免清单
   assert_false(multi_form.contains(ListAfterElem)) // 死态不在豁免清单
-  // 状态守恒：22 强制 + 12 多形态 + 2 死态 = 36
+  // 状态守恒：23 强制 + 12 多形态 + 2 死态 = 37（役35 35-B1：+1 强制形态态）
   assert_eq(forced.length() + multi_form.length() + 2, all_states().length())
 }
 
@@ -679,10 +686,10 @@ test "指标·label 钉子: resp:Done 不适用（表零引用）+ 引擎单步�
 
 ///|
 /// **权重表钉子**（2026-09-18 补，覆盖率实测发现 `command_weight` 有臂从没被查过——
-/// 例如 `"Caret"`）：34 个命令名逐条等值 + 表外名回落 1。
+/// 例如 `"Caret"`）：35 个命令名逐条等值 + 表外名回落 1（役35 35-B1：+1 = `KeywordX`）。
 /// 权重决定随机门的分布（属判据面）⇒ 改表即红，必须与
 /// `src/quick_machine/quick_machine_trig.toml` 的 `[business.weights]` 同笔说明。
-test "指标·权重表逐名等值（34 名全量 + 默认档）" {
+test "指标·权重表逐名等值（35 名全量 + 默认档）" {
   let expected : Array[(String, Int)] = [
     ("Iri", 3),
     ("BlankNode", 2),
@@ -716,6 +723,7 @@ test "指标·权重表逐名等值（34 名全量 + 默认档）" {
     ("ForAllKw", 1),
     ("ForSomeKw", 1),
     ("KeywordsKw", 1),
+    ("KeywordX", 1),
     ("Unknown", 1),
     ("EOF", 1),
   ]
@@ -811,6 +819,7 @@ fn state_name(state : ModelState) -> String {
     ExpectBaseIri => "ExpectBaseIri"
     ExpectVersionLiteral => "ExpectVersionLiteral"
     ExpectDirectiveEnd => "ExpectDirectiveEnd"
+    ExpectKeywordsList => "ExpectKeywordsList"
     ExpectGraphLabel => "ExpectGraphLabel"
     ExpectGraphLbrace => "ExpectGraphLbrace"
     ExpectVerbOrEnd => "ExpectVerbOrEnd"
@@ -841,11 +850,11 @@ fn state_name(state : ModelState) -> String {
 }
 
 ///|
-/// `state_name` 全枚举**非空且互异**（账本/报告的可读性契约；顺带把 36 条臂都走一遍——
+/// `state_name` 全枚举**非空且互异**（账本/报告的可读性契约；顺带把 37 条臂都走一遍——
 /// 它们只在"普查报分道"时才被调用，绿跑时是死路，专测保覆盖）。
-test "指标·状态名枚举: 36 态非空且互异" {
+test "指标·状态名枚举: 37 态非空且互异" {
   let names = all_states().map(fn(state) { state_name(state) })
-  assert_eq(names.length(), 36)
+  assert_eq(names.length(), 37)
   for name in names {
     assert_true(name.length() > 0)
     let mut hits = 0
@@ -885,6 +894,7 @@ fn model_state_of_engine(state : @trig.TrigState) -> ModelState {
     @trig.TrigExpectBaseIri => ExpectBaseIri
     @trig.TrigExpectVersionLiteral => ExpectVersionLiteral
     @trig.TrigExpectDirectiveEnd => ExpectDirectiveEnd
+    @trig.TrigExpectKeywordsList => ExpectKeywordsList
     @trig.TrigExpectGraphLabel => ExpectGraphLabel
     @trig.TrigExpectGraphLbrace => ExpectGraphLbrace
     @trig.TrigExpectVerbOrEnd => ExpectVerbOrEnd
@@ -947,7 +957,7 @@ fn reachable_state_witness_paths() -> Array[(ModelState, Array[Command])] {
 /// 见证路径门**抽样**验证——若 `valid` 表漏掉一条引擎真有的边，那三门可能全绿。
 ///
 /// 本门把判据换成**引擎真件**：对每个可达状态（沿状态见证路径开过去）逐条喂命令，
-/// 比对「引擎归一响应 **+ 引擎状态** ⟷ 模型预测」。规模 = 36 态 × 34 命令 = **1224 对**（秒级）。
+/// 比对「引擎归一响应 **+ 引擎状态** ⟷ 模型预测」。规模 = 37 态 × 35 命令 = **1295 对**（秒级）。
 /// 每对**新建 probe + 新模型**（干净复位，符合 qcs 逐用例口径）；失败输出
 /// `(状态+命令)` 清单，不是"门挂了"。
 ///
@@ -956,9 +966,9 @@ fn reachable_state_witness_paths() -> Array[(ModelState, Array[Command])] {
 /// "分道 0"（那一轮只有随机门抓到）——因为两边响应都是 `Continue`。补上
 /// `system.probe.state()` ⟷ `next_model.state` 的比对后，同一变异本门即红。
 /// 这也正是 `state` 值得留在公开面的理由：它是本门的观测面（只读投影），不是量测遗产。
-test "指标·引擎侧普查: 36 态 × 34 命令 = 1224 对，引擎⟷模型逐对一致" {
+test "指标·引擎侧普查: 37 态 × 35 命令 = 1295 对，引擎⟷模型逐对一致" {
   let witnesses = reachable_state_witness_paths()
-  assert_eq(witnesses.length(), 36)
+  assert_eq(witnesses.length(), 37)
   let mismatches : Array[String] = []
   let mut pairs = 0
   for entry in witnesses {

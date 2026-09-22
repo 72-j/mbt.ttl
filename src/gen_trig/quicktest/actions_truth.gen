@@ -17,6 +17,7 @@ BnpExpectObject+Iri	set_object	Continue	-	-	false	-
 ExpectSubject+Anon	set_subject	Continue	-	-	false	-
 ExpectObject+Literal	set_object	Continue	-	-	false	-
 AnnotExpectObject+Iri	set_object	Continue	-	-	false	-
+ExpectObject+KeywordX	set_object	Continue	-	-	false	-
 ExpectObject+PrefName	set_object	Continue	-	-	false	-
 GraphExpectObject+Iri	set_object	Continue	-	-	false	-
 AnnotExpectObject+Anon	set_object	Continue	-	-	false	-
@@ -29,6 +30,7 @@ BnpExpectObject+Literal	set_object	Continue	-	-	false	-
 ExpectDirectiveEnd+Iri	set_subject	Continue	-	-	false	-
 ExpectObject+TripleTerm	set_object	Continue	-	-	false	-
 ExpectPrefixIri+Iri	declare_prefix	Continue	-	-	false	-
+ExpectSubject+KeywordX	set_subject	Continue	-	-	false	-
 ExpectSubject+PrefName	set_subject	Continue	-	-	false	-
 GraphExpectSubject+Iri	set_subject	Continue	-	-	false	-
 BnpExpectObject+PrefName	set_object	Continue	-	-	false	-
@@ -47,10 +49,13 @@ GraphAnnotExpectObject+Iri	set_object	Continue	-	-	false	-
 GraphExpectObject+PrefName	set_object	Continue	-	-	false	-
 AnnotExpectObject+BlankNode	set_object	Continue	-	-	false	-
 ExpectPredicate+KeywordA	set_predicate	Continue	-	-	false	-
+ExpectPredicate+KeywordX	set_predicate	Continue	-	-	false	-
 ExpectPredicate+PrefName	set_predicate	Continue	-	-	false	-
 ExpectVerbOrDot+KeywordA	set_predicate	Continue	-	-	false	-
+ExpectVerbOrDot+KeywordX	set_predicate	Continue	-	-	false	-
 ExpectVerbOrDot+PrefName	set_predicate	Continue	-	-	false	-
 ExpectVerbOrEnd+KeywordA	set_predicate	Continue	-	-	false	-
+ExpectVerbOrEnd+KeywordX	set_predicate	Continue	-	-	false	-
 ExpectVerbOrEnd+PrefName	set_predicate	Continue	-	-	false	-
 GraphAnnotExpectObject+Anon	set_object	Continue	-	-	false	-
 GraphExpectObject+BlankNode	set_object	Continue	-	-	false	-
@@ -59,6 +64,7 @@ GraphExpectVerbOrDot+Iri	set_predicate	Continue	-	-	false	-
 GraphExpectVerbOrEnd+Iri	set_predicate	Continue	-	-	false	-
 AnnotExpectObject+TripleTerm	set_object	Continue	-	-	false	-
 ExpectDirectiveEnd+PrefName	set_subject	Continue	-	-	false	-
+ExpectDirectiveKind+KeywordsKw	kw_begin	Continue	-	-	false	-
 GraphExpectObject+TripleTerm	set_object	Continue	-	-	false	-
 GraphExpectSubject+PrefName	set_subject	Continue	-	-	false	-
 ExpectDirectiveEnd+BlankNode	set_subject	Continue	-	-	false	-
@@ -69,11 +75,15 @@ ExpectDirectiveEnd+TripleTerm	set_subject	Continue	-	-	false	-
 ExpectObject+BracketTripleTerm	set_object	Continue	-	-	false	-
 ExpectPrefixName+PrefName	set_prefix_name	Continue	-	-	false	-
 ExpectVerbRequired+KeywordA	set_predicate	Continue	-	-	false	-
+ExpectVerbRequired+KeywordX	set_predicate	Continue	-	-	false	-
 ExpectVerbRequired+PrefName	set_predicate	Continue	-	-	false	-
 GraphAnnotExpectObject+Literal	set_object	Continue	-	-	false	-
 GraphExpectSubject+TripleTerm	set_subject	Continue	-	-	false	-
 AnnotExpectEnd+AnnotEnd	annot_end	EmitQuad(PredObj)	-	-	false	-
+ExpectKeywordsList+Unknown	declare_keyword	Continue	-	-	false	-
 GraphAnnotExpectObject+PrefName	set_object	Continue	-	-	false	-
+ExpectKeywordsList+KeywordA	declare_keyword	Continue	-	-	false	-
+ExpectKeywordsList+KeywordX	declare_keyword	Continue	-	-	false	-
 GraphAnnotExpectObject+BlankNode	set_object	Continue	-	-	false	-
 GraphExpectPredicate+KeywordA	set_predicate	Continue	-	-	false	-
 GraphExpectPredicate+PrefName	set_predicate	Continue	-	-	false	-

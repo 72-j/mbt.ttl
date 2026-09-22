@@ -32,10 +32,14 @@
 #   本账三组数（分母 / 缺口 / 不可达钉子）**未变**：权重不进分母（分母 = `valid` 表 BFS 派生），故无需推基线，登记备查。
 # 2026-09-20（R-17 转正）：可达性 BFS 去重键升帧感知签名（态, 帧顶 ret_state）——BnpIdAfterClose
 #   条件帧改写态入册（结构钉子 54→55）；本账三组数**未变**（命令名分母 40 / 缺口 0 / 不可达 EOF 1），登记备查。
+# 2026-09-22（役35 35-B1 表源化）：`@keywords` 受理行 / 列表申报 3 行 / 收区行 / `KeywordX` 词位 6 行
+#   入表 ⇒ **trig 三组数全动**：命令名分母 25 → **28**（`KeywordsKw`/`Unknown`/`KeywordX` 由无臂转可达）、
+#   不可达钉子 9 → **7**；缺口仍 **0**（覆盖门要求集随分母同笔跟升，BFS 见证路径全部实测执行）。
+#   nquads / n3v2 两方言**零波及**（本笔未动其表源）。
 
 [trig]
-reachable_total    = 25
-unreachable_pinned = 9
+reachable_total    = 28
+unreachable_pinned = 7
 
 [nquads]
 reachable_total    = 8

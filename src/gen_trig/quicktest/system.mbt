@@ -87,6 +87,8 @@ fn command_to_event(command : Command) -> @trig.TrigEvent {
     ForAllKw => TrigForAllKw
     ForSomeKw => TrigForSomeKw
     KeywordsKw => TrigKeywordsKw
+    // 役35 35-B1：listed 裸词（引擎归位点由台账合成 `KeywordX`）；模型命令带引用
+    KeywordX(r) => TrigKeywordX(span_from(concrete_id(r)))
     // Unknown 模型面不带引用（常量命令）⇒ 载荷给 (0,0)；引擎侧只作表外兜底
     Unknown => TrigUnknown((0, 0))
     EOF => TrigEOF

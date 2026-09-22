@@ -221,7 +221,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 | C-T10 | `<< >>` 壳内 `^^datatype` 误拒：`triple_term_inner_terms` 按顶层空白切项，`^^xsd:date` 被拆成第 4 项 | `parser_slice.mbt`（`triple_term_inner_terms`）；bench 语料规避 | [债]（R-T10 [立案]） |
 | C-T11 | 三引号规范化未设计：serializer 原样保真回写 | `serialize_trig.mbt` | [设计]→R-T11 [立案] |
 | C-T12 | MoonBit 词法落后 C 侧 2.3–2.6×（简单 4006 token：434 µs vs 1117 µs；复杂 9046：907 vs 2056） | `trig_bench_wbtest.mbt` | [债]（R-T12 [立案]） |
-| C-T13 | ~~`@keywords` 语义豁免未接~~ → **✅ 役35 A1 已落**（甲案：**N3 档**受理 `@keywords` + `a` 失效；判据载体 = 产物 `pk` 面；TriG/Turtle 档维持拒） | `gen_trig/{engine,types,parser_slice,materialize_trig}.mbt` + 5 钉 | ✅ 2026-09-22（A2 列表区另笔） |
+| C-T13 | ~~`@keywords` 语义豁免未接~~ → **✅ 役35 收官（A1 + A2 + 35-B1）**：甲案 **N3 档**受理 `@keywords`（表行 `kw_begin`）+ **声明列表区**（`ExpectKeywordsList`：`Unknown`/`KeywordA`/`KeywordX` 三行申报 + `Dot` 收区）+ **listed 裸词 ⇒ `KeywordX`**（引擎台账命中改写，主/谓/宾 6 行）+ `a` 失效（判据载体 = 产物 `pk` 面；**台账在册即复活**，n3v2 同源）；TriG/Turtle 档维持拒（引擎档位门 + 表外无行） | `gen_trig/{trig,engine,types,actions,parser_slice,materialize_trig}.mbt` + 钉 1–12 | ✅ 2026-09-22（35-B1：表源 11 行 + 台账/合成 + 钉 8–12） |
 | C-T14 | 陈数已澄清：旧 `todo.md` §5 item 6 记 deferred 2/1/5/6（predates ★1/★3 收口）；实测四套件 deferred 全零 | 套件输出 357/316/36/75，failed 0 | [债]→**已澄清（T16）** |
 
 ### 7.1 T17 双包重复**裁定表**（2026-09-20；C-T8 收口依据）
@@ -258,7 +258,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 | R-T10 | `<< >>` 内 `^^datatype` 修口：切项时闭壳后右扩后缀 | 立案 | — | C-T10 |
 | R-T11 | 三引号规范化设计（serializer 侧） | 立案 | — | C-T11 |
 | R-T12 | MoonBit 词法性能（字节分派表 / span 直写 / 少 Token 构造） | 立案 | — | C-T12 |
-| R-T13 | `@keywords` 语义豁免（接表时定案） | **✅ A1 已落（甲案）**：**N3 档**受理 + `a` 失效（`pk` 载体）；**A2 = 列表区层**（多关键词均失效 + 列表区吞词）另笔 | 档位 = `TrigDialect::N3`（新增） | C-T13 |
+| R-T13 | `@keywords` 语义豁免（接表时定案） | **✅ 役35 收官（A1 → A2 → 35-B1）**：**N3 档**受理 + 列表区 + listed 裸词 ⇒ `KeywordX`（台账）；`a` 失效边界 = **仅 `@keywords` 已受理后**（**台账含 `a` 则复活**，照 n3v2）；**未列表裸词仍拒**、**IRI 不入列表**（有意分叉） | 档位 = `TrigDialect::N3`（新增）；表源 = `domain2/trig_{base,domain}.toml` | C-T13 |
 
 ## 9 验收口径（命令 + 当前数字，2026-09-12 实测）
 

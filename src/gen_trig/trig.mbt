@@ -39,6 +39,7 @@ pub(all) enum TrigEvent {
   TrigForAllKw
   TrigForSomeKw
   TrigKeywordsKw
+  TrigKeywordX(Span)
   TrigUnknown(Span)
   TrigEOF
 }
@@ -55,6 +56,7 @@ pub(all) enum TrigState {
   TrigExpectBaseIri
   TrigExpectVersionLiteral
   TrigExpectDirectiveEnd
+  TrigExpectKeywordsList
   TrigExpectGraphLabel
   TrigExpectGraphLbrace
   TrigExpectVerbOrEnd
@@ -125,6 +127,8 @@ pub(all) struct TrigContext {
   mut directive_at : Bool
   mut prefixes : Array[(Span, Span)]
   mut bases : Array[Span]
+  mut kw_ledger : Array[Span]
+  mut kw_directive_seen : Bool
   mut slot_stack : Array[Slot]
   mut pred_kind : PredKind
   mut annot_s : Span?
@@ -148,6 +152,8 @@ pub fn TrigContext::new() -> TrigContext {
     directive_at: false,
     prefixes: [],
     bases: [],
+    kw_ledger: [],
+    kw_directive_seen: false,
     slot_stack: [],
     pred_kind: Normal,
     annot_s: None,
@@ -292,6 +298,11 @@ pub(open) trait TrigActions {
   ]
   fn list_nil(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
   fn open_collection(Self, TrigContext, Span, Bool, TrigState) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
+  fn kw_begin(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
+  fn declare_keyword(Self, TrigContext, Span) -> Result[
     TrigEffect,
     TrigActionError,
   ]
@@ -1127,6 +1138,50 @@ pub fn[A : TrigActions] step(
     (TrigBnpExpectObject, TrigLparen(payload)) => {
       ctx.state = TrigListExpectElemOrEnd
       actions.open_collection(ctx, payload, false, TrigBnpAfterObject)
+    }
+    (TrigExpectDirectiveKind, TrigKeywordsKw) => {
+      ctx.state = TrigExpectKeywordsList
+      actions.kw_begin(ctx)
+    }
+    (TrigExpectKeywordsList, TrigUnknown(payload)) => {
+      ctx.state = TrigExpectKeywordsList
+      actions.declare_keyword(ctx, payload)
+    }
+    (TrigExpectKeywordsList, TrigKeywordA(payload)) => {
+      ctx.state = TrigExpectKeywordsList
+      actions.declare_keyword(ctx, payload)
+    }
+    (TrigExpectKeywordsList, TrigKeywordX(payload)) => {
+      ctx.state = TrigExpectKeywordsList
+      actions.declare_keyword(ctx, payload)
+    }
+    (TrigExpectKeywordsList, TrigDot) => {
+      ctx.state = TrigExpectSubject
+      Ok(TrigEffect::Continue)
+    }
+    (TrigExpectPredicate, TrigKeywordX(payload)) => {
+      ctx.state = TrigExpectObject
+      actions.set_predicate(ctx, payload)
+    }
+    (TrigExpectVerbOrEnd, TrigKeywordX(payload)) => {
+      ctx.state = TrigExpectObject
+      actions.set_predicate(ctx, payload)
+    }
+    (TrigExpectVerbRequired, TrigKeywordX(payload)) => {
+      ctx.state = TrigExpectObject
+      actions.set_predicate(ctx, payload)
+    }
+    (TrigExpectVerbOrDot, TrigKeywordX(payload)) => {
+      ctx.state = TrigExpectObject
+      actions.set_predicate(ctx, payload)
+    }
+    (TrigExpectSubject, TrigKeywordX(payload)) => {
+      ctx.state = TrigExpectPredicate
+      actions.set_subject(ctx, payload)
+    }
+    (TrigExpectObject, TrigKeywordX(payload)) => {
+      ctx.state = TrigExpectDotOrGraph
+      actions.set_object(ctx, payload)
     }
     (_, _) => Err(TrigActionError::UnexpectedEvent(ctx.state, event))
   }

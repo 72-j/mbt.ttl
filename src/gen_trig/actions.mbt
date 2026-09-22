@@ -54,6 +54,32 @@ impl TrigActions for TrigActionsImpl with fn set_prefix_name(
 }
 
 ///|
+/// 役35 **35-B1**（R-T13/C-T13）：`@keywords` 受理 —— 清台账 + 置"已受理"旗。
+/// 照 n3v2 `kw_begin` 逐字同源：动作只写 ctx 账本/旗，词性决策全在表行
+///（列表申报行 / 谓词位行），本动作零效果。
+impl TrigActions for TrigActionsImpl with fn kw_begin(
+  _self : TrigActionsImpl,
+  ctx : TrigContext,
+) -> Result[TrigEffect, TrigActionError] {
+  ctx.kw_ledger.clear()
+  ctx.kw_directive_seen = true
+  Ok(TrigEffect::Continue)
+}
+
+///|
+/// 役35 **35-B1**：`@keywords` 逐词入账（两条声明行的落点：裸词 `Unknown` / `a` 保留形
+/// `KeywordA` 也是申报词）。listed 词随后在**主/谓/宾**位由引擎归位点改写成 `KeywordX`
+/// 走词位行——"台账 + 合成"与 n3v2 同源。
+impl TrigActions for TrigActionsImpl with fn declare_keyword(
+  _self : TrigActionsImpl,
+  ctx : TrigContext,
+  word : Span,
+) -> Result[TrigEffect, TrigActionError] {
+  ctx.kw_ledger.push(word)
+  Ok(TrigEffect::Continue)
+}
+
+///|
 impl TrigActions for TrigActionsImpl with fn declare_prefix(
   _self : TrigActionsImpl,
   ctx : TrigContext,

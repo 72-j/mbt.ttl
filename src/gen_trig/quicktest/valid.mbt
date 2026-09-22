@@ -25,10 +25,13 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (ExpectSubject, Lbracket(_)) => true
     (ExpectSubject, Anon(_)) => true
     (ExpectSubject, Lparen(_)) => true
+    // 役35 35-B1：listed 裸词（引擎归位点台账命中 ⇒ KeywordX）主位
+    (ExpectSubject, KeywordX(_)) => true
     // ExpectPredicate
     (ExpectPredicate, Iri(_)) => true
     (ExpectPredicate, PrefName(_)) => true
     (ExpectPredicate, KeywordA(_)) => true
+    (ExpectPredicate, KeywordX(_)) => true
     (ExpectPredicate, Lbrace) => true
     // ExpectObject
     (ExpectObject, Iri(_)) => true
@@ -40,6 +43,8 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (ExpectObject, Anon(_)) => true
     (ExpectObject, Lbracket(_)) => true
     (ExpectObject, Lparen(_)) => true
+    // 役35 35-B1：listed 裸词宾位
+    (ExpectObject, KeywordX(_)) => true
     // ExpectDotOrGraph
     (ExpectDotOrGraph, Comma) => true
     (ExpectDotOrGraph, Semicolon) => true
@@ -50,16 +55,19 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (ExpectVerbOrEnd, Iri(_)) => true
     (ExpectVerbOrEnd, PrefName(_)) => true
     (ExpectVerbOrEnd, KeywordA(_)) => true
+    (ExpectVerbOrEnd, KeywordX(_)) => true
     (ExpectVerbOrEnd, Semicolon) => true
     (ExpectVerbOrEnd, Dot) => true
     // ExpectVerbRequired
     (ExpectVerbRequired, Iri(_)) => true
     (ExpectVerbRequired, PrefName(_)) => true
     (ExpectVerbRequired, KeywordA(_)) => true
+    (ExpectVerbRequired, KeywordX(_)) => true
     // ExpectVerbOrDot
     (ExpectVerbOrDot, Iri(_)) => true
     (ExpectVerbOrDot, PrefName(_)) => true
     (ExpectVerbOrDot, KeywordA(_)) => true
+    (ExpectVerbOrDot, KeywordX(_)) => true
     (ExpectVerbOrDot, Dot) => true
     // ExpectTildeEnd
     (ExpectTildeEnd, Iri(_)) => true
@@ -97,6 +105,13 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (ExpectDirectiveKind, PrefixKw) => true
     (ExpectDirectiveKind, BaseKw) => true
     (ExpectDirectiveKind, VersionKw) => true
+    // 役35 35-B1：`@keywords` 受理行 ⇒ 进声明列表区（`at` 两拍的第二拍）
+    (ExpectDirectiveKind, KeywordsKw) => true
+    // ExpectKeywordsList（役35 35-B1：声明列表区——受理词三类 + `.` 收区）
+    (ExpectKeywordsList, Unknown) => true
+    (ExpectKeywordsList, KeywordA(_)) => true
+    (ExpectKeywordsList, KeywordX(_)) => true
+    (ExpectKeywordsList, Dot) => true
     // ExpectVersionLiteral
     (ExpectVersionLiteral, Literal(_)) => true
     // ExpectPrefixName

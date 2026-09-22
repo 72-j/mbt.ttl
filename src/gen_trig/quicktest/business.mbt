@@ -252,6 +252,11 @@ fn reify_command(
     ForAllKw => Ok(ForAllKw)
     ForSomeKw => Ok(ForSomeKw)
     KeywordsKw => Ok(KeywordsKw)
+    KeywordX(reference) =>
+      match reify_ref(reference, env) {
+        Ok(resolved) => Ok(KeywordX(resolved))
+        Err(error) => Err(error)
+      }
     Unknown => Ok(Unknown)
     EOF => Ok(EOF)
   }

@@ -93,6 +93,8 @@ pub(all) struct TrigContext {
   mut directive_at : Bool
   mut prefixes : Array[((Int, Int), (Int, Int))]
   mut bases : Array[(Int, Int)]
+  mut kw_ledger : Array[(Int, Int)]
+  mut kw_directive_seen : Bool
   mut slot_stack : Array[Slot]
   mut pred_kind : PredKind
   mut annot_s : (Int, Int)?
@@ -179,6 +181,7 @@ pub(all) enum TrigEvent {
   TrigForAllKw
   TrigForSomeKw
   TrigKeywordsKw
+  TrigKeywordX((Int, Int))
   TrigUnknown((Int, Int))
   TrigEOF
 }
@@ -292,6 +295,7 @@ pub(all) enum TrigState {
   TrigExpectBaseIri
   TrigExpectVersionLiteral
   TrigExpectDirectiveEnd
+  TrigExpectKeywordsList
   TrigExpectGraphLabel
   TrigExpectGraphLbrace
   TrigExpectVerbOrEnd
@@ -364,6 +368,8 @@ pub(open) trait TrigActions {
   fn list_next_nested(Self, TrigContext, (Int, Int), SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
   fn list_nil(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
   fn open_collection(Self, TrigContext, (Int, Int), Bool, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn kw_begin(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
+  fn declare_keyword(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
   fn list_step(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
   fn open_slot(Self, TrigContext, (Int, Int), SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
   fn pop_bnode_prop(Self, TrigContext) -> Result[TrigEffect, TrigActionError]

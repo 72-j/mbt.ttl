@@ -68,11 +68,17 @@ test "骨架: 'a' 缩写走谓词位" {
 }
 
 ///|
-/// **役35 A1 钉族（R-T13/C-T13）**：`@keywords` = **N3 档专有**（甲案），
+/// **役35 @keywords 钉族（R-T13/C-T13）**：`@keywords` = **N3 档专有**（甲案），
 /// `a` 失效边界 = **仅 N3 档 ∧ `@keywords` 已受理后**（未声明/其余档恒为 turtle `rdf:type` 简写）。
 /// **判据载体逐条分开**（用户 2026-09-22 要求，见 `todo.md` §AS.4）：
-/// 钉 1 = `pk` ∧ 物化 IRI；钉 2/3/6 = `pk` / 错误面；钉 5 = 错误面（W3C 档回归）。
-/// 钉 4（多关键词均失效）归 **A2**（列表区层）。
+/// 钉 1 = `pk` ∧ 物化 IRI；钉 2/3/6 = `pk` / 物化展开面；钉 5 = 错误面（W3C 档回归）。
+///
+/// **35-B1 改口径（§AS.8 钉 12：A1/A2 原钉在同笔改口径后仍绿）**：
+/// ① 钉 4 由"`a` 也失效"改为"**listed 裸词失效（`b`）+ `a` 在册即复活**"——照 n3v2
+///   `kw_a_live` 支逐字同源（`@keywords a` 声明后 `a` 仍走 `rdf:type`）；
+/// ② 钉 5/7 的 N3 支由"IRI 混列"改为**合法声明形**——n3v2 不收 IRI 进列表，
+///   `@keywords <iri> …` 在 35-B1 下是表外报错（有意分叉，见 §AS.10 第 3 条）；
+/// ③ 新增 **钉 8–12**（listed 词位 / 未列拒 / 台账清空 / 退役回归）。
 
 ///|
 /// A1 辅助：按档物化（N3 档需要显式传档；`mat_chain` 恒走默认 TriG）
@@ -115,14 +121,20 @@ test "役35 A1 钉1（负例·载体 = pk ∧ 物化 IRI）：TriG 档未声明 
 }
 
 ///|
-test "役35 A1 钉2（正例·载体 = pk）：N3 档 ∧ @keywords 已受理 ⇒ 'a' 失效" {
-  // **A2 口径**：`@keywords` 后的声明列表区由 `.` 收区（空列表用 `@keywords .`）
+test "役35 钉2（正例·载体 = pk ∧ 物化展开面）：N3 档 ∧ @keywords 已受理 ⇒ 'a' 失效" {
+  // `@keywords` 后的声明列表区由 `.` 收区（空列表用 `@keywords .`）
   let input = "@keywords .\n<http://e/s> a <http://e/o> .\n"
   let (quads, errors) = trig_parser(bytes_of(input), dialect=N3)
   assert_eq(errors.length(), 0)
   assert_eq(quads.length(), 1)
   // 载体：pk = Normal（`a` 已失效 ⇒ 物化层按 PrefName 展开，不再 rdf:type）
   assert_true(quads[0].pk is PredKind::Normal)
+  // 载体②（35-B1 物化面）：默认（空）前缀在册 ⇒ 裸名 `a` 按**空前缀展开**
+  //（n3v2 `DefaultPrefixIRI` 同源；未在册时按下方的错误面口径）
+  let (emits, errs) = a1_mat("@prefix : <http://e/> .\n" + input, N3)
+  assert_eq(errs.length(), 0)
+  assert_eq(emits.length(), 1)
+  assert_eq(mat_vs(emits[0].predicate), "<http://e/a>")
 }
 
 ///|
@@ -136,46 +148,60 @@ test "役35 A1 钉3（边界·列表区外仍失效）：声明后**跨语句**�
 }
 
 ///|
-test "役35 A2 钉4（边界·多关键词）：@keywords a b . ⇒ 两词均入列表且其后均失效" {
-  // ① 多词声明区 ⇒ **零 quad 零错**（词是声明，不出句）
+test "役35 35-B1 钉4（边界·多关键词声明）：listed 裸词失效 + `a` 在册即复活" {
+  // ① 多词声明区 ⇒ **零 quad 零错**（词是声明，不出句；`a`/`b` 均入台账）
   let (q_decl, e_decl) = trig_parser(bytes_of("@keywords a b .\n"), dialect=N3)
   assert_eq(e_decl.length(), 0)
   assert_eq(q_decl.length(), 0)
-  // ② 声明后 `a` 作谓词 ⇒ **pk Normal**（失效）
-  //    ⚠ 边界：**`b` 作谓词**须走 35-B（listed 裸词 ⇒ `KeywordX`——trig 侧裸词现为 `Unknown`
-  //    ⇒ A1/A2 口径下仍拒）⇒ 该支的门况归 **35-B**，不在 A2 硬凑。
-  let (quads, errors) = trig_parser(
+  // ② listed 裸词 `b` 作谓词 ⇒ 走 `KeywordX` 词位行（pk = Normal = "失效"口径）
+  let d_b = bytes_of("@keywords a b .\n<http://e/s> b <http://e/o> .\n")
+  let (q_b, e_b) = trig_parser(d_b, dialect=N3)
+  assert_eq(e_b.length(), 0)
+  assert_eq(q_b.length(), 1)
+  assert_eq(view_str(d_b[:], q_b[0].p), "b")
+  assert_true(q_b[0].pk is PredKind::Normal)
+  // ③ `a` 在台账在册 ⇒ **复活**（照 n3v2 `kw_a_live` 支：`@keywords a` 声明后 `a` 仍
+  //   为 turtle `rdf:type` 简写）——这是 35-B1 相对 A2 口径的**有意口径变更**（§AS.8）
+  let (q_a, e_a) = trig_parser(
     bytes_of("@keywords a b .\n<http://e/s> a <http://e/o> .\n"),
     dialect=N3,
   )
-  assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 1)
-  assert_true(quads[0].pk is PredKind::Normal)
+  assert_eq(e_a.length(), 0)
+  assert_eq(q_a.length(), 1)
+  assert_true(q_a[0].pk is PredKind::KwA)
 }
 
 ///|
-test "役35 A2 钉7（列表区吞词）：声明区内零 quad（含多词与裸词混列）" {
+test "役35 35-B1 钉7（列表区受理形·改口径）：声明区内零 quad；IRI 不入列表" {
   for
     input in [
-      "@keywords .\n", "@keywords a .\n", "@keywords a b .\n", "@keywords <http://e/kw> a .\n",
+      "@keywords .\n", "@keywords a .\n", "@keywords b .\n", "@keywords a b .\n",
     ] {
     let (quads, errors) = trig_parser(bytes_of(input), dialect=N3)
     assert_eq(errors.length(), 0)
     assert_eq(quads.length(), 0)
   }
+  // ⚠ **改口径**（§AS.10 第 3 条）：n3v2 的列表行只收 `Unknown`/`KeywordA`/`KeywordX`，
+  // **不收 IRI** ⇒ `@keywords <http://e/kw> a .` 在 trig 同源实现下是表外报错 + 恢复
+  let (q_iri, e_iri) = trig_parser(
+    bytes_of("@keywords <http://e/kw> a .\n"),
+    dialect=N3,
+  )
+  assert_true(e_iri.length() > 0)
+  assert_eq(q_iri.length(), 0)
   // 反向：TriG 档同输入仍拒（W3C `bad-n3-extras` 口径不变）
   let (_, e_trig) = trig_parser(bytes_of("@keywords a b .\n"))
   assert_true(e_trig.length() > 0)
 }
 
 ///|
-test "役35 A1 钉5（套件红线·载体 = 错误面）：TriG/Turtle 档 @keywords 仍拒" {
-  let input = "@keywords <http://e/s> a <http://e/o> .\n"
+test "役35 钉5（套件红线·载体 = 错误面）：TriG/Turtle 档 @keywords 仍拒" {
+  let input = "@keywords a b .\n<http://e/s> a <http://e/o> .\n"
   let (_, e_trig) = trig_parser(bytes_of(input)) // 默认 TriG 档
   assert_true(e_trig.length() > 0)
   let (_, e_turtle) = trig_parser(bytes_of(input), dialect=Turtle)
   assert_true(e_turtle.length() > 0)
-  // 反向：N3 档同输入零错（受理层生效）
+  // 反向：N3 档同输入零错（受理行 + 列表申报行生效；`a` 在册 ⇒ 复活）
   let (_, e_n3) = trig_parser(bytes_of(input), dialect=N3)
   assert_eq(e_n3.length(), 0)
 }
@@ -194,6 +220,90 @@ test "役35 A1 钉6（防过度受理·载体 = 错误面）：N3 档其余 N3 �
     dialect=N3,
   )
   assert_true(e_forsome.length() > 0)
+}
+
+///|
+test "役35 35-B1 钉8（listed 裸词作谓词·载体 = pk ∧ 物化展开面）" {
+  let input = "@prefix : <http://e/> .\n@keywords b .\n<http://e/s> b <http://e/o> .\n"
+  let data = mat_bytes(input)
+  let (quads, errors) = trig_parser(data, dialect=N3)
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 1)
+  // 载体①：谓词槽 = listed 词自身 span；pk = Normal（listed 裸词按词消费，非 rdf:type）
+  assert_eq(view_str(data[:], quads[0].p), "b")
+  assert_true(quads[0].pk is PredKind::Normal)
+  // 载体②：物化谓词 = 空前缀展开（n3v2 `DefaultPrefixIRI` 同源）
+  let (emits, errs) = a1_mat(input, N3)
+  assert_eq(errs.length(), 0)
+  assert_eq(emits.length(), 1)
+  assert_eq(mat_vs(emits[0].predicate), "<http://e/b>")
+}
+
+///|
+test "役35 35-B1 钉9（listed 裸词作主/宾·载体 = 槽位 span）" {
+  // 主位：`b` 走 `ExpectSubject + KeywordX` 行
+  let d_subj = mat_bytes("@keywords b .\nb <http://e/p> <http://e/o> .\n")
+  let (q_subj, e_subj) = trig_parser(d_subj, dialect=N3)
+  assert_eq(e_subj.length(), 0)
+  assert_eq(q_subj.length(), 1)
+  assert_eq(view_str(d_subj[:], q_subj[0].s), "b")
+  assert_eq(view_str(d_subj[:], q_subj[0].p), "<http://e/p>")
+  // 宾位：`b` 走 `ExpectObject + KeywordX` 行
+  let d_obj = mat_bytes("@keywords b .\n<http://e/s> <http://e/p> b .\n")
+  let (q_obj, e_obj) = trig_parser(d_obj, dialect=N3)
+  assert_eq(e_obj.length(), 0)
+  assert_eq(q_obj.length(), 1)
+  assert_eq(view_str(d_obj[:], q_obj[0].o), "b")
+}
+
+///|
+test "役35 35-B1 钉10（未列表裸词仍拒·载体 = 错误面）" {
+  // `c` 未列入台账 ⇒ 保 `Unknown`；表上无词位行 ⇒ `UnexpectedEvent` 干净拒
+  let (quads, errors) = trig_parser(
+    mat_bytes("@keywords b .\n<http://e/s> c <http://e/o> .\n"),
+    dialect=N3,
+  )
+  assert_true(errors.length() > 0)
+  assert_eq(quads.length(), 0)
+  // 对照：同位的 listed 词 `b` 零错（防"全拒"假绿）
+  let (q_ok, e_ok) = trig_parser(
+    mat_bytes("@keywords b .\n<http://e/s> b <http://e/o> .\n"),
+    dialect=N3,
+  )
+  assert_eq(e_ok.length(), 0)
+  assert_eq(q_ok.length(), 1)
+}
+
+///|
+test "役35 35-B1 钉11（台账清空·载体 = quad 数 ∧ 错误面）" {
+  // 第二条 `@keywords c .` 重开列表 ⇒ 前批词 `b` 失格（`kw_begin` 清账）
+  let (quads, errors) = trig_parser(
+    mat_bytes(
+      "@keywords b .\n<http://e/s> b <http://e/o> .\n@keywords c .\n<http://e/t> b <http://e/u> .\n",
+    ),
+    dialect=N3,
+  )
+  assert_eq(quads.length(), 1) // 首条出账；第二条 `b` 已失格 ⇒ 拒
+  assert_true(errors.length() > 0)
+}
+
+///|
+test "役35 35-B1 钉12（A1/A2 退役回归）：表源接管后一条链走通 + 档位门不失守" {
+  // 受理（表行 `kw_begin`）→ 列表申报（3 行 `declare_keyword`）→ 收区（`Dot` 行）
+  // → listed 词位（6 行 `KeywordX`）→ 跨语句 `a` 失效：全链一条输入走通
+  let data = mat_bytes(
+    "@keywords b .\n<http://e/s> b <http://e/o> .\n<http://e/t> a <http://e/u> .\n",
+  )
+  let (quads, errors) = trig_parser(data, dialect=N3)
+  assert_eq(errors.length(), 0)
+  assert_eq(quads.length(), 2)
+  assert_true(quads[0].pk is PredKind::Normal) // listed 裸词（`KeywordX` 词位行）
+  assert_true(quads[1].pk is PredKind::Normal) // 受理旗持久：`a` 失效（跨语句）
+  // 同输入在 TriG/Turtle 档仍拒（档位门；A1/A2 守卫退役后**无双判**）
+  let (_, e_tri) = trig_parser(data)
+  assert_true(e_tri.length() > 0)
+  let (_, e_turtle) = trig_parser(data, dialect=Turtle)
+  assert_true(e_turtle.length() > 0)
 }
 
 ///|

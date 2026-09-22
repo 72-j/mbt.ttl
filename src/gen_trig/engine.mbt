@@ -45,6 +45,7 @@ fn span_of_event(event : TrigEvent) -> Span {
     TrigLbracket(span) => span
     TrigAnon(span) => span
     TrigLparen(span) => span
+    TrigKeywordX(span) => span
     TrigUnknown(span) => span
     TrigAt
     | TrigPrefixKw
@@ -112,18 +113,69 @@ fn[L : LexerSource] TrigEngine::normalize_term_span(
     }
     TrigKeywordA(span) => {
       let (s2, dot) = trim_trailing_dot(self.lexer, span)
-      // 役35 A1（R-T13/C-T13，照 n3v2 口径）：**N3 档**下，`@keywords` 已受理后
-      // `a` **失效** —— 改写为 `TrigPrefName`（物化层按默认前缀展开），
-      // 不再走 turtle 的 `a` = `rdf:type` 简写。TriG/Turtle 档**恒不失效**
-      //（未声明档位口径 = `a` 仍是 `rdf:type` 简写；负例钉钉这个）。
-      if self.dialect is N3 && self.kw_directive_seen {
+      // 役35 **35-B1**（R-T13/C-T13，照 n3v2 `kw_a_live` 支逐字同源）：**N3 档**下，
+      // `@keywords` **已受理**后 `a` **失效** —— 改写为 `TrigPrefName`（物化层按默认
+      // 前缀展开），不再走 turtle 的 `a` = `rdf:type` 简写。三处边界：
+      //   ① 未声明档位/未受理 ⇒ 恒为 `rdf:type` 简写（负例钉钉这个）；
+      //   ② **声明列表区内不重裁定**（那一位的 `a` 是**申报词**本身，须保 `KeywordA`
+      //      交给列表申报行）；
+      //   ③ **台账含 `a` ⇒ `a` 复活**（n3v2 同款：@keywords a 声明后仍走 rdf:type）。
+      if self.dialect is N3 &&
+        self.ctx.kw_directive_seen &&
+        !(self.ctx.state is TrigState::TrigExpectKeywordsList) &&
+        !self.kw_ledger_hits(s2) {
         (TrigPrefName(s2), dot)
       } else {
         (TrigKeywordA(s2), dot)
       }
     }
+    TrigUnknown(span) => {
+      let (s2, dot) = trim_trailing_dot(self.lexer, span)
+      // 役35 **35-B1**：**listed 裸词再分类**（照 n3v2 `N3Unknown` 支）——台账命中即
+      // `TrigKeywordX`（词性 = 词；**决策仍在表行**，本处只做归位点形态改写）。
+      // 未列入台账 ⇒ 保 `TrigUnknown` 兜底：表上无词位行 ⇒ `UnexpectedEvent` 同径
+      //（"未列表裸词仍拒"口径不变）。TriG/Turtle 档台账恒空 ⇒ 天然不触发。
+      if self.dialect is N3 && self.kw_ledger_hits(s2) {
+        (TrigKeywordX(s2), dot)
+      } else {
+        (TrigUnknown(s2), dot)
+      }
+    }
     other => (other, false)
   }
+}
+
+///|
+/// 役35 **35-B1**：`@keywords` 台账命中判定（n3v2 `N3Engine::kw_ledger_hits` 逐字同源）。
+/// 纯机械字节比对——**词性决策仍在表行**（`KeywordX` 词位行 / 兜底 `UnexpectedEvent` 同径）。
+fn[L : LexerSource] TrigEngine::kw_ledger_hits(
+  self : TrigEngine[L],
+  word : Span,
+) -> Bool {
+  let (off, len) = word
+  if len == 0 {
+    return false
+  }
+  let mut k = 0
+  while k < self.ctx.kw_ledger.length() {
+    let (loff, llen) = self.ctx.kw_ledger[k]
+    if llen == len {
+      let mut same = true
+      let mut i = 0
+      while i < len {
+        if self.lexer.byte_at(off + i) != self.lexer.byte_at(loff + i) {
+          same = false
+          break
+        }
+        i = i + 1
+      }
+      if same {
+        return true
+      }
+    }
+    k = k + 1
+  }
+  false
 }
 
 ///|
@@ -202,14 +254,9 @@ pub struct TrigEngine[L] {
   dialect : TrigDialect // 方言开关（默认 TriG 超集；Turtle 禁图块区）
   priv mut last_error : Span? // 最近一次错误位置（行号由上层按 data 统计）
   priv mut pending : TrigEvent? // 恢复推回的单 token（"停 Rbrace 前界"的兑现机制）
-  // 役35 A1（R-T13/C-T13）：N3 档 `@keywords` **指令已受理**标记。
-  // 口径 = n3v2 同源"引擎侧纯形态标记"：只置旗 + 归位点事件改写，**词性决策仍留表行**
-  //（`a` 失效后走既有 `PrefName` 行；本档当前不建列表区 ⇒ 列表词处理归 A2）。
-  priv mut kw_directive_seen : Bool
-  // 役35 **A2**（列表区层）：N3 档 `@keywords` 之后的**声明列表区**——区内的词是**声明**
-  //（不入表、不出 quad），只等 `.` 收区。零表源实现（同 A1 路线：引擎守卫 + 状态机自治）。
-  // 口径：区内**一切事件吞掉**；`Dot` ⇒ 收区并归位语句起点。
-  priv mut kw_list_mode : Bool
+  // 役35 **35-B1**：`@keywords` 的**受理旗与台账**已**收编入 ctx**（表源 `kw_ledger` /
+  // `kw_directive_seen` + 表行 `kw_begin` / `declare_keyword`）——A1/A2 的引擎私有旗
+  //（`kw_directive_seen` 引擎位 + `kw_list_mode`）**已退役**，同一语义不再两处判。
 }
 
 ///|
@@ -225,8 +272,6 @@ pub fn[L : LexerSource] TrigEngine::new(
     dialect,
     last_error: None,
     pending: None,
-    kw_directive_seen: false,
-    kw_list_mode: false,
   }
   engine.begin_record()
   engine
@@ -437,31 +482,16 @@ pub fn[L : LexerSource] TrigEngine::next(
       self.recover(span_of_event(event))
       continue
     }
-    // 役35 A1（R-T13/C-T13）：**N3 档 `@keywords` 受理层**——
-    //   本档收到 `TrigKeywordsKw` ⇒ 置"已受理"旗并**吞掉本事件**（不进表、不出 quad）。
-    //   **列表词处理不在本层**（A2 建列表区；A1 期间名单词按常规路径解析，已由
-    //   §AS.2 钉清单第 3/4 条与本层边界共同钉住）。
-    //   TriG/Turtle 档**维持现状**：表上无该行 ⇒ `UnexpectedEvent` 干净拒 + 恢复
-    //（W3C `bad-n3-extras-07/13` 负例口径不变）。
-    if self.dialect is N3 && event is TrigEvent::TrigKeywordsKw {
+    // 役35 **35-B1**（R-T13/C-T13，甲案门控）：`@keywords` 的**受理**是 **N3 档专有**。
+    //   表行对三档同源（`ExpectDirectiveKind + KeywordsKw → kw_begin`），故非 N3 档在此
+    //   **门槛挡住**：事件不进表 ⇒ 同径恢复 ⇒ W3C `bad-n3-extras-07/13` 负例口径不变
+    //（照 Turtle 禁图块区同款"引擎档守卫"先例）。
+    //   **沿革**：A1/A2 的"吞事件 + 列表区"守卫**已退役**——同一语义收编入表
+    //（受理行 / 列表申报 3 行 / 收区行），本处只剩这一道档位门（禁双判）。
+    if !(self.dialect is N3) && event is TrigEvent::TrigKeywordsKw {
       synth_dot = false
-      self.kw_directive_seen = true
-      self.kw_list_mode = true // A2：进入声明列表区（见下方守卫）
-      // A1 受理层收尾：`@keywords` 是 **`@`（At 行→ExpectDirectiveKind）+ 本事件** 两拍，
-      // 故受理后须把状态归位到**语句起点**（等价"指令已结束"）；列表区与尾随 `.` 的
-      // 正确处理归 **A2**（A1 期间 `@keywords` 之后的词按常规语句解析，见 §AS.2 钉 2/3）。
-      self.ctx.state = TrigState::TrigExpectSubject
-      self.ctx.directive_at = false
-      continue
-    }
-    // 役35 **A2 列表区守卫**（N3 档）：`@keywords` 之后到 `.` 之间的词是**声明**——
-    // 一律吞掉（不入表、不出 quad）；`Dot` 收区并归位语句起点。零表源（同 A1 路线）。
-    if self.dialect is N3 && self.kw_list_mode {
-      synth_dot = false
-      if event is TrigEvent::TrigDot {
-        self.kw_list_mode = false
-      }
-      self.ctx.state = TrigState::TrigExpectSubject
+      let span = span_of_event(event)
+      self.recover(if span == (0, 0) { (self.lexer.pos(), 0) } else { span })
       continue
     }
     // 役35 A1（R-T13/C-T13）：**谓词位 `pk` 归属**（与语义决策同层；零表源改动）。
@@ -469,8 +499,9 @@ pub fn[L : LexerSource] TrigEngine::next(
     // 则按事件种类记 `pk`——`TrigKeywordA` ⇒ `KwA`（`a` 保留 = turtle `rdf:type` 简写），
     // 其余 ⇒ `Normal`（含"N3 档已受理后 `a` 被改写为 PrefName"的失效支）。
     // 口径：`pred_kind` 由 `snapshot` 读出即归 `Normal`（spec **I-8**），跨语句不残留；
-    // n3v2 把这一步放在手写 action（其 ctx 有 `kw_a_live` 旗）——trig 无该字段且
-    // 加字段须动表源，故改用"**表管状态 ⇒ 引擎按状态定归属**"的等价形（pk 面逐字同形）。
+    // 35-B1 后 listed 裸词由台账改写走 `KeywordX` 词位行 ⇒ `Normal`（与"`a` 失效"同口径）；
+    // n3v2 把归属放在手写 action（读 `kw_a_live` 旗）——trig 走"**表管状态 ⇒ 引擎按
+    // 状态定归属**"的等价形（pk 面逐字同形；消费即归 I-8 不变）。
     if predicate_state(self.ctx.state) {
       self.ctx.pred_kind = match event {
         TrigEvent::TrigKeywordA(_) => PredKind::KwA

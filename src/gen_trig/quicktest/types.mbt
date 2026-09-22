@@ -50,6 +50,10 @@ priv enum Command {
   ForAllKw
   ForSomeKw
   KeywordsKw
+  // 役35 35-B1（R-T13/C-T13）：listed 词（引擎归位点由台账合成 `KeywordX`）。
+  // 本实例面与生成面同形；`Unknown` 保持无引用形（引擎归位点给 `(0,0)` 兜底 span，
+  // 模型面不消费该载荷——见 `system.mbt` 映射与 `data_face` 台账）。
+  KeywordX(@qcs.Ref[RefId])
   Unknown
   EOF
 } derive(Eq, Debug)
@@ -92,6 +96,7 @@ priv enum ModelState {
   ExpectBaseIri
   ExpectVersionLiteral
   ExpectDirectiveEnd
+  ExpectKeywordsList
   ExpectGraphLabel
   ExpectGraphLbrace
   ExpectVerbOrEnd
@@ -143,7 +148,7 @@ priv struct Frame {
   ret_state : ModelState
   as_subject : Bool
 } derive(Eq, Debug)
-// 未进模型的 Context 字段: emit_queue (Array[TrigPendingQuad]), directive_at (Bool), prefixes (Array[(Span, Span)]), bases (Array[Span]), slot_stack (Array[Slot]), pred_kind (PredKind), subj_shell (Bool), annot_close (Bool)
+// 未进模型的 Context 字段: emit_queue (Array[TrigPendingQuad]), directive_at (Bool), prefixes (Array[(Span, Span)]), bases (Array[Span]), kw_ledger (Array[Span]), kw_directive_seen (Bool), slot_stack (Array[Slot]), pred_kind (PredKind), subj_shell (Bool), annot_close (Bool)
 
 ///|
 /// 初始模型：ExpectSubject，槽位全空

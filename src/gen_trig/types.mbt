@@ -174,6 +174,8 @@ pub impl Show for TrigEvent with fn output(self : TrigEvent, logger : &Logger) -
     TrigEvent::TrigRparen => logger.write("Rparen")
     TrigEvent::TrigUnknown(span) =>
       logger.write("Unknown " + @debug.to_string(span))
+    TrigEvent::TrigKeywordX(span) =>
+      logger.write("KeywordX " + @debug.to_string(span))
     TrigEvent::TrigEOF => logger.write("EOF")
     TrigEvent::TrigAnnotStart => logger.write("AnnotStart")
     TrigEvent::TrigAnnotEnd => logger.write("AnnotEnd")

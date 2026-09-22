@@ -128,7 +128,10 @@ fn TrigMaterializer::resolve_prefname(
     }
   }
   if colon < 0 {
-    return Ok(None) // 裸词：表外口径，保真兜底
+    // 役35 **35-B1**（R-T13/C-T13，照 n3v2 `resolve_prefname` 同源）：**无冒号裸名按
+    // 空前缀展开**（n3 `DefaultPrefixIRI` 径）——listed 词与 `a` 失格降名都在此出账。
+    // 默认（空）前缀**未声明**时下方账本查找落空 ⇒ 仍 `Ok(None)`（槽位错误面口径不变）。
+    colon = 0
   }
   // 前缀部尾点（PN_PREFIX 无尾点；bad-missing-ns-dot-end 口径）
   if colon > 0 && self.data[off + colon - 1] == b'.' {
@@ -206,8 +209,13 @@ fn TrigMaterializer::write_prefname_iri(
     self.push_view(self.data[iri.0 + 1:iri.0 + iri.1 - 1])
   }
   // local 部分：PN_LOCAL_ESC 解码（\X → X；百分号 %HH 保真——词法加宽批次定案：
-  // 百分号序列按原样三字符进 IRI，不展开）
-  let mut i = off + colon + 1
+  // 百分号序列按原样三字符进 IRI，不展开）。colon 位有冒号字符则本地部从 colon+1 起，
+  // 否则 = 35-B1 无冒号裸词（colon 归零哨兵），**整词即本地部**（n3v2 逐字同源）
+  let mut i = if off + colon < off + len && self.data[off + colon] == b':' {
+    off + colon + 1
+  } else {
+    off + colon
+  }
   let stop = off + len
   while i < stop {
     let c = self.data[i]

@@ -44,6 +44,7 @@ fn command_name(command : Command) -> String {
     ForAllKw => "ForAllKw"
     ForSomeKw => "ForSomeKw"
     KeywordsKw => "KeywordsKw"
+    KeywordX(_) => "KeywordX"
     Unknown => "Unknown"
     EOF => "EOF"
   }

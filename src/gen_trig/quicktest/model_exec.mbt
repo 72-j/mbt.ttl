@@ -74,6 +74,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         frame_push(model, r, ExpectVerbRequired, true, ListExpectElemOrEnd),
         Continue,
       )
+    // @arm ExpectSubject+KeywordX
+    (ExpectSubject, KeywordX(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // --- ExpectPredicate ---
     // @arm ExpectPredicate+Iri
     (ExpectPredicate, Iri(r)) =>
@@ -83,6 +86,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+KeywordA
     (ExpectPredicate, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectPredicate+KeywordX
+    (ExpectPredicate, KeywordX(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+Lbrace
     (ExpectPredicate, Lbrace) =>
@@ -120,6 +126,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd),
         Continue,
       )
+    // @arm ExpectObject+KeywordX
+    (ExpectObject, KeywordX(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
     // --- ExpectDotOrGraph ---
     // @arm ExpectDotOrGraph+Comma
     (ExpectDotOrGraph, Comma) => emit_object(model, ExpectObject)
@@ -140,6 +149,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+KeywordA
     (ExpectVerbOrEnd, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbOrEnd+KeywordX
+    (ExpectVerbOrEnd, KeywordX(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+Semicolon
     (ExpectVerbOrEnd, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
@@ -165,6 +177,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectVerbRequired+KeywordA
     (ExpectVerbRequired, KeywordA(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbRequired+KeywordX
+    (ExpectVerbRequired, KeywordX(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // --- ExpectVerbOrDot ---
     // @arm ExpectVerbOrDot+Iri
     (ExpectVerbOrDot, Iri(r)) =>
@@ -174,6 +189,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
       (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+KeywordA
     (ExpectVerbOrDot, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
+    // @arm ExpectVerbOrDot+KeywordX
+    (ExpectVerbOrDot, KeywordX(r)) =>
       (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+Dot
     (ExpectVerbOrDot, Dot) => emit_spo(model, ExpectSubject)
@@ -325,6 +343,22 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectDirectiveKind+VersionKw
     (ExpectDirectiveKind, VersionKw) =>
       ({ ..model, state: ExpectVersionLiteral, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // @arm ExpectDirectiveKind+KeywordsKw
+    // 役35 35-B1：`@keywords` 受理（`kw_begin` = 清台账 + 置受理旗；模型面零槽位写）
+    // ⇒ 只推进状态到声明列表区。
+    (ExpectDirectiveKind, KeywordsKw) =>
+      ({ ..model, state: ExpectKeywordsList, }, Continue)
+    // --- ExpectKeywordsList ---（役35 35-B1：声明列表区）
+    // @arm ExpectKeywordsList+Unknown
+    // 裸词申报（`declare_keyword`）：只入 ctx 台账，模型面零槽位写、状态不动。
+    (ExpectKeywordsList, Unknown) => (model, Continue)
+    // @arm ExpectKeywordsList+KeywordA
+    (ExpectKeywordsList, KeywordA(_)) => (model, Continue)
+    // @arm ExpectKeywordsList+KeywordX
+    (ExpectKeywordsList, KeywordX(_)) => (model, Continue)
+    // @arm ExpectKeywordsList+Dot
+    // 收区：回语句起点（`to=ExpectSubject`）。
+    (ExpectKeywordsList, Dot) => ({ ..model, state: ExpectSubject, }, Continue)
     // --- ExpectVersionLiteral ---
     // @arm ExpectVersionLiteral+Literal
     (ExpectVersionLiteral, Literal(_)) =>

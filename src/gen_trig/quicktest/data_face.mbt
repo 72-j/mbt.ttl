@@ -379,7 +379,9 @@ fn data_face_compare(
 async test "数据面⟷引擎·trig 值级对拍：可比行逐槽等值 + 台账钉死" {
   let snapshot = @fs.read_file("src/gen_trig/quicktest/actions_truth.gen").text()
   let rows = parse_data_face_rows(snapshot)
-  assert_eq(rows.length(), 136)
+  // 役35 35-B1：+10 带 action 的行（`kw_begin` 1 + `declare_keyword` 3 + `KeywordX`
+  // 词位 6；`ExpectKeywordsList+Dot` 无 action 故不入快照）⇒ 136 → 146
+  assert_eq(rows.length(), 146)
   let (compared, incomparable, unreachable_rows, mismatches) = data_face_compare(
     rows,
   )

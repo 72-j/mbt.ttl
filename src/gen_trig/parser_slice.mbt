@@ -60,7 +60,7 @@ fn[L] TrigSliceParser::line_before(
 
 ///|
 /// PrefName 存在性检查：prefix 必须在声明账本中（从尾向前扫 = 后声明覆盖）。
-/// "no colon" 的裸词在此拒绝（裸词不是合法词项）。
+/// "no colon" 的裸词**不在本层拒绝**（役35 35-B1 改口径，见下方注释）。
 fn prefix_declared(
   data : ArrayView[Byte],
   prefixes : Array[(Span, Span)],
@@ -76,7 +76,12 @@ fn prefix_declared(
     }
   }
   if colon < 0 {
-    return false
+    // 役35 **35-B1**（R-T13/C-T13）：**无冒号裸词在组装层不再二次裁决**。
+    // 词性/合法性已由转移表裁定（listed ⇒ `KeywordX` 词位行；未列 ⇒ 表上无行 ⇒
+    // 引擎先拒 ⇒ 到不了这里）；本层只认"裸名 = **空前缀本地名**"（§AS.8 ⑤"照
+    // `PrefName` 径"的兜底）。默认（空）前缀**未声明**时，物化层按"未声明前缀"
+    // 错误面报（`expand_prefname` 的 `Ok(None)` 径——§AS.4 钉 2 注同口径）。
+    return true
   }
   let mut j = prefixes.length() - 1
   while j >= 0 {
