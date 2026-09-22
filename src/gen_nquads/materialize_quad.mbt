@@ -21,10 +21,15 @@ fn materialize_quad(quad : QuadSpan) -> Result[QuadEmit, ParseError] {
   }
   let graph = match quad.graph {
     // 首字节探测（与 subj/obj 同一规则：`_`→BNode，否则 Iri）
-    Some(g) => if g[0] == b'_' { GraphName::BNode(g) } else { GraphName::Iri(g) }
+    Some(g) =>
+      if g[0] == b'_' {
+        GraphName::BNode(g)
+      } else {
+        GraphName::Iri(g)
+      }
     None => GraphName::None
   }
-  Ok({ subject, predicate: quad.pred, object, graph })
+  Ok({ subject, predicate: quad.pred, object, graph, })
 }
 
 ///|

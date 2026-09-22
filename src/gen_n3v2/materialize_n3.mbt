@@ -624,9 +624,7 @@ pub fn N3Materializer::materialize_quad(
   // 恒指 `(` 原文位；事故零长 span 报错口径与 s/o 一致）
   // pk≠Normal 的合成谓词（KwA/RDFFirst/RDFRest/SameAs）p span 恒零长占位，
   // 语义由 pk 臂出账——不适用 nil 门（役34 手术首版误拦全量 `a` 谓词，实证收窄）
-  if quad.pk is PredKind::Normal &&
-    quad.p.1 == 0 &&
-    self.data[quad.p.0] != b'(' {
+  if quad.pk is PredKind::Normal && quad.p.1 == 0 && self.data[quad.p.0] != b'(' {
     return Err(
       ParseError::ValidationErr(
         "Zero-length predicate span is not a valid nil marker",

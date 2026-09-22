@@ -114,7 +114,9 @@ async test "P2 逐层剖析: 引擎分层计时（A 全链 / F 适配净 / E FSM
     let _ = sink
   }
 
-  println("=== P2 引擎逐层剖析（10k 全 IRI 语料 / native release / 3 次取均值）===")
+  println(
+    "=== P2 引擎逐层剖析（10k 全 IRI 语料 / native release / 3 次取均值）===",
+  )
   println(
     "A 引擎全链:   \{a_elapsed[0]} / \{a_elapsed[1]} / \{a_elapsed[2]} µs",
   )

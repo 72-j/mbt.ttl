@@ -6,6 +6,7 @@
 // ========================================
 // model_execute 是规格（specification），不是被测实现：
 // 臂结构与 [[transitions]] 一一对应；纯模型与真实执行器语义漂移由属性测试双执行比较兜底
+
 ///|
 /// 从槽位取**快照**载荷（快照档：槽位可空，照抄模型槽位；与引擎发射边界同口径）
 fn take_quad(model : Model) -> Quad {
@@ -16,6 +17,7 @@ fn take_quad(model : Model) -> Quad {
     graph: model.graph,
   }
 }
+
 ///|
 /// 纯模型执行: (Model, Command) -> (Model, Response)
 /// 兜底 (_, _) => Error(0) 为非法转移
@@ -23,103 +25,356 @@ fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
   match (model.state, cmd) {
     // --- ExpectSubject ---
     // @arm ExpectSubject+Iri
-    (ExpectSubject, Iri(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectSubject, Iri(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+BlankNode
-    (ExpectSubject, BlankNode(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectSubject, BlankNode(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+PrefName
-    (ExpectSubject, PrefName(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectSubject, PrefName(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+At
-    (ExpectSubject, At) => ({ ..model, state: ExpectDirectiveKind, directive_at: true,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectSubject, At) =>
+      ({ ..model, state: ExpectDirectiveKind, directive_at: true, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectSubject+PrefixKw
-    (ExpectSubject, PrefixKw) => ({ ..model, state: ExpectPrefixName, directive_at: false,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectSubject, PrefixKw) =>
+      ({ ..model, state: ExpectPrefixName, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectSubject+BaseKw
-    (ExpectSubject, BaseKw) => ({ ..model, state: ExpectBaseIri, directive_at: false,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectSubject, BaseKw) =>
+      ({ ..model, state: ExpectBaseIri, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectSubject+VersionKw
-    (ExpectSubject, VersionKw) => ({ ..model, state: ExpectVersionLiteral, directive_at: false,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectSubject, VersionKw) =>
+      ({ ..model, state: ExpectVersionLiteral, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectSubject+TripleTerm
-    (ExpectSubject, TripleTerm(r)) => (set_subject(model, r, ExpectVerbOrDot), Continue)
+    (ExpectSubject, TripleTerm(r)) =>
+      (set_subject(model, r, ExpectVerbOrDot), Continue)
     // @arm ExpectSubject+Literal
-    (ExpectSubject, Literal(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectSubject, Literal(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+Lbracket
-    (ExpectSubject, Lbracket(r)) => (frame_push(model, r, ExpectVerbOrDot, true, BnpExpectPredicate, false, false), Continue)
+    (ExpectSubject, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectVerbOrDot,
+          true,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm ExpectSubject+Anon
-    (ExpectSubject, Anon(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectSubject, Anon(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+Lparen
-    (ExpectSubject, Lparen(r)) => (frame_push(model, r, ExpectVerbRequired, true, ListExpectElemOrEnd, false, false), Continue)
+    (ExpectSubject, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectVerbRequired,
+          true,
+          ListExpectElemOrEnd,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm ExpectSubject+Variable
-    (ExpectSubject, Variable(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectSubject, Variable(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+KeywordX
-    (ExpectSubject, KeywordX(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectSubject, KeywordX(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectSubject+Lbrace
-    (ExpectSubject, Lbrace(r)) => (frame_push(model, r, ExpectVerbRequired, true, FormulaExpectSubject, true, false), Continue)
+    (ExpectSubject, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectVerbRequired,
+          true,
+          FormulaExpectSubject,
+          true,
+          false,
+        ),
+        Continue,
+      )
     // --- ExpectPredicate ---
     // @arm ExpectPredicate+Iri
-    (ExpectPredicate, Iri(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, Iri(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+PrefName
-    (ExpectPredicate, PrefName(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, PrefName(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+KeywordA
-    (ExpectPredicate, KeywordA(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+KeywordX
-    (ExpectPredicate, KeywordX(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, KeywordX(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+Is
-    (ExpectPredicate, Is) => ({ ..model, state: ExpectIsProp }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectPredicate, Is) => ({ ..model, state: ExpectIsProp, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectPredicate+Has
     (ExpectPredicate, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectPredicate+Invert
-    (ExpectPredicate, Invert) => ({ ..model, state: ExpectPredicate, is_src: model.subject, is_depth: model.frames.length(),  }, Continue)
+    (ExpectPredicate, Invert) =>
+      (
+        {
+          ..model,
+          state: ExpectPredicate,
+          is_src: model.subject,
+          is_depth: model.frames.length(),
+        },
+        Continue,
+      )
     // @arm ExpectPredicate+Equals
-    (ExpectPredicate, Equals(r)) => ({ ..model, state: ExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (ExpectPredicate, Equals(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm ExpectPredicate+Literal
-    (ExpectPredicate, Literal(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, Literal(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+Variable
-    (ExpectPredicate, Variable(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, Variable(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+Anon
-    (ExpectPredicate, Anon(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, Anon(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+Implies
-    (ExpectPredicate, Implies(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, Implies(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+ImpliedBy
-    (ExpectPredicate, ImpliedBy(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectPredicate, ImpliedBy(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectPredicate+Dot
-    (ExpectPredicate, Dot) => ({ ..model, state: ExpectSubject, subject: None, predicate: None, object: None,  }, Continue)
+    (ExpectPredicate, Dot) =>
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+        },
+        Continue,
+      )
     // @arm ExpectPredicate+Lbrace
-    (ExpectPredicate, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true, true), Continue)
+    (ExpectPredicate, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          FormulaExpectSubject,
+          true,
+          true,
+        ),
+        Continue,
+      )
     // @arm ExpectPredicate+Lbracket
-    (ExpectPredicate, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false, true), Continue)
+    (ExpectPredicate, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          BnpExpectPredicate,
+          false,
+          true,
+        ),
+        Continue,
+      )
     // @arm ExpectPredicate+Lparen
-    (ExpectPredicate, Lparen(r)) => (frame_push(model, r, ExpectObject, false, ListExpectElemOrEnd, false, true), Continue)
+    (ExpectPredicate, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          true,
+        ),
+        Continue,
+      )
     // @arm ExpectPredicate+Bang
-    (ExpectPredicate, Bang(r)) => ({ ..model, state: SubjTrailExpectVerb, path_src: model.subject, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: true,  }, Continue)
+    (ExpectPredicate, Bang(r)) =>
+      (
+        {
+          ..model,
+          state: SubjTrailExpectVerb,
+          path_src: model.subject,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          path_fwd: true,
+        },
+        Continue,
+      )
     // @arm ExpectPredicate+Caret
-    (ExpectPredicate, Caret(r)) => ({ ..model, state: SubjTrailExpectVerb, path_src: model.subject, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: false,  }, Continue)
+    (ExpectPredicate, Caret(r)) =>
+      (
+        {
+          ..model,
+          state: SubjTrailExpectVerb,
+          path_src: model.subject,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          path_fwd: false,
+        },
+        Continue,
+      )
     // --- ExpectObject ---
     // @arm ExpectObject+Iri
     (ExpectObject, Iri(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+BlankNode
-    (ExpectObject, BlankNode(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, BlankNode(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+Literal
-    (ExpectObject, Literal(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, Literal(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+PrefName
-    (ExpectObject, PrefName(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, PrefName(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+TripleTerm
-    (ExpectObject, TripleTerm(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, TripleTerm(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+BracketTripleTerm
-    (ExpectObject, BracketTripleTerm(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, BracketTripleTerm(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+Anon
-    (ExpectObject, Anon(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, Anon(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+Lbracket
-    (ExpectObject, Lbracket(r)) => (frame_push(model, r, ExpectDotOrGraph, false, BnpExpectPredicate, false, false), Continue)
+    (ExpectObject, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectDotOrGraph,
+          false,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm ExpectObject+Lparen
-    (ExpectObject, Lparen(r)) => (frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd, false, false), Continue)
+    (ExpectObject, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectDotOrGraph,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm ExpectObject+Variable
-    (ExpectObject, Variable(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, Variable(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+KeywordX
-    (ExpectObject, KeywordX(r)) => (set_object(model, r, ExpectDotOrGraph), Continue)
+    (ExpectObject, KeywordX(r)) =>
+      (set_object(model, r, ExpectDotOrGraph), Continue)
     // @arm ExpectObject+Bang
-    (ExpectObject, Bang(r)) => if model.predicate is Some(_) { emit_spo({ ..model, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: match ref_id(r) { Some(id) => Some(id); None => model.path_src }, path_pend: None, path_fwd: true,  }, PathExpectVerb) } else { ({ ..model, state: PathExpectVerb, path_pend: None, path_src: model.subject, path_fwd: true,  }, Continue) }
+    (ExpectObject, Bang(r)) =>
+      if model.predicate is Some(_) {
+        emit_spo(
+          {
+            ..model,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_src: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_src
+            },
+            path_pend: None,
+            path_fwd: true,
+          },
+          PathExpectVerb,
+        )
+      } else {
+        (
+          {
+            ..model,
+            state: PathExpectVerb,
+            path_pend: None,
+            path_src: model.subject,
+            path_fwd: true,
+          },
+          Continue,
+        )
+      }
     // @arm ExpectObject+Caret
-    (ExpectObject, Caret(r)) => if model.predicate is Some(_) { emit_spo({ ..model, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: match ref_id(r) { Some(id) => Some(id); None => model.path_src }, path_pend: None, path_fwd: false,  }, PathExpectVerb) } else { ({ ..model, state: PathExpectVerb, path_pend: None, path_src: model.subject, path_fwd: false,  }, Continue) }
+    (ExpectObject, Caret(r)) =>
+      if model.predicate is Some(_) {
+        emit_spo(
+          {
+            ..model,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_src: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_src
+            },
+            path_pend: None,
+            path_fwd: false,
+          },
+          PathExpectVerb,
+        )
+      } else {
+        (
+          {
+            ..model,
+            state: PathExpectVerb,
+            path_pend: None,
+            path_src: model.subject,
+            path_fwd: false,
+          },
+          Continue,
+        )
+      }
     // @arm ExpectObject+Lbrace
-    (ExpectObject, Lbrace(r)) => (frame_push(model, r, ExpectDotOrGraph, false, FormulaExpectSubject, true, false), Continue)
+    (ExpectObject, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectDotOrGraph,
+          false,
+          FormulaExpectSubject,
+          true,
+          false,
+        ),
+        Continue,
+      )
     // --- ExpectDotOrGraph ---
     // @arm ExpectDotOrGraph+Comma
     (ExpectDotOrGraph, Comma) => emit_object(model, ExpectObject)
@@ -128,170 +383,504 @@ fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectDotOrGraph+Dot
     (ExpectDotOrGraph, Dot) => emit_spo(model, ExpectSubject)
     // @arm ExpectDotOrGraph+Tilde
-    (ExpectDotOrGraph, Tilde) => ({ ..model, state: ExpectTildeEnd }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDotOrGraph, Tilde) => ({ ..model, state: ExpectTildeEnd, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDotOrGraph+AnnotStart
     (ExpectDotOrGraph, AnnotStart) => emit_predobj(model, AnnotExpectVerb)
     // @arm ExpectDotOrGraph+Bang
-    (ExpectDotOrGraph, Bang(r)) => ({ ..frame_push(model, r, ObjTrailExpectVerb, false, ObjTrailExpectVerb, false, false), object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: model.object, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, subject: model.subject, predicate: model.predicate, path_fwd: true,  }, Continue)
+    (ExpectDotOrGraph, Bang(r)) =>
+      (
+        {
+          ..frame_push(
+            model,
+            r,
+            ObjTrailExpectVerb,
+            false,
+            ObjTrailExpectVerb,
+            false,
+            false,
+          ),
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_src: model.object,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          subject: model.subject,
+          predicate: model.predicate,
+          path_fwd: true,
+        },
+        Continue,
+      )
     // @arm ExpectDotOrGraph+Caret
-    (ExpectDotOrGraph, Caret(r)) => ({ ..frame_push(model, r, ObjTrailExpectVerb, false, ObjTrailExpectVerb, false, false), object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: model.object, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, subject: model.subject, predicate: model.predicate, path_fwd: false,  }, Continue)
+    (ExpectDotOrGraph, Caret(r)) =>
+      (
+        {
+          ..frame_push(
+            model,
+            r,
+            ObjTrailExpectVerb,
+            false,
+            ObjTrailExpectVerb,
+            false,
+            false,
+          ),
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_src: model.object,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          subject: model.subject,
+          predicate: model.predicate,
+          path_fwd: false,
+        },
+        Continue,
+      )
     // --- ExpectVerbOrEnd ---
     // @arm ExpectVerbOrEnd+Iri
-    (ExpectVerbOrEnd, Iri(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, Iri(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+PrefName
-    (ExpectVerbOrEnd, PrefName(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, PrefName(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+KeywordA
-    (ExpectVerbOrEnd, KeywordA(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+KeywordX
-    (ExpectVerbOrEnd, KeywordX(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, KeywordX(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+Semicolon
     (ExpectVerbOrEnd, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectVerbOrEnd+Dot
-    (ExpectVerbOrEnd, Dot) => ({ ..model, state: ExpectSubject, subject: None, predicate: None, object: None,  }, Continue)
+    (ExpectVerbOrEnd, Dot) =>
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+        },
+        Continue,
+      )
     // @arm ExpectVerbOrEnd+Is
-    (ExpectVerbOrEnd, Is) => ({ ..model, state: ExpectIsProp }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectVerbOrEnd, Is) => ({ ..model, state: ExpectIsProp, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectVerbOrEnd+Has
     (ExpectVerbOrEnd, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectVerbOrEnd+Equals
-    (ExpectVerbOrEnd, Equals(r)) => ({ ..model, state: ExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (ExpectVerbOrEnd, Equals(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm ExpectVerbOrEnd+Literal
-    (ExpectVerbOrEnd, Literal(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, Literal(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+Variable
-    (ExpectVerbOrEnd, Variable(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, Variable(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+Anon
-    (ExpectVerbOrEnd, Anon(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, Anon(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+Implies
-    (ExpectVerbOrEnd, Implies(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, Implies(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+ImpliedBy
-    (ExpectVerbOrEnd, ImpliedBy(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrEnd, ImpliedBy(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrEnd+Lbrace
-    (ExpectVerbOrEnd, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true, true), Continue)
+    (ExpectVerbOrEnd, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          FormulaExpectSubject,
+          true,
+          true,
+        ),
+        Continue,
+      )
     // @arm ExpectVerbOrEnd+Lbracket
-    (ExpectVerbOrEnd, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false, true), Continue)
+    (ExpectVerbOrEnd, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          BnpExpectPredicate,
+          false,
+          true,
+        ),
+        Continue,
+      )
     // @arm ExpectVerbOrEnd+Lparen
-    (ExpectVerbOrEnd, Lparen(r)) => (frame_push(model, r, ExpectObject, false, ListExpectElemOrEnd, false, true), Continue)
+    (ExpectVerbOrEnd, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          true,
+        ),
+        Continue,
+      )
     // --- ExpectVerbRequired ---
     // @arm ExpectVerbRequired+Iri
-    (ExpectVerbRequired, Iri(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, Iri(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbRequired+PrefName
-    (ExpectVerbRequired, PrefName(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, PrefName(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbRequired+KeywordA
-    (ExpectVerbRequired, KeywordA(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbRequired+KeywordX
-    (ExpectVerbRequired, KeywordX(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, KeywordX(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbRequired+Is
-    (ExpectVerbRequired, Is) => ({ ..model, state: ExpectIsProp }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectVerbRequired, Is) => ({ ..model, state: ExpectIsProp, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectVerbRequired+Has
     (ExpectVerbRequired, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectVerbRequired+Equals
-    (ExpectVerbRequired, Equals(r)) => ({ ..model, state: ExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (ExpectVerbRequired, Equals(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm ExpectVerbRequired+Literal
-    (ExpectVerbRequired, Literal(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, Literal(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbRequired+Variable
-    (ExpectVerbRequired, Variable(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, Variable(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbRequired+Anon
-    (ExpectVerbRequired, Anon(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, Anon(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbRequired+Dot
-    (ExpectVerbRequired, Dot) => ({ ..model, state: ExpectSubject, subject: None, predicate: None, object: None,  }, Continue)
+    (ExpectVerbRequired, Dot) =>
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+        },
+        Continue,
+      )
     // @arm ExpectVerbRequired+Lbrace
-    (ExpectVerbRequired, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true, true), Continue)
+    (ExpectVerbRequired, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          FormulaExpectSubject,
+          true,
+          true,
+        ),
+        Continue,
+      )
     // @arm ExpectVerbRequired+Lbracket
-    (ExpectVerbRequired, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false, true), Continue)
+    (ExpectVerbRequired, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          BnpExpectPredicate,
+          false,
+          true,
+        ),
+        Continue,
+      )
     // @arm ExpectVerbRequired+Lparen
-    (ExpectVerbRequired, Lparen(r)) => (frame_push(model, r, ExpectObject, false, ListExpectElemOrEnd, false, true), Continue)
+    (ExpectVerbRequired, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          true,
+        ),
+        Continue,
+      )
     // @arm ExpectVerbRequired+Bang
-    (ExpectVerbRequired, Bang(r)) => ({ ..model, state: SubjTrailExpectVerb, path_src: model.subject, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: true,  }, Continue)
+    (ExpectVerbRequired, Bang(r)) =>
+      (
+        {
+          ..model,
+          state: SubjTrailExpectVerb,
+          path_src: model.subject,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          path_fwd: true,
+        },
+        Continue,
+      )
     // @arm ExpectVerbRequired+Caret
-    (ExpectVerbRequired, Caret(r)) => ({ ..model, state: SubjTrailExpectVerb, path_src: model.subject, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: false,  }, Continue)
+    (ExpectVerbRequired, Caret(r)) =>
+      (
+        {
+          ..model,
+          state: SubjTrailExpectVerb,
+          path_src: model.subject,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          path_fwd: false,
+        },
+        Continue,
+      )
     // @arm ExpectVerbRequired+Implies
-    (ExpectVerbRequired, Implies(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, Implies(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbRequired+ImpliedBy
-    (ExpectVerbRequired, ImpliedBy(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbRequired, ImpliedBy(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // --- ExpectVerbOrDot ---
     // @arm ExpectVerbOrDot+Iri
-    (ExpectVerbOrDot, Iri(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, Iri(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+PrefName
-    (ExpectVerbOrDot, PrefName(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, PrefName(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+KeywordA
-    (ExpectVerbOrDot, KeywordA(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+KeywordX
-    (ExpectVerbOrDot, KeywordX(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, KeywordX(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+Dot
     (ExpectVerbOrDot, Dot) => emit_spo(model, ExpectSubject)
     // @arm ExpectVerbOrDot+Is
-    (ExpectVerbOrDot, Is) => ({ ..model, state: ExpectIsProp }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectVerbOrDot, Is) => ({ ..model, state: ExpectIsProp, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectVerbOrDot+Has
     (ExpectVerbOrDot, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectVerbOrDot+Equals
-    (ExpectVerbOrDot, Equals(r)) => ({ ..model, state: ExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (ExpectVerbOrDot, Equals(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm ExpectVerbOrDot+Literal
-    (ExpectVerbOrDot, Literal(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, Literal(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+Variable
-    (ExpectVerbOrDot, Variable(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, Variable(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+Anon
-    (ExpectVerbOrDot, Anon(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, Anon(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+Implies
-    (ExpectVerbOrDot, Implies(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, Implies(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+ImpliedBy
-    (ExpectVerbOrDot, ImpliedBy(r)) => (set_predicate(model, r, ExpectObject), Continue)
+    (ExpectVerbOrDot, ImpliedBy(r)) =>
+      (set_predicate(model, r, ExpectObject), Continue)
     // @arm ExpectVerbOrDot+Lbrace
-    (ExpectVerbOrDot, Lbrace(r)) => (frame_push(model, r, ExpectObject, false, FormulaExpectSubject, true, true), Continue)
+    (ExpectVerbOrDot, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          FormulaExpectSubject,
+          true,
+          true,
+        ),
+        Continue,
+      )
     // @arm ExpectVerbOrDot+Lbracket
-    (ExpectVerbOrDot, Lbracket(r)) => (frame_push(model, r, ExpectObject, false, BnpExpectPredicate, false, true), Continue)
+    (ExpectVerbOrDot, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          BnpExpectPredicate,
+          false,
+          true,
+        ),
+        Continue,
+      )
     // @arm ExpectVerbOrDot+Lparen
-    (ExpectVerbOrDot, Lparen(r)) => (frame_push(model, r, ExpectObject, false, ListExpectElemOrEnd, false, true), Continue)
+    (ExpectVerbOrDot, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectObject,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          true,
+        ),
+        Continue,
+      )
     // --- ExpectDirectiveKind ---
     // @arm ExpectDirectiveKind+PrefixKw
-    (ExpectDirectiveKind, PrefixKw) => ({ ..model, state: ExpectPrefixName }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveKind, PrefixKw) =>
+      ({ ..model, state: ExpectPrefixName, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDirectiveKind+BaseKw
-    (ExpectDirectiveKind, BaseKw) => ({ ..model, state: ExpectBaseIri }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveKind, BaseKw) =>
+      ({ ..model, state: ExpectBaseIri, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDirectiveKind+VersionKw
-    (ExpectDirectiveKind, VersionKw) => ({ ..model, state: ExpectVersionLiteral }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveKind, VersionKw) =>
+      ({ ..model, state: ExpectVersionLiteral, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDirectiveKind+KeywordsKw
-    (ExpectDirectiveKind, KeywordsKw) => ({ ..model, state: ExpectKeywordsList }, Continue)
+    (ExpectDirectiveKind, KeywordsKw) =>
+      ({ ..model, state: ExpectKeywordsList, }, Continue)
     // @arm ExpectDirectiveKind+ForAllKw
-    (ExpectDirectiveKind, ForAllKw) => ({ ..model, state: QuantExpectVar }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveKind, ForAllKw) =>
+      ({ ..model, state: QuantExpectVar, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDirectiveKind+ForSomeKw
-    (ExpectDirectiveKind, ForSomeKw) => ({ ..model, state: QuantExpectVar }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveKind, ForSomeKw) =>
+      ({ ..model, state: QuantExpectVar, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- ExpectPrefixName ---
     // @arm ExpectPrefixName+PrefName
-    (ExpectPrefixName, PrefName(_)) => ({ ..model, state: ExpectPrefixIri }, Continue)
+    (ExpectPrefixName, PrefName(_)) =>
+      ({ ..model, state: ExpectPrefixIri, }, Continue)
     // --- ExpectPrefixIri ---
     // @arm ExpectPrefixIri+Iri
-    (ExpectPrefixIri, Iri(_)) => ({ ..model, state: ExpectDirectiveEnd }, Continue)
+    (ExpectPrefixIri, Iri(_)) =>
+      ({ ..model, state: ExpectDirectiveEnd, }, Continue)
     // --- ExpectBaseIri ---
     // @arm ExpectBaseIri+Iri
-    (ExpectBaseIri, Iri(_)) => ({ ..model, state: ExpectDirectiveEnd }, Continue)
+    (ExpectBaseIri, Iri(_)) =>
+      ({ ..model, state: ExpectDirectiveEnd, }, Continue)
     // --- ExpectVersionLiteral ---
     // @arm ExpectVersionLiteral+Literal
-    (ExpectVersionLiteral, Literal(_)) => if model.version_lit_ok { ({ ..model, state: ExpectDirectiveEnd }, Continue) } else { (model, Error(0)) } // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectVersionLiteral, Literal(_)) =>
+      if model.version_lit_ok {
+        ({ ..model, state: ExpectDirectiveEnd, }, Continue)
+      } else {
+        (model, Error(0))
+      } // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- ExpectDirectiveEnd ---
     // @arm ExpectDirectiveEnd+Dot
-    (ExpectDirectiveEnd, Dot) => if model.directive_at { ({ ..model, state: ExpectSubject }, Continue) } else { (model, Error(0)) } // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveEnd, Dot) =>
+      if model.directive_at {
+        ({ ..model, state: ExpectSubject, }, Continue)
+      } else {
+        (model, Error(0))
+      } // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDirectiveEnd+Iri
-    (ExpectDirectiveEnd, Iri(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectDirectiveEnd, Iri(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectDirectiveEnd+BlankNode
-    (ExpectDirectiveEnd, BlankNode(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectDirectiveEnd, BlankNode(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectDirectiveEnd+PrefName
-    (ExpectDirectiveEnd, PrefName(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectDirectiveEnd, PrefName(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectDirectiveEnd+At
-    (ExpectDirectiveEnd, At) => ({ ..model, state: ExpectDirectiveKind, directive_at: true,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveEnd, At) =>
+      ({ ..model, state: ExpectDirectiveKind, directive_at: true, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDirectiveEnd+PrefixKw
-    (ExpectDirectiveEnd, PrefixKw) => ({ ..model, state: ExpectPrefixName, directive_at: false,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveEnd, PrefixKw) =>
+      ({ ..model, state: ExpectPrefixName, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDirectiveEnd+BaseKw
-    (ExpectDirectiveEnd, BaseKw) => ({ ..model, state: ExpectBaseIri, directive_at: false,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveEnd, BaseKw) =>
+      ({ ..model, state: ExpectBaseIri, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDirectiveEnd+VersionKw
-    (ExpectDirectiveEnd, VersionKw) => ({ ..model, state: ExpectVersionLiteral, directive_at: false,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectDirectiveEnd, VersionKw) =>
+      ({ ..model, state: ExpectVersionLiteral, directive_at: false, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDirectiveEnd+Lbracket
-    (ExpectDirectiveEnd, Lbracket(r)) => (frame_push(model, r, ExpectVerbOrDot, true, BnpExpectPredicate, false, false), Continue)
+    (ExpectDirectiveEnd, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectVerbOrDot,
+          true,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm ExpectDirectiveEnd+Anon
-    (ExpectDirectiveEnd, Anon(r)) => (set_subject(model, r, ExpectPredicate), Continue)
+    (ExpectDirectiveEnd, Anon(r)) =>
+      (set_subject(model, r, ExpectPredicate), Continue)
     // @arm ExpectDirectiveEnd+TripleTerm
-    (ExpectDirectiveEnd, TripleTerm(r)) => (set_subject(model, r, ExpectVerbOrDot), Continue)
+    (ExpectDirectiveEnd, TripleTerm(r)) =>
+      (set_subject(model, r, ExpectVerbOrDot), Continue)
     // @arm ExpectDirectiveEnd+Lparen
-    (ExpectDirectiveEnd, Lparen(r)) => (frame_push(model, r, ExpectVerbRequired, true, ListExpectElemOrEnd, false, false), Continue)
+    (ExpectDirectiveEnd, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectVerbRequired,
+          true,
+          ListExpectElemOrEnd,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm ExpectDirectiveEnd+Lbrace
-    (ExpectDirectiveEnd, Lbrace(r)) => (frame_push(model, r, ExpectVerbRequired, true, FormulaExpectSubject, true, false), Continue)
+    (ExpectDirectiveEnd, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectVerbRequired,
+          true,
+          FormulaExpectSubject,
+          true,
+          false,
+        ),
+        Continue,
+      )
     // --- ExpectKeywordsList ---
     // @arm ExpectKeywordsList+Unknown
     (ExpectKeywordsList, Unknown(_)) => (model, Continue)
@@ -302,216 +891,610 @@ fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectKeywordsList+Comma
     (ExpectKeywordsList, Comma) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectKeywordsList+Dot
-    (ExpectKeywordsList, Dot) => ({ ..model, state: ExpectSubject }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (ExpectKeywordsList, Dot) => ({ ..model, state: ExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- ExpectIsProp ---
     // @arm ExpectIsProp+Iri
     (ExpectIsProp, Iri(r)) => (set_predicate(model, r, ExpectIsOf), Continue)
     // @arm ExpectIsProp+PrefName
-    (ExpectIsProp, PrefName(r)) => (set_predicate(model, r, ExpectIsOf), Continue)
+    (ExpectIsProp, PrefName(r)) =>
+      (set_predicate(model, r, ExpectIsOf), Continue)
     // @arm ExpectIsProp+KeywordA
-    (ExpectIsProp, KeywordA(r)) => (set_predicate(model, r, ExpectIsOf), Continue)
+    (ExpectIsProp, KeywordA(r)) =>
+      (set_predicate(model, r, ExpectIsOf), Continue)
     // @arm ExpectIsProp+KeywordX
-    (ExpectIsProp, KeywordX(r)) => (set_predicate(model, r, ExpectIsOf), Continue)
+    (ExpectIsProp, KeywordX(r)) =>
+      (set_predicate(model, r, ExpectIsOf), Continue)
     // --- ExpectIsOf ---
     // @arm ExpectIsOf+Of
-    (ExpectIsOf, Of) => ({ ..model, state: ExpectObject, is_src: model.subject, is_depth: model.frames.length(),  }, Continue)
+    (ExpectIsOf, Of) =>
+      (
+        {
+          ..model,
+          state: ExpectObject,
+          is_src: model.subject,
+          is_depth: model.frames.length(),
+        },
+        Continue,
+      )
     // --- BnpExpectPredicate ---
     // @arm BnpExpectPredicate+Has
     (BnpExpectPredicate, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm BnpExpectPredicate+Id
-    (BnpExpectPredicate, Id) => ({ ..model, state: BnpExpectIdNode }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (BnpExpectPredicate, Id) => ({ ..model, state: BnpExpectIdNode, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm BnpExpectPredicate+Is
-    (BnpExpectPredicate, Is) => ({ ..model, state: BnpExpectIsProp }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (BnpExpectPredicate, Is) => ({ ..model, state: BnpExpectIsProp, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm BnpExpectPredicate+Equals
-    (BnpExpectPredicate, Equals(r)) => ({ ..model, state: BnpExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (BnpExpectPredicate, Equals(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm BnpExpectPredicate+Literal
-    (BnpExpectPredicate, Literal(r)) => (set_predicate(model, r, BnpExpectObject), Continue)
+    (BnpExpectPredicate, Literal(r)) =>
+      (set_predicate(model, r, BnpExpectObject), Continue)
     // @arm BnpExpectPredicate+Variable
-    (BnpExpectPredicate, Variable(r)) => (set_predicate(model, r, BnpExpectObject), Continue)
+    (BnpExpectPredicate, Variable(r)) =>
+      (set_predicate(model, r, BnpExpectObject), Continue)
     // @arm BnpExpectPredicate+Anon
-    (BnpExpectPredicate, Anon(r)) => (set_predicate(model, r, BnpExpectObject), Continue)
+    (BnpExpectPredicate, Anon(r)) =>
+      (set_predicate(model, r, BnpExpectObject), Continue)
     // @arm BnpExpectPredicate+Rbracket
     (BnpExpectPredicate, Rbracket) => (frame_pop(model), Continue)
     // @arm BnpExpectPredicate+Iri
-    (BnpExpectPredicate, Iri(r)) => (set_predicate(model, r, BnpExpectObject), Continue)
+    (BnpExpectPredicate, Iri(r)) =>
+      (set_predicate(model, r, BnpExpectObject), Continue)
     // @arm BnpExpectPredicate+PrefName
-    (BnpExpectPredicate, PrefName(r)) => (set_predicate(model, r, BnpExpectObject), Continue)
+    (BnpExpectPredicate, PrefName(r)) =>
+      (set_predicate(model, r, BnpExpectObject), Continue)
     // @arm BnpExpectPredicate+KeywordA
-    (BnpExpectPredicate, KeywordA(r)) => (set_predicate(model, r, BnpExpectObject), Continue)
+    (BnpExpectPredicate, KeywordA(r)) =>
+      (set_predicate(model, r, BnpExpectObject), Continue)
     // @arm BnpExpectPredicate+KeywordX
-    (BnpExpectPredicate, KeywordX(r)) => (set_predicate(model, r, BnpExpectObject), Continue)
+    (BnpExpectPredicate, KeywordX(r)) =>
+      (set_predicate(model, r, BnpExpectObject), Continue)
     // --- BnpExpectIdNode ---
     // @arm BnpExpectIdNode+PrefName
-    (BnpExpectIdNode, PrefName(r)) => ({ ..model, state: BnpExpectPredicate, subject: match ref_id(r) { Some(id) => Some(id); None => model.subject }, predicate: None, frames: { let fs = frames_top_set_id_subject(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }); if fs.length() > 0 && fs[fs.length() - 1].as_subject { frames_top_set_ret_state(fs, BnpIdAfterClose) } else { fs } },  }, Continue)
+    (BnpExpectIdNode, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: BnpExpectPredicate,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: None,
+          frames: {
+            let fs = frames_top_set_id_subject(
+              model.frames,
+              match ref_id(r) {
+                Some(id) => Some(id)
+                None => None
+              },
+            )
+            if fs.length() > 0 && fs[fs.length() - 1].as_subject {
+              frames_top_set_ret_state(fs, BnpIdAfterClose)
+            } else {
+              fs
+            }
+          },
+        },
+        Continue,
+      )
     // --- BnpIdAfterClose ---
     // @arm BnpIdAfterClose+Dot
-    (BnpIdAfterClose, Dot) => ({ ..model, state: ExpectSubject, subject: None, predicate: None, object: None,  }, Continue)
+    (BnpIdAfterClose, Dot) =>
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+        },
+        Continue,
+      )
     // --- FormulaExpectPredicate ---
     // @arm FormulaExpectPredicate+Has
     (FormulaExpectPredicate, Has) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm FormulaExpectPredicate+Is
-    (FormulaExpectPredicate, Is) => ({ ..model, state: FormulaExpectIsProp }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (FormulaExpectPredicate, Is) =>
+      ({ ..model, state: FormulaExpectIsProp, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm FormulaExpectPredicate+Invert
-    (FormulaExpectPredicate, Invert) => ({ ..model, state: FormulaExpectPredicate, is_src: model.subject, is_depth: model.frames.length(),  }, Continue)
+    (FormulaExpectPredicate, Invert) =>
+      (
+        {
+          ..model,
+          state: FormulaExpectPredicate,
+          is_src: model.subject,
+          is_depth: model.frames.length(),
+        },
+        Continue,
+      )
     // @arm FormulaExpectPredicate+Equals
-    (FormulaExpectPredicate, Equals(r)) => ({ ..model, state: FormulaExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (FormulaExpectPredicate, Equals(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm FormulaExpectPredicate+Literal
-    (FormulaExpectPredicate, Literal(r)) => (set_predicate(model, r, FormulaExpectObject), Continue)
+    (FormulaExpectPredicate, Literal(r)) =>
+      (set_predicate(model, r, FormulaExpectObject), Continue)
     // @arm FormulaExpectPredicate+Variable
-    (FormulaExpectPredicate, Variable(r)) => (set_predicate(model, r, FormulaExpectObject), Continue)
+    (FormulaExpectPredicate, Variable(r)) =>
+      (set_predicate(model, r, FormulaExpectObject), Continue)
     // @arm FormulaExpectPredicate+Anon
-    (FormulaExpectPredicate, Anon(r)) => (set_predicate(model, r, FormulaExpectObject), Continue)
+    (FormulaExpectPredicate, Anon(r)) =>
+      (set_predicate(model, r, FormulaExpectObject), Continue)
     // @arm FormulaExpectPredicate+Dot
-    (FormulaExpectPredicate, Dot) => ({ ..model, state: FormulaExpectSubject, subject: None, predicate: None, object: None,  }, Continue)
+    (FormulaExpectPredicate, Dot) =>
+      (
+        {
+          ..model,
+          state: FormulaExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+        },
+        Continue,
+      )
     // @arm FormulaExpectPredicate+Rbrace
     (FormulaExpectPredicate, Rbrace) => (frame_pop(model), Continue)
     // @arm FormulaExpectPredicate+Lbracket
-    (FormulaExpectPredicate, Lbracket(r)) => (frame_push(model, r, FormulaExpectObject, false, BnpExpectPredicate, false, true), Continue)
+    (FormulaExpectPredicate, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaExpectObject,
+          false,
+          BnpExpectPredicate,
+          false,
+          true,
+        ),
+        Continue,
+      )
     // @arm FormulaExpectPredicate+Lparen
-    (FormulaExpectPredicate, Lparen(r)) => (frame_push(model, r, FormulaExpectObject, false, ListExpectElemOrEnd, false, true), Continue)
+    (FormulaExpectPredicate, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaExpectObject,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          true,
+        ),
+        Continue,
+      )
     // @arm FormulaExpectPredicate+Bang
-    (FormulaExpectPredicate, Bang(r)) => ({ ..model, state: SubjTrailExpectVerbFormula, path_src: model.subject, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: true,  }, Continue)
+    (FormulaExpectPredicate, Bang(r)) =>
+      (
+        {
+          ..model,
+          state: SubjTrailExpectVerbFormula,
+          path_src: model.subject,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          path_fwd: true,
+        },
+        Continue,
+      )
     // @arm FormulaExpectPredicate+Caret
-    (FormulaExpectPredicate, Caret(r)) => ({ ..model, state: SubjTrailExpectVerbFormula, path_src: model.subject, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: false,  }, Continue)
+    (FormulaExpectPredicate, Caret(r)) =>
+      (
+        {
+          ..model,
+          state: SubjTrailExpectVerbFormula,
+          path_src: model.subject,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          path_fwd: false,
+        },
+        Continue,
+      )
     // @arm FormulaExpectPredicate+Implies
-    (FormulaExpectPredicate, Implies(r)) => (set_predicate(model, r, FormulaExpectObject), Continue)
+    (FormulaExpectPredicate, Implies(r)) =>
+      (set_predicate(model, r, FormulaExpectObject), Continue)
     // @arm FormulaExpectPredicate+ImpliedBy
-    (FormulaExpectPredicate, ImpliedBy(r)) => (set_predicate(model, r, FormulaExpectObject), Continue)
+    (FormulaExpectPredicate, ImpliedBy(r)) =>
+      (set_predicate(model, r, FormulaExpectObject), Continue)
     // @arm FormulaExpectPredicate+Iri
-    (FormulaExpectPredicate, Iri(r)) => (set_predicate(model, r, FormulaExpectObject), Continue)
+    (FormulaExpectPredicate, Iri(r)) =>
+      (set_predicate(model, r, FormulaExpectObject), Continue)
     // @arm FormulaExpectPredicate+PrefName
-    (FormulaExpectPredicate, PrefName(r)) => (set_predicate(model, r, FormulaExpectObject), Continue)
+    (FormulaExpectPredicate, PrefName(r)) =>
+      (set_predicate(model, r, FormulaExpectObject), Continue)
     // @arm FormulaExpectPredicate+KeywordA
-    (FormulaExpectPredicate, KeywordA(r)) => (set_predicate(model, r, FormulaExpectObject), Continue)
+    (FormulaExpectPredicate, KeywordA(r)) =>
+      (set_predicate(model, r, FormulaExpectObject), Continue)
     // @arm FormulaExpectPredicate+KeywordX
-    (FormulaExpectPredicate, KeywordX(r)) => (set_predicate(model, r, FormulaExpectObject), Continue)
+    (FormulaExpectPredicate, KeywordX(r)) =>
+      (set_predicate(model, r, FormulaExpectObject), Continue)
     // --- BnpExpectIsProp ---
     // @arm BnpExpectIsProp+Iri
-    (BnpExpectIsProp, Iri(r)) => (set_predicate(model, r, BnpExpectIsOf), Continue)
+    (BnpExpectIsProp, Iri(r)) =>
+      (set_predicate(model, r, BnpExpectIsOf), Continue)
     // @arm BnpExpectIsProp+PrefName
-    (BnpExpectIsProp, PrefName(r)) => (set_predicate(model, r, BnpExpectIsOf), Continue)
+    (BnpExpectIsProp, PrefName(r)) =>
+      (set_predicate(model, r, BnpExpectIsOf), Continue)
     // @arm BnpExpectIsProp+KeywordA
-    (BnpExpectIsProp, KeywordA(r)) => (set_predicate(model, r, BnpExpectIsOf), Continue)
+    (BnpExpectIsProp, KeywordA(r)) =>
+      (set_predicate(model, r, BnpExpectIsOf), Continue)
     // @arm BnpExpectIsProp+KeywordX
-    (BnpExpectIsProp, KeywordX(r)) => (set_predicate(model, r, BnpExpectIsOf), Continue)
+    (BnpExpectIsProp, KeywordX(r)) =>
+      (set_predicate(model, r, BnpExpectIsOf), Continue)
     // --- BnpExpectIsOf ---
     // @arm BnpExpectIsOf+Of
-    (BnpExpectIsOf, Of) => ({ ..model, state: BnpExpectObject, is_src: model.subject, is_depth: model.frames.length(),  }, Continue)
+    (BnpExpectIsOf, Of) =>
+      (
+        {
+          ..model,
+          state: BnpExpectObject,
+          is_src: model.subject,
+          is_depth: model.frames.length(),
+        },
+        Continue,
+      )
     // --- FormulaExpectIsProp ---
     // @arm FormulaExpectIsProp+Iri
-    (FormulaExpectIsProp, Iri(r)) => (set_predicate(model, r, FormulaExpectIsOf), Continue)
+    (FormulaExpectIsProp, Iri(r)) =>
+      (set_predicate(model, r, FormulaExpectIsOf), Continue)
     // @arm FormulaExpectIsProp+PrefName
-    (FormulaExpectIsProp, PrefName(r)) => (set_predicate(model, r, FormulaExpectIsOf), Continue)
+    (FormulaExpectIsProp, PrefName(r)) =>
+      (set_predicate(model, r, FormulaExpectIsOf), Continue)
     // @arm FormulaExpectIsProp+KeywordA
-    (FormulaExpectIsProp, KeywordA(r)) => (set_predicate(model, r, FormulaExpectIsOf), Continue)
+    (FormulaExpectIsProp, KeywordA(r)) =>
+      (set_predicate(model, r, FormulaExpectIsOf), Continue)
     // @arm FormulaExpectIsProp+KeywordX
-    (FormulaExpectIsProp, KeywordX(r)) => (set_predicate(model, r, FormulaExpectIsOf), Continue)
+    (FormulaExpectIsProp, KeywordX(r)) =>
+      (set_predicate(model, r, FormulaExpectIsOf), Continue)
     // --- FormulaExpectIsOf ---
     // @arm FormulaExpectIsOf+Of
-    (FormulaExpectIsOf, Of) => ({ ..model, state: FormulaExpectObject, is_src: model.subject, is_depth: model.frames.length(),  }, Continue)
+    (FormulaExpectIsOf, Of) =>
+      (
+        {
+          ..model,
+          state: FormulaExpectObject,
+          is_src: model.subject,
+          is_depth: model.frames.length(),
+        },
+        Continue,
+      )
     // --- FormulaExpectSubject ---
     // @arm FormulaExpectSubject+At
-    (FormulaExpectSubject, At) => ({ ..model, state: FormulaDirectiveKind, directive_at: true,  }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (FormulaExpectSubject, At) =>
+      ({ ..model, state: FormulaDirectiveKind, directive_at: true, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm FormulaExpectSubject+ForAllKw
-    (FormulaExpectSubject, ForAllKw) => ({ ..model, state: FormulaQuantExpectVar }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (FormulaExpectSubject, ForAllKw) =>
+      ({ ..model, state: FormulaQuantExpectVar, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm FormulaExpectSubject+ForSomeKw
-    (FormulaExpectSubject, ForSomeKw) => ({ ..model, state: FormulaQuantExpectVar }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (FormulaExpectSubject, ForSomeKw) =>
+      ({ ..model, state: FormulaQuantExpectVar, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm FormulaExpectSubject+Literal
-    (FormulaExpectSubject, Literal(r)) => (set_subject(model, r, FormulaExpectPredicate), Continue)
+    (FormulaExpectSubject, Literal(r)) =>
+      (set_subject(model, r, FormulaExpectPredicate), Continue)
     // @arm FormulaExpectSubject+Variable
-    (FormulaExpectSubject, Variable(r)) => (set_subject(model, r, FormulaExpectPredicate), Continue)
+    (FormulaExpectSubject, Variable(r)) =>
+      (set_subject(model, r, FormulaExpectPredicate), Continue)
     // @arm FormulaExpectSubject+KeywordX
-    (FormulaExpectSubject, KeywordX(r)) => (set_subject(model, r, FormulaExpectPredicate), Continue)
+    (FormulaExpectSubject, KeywordX(r)) =>
+      (set_subject(model, r, FormulaExpectPredicate), Continue)
     // @arm FormulaExpectSubject+Iri
-    (FormulaExpectSubject, Iri(r)) => (set_subject(model, r, FormulaExpectPredicate), Continue)
+    (FormulaExpectSubject, Iri(r)) =>
+      (set_subject(model, r, FormulaExpectPredicate), Continue)
     // @arm FormulaExpectSubject+BlankNode
-    (FormulaExpectSubject, BlankNode(r)) => (set_subject(model, r, FormulaExpectPredicate), Continue)
+    (FormulaExpectSubject, BlankNode(r)) =>
+      (set_subject(model, r, FormulaExpectPredicate), Continue)
     // @arm FormulaExpectSubject+PrefName
-    (FormulaExpectSubject, PrefName(r)) => (set_subject(model, r, FormulaExpectPredicate), Continue)
+    (FormulaExpectSubject, PrefName(r)) =>
+      (set_subject(model, r, FormulaExpectPredicate), Continue)
     // @arm FormulaExpectSubject+Anon
-    (FormulaExpectSubject, Anon(r)) => (set_subject(model, r, FormulaExpectPredicate), Continue)
+    (FormulaExpectSubject, Anon(r)) =>
+      (set_subject(model, r, FormulaExpectPredicate), Continue)
     // @arm FormulaExpectSubject+Lbracket
-    (FormulaExpectSubject, Lbracket(r)) => (frame_push(model, r, FormulaExpectPredicate, true, BnpExpectPredicate, false, false), Continue)
+    (FormulaExpectSubject, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaExpectPredicate,
+          true,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm FormulaExpectSubject+Lparen
-    (FormulaExpectSubject, Lparen(r)) => (frame_push(model, r, FormulaExpectPredicate, true, ListExpectElemOrEnd, false, false), Continue)
+    (FormulaExpectSubject, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaExpectPredicate,
+          true,
+          ListExpectElemOrEnd,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm FormulaExpectSubject+Lbrace
-    (FormulaExpectSubject, Lbrace(r)) => (frame_push(model, r, FormulaExpectPredicate, true, FormulaExpectSubject, true, false), Continue)
+    (FormulaExpectSubject, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaExpectPredicate,
+          true,
+          FormulaExpectSubject,
+          true,
+          false,
+        ),
+        Continue,
+      )
     // @arm FormulaExpectSubject+Rbrace
     (FormulaExpectSubject, Rbrace) => (frame_pop(model), Continue)
     // --- FormulaDirectiveKind ---
     // @arm FormulaDirectiveKind+ForAllKw
-    (FormulaDirectiveKind, ForAllKw) => ({ ..model, state: FormulaQuantExpectVar }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (FormulaDirectiveKind, ForAllKw) =>
+      ({ ..model, state: FormulaQuantExpectVar, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm FormulaDirectiveKind+ForSomeKw
-    (FormulaDirectiveKind, ForSomeKw) => ({ ..model, state: FormulaQuantExpectVar }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (FormulaDirectiveKind, ForSomeKw) =>
+      ({ ..model, state: FormulaQuantExpectVar, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- QuantExpectVar ---
     // @arm QuantExpectVar+PrefName
-    (QuantExpectVar, PrefName(_)) => ({ ..model, state: QuantExpectVarOrDot }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (QuantExpectVar, PrefName(_)) =>
+      ({ ..model, state: QuantExpectVarOrDot, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- QuantExpectVarOrDot ---
     // @arm QuantExpectVarOrDot+Comma
-    (QuantExpectVarOrDot, Comma) => ({ ..model, state: QuantExpectVar }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (QuantExpectVarOrDot, Comma) =>
+      ({ ..model, state: QuantExpectVar, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm QuantExpectVarOrDot+Dot
-    (QuantExpectVarOrDot, Dot) => ({ ..model, state: ExpectSubject }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (QuantExpectVarOrDot, Dot) => ({ ..model, state: ExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- FormulaQuantExpectVar ---
     // @arm FormulaQuantExpectVar+PrefName
-    (FormulaQuantExpectVar, PrefName(_)) => ({ ..model, state: FormulaQuantExpectVarOrDot }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (FormulaQuantExpectVar, PrefName(_)) =>
+      ({ ..model, state: FormulaQuantExpectVarOrDot, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- FormulaQuantExpectVarOrDot ---
     // @arm FormulaQuantExpectVarOrDot+Comma
-    (FormulaQuantExpectVarOrDot, Comma) => ({ ..model, state: FormulaQuantExpectVar }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (FormulaQuantExpectVarOrDot, Comma) =>
+      ({ ..model, state: FormulaQuantExpectVar, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm FormulaQuantExpectVarOrDot+Dot
-    (FormulaQuantExpectVarOrDot, Dot) => ({ ..model, state: FormulaExpectSubject }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (FormulaQuantExpectVarOrDot, Dot) =>
+      ({ ..model, state: FormulaExpectSubject, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- AnnotExpectVerb ---
     // @arm AnnotExpectVerb+Equals
-    (AnnotExpectVerb, Equals(r)) => ({ ..model, state: AnnotExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (AnnotExpectVerb, Equals(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm AnnotExpectVerb+Iri
-    (AnnotExpectVerb, Iri(r)) => ({ ..model, state: AnnotExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (AnnotExpectVerb, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm AnnotExpectVerb+PrefName
-    (AnnotExpectVerb, PrefName(r)) => ({ ..model, state: AnnotExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (AnnotExpectVerb, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm AnnotExpectVerb+KeywordA
-    (AnnotExpectVerb, KeywordA(r)) => ({ ..model, state: AnnotExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (AnnotExpectVerb, KeywordA(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm AnnotExpectVerb+KeywordX
-    (AnnotExpectVerb, KeywordX(r)) => ({ ..model, state: AnnotExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (AnnotExpectVerb, KeywordX(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm AnnotExpectVerb+Semicolon
-    (AnnotExpectVerb, Semicolon) => ({ ..model, state: AnnotExpectVerbTail }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    (AnnotExpectVerb, Semicolon) =>
+      ({ ..model, state: AnnotExpectVerbTail, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // --- AnnotExpectVerbTail ---
     // @arm AnnotExpectVerbTail+Equals
-    (AnnotExpectVerbTail, Equals(r)) => ({ ..model, state: AnnotExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (AnnotExpectVerbTail, Equals(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm AnnotExpectVerbTail+Iri
-    (AnnotExpectVerbTail, Iri(r)) => ({ ..model, state: AnnotExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (AnnotExpectVerbTail, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm AnnotExpectVerbTail+PrefName
-    (AnnotExpectVerbTail, PrefName(r)) => ({ ..model, state: AnnotExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (AnnotExpectVerbTail, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm AnnotExpectVerbTail+KeywordA
-    (AnnotExpectVerbTail, KeywordA(r)) => ({ ..model, state: AnnotExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (AnnotExpectVerbTail, KeywordA(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm AnnotExpectVerbTail+KeywordX
-    (AnnotExpectVerbTail, KeywordX(r)) => ({ ..model, state: AnnotExpectObject, predicate: match ref_id(r) { Some(id) => Some(id); None => model.predicate },  }, Continue)
+    (AnnotExpectVerbTail, KeywordX(r)) =>
+      (
+        {
+          ..model,
+          state: AnnotExpectObject,
+          predicate: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.predicate
+          },
+        },
+        Continue,
+      )
     // @arm AnnotExpectVerbTail+Semicolon
     (AnnotExpectVerbTail, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm AnnotExpectVerbTail+AnnotEnd
-    (AnnotExpectVerbTail, AnnotEnd) => ({ ..model, state: ExpectVerbOrEnd }, Continue)
+    (AnnotExpectVerbTail, AnnotEnd) =>
+      ({ ..model, state: ExpectVerbOrEnd, }, Continue)
     // --- BnpExpectObject ---
     // @arm BnpExpectObject+Anon
-    (BnpExpectObject, Anon(r)) => (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, Anon(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+Iri
-    (BnpExpectObject, Iri(r)) => (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, Iri(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+BlankNode
-    (BnpExpectObject, BlankNode(r)) => (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, BlankNode(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+Literal
-    (BnpExpectObject, Literal(r)) => (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, Literal(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+PrefName
-    (BnpExpectObject, PrefName(r)) => (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, PrefName(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+TripleTerm
-    (BnpExpectObject, TripleTerm(r)) => (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, TripleTerm(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+BracketTripleTerm
-    (BnpExpectObject, BracketTripleTerm(r)) => (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, BracketTripleTerm(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+Lbracket
-    (BnpExpectObject, Lbracket(r)) => (frame_push(model, r, BnpAfterObject, false, BnpExpectPredicate, false, false), Continue)
+    (BnpExpectObject, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          BnpAfterObject,
+          false,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm BnpExpectObject+Lparen
-    (BnpExpectObject, Lparen(r)) => (frame_push(model, r, BnpAfterObject, false, ListExpectElemOrEnd, false, false), Continue)
+    (BnpExpectObject, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          BnpAfterObject,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm BnpExpectObject+Variable
-    (BnpExpectObject, Variable(r)) => (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, Variable(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+KeywordX
-    (BnpExpectObject, KeywordX(r)) => (set_object(model, r, BnpAfterObject), Continue)
+    (BnpExpectObject, KeywordX(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+Lbrace
-    (BnpExpectObject, Lbrace(r)) => (frame_push(model, r, BnpAfterObject, false, FormulaExpectSubject, true, false), Continue)
+    (BnpExpectObject, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          BnpAfterObject,
+          false,
+          FormulaExpectSubject,
+          true,
+          false,
+        ),
+        Continue,
+      )
     // --- BnpAfterObject ---
     // @arm BnpAfterObject+Comma
     (BnpAfterObject, Comma) => emit_object(model, BnpExpectObject)
@@ -525,339 +1508,2931 @@ fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
     }
     // --- ListExpectElemOrEnd ---
     // @arm ListExpectElemOrEnd+Iri
-    (ListExpectElemOrEnd, Iri(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+BlankNode
-    (ListExpectElemOrEnd, BlankNode(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, BlankNode(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+Literal
-    (ListExpectElemOrEnd, Literal(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, Literal(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+PrefName
-    (ListExpectElemOrEnd, PrefName(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+TripleTerm
-    (ListExpectElemOrEnd, TripleTerm(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, TripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+BracketTripleTerm
-    (ListExpectElemOrEnd, BracketTripleTerm(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, BracketTripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+Anon
-    (ListExpectElemOrEnd, Anon(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, Anon(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+Lbracket
-    (ListExpectElemOrEnd, Lbracket(r)) => (frame_push({ ..model, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, r, ListAfterElem, false, BnpExpectPredicate, false, false), Continue)
+    (ListExpectElemOrEnd, Lbracket(r)) =>
+      (
+        frame_push(
+          {
+            ..model,
+            frames: frames_top_set_prev_node(
+              model.frames,
+              match ref_id(r) {
+                Some(id) => Some(id)
+                None => None
+              },
+            ),
+          },
+          r,
+          ListAfterElem,
+          false,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+Lparen
-    (ListExpectElemOrEnd, Lparen(r)) => (frame_push({ ..model, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, r, ListAfterElem, false, ListExpectElemOrEnd, false, false), Continue)
+    (ListExpectElemOrEnd, Lparen(r)) =>
+      (
+        frame_push(
+          {
+            ..model,
+            frames: frames_top_set_prev_node(
+              model.frames,
+              match ref_id(r) {
+                Some(id) => Some(id)
+                None => None
+              },
+            ),
+          },
+          r,
+          ListAfterElem,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+Rparen
     (ListExpectElemOrEnd, Rparen) => (frame_pop(model), Continue)
     // @arm ListExpectElemOrEnd+Variable
-    (ListExpectElemOrEnd, Variable(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, Variable(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+KeywordX
-    (ListExpectElemOrEnd, KeywordX(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListExpectElemOrEnd, KeywordX(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListExpectElemOrEnd+Lbrace
-    (ListExpectElemOrEnd, Lbrace(r)) => (frame_push({ ..model, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, r, ListAfterElem, false, FormulaExpectSubject, true, false), Continue)
+    (ListExpectElemOrEnd, Lbrace(r)) =>
+      (
+        frame_push(
+          {
+            ..model,
+            frames: frames_top_set_prev_node(
+              model.frames,
+              match ref_id(r) {
+                Some(id) => Some(id)
+                None => None
+              },
+            ),
+          },
+          r,
+          ListAfterElem,
+          false,
+          FormulaExpectSubject,
+          true,
+          false,
+        ),
+        Continue,
+      )
     // --- ListAfterElem ---
     // @arm ListAfterElem+Iri
-    (ListAfterElem, Iri(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListAfterElem+BlankNode
-    (ListAfterElem, BlankNode(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, BlankNode(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListAfterElem+Literal
-    (ListAfterElem, Literal(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, Literal(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListAfterElem+PrefName
-    (ListAfterElem, PrefName(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListAfterElem+TripleTerm
-    (ListAfterElem, TripleTerm(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, TripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListAfterElem+BracketTripleTerm
-    (ListAfterElem, BracketTripleTerm(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, BracketTripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListAfterElem+Lbracket
-    (ListAfterElem, Lbracket(r)) => (frame_push({ ..model, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, r, ListAfterElem, false, BnpExpectPredicate, false, false), Continue)
+    (ListAfterElem, Lbracket(r)) =>
+      (
+        frame_push(
+          {
+            ..model,
+            frames: frames_top_set_prev_node(
+              model.frames,
+              match ref_id(r) {
+                Some(id) => Some(id)
+                None => None
+              },
+            ),
+          },
+          r,
+          ListAfterElem,
+          false,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm ListAfterElem+Lparen
-    (ListAfterElem, Lparen(r)) => (frame_push({ ..model, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, r, ListAfterElem, false, ListExpectElemOrEnd, false, false), Continue)
+    (ListAfterElem, Lparen(r)) =>
+      (
+        frame_push(
+          {
+            ..model,
+            frames: frames_top_set_prev_node(
+              model.frames,
+              match ref_id(r) {
+                Some(id) => Some(id)
+                None => None
+              },
+            ),
+          },
+          r,
+          ListAfterElem,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm ListAfterElem+Rparen
     (ListAfterElem, Rparen) => (frame_pop(model), Continue)
     // @arm ListAfterElem+Variable
-    (ListAfterElem, Variable(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, Variable(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListAfterElem+KeywordX
-    (ListAfterElem, KeywordX(r)) => ({ ..model, state: ListAfterElem, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, Continue)
+    (ListAfterElem, KeywordX(r)) =>
+      (
+        {
+          ..model,
+          state: ListAfterElem,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        Continue,
+      )
     // @arm ListAfterElem+Bang
-    (ListAfterElem, Bang(r)) => ({ ..model, state: ListPathExpectVerb, path_src: frame_prev_node(model), path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }), path_fwd: true,  }, Continue)
+    (ListAfterElem, Bang(r)) =>
+      (
+        {
+          ..model,
+          state: ListPathExpectVerb,
+          path_src: frame_prev_node(model),
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+          path_fwd: true,
+        },
+        Continue,
+      )
     // @arm ListAfterElem+Caret
-    (ListAfterElem, Caret(r)) => ({ ..model, state: ListPathExpectVerb, path_src: frame_prev_node(model), path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }), path_fwd: false,  }, Continue)
+    (ListAfterElem, Caret(r)) =>
+      (
+        {
+          ..model,
+          state: ListPathExpectVerb,
+          path_src: frame_prev_node(model),
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+          path_fwd: false,
+        },
+        Continue,
+      )
     // @arm ListAfterElem+Lbrace
-    (ListAfterElem, Lbrace(r)) => (frame_push({ ..model, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, r, ListAfterElem, false, FormulaExpectSubject, true, false), Continue)
+    (ListAfterElem, Lbrace(r)) =>
+      (
+        frame_push(
+          {
+            ..model,
+            frames: frames_top_set_prev_node(
+              model.frames,
+              match ref_id(r) {
+                Some(id) => Some(id)
+                None => None
+              },
+            ),
+          },
+          r,
+          ListAfterElem,
+          false,
+          FormulaExpectSubject,
+          true,
+          false,
+        ),
+        Continue,
+      )
     // --- FormulaExpectObject ---
     // @arm FormulaExpectObject+Variable
-    (FormulaExpectObject, Variable(r)) => (set_object(model, r, FormulaAfterObject), Continue)
+    (FormulaExpectObject, Variable(r)) =>
+      (set_object(model, r, FormulaAfterObject), Continue)
     // @arm FormulaExpectObject+KeywordX
-    (FormulaExpectObject, KeywordX(r)) => (set_object(model, r, FormulaAfterObject), Continue)
+    (FormulaExpectObject, KeywordX(r)) =>
+      (set_object(model, r, FormulaAfterObject), Continue)
     // @arm FormulaExpectObject+Bang
-    (FormulaExpectObject, Bang(r)) => if model.predicate is Some(_) { emit_spo({ ..model, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: match ref_id(r) { Some(id) => Some(id); None => model.path_src }, path_pend: None, path_fwd: true,  }, FormulaPathExpectVerb) } else { ({ ..model, state: FormulaPathExpectVerb, path_pend: None, path_src: model.subject, path_fwd: true,  }, Continue) }
+    (FormulaExpectObject, Bang(r)) =>
+      if model.predicate is Some(_) {
+        emit_spo(
+          {
+            ..model,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_src: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_src
+            },
+            path_pend: None,
+            path_fwd: true,
+          },
+          FormulaPathExpectVerb,
+        )
+      } else {
+        (
+          {
+            ..model,
+            state: FormulaPathExpectVerb,
+            path_pend: None,
+            path_src: model.subject,
+            path_fwd: true,
+          },
+          Continue,
+        )
+      }
     // @arm FormulaExpectObject+Caret
-    (FormulaExpectObject, Caret(r)) => if model.predicate is Some(_) { emit_spo({ ..model, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_src: match ref_id(r) { Some(id) => Some(id); None => model.path_src }, path_pend: None, path_fwd: false,  }, FormulaPathExpectVerb) } else { ({ ..model, state: FormulaPathExpectVerb, path_pend: None, path_src: model.subject, path_fwd: false,  }, Continue) }
+    (FormulaExpectObject, Caret(r)) =>
+      if model.predicate is Some(_) {
+        emit_spo(
+          {
+            ..model,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_src: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_src
+            },
+            path_pend: None,
+            path_fwd: false,
+          },
+          FormulaPathExpectVerb,
+        )
+      } else {
+        (
+          {
+            ..model,
+            state: FormulaPathExpectVerb,
+            path_pend: None,
+            path_src: model.subject,
+            path_fwd: false,
+          },
+          Continue,
+        )
+      }
     // @arm FormulaExpectObject+Iri
-    (FormulaExpectObject, Iri(r)) => (set_object(model, r, FormulaAfterObject), Continue)
+    (FormulaExpectObject, Iri(r)) =>
+      (set_object(model, r, FormulaAfterObject), Continue)
     // @arm FormulaExpectObject+BlankNode
-    (FormulaExpectObject, BlankNode(r)) => (set_object(model, r, FormulaAfterObject), Continue)
+    (FormulaExpectObject, BlankNode(r)) =>
+      (set_object(model, r, FormulaAfterObject), Continue)
     // @arm FormulaExpectObject+Literal
-    (FormulaExpectObject, Literal(r)) => (set_object(model, r, FormulaAfterObject), Continue)
+    (FormulaExpectObject, Literal(r)) =>
+      (set_object(model, r, FormulaAfterObject), Continue)
     // @arm FormulaExpectObject+PrefName
-    (FormulaExpectObject, PrefName(r)) => (set_object(model, r, FormulaAfterObject), Continue)
+    (FormulaExpectObject, PrefName(r)) =>
+      (set_object(model, r, FormulaAfterObject), Continue)
     // @arm FormulaExpectObject+TripleTerm
-    (FormulaExpectObject, TripleTerm(r)) => (set_object(model, r, FormulaAfterObject), Continue)
+    (FormulaExpectObject, TripleTerm(r)) =>
+      (set_object(model, r, FormulaAfterObject), Continue)
     // @arm FormulaExpectObject+BracketTripleTerm
-    (FormulaExpectObject, BracketTripleTerm(r)) => (set_object(model, r, FormulaAfterObject), Continue)
+    (FormulaExpectObject, BracketTripleTerm(r)) =>
+      (set_object(model, r, FormulaAfterObject), Continue)
     // @arm FormulaExpectObject+Anon
-    (FormulaExpectObject, Anon(r)) => (set_object(model, r, FormulaAfterObject), Continue)
+    (FormulaExpectObject, Anon(r)) =>
+      (set_object(model, r, FormulaAfterObject), Continue)
     // @arm FormulaExpectObject+Lbracket
-    (FormulaExpectObject, Lbracket(r)) => (frame_push(model, r, FormulaAfterObject, false, BnpExpectPredicate, false, false), Continue)
+    (FormulaExpectObject, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaAfterObject,
+          false,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm FormulaExpectObject+Lparen
-    (FormulaExpectObject, Lparen(r)) => (frame_push(model, r, FormulaAfterObject, false, ListExpectElemOrEnd, false, false), Continue)
+    (FormulaExpectObject, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaAfterObject,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm FormulaExpectObject+Lbrace
-    (FormulaExpectObject, Lbrace(r)) => (frame_push(model, r, FormulaAfterObject, false, FormulaExpectSubject, true, false), Continue)
+    (FormulaExpectObject, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaAfterObject,
+          false,
+          FormulaExpectSubject,
+          true,
+          false,
+        ),
+        Continue,
+      )
     // --- AnnotExpectObject ---
     // @arm AnnotExpectObject+Variable
-    (AnnotExpectObject, Variable(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, Variable(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+KeywordX
-    (AnnotExpectObject, KeywordX(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, KeywordX(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+Lbrace
-    (AnnotExpectObject, Lbrace(r)) => (frame_push(model, r, AnnotExpectEnd, false, FormulaExpectSubject, true, false), Continue)
+    (AnnotExpectObject, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          AnnotExpectEnd,
+          false,
+          FormulaExpectSubject,
+          true,
+          false,
+        ),
+        Continue,
+      )
     // @arm AnnotExpectObject+Iri
-    (AnnotExpectObject, Iri(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, Iri(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+BlankNode
-    (AnnotExpectObject, BlankNode(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, BlankNode(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+Literal
-    (AnnotExpectObject, Literal(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, Literal(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+PrefName
-    (AnnotExpectObject, PrefName(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, PrefName(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+TripleTerm
-    (AnnotExpectObject, TripleTerm(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, TripleTerm(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+BracketTripleTerm
-    (AnnotExpectObject, BracketTripleTerm(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, BracketTripleTerm(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     // @arm AnnotExpectObject+Lbracket
-    (AnnotExpectObject, Lbracket(r)) => (frame_push(model, r, AnnotExpectEnd, false, BnpExpectPredicate, false, false), Continue)
+    (AnnotExpectObject, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          AnnotExpectEnd,
+          false,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm AnnotExpectObject+Anon
-    (AnnotExpectObject, Anon(r)) => (set_object(model, r, AnnotExpectEnd), Continue)
+    (AnnotExpectObject, Anon(r)) =>
+      (set_object(model, r, AnnotExpectEnd), Continue)
     // --- SubjTrailExpectVerb ---
     // @arm SubjTrailExpectVerb+Iri
-    (SubjTrailExpectVerb, Iri(r)) => ({ ..model, state: SubjTrailAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (SubjTrailExpectVerb, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: SubjTrailAfterStep,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // @arm SubjTrailExpectVerb+PrefName
-    (SubjTrailExpectVerb, PrefName(r)) => ({ ..model, state: SubjTrailAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (SubjTrailExpectVerb, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: SubjTrailAfterStep,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // --- SubjTrailAfterStep ---
     // @arm SubjTrailAfterStep+Bang
-    (SubjTrailAfterStep, Bang(r)) => if model.path_src is None { ({ ..model, state: SubjTrailExpectVerb }, Error(1)) } else { emit_spo({ ..model, subject: model.path_src, predicate: model.path_pend, object: model.path_tail, path_src: model.path_tail, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: true,  }, SubjTrailExpectVerb) }
+    (SubjTrailAfterStep, Bang(r)) =>
+      if model.path_src is None {
+        ({ ..model, state: SubjTrailExpectVerb, }, Error(1))
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: model.path_src,
+            predicate: model.path_pend,
+            object: model.path_tail,
+            path_src: model.path_tail,
+            path_tail: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_tail
+            },
+            path_pend: None,
+            path_fwd: true,
+          },
+          SubjTrailExpectVerb,
+        )
+      }
     // @arm SubjTrailAfterStep+Caret
-    (SubjTrailAfterStep, Caret(r)) => if model.path_src is None { ({ ..model, state: SubjTrailExpectVerb }, Error(1)) } else { emit_spo({ ..model, subject: model.path_tail, predicate: model.path_pend, object: model.path_src, path_src: model.path_tail, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: false,  }, SubjTrailExpectVerb) }
+    (SubjTrailAfterStep, Caret(r)) =>
+      if model.path_src is None {
+        ({ ..model, state: SubjTrailExpectVerb, }, Error(1))
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: model.path_src,
+            path_src: model.path_tail,
+            path_tail: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_tail
+            },
+            path_pend: None,
+            path_fwd: false,
+          },
+          SubjTrailExpectVerb,
+        )
+      }
     // @arm SubjTrailAfterStep+Iri
-    (SubjTrailAfterStep, Iri(r)) => if model.path_src is None { ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue) } else { emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend }, path_src: None,  }, SubjTrailVerbDone) }
+    (SubjTrailAfterStep, Iri(r)) =>
+      if model.path_src is None {
+        (
+          {
+            ..model,
+            state: ExpectDotOrGraph,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_tail: None,
+            path_pend: None,
+          },
+          Continue,
+        )
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: if model.path_fwd {
+              model.path_src
+            } else {
+              model.path_tail
+            },
+            predicate: model.path_pend,
+            object: if model.path_fwd {
+              model.path_tail
+            } else {
+              model.path_src
+            },
+            path_pend: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_pend
+            },
+            path_src: None,
+          },
+          SubjTrailVerbDone,
+        )
+      }
     // @arm SubjTrailAfterStep+PrefName
-    (SubjTrailAfterStep, PrefName(r)) => if model.path_src is None { ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue) } else { emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend }, path_src: None,  }, SubjTrailVerbDone) }
+    (SubjTrailAfterStep, PrefName(r)) =>
+      if model.path_src is None {
+        (
+          {
+            ..model,
+            state: ExpectDotOrGraph,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_tail: None,
+            path_pend: None,
+          },
+          Continue,
+        )
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: if model.path_fwd {
+              model.path_src
+            } else {
+              model.path_tail
+            },
+            predicate: model.path_pend,
+            object: if model.path_fwd {
+              model.path_tail
+            } else {
+              model.path_src
+            },
+            path_pend: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_pend
+            },
+            path_src: None,
+          },
+          SubjTrailVerbDone,
+        )
+      }
     // @arm SubjTrailAfterStep+KeywordA
-    (SubjTrailAfterStep, KeywordA(r)) => if model.path_src is None { ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue) } else { emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend }, path_src: None,  }, SubjTrailVerbDone) }
+    (SubjTrailAfterStep, KeywordA(r)) =>
+      if model.path_src is None {
+        (
+          {
+            ..model,
+            state: ExpectDotOrGraph,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_tail: None,
+            path_pend: None,
+          },
+          Continue,
+        )
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: if model.path_fwd {
+              model.path_src
+            } else {
+              model.path_tail
+            },
+            predicate: model.path_pend,
+            object: if model.path_fwd {
+              model.path_tail
+            } else {
+              model.path_src
+            },
+            path_pend: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_pend
+            },
+            path_src: None,
+          },
+          SubjTrailVerbDone,
+        )
+      }
     // @arm SubjTrailAfterStep+KeywordX
-    (SubjTrailAfterStep, KeywordX(r)) => if model.path_src is None { ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue) } else { emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend }, path_src: None,  }, SubjTrailVerbDone) }
+    (SubjTrailAfterStep, KeywordX(r)) =>
+      if model.path_src is None {
+        (
+          {
+            ..model,
+            state: ExpectDotOrGraph,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_tail: None,
+            path_pend: None,
+          },
+          Continue,
+        )
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: if model.path_fwd {
+              model.path_src
+            } else {
+              model.path_tail
+            },
+            predicate: model.path_pend,
+            object: if model.path_fwd {
+              model.path_tail
+            } else {
+              model.path_src
+            },
+            path_pend: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_pend
+            },
+            path_src: None,
+          },
+          SubjTrailVerbDone,
+        )
+      }
     // --- SubjTrailVerbDone ---
     // @arm SubjTrailVerbDone+Iri
-    (SubjTrailVerbDone, Iri(r)) => ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDone, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDone+BlankNode
-    (SubjTrailVerbDone, BlankNode(r)) => ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDone, BlankNode(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDone+Literal
-    (SubjTrailVerbDone, Literal(r)) => ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDone, Literal(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDone+PrefName
-    (SubjTrailVerbDone, PrefName(r)) => ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDone, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDone+TripleTerm
-    (SubjTrailVerbDone, TripleTerm(r)) => ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDone, TripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDone+BracketTripleTerm
-    (SubjTrailVerbDone, BracketTripleTerm(r)) => ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDone, BracketTripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDone+Anon
-    (SubjTrailVerbDone, Anon(r)) => ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDone, Anon(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDone+Variable
-    (SubjTrailVerbDone, Variable(r)) => ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDone, Variable(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDone+Lbracket
-    (SubjTrailVerbDone, Lbracket(r)) => (frame_push(model, r, ExpectDotOrGraph, false, BnpExpectPredicate, false, false), Continue)
+    (SubjTrailVerbDone, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectDotOrGraph,
+          false,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm SubjTrailVerbDone+Lparen
-    (SubjTrailVerbDone, Lparen(r)) => (frame_push(model, r, ExpectDotOrGraph, false, ListExpectElemOrEnd, false, false), Continue)
+    (SubjTrailVerbDone, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          ExpectDotOrGraph,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm SubjTrailVerbDone+Bang
-    (SubjTrailVerbDone, Bang(r)) => emit_spo({ ..model, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: true,  }, SubjTrailExpectVerb)
+    (SubjTrailVerbDone, Bang(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          path_fwd: true,
+        },
+        SubjTrailExpectVerb,
+      )
     // @arm SubjTrailVerbDone+Caret
-    (SubjTrailVerbDone, Caret(r)) => emit_spo({ ..model, subject: match ref_id(r) { Some(id) => Some(id); None => model.subject }, predicate: model.path_pend, object: model.path_tail, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: false,  }, SubjTrailExpectVerb)
+    (SubjTrailVerbDone, Caret(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.subject
+          },
+          predicate: model.path_pend,
+          object: model.path_tail,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          path_fwd: false,
+        },
+        SubjTrailExpectVerb,
+      )
     // --- SubjTrailExpectVerbFormula ---
     // @arm SubjTrailExpectVerbFormula+Iri
-    (SubjTrailExpectVerbFormula, Iri(r)) => ({ ..model, state: SubjTrailAfterStepFormula, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (SubjTrailExpectVerbFormula, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: SubjTrailAfterStepFormula,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // @arm SubjTrailExpectVerbFormula+PrefName
-    (SubjTrailExpectVerbFormula, PrefName(r)) => ({ ..model, state: SubjTrailAfterStepFormula, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (SubjTrailExpectVerbFormula, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: SubjTrailAfterStepFormula,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // --- SubjTrailAfterStepFormula ---
     // @arm SubjTrailAfterStepFormula+Bang
-    (SubjTrailAfterStepFormula, Bang(r)) => if model.path_src is None { ({ ..model, state: SubjTrailExpectVerbFormula }, Error(1)) } else { emit_spo({ ..model, subject: model.path_src, predicate: model.path_pend, object: model.path_tail, path_src: model.path_tail, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: true,  }, SubjTrailExpectVerbFormula) }
+    (SubjTrailAfterStepFormula, Bang(r)) =>
+      if model.path_src is None {
+        ({ ..model, state: SubjTrailExpectVerbFormula, }, Error(1))
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: model.path_src,
+            predicate: model.path_pend,
+            object: model.path_tail,
+            path_src: model.path_tail,
+            path_tail: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_tail
+            },
+            path_pend: None,
+            path_fwd: true,
+          },
+          SubjTrailExpectVerbFormula,
+        )
+      }
     // @arm SubjTrailAfterStepFormula+Caret
-    (SubjTrailAfterStepFormula, Caret(r)) => if model.path_src is None { ({ ..model, state: SubjTrailExpectVerbFormula }, Error(1)) } else { emit_spo({ ..model, subject: model.path_tail, predicate: model.path_pend, object: model.path_src, path_src: model.path_tail, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: false,  }, SubjTrailExpectVerbFormula) }
+    (SubjTrailAfterStepFormula, Caret(r)) =>
+      if model.path_src is None {
+        ({ ..model, state: SubjTrailExpectVerbFormula, }, Error(1))
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: model.path_src,
+            path_src: model.path_tail,
+            path_tail: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_tail
+            },
+            path_pend: None,
+            path_fwd: false,
+          },
+          SubjTrailExpectVerbFormula,
+        )
+      }
     // @arm SubjTrailAfterStepFormula+Iri
-    (SubjTrailAfterStepFormula, Iri(r)) => if model.path_src is None { ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue) } else { emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend }, path_src: None,  }, SubjTrailVerbDoneFormula) }
+    (SubjTrailAfterStepFormula, Iri(r)) =>
+      if model.path_src is None {
+        (
+          {
+            ..model,
+            state: ExpectDotOrGraph,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_tail: None,
+            path_pend: None,
+          },
+          Continue,
+        )
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: if model.path_fwd {
+              model.path_src
+            } else {
+              model.path_tail
+            },
+            predicate: model.path_pend,
+            object: if model.path_fwd {
+              model.path_tail
+            } else {
+              model.path_src
+            },
+            path_pend: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_pend
+            },
+            path_src: None,
+          },
+          SubjTrailVerbDoneFormula,
+        )
+      }
     // @arm SubjTrailAfterStepFormula+PrefName
-    (SubjTrailAfterStepFormula, PrefName(r)) => if model.path_src is None { ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue) } else { emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend }, path_src: None,  }, SubjTrailVerbDoneFormula) }
+    (SubjTrailAfterStepFormula, PrefName(r)) =>
+      if model.path_src is None {
+        (
+          {
+            ..model,
+            state: ExpectDotOrGraph,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_tail: None,
+            path_pend: None,
+          },
+          Continue,
+        )
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: if model.path_fwd {
+              model.path_src
+            } else {
+              model.path_tail
+            },
+            predicate: model.path_pend,
+            object: if model.path_fwd {
+              model.path_tail
+            } else {
+              model.path_src
+            },
+            path_pend: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_pend
+            },
+            path_src: None,
+          },
+          SubjTrailVerbDoneFormula,
+        )
+      }
     // @arm SubjTrailAfterStepFormula+KeywordA
-    (SubjTrailAfterStepFormula, KeywordA(r)) => if model.path_src is None { ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue) } else { emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend }, path_src: None,  }, SubjTrailVerbDoneFormula) }
+    (SubjTrailAfterStepFormula, KeywordA(r)) =>
+      if model.path_src is None {
+        (
+          {
+            ..model,
+            state: ExpectDotOrGraph,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_tail: None,
+            path_pend: None,
+          },
+          Continue,
+        )
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: if model.path_fwd {
+              model.path_src
+            } else {
+              model.path_tail
+            },
+            predicate: model.path_pend,
+            object: if model.path_fwd {
+              model.path_tail
+            } else {
+              model.path_src
+            },
+            path_pend: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_pend
+            },
+            path_src: None,
+          },
+          SubjTrailVerbDoneFormula,
+        )
+      }
     // @arm SubjTrailAfterStepFormula+KeywordX
-    (SubjTrailAfterStepFormula, KeywordX(r)) => if model.path_src is None { ({ ..model, state: ExpectDotOrGraph, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue) } else { emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend }, path_src: None,  }, SubjTrailVerbDoneFormula) }
+    (SubjTrailAfterStepFormula, KeywordX(r)) =>
+      if model.path_src is None {
+        (
+          {
+            ..model,
+            state: ExpectDotOrGraph,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            },
+            path_tail: None,
+            path_pend: None,
+          },
+          Continue,
+        )
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: if model.path_fwd {
+              model.path_src
+            } else {
+              model.path_tail
+            },
+            predicate: model.path_pend,
+            object: if model.path_fwd {
+              model.path_tail
+            } else {
+              model.path_src
+            },
+            path_pend: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_pend
+            },
+            path_src: None,
+          },
+          SubjTrailVerbDoneFormula,
+        )
+      }
     // --- SubjTrailVerbDoneFormula ---
     // @arm SubjTrailVerbDoneFormula+Iri
-    (SubjTrailVerbDoneFormula, Iri(r)) => ({ ..model, state: FormulaAfterObject, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDoneFormula, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDoneFormula+BlankNode
-    (SubjTrailVerbDoneFormula, BlankNode(r)) => ({ ..model, state: FormulaAfterObject, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDoneFormula, BlankNode(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDoneFormula+Literal
-    (SubjTrailVerbDoneFormula, Literal(r)) => ({ ..model, state: FormulaAfterObject, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDoneFormula, Literal(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDoneFormula+PrefName
-    (SubjTrailVerbDoneFormula, PrefName(r)) => ({ ..model, state: FormulaAfterObject, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDoneFormula, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDoneFormula+TripleTerm
-    (SubjTrailVerbDoneFormula, TripleTerm(r)) => ({ ..model, state: FormulaAfterObject, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDoneFormula, TripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDoneFormula+BracketTripleTerm
-    (SubjTrailVerbDoneFormula, BracketTripleTerm(r)) => ({ ..model, state: FormulaAfterObject, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDoneFormula, BracketTripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDoneFormula+Anon
-    (SubjTrailVerbDoneFormula, Anon(r)) => ({ ..model, state: FormulaAfterObject, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDoneFormula, Anon(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDoneFormula+Variable
-    (SubjTrailVerbDoneFormula, Variable(r)) => ({ ..model, state: FormulaAfterObject, subject: model.path_tail, predicate: model.path_pend, object: match ref_id(r) { Some(id) => Some(id); None => model.object }, path_tail: None, path_pend: None,  }, Continue)
+    (SubjTrailVerbDoneFormula, Variable(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.object
+          },
+          path_tail: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm SubjTrailVerbDoneFormula+Lbracket
-    (SubjTrailVerbDoneFormula, Lbracket(r)) => (frame_push(model, r, FormulaAfterObject, false, BnpExpectPredicate, false, false), Continue)
+    (SubjTrailVerbDoneFormula, Lbracket(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaAfterObject,
+          false,
+          BnpExpectPredicate,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm SubjTrailVerbDoneFormula+Lparen
-    (SubjTrailVerbDoneFormula, Lparen(r)) => (frame_push(model, r, FormulaAfterObject, false, ListExpectElemOrEnd, false, false), Continue)
+    (SubjTrailVerbDoneFormula, Lparen(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaAfterObject,
+          false,
+          ListExpectElemOrEnd,
+          false,
+          false,
+        ),
+        Continue,
+      )
     // @arm SubjTrailVerbDoneFormula+Lbrace
-    (SubjTrailVerbDoneFormula, Lbrace(r)) => (frame_push(model, r, FormulaAfterObject, false, FormulaExpectSubject, true, false), Continue)
+    (SubjTrailVerbDoneFormula, Lbrace(r)) =>
+      (
+        frame_push(
+          model,
+          r,
+          FormulaAfterObject,
+          false,
+          FormulaExpectSubject,
+          true,
+          false,
+        ),
+        Continue,
+      )
     // --- ListPathExpectVerb ---
     // @arm ListPathExpectVerb+Iri
-    (ListPathExpectVerb, Iri(r)) => ({ ..model, state: ListPathAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (ListPathExpectVerb, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: ListPathAfterStep,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // @arm ListPathExpectVerb+PrefName
-    (ListPathExpectVerb, PrefName(r)) => ({ ..model, state: ListPathAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (ListPathExpectVerb, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: ListPathAfterStep,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // --- ListPathAfterStep ---
     // @arm ListPathAfterStep+Bang
-    (ListPathAfterStep, Bang(r)) => emit_spo({ ..model, subject: model.path_src, predicate: model.path_pend, object: model.path_tail, path_src: model.path_tail, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }), path_fwd: true,  }, ListPathExpectVerb)
+    (ListPathAfterStep, Bang(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: model.path_src,
+          predicate: model.path_pend,
+          object: model.path_tail,
+          path_src: model.path_tail,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+          path_fwd: true,
+        },
+        ListPathExpectVerb,
+      )
     // @arm ListPathAfterStep+Caret
-    (ListPathAfterStep, Caret(r)) => emit_spo({ ..model, subject: model.path_tail, predicate: model.path_pend, object: model.path_src, path_src: model.path_tail, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }), path_fwd: false,  }, ListPathExpectVerb)
+    (ListPathAfterStep, Caret(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: model.path_tail,
+          predicate: model.path_pend,
+          object: model.path_src,
+          path_src: model.path_tail,
+          path_tail: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_tail
+          },
+          path_pend: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+          path_fwd: false,
+        },
+        ListPathExpectVerb,
+      )
     // @arm ListPathAfterStep+Iri
-    (ListPathAfterStep, Iri(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListAfterElem)
+    (ListPathAfterStep, Iri(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        ListAfterElem,
+      )
     // @arm ListPathAfterStep+BlankNode
-    (ListPathAfterStep, BlankNode(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListAfterElem)
+    (ListPathAfterStep, BlankNode(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        ListAfterElem,
+      )
     // @arm ListPathAfterStep+Literal
-    (ListPathAfterStep, Literal(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListAfterElem)
+    (ListPathAfterStep, Literal(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        ListAfterElem,
+      )
     // @arm ListPathAfterStep+PrefName
-    (ListPathAfterStep, PrefName(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListAfterElem)
+    (ListPathAfterStep, PrefName(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        ListAfterElem,
+      )
     // @arm ListPathAfterStep+TripleTerm
-    (ListPathAfterStep, TripleTerm(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListAfterElem)
+    (ListPathAfterStep, TripleTerm(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        ListAfterElem,
+      )
     // @arm ListPathAfterStep+BracketTripleTerm
-    (ListPathAfterStep, BracketTripleTerm(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListAfterElem)
+    (ListPathAfterStep, BracketTripleTerm(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        ListAfterElem,
+      )
     // @arm ListPathAfterStep+Variable
-    (ListPathAfterStep, Variable(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListAfterElem)
+    (ListPathAfterStep, Variable(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        ListAfterElem,
+      )
     // @arm ListPathAfterStep+KeywordX
-    (ListPathAfterStep, KeywordX(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListAfterElem)
+    (ListPathAfterStep, KeywordX(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(
+            model.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        ListAfterElem,
+      )
     // @arm ListPathAfterStep+Lbracket
-    (ListPathAfterStep, Lbracket(r)) => { let pushed = frame_push(model, r, ListAfterElem, false, BnpExpectPredicate, false, false); emit_spo({ ..pushed, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(pushed.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, BnpExpectPredicate) }
+    (ListPathAfterStep, Lbracket(r)) => {
+      let pushed = frame_push(
+        model,
+        r,
+        ListAfterElem,
+        false,
+        BnpExpectPredicate,
+        false,
+        false,
+      )
+      emit_spo(
+        {
+          ..pushed,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(
+            pushed.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        BnpExpectPredicate,
+      )
+    }
     // @arm ListPathAfterStep+Lparen
-    (ListPathAfterStep, Lparen(r)) => { let pushed = frame_push(model, r, ListAfterElem, false, ListExpectElemOrEnd, false, false); emit_spo({ ..pushed, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(pushed.frames, match ref_id(r) { Some(id) => Some(id); None => None }),  }, ListExpectElemOrEnd) }
+    (ListPathAfterStep, Lparen(r)) => {
+      let pushed = frame_push(
+        model,
+        r,
+        ListAfterElem,
+        false,
+        ListExpectElemOrEnd,
+        false,
+        false,
+      )
+      emit_spo(
+        {
+          ..pushed,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(
+            pushed.frames,
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => None
+            },
+          ),
+        },
+        ListExpectElemOrEnd,
+      )
+    }
     // @arm ListPathAfterStep+Rparen
     (ListPathAfterStep, Rparen) => {
-      let (next, response) = emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_prev_node(model.frames, model.path_tail),  }, ListAfterElem)
+      let (next, response) = emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_prev_node(model.frames, model.path_tail),
+        },
+        ListAfterElem,
+      )
       let next1 = frame_pop(next)
       (next1, response)
     }
     // --- ObjTrailExpectVerb ---
     // @arm ObjTrailExpectVerb+Iri
-    (ObjTrailExpectVerb, Iri(r)) => ({ ..model, state: ObjTrailAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (ObjTrailExpectVerb, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: ObjTrailAfterStep,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // @arm ObjTrailExpectVerb+PrefName
-    (ObjTrailExpectVerb, PrefName(r)) => ({ ..model, state: ObjTrailAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (ObjTrailExpectVerb, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: ObjTrailAfterStep,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // --- ObjTrailAfterStep ---
     // @arm ObjTrailAfterStep+Bang
-    (ObjTrailAfterStep, Bang(r)) => if model.path_src is None { ({ ..model, state: ObjTrailExpectVerb }, Error(1)) } else { emit_spo({ ..model, subject: model.path_src, predicate: model.path_pend, object: model.path_tail, path_src: model.path_tail, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: true,  }, ObjTrailExpectVerb) }
+    (ObjTrailAfterStep, Bang(r)) =>
+      if model.path_src is None {
+        ({ ..model, state: ObjTrailExpectVerb, }, Error(1))
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: model.path_src,
+            predicate: model.path_pend,
+            object: model.path_tail,
+            path_src: model.path_tail,
+            path_tail: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_tail
+            },
+            path_pend: None,
+            path_fwd: true,
+          },
+          ObjTrailExpectVerb,
+        )
+      }
     // @arm ObjTrailAfterStep+Caret
-    (ObjTrailAfterStep, Caret(r)) => if model.path_src is None { ({ ..model, state: ObjTrailExpectVerb }, Error(1)) } else { emit_spo({ ..model, subject: model.path_tail, predicate: model.path_pend, object: model.path_src, path_src: model.path_tail, path_tail: match ref_id(r) { Some(id) => Some(id); None => model.path_tail }, path_pend: None, path_fwd: false,  }, ObjTrailExpectVerb) }
+    (ObjTrailAfterStep, Caret(r)) =>
+      if model.path_src is None {
+        ({ ..model, state: ObjTrailExpectVerb, }, Error(1))
+      } else {
+        emit_spo(
+          {
+            ..model,
+            subject: model.path_tail,
+            predicate: model.path_pend,
+            object: model.path_src,
+            path_src: model.path_tail,
+            path_tail: match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.path_tail
+            },
+            path_pend: None,
+            path_fwd: false,
+          },
+          ObjTrailExpectVerb,
+        )
+      }
     // @arm ObjTrailAfterStep+Dot
     (ObjTrailAfterStep, Dot) => {
-      let (next, response) = emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_open_span(frames_top_set_ret_state(model.frames, ExpectSubject), match model.path_tail { Some(t) => t; None => { id: 0 } }),  }, ExpectSubject)
+      let (next, response) = emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_open_span(
+            frames_top_set_ret_state(model.frames, ExpectSubject),
+            match model.path_tail {
+              Some(t) => t
+              None => { id: 0, }
+            },
+          ),
+        },
+        ExpectSubject,
+      )
       let next1 = frame_pop(next)
       let quad1 = inversion_swap(next1, take_quad(next1))
-      let next2 = inversion_settle({ ..next1, subject: None, predicate: None, object: None }, false)
+      let next2 = inversion_settle(
+        { ..next1, subject: None, predicate: None, object: None, },
+        false,
+      )
       (next2, Batch([response, EmitQuad(quad1)]))
     }
     // @arm ObjTrailAfterStep+Comma
     (ObjTrailAfterStep, Comma) => {
-      let (next, response) = emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_open_span(frames_top_set_ret_state(model.frames, ExpectObject), match model.path_tail { Some(t) => t; None => { id: 0 } }),  }, ExpectObject)
+      let (next, response) = emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_open_span(
+            frames_top_set_ret_state(model.frames, ExpectObject),
+            match model.path_tail {
+              Some(t) => t
+              None => { id: 0, }
+            },
+          ),
+        },
+        ExpectObject,
+      )
       let next1 = frame_pop(next)
       let quad1 = inversion_swap(next1, take_quad(next1))
-      let next2 = inversion_settle({ ..next1, object: None }, true)
+      let next2 = inversion_settle({ ..next1, object: None, }, true)
       (next2, Batch([response, EmitQuad(quad1)]))
     }
     // @arm ObjTrailAfterStep+Semicolon
     (ObjTrailAfterStep, Semicolon) => {
-      let (next, response) = emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { model.path_tail }, predicate: model.path_pend, object: if model.path_fwd { model.path_tail } else { model.path_src }, path_src: None, path_pend: None, path_tail: None, frames: frames_top_set_open_span(frames_top_set_ret_state(model.frames, ExpectVerbOrEnd), match model.path_tail { Some(t) => t; None => { id: 0 } }),  }, ExpectVerbOrEnd)
+      let (next, response) = emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            model.path_tail
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            model.path_tail
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+          path_tail: None,
+          frames: frames_top_set_open_span(
+            frames_top_set_ret_state(model.frames, ExpectVerbOrEnd),
+            match model.path_tail {
+              Some(t) => t
+              None => { id: 0, }
+            },
+          ),
+        },
+        ExpectVerbOrEnd,
+      )
       let next1 = frame_pop(next)
       let quad1 = inversion_swap(next1, take_quad(next1))
-      let next2 = inversion_settle({ ..next1, predicate: None, object: None }, false)
+      let next2 = inversion_settle(
+        { ..next1, predicate: None, object: None, },
+        false,
+      )
       (next2, Batch([response, EmitQuad(quad1)]))
     }
     // --- PathExpectVerb ---
     // @arm PathExpectVerb+Iri
-    (PathExpectVerb, Iri(r)) => ({ ..model, state: PathAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (PathExpectVerb, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: PathAfterStep,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // @arm PathExpectVerb+PrefName
-    (PathExpectVerb, PrefName(r)) => ({ ..model, state: PathAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (PathExpectVerb, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: PathAfterStep,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // --- FormulaPathExpectVerb ---
     // @arm FormulaPathExpectVerb+Iri
-    (FormulaPathExpectVerb, Iri(r)) => ({ ..model, state: FormulaPathAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (FormulaPathExpectVerb, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaPathAfterStep,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // @arm FormulaPathExpectVerb+PrefName
-    (FormulaPathExpectVerb, PrefName(r)) => ({ ..model, state: FormulaPathAfterStep, path_pend: match ref_id(r) { Some(id) => Some(id); None => model.path_pend },  }, Continue)
+    (FormulaPathExpectVerb, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaPathAfterStep,
+          path_pend: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_pend
+          },
+        },
+        Continue,
+      )
     // --- PathAfterStep ---
     // @arm PathAfterStep+Bang
-    (PathAfterStep, Bang(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: match ref_id(r) { Some(id) => Some(id); None => model.path_src }, path_pend: None, path_fwd: true,  }, PathExpectVerb)
+    (PathAfterStep, Bang(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_src
+          },
+          path_pend: None,
+          path_fwd: true,
+        },
+        PathExpectVerb,
+      )
     // @arm PathAfterStep+Caret
-    (PathAfterStep, Caret(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: match ref_id(r) { Some(id) => Some(id); None => model.path_src }, path_pend: None, path_fwd: false,  }, PathExpectVerb)
+    (PathAfterStep, Caret(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_src
+          },
+          path_pend: None,
+          path_fwd: false,
+        },
+        PathExpectVerb,
+      )
     // @arm PathAfterStep+Iri
-    (PathAfterStep, Iri(r)) => ({ ..model, state: ExpectDotOrGraph, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (PathAfterStep, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm PathAfterStep+BlankNode
-    (PathAfterStep, BlankNode(r)) => ({ ..model, state: ExpectDotOrGraph, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (PathAfterStep, BlankNode(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm PathAfterStep+Literal
-    (PathAfterStep, Literal(r)) => ({ ..model, state: ExpectDotOrGraph, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (PathAfterStep, Literal(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm PathAfterStep+PrefName
-    (PathAfterStep, PrefName(r)) => ({ ..model, state: ExpectDotOrGraph, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (PathAfterStep, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm PathAfterStep+TripleTerm
-    (PathAfterStep, TripleTerm(r)) => ({ ..model, state: ExpectDotOrGraph, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (PathAfterStep, TripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm PathAfterStep+BracketTripleTerm
-    (PathAfterStep, BracketTripleTerm(r)) => ({ ..model, state: ExpectDotOrGraph, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (PathAfterStep, BracketTripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm PathAfterStep+Anon
-    (PathAfterStep, Anon(r)) => ({ ..model, state: ExpectDotOrGraph, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (PathAfterStep, Anon(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm PathAfterStep+Variable
-    (PathAfterStep, Variable(r)) => ({ ..model, state: ExpectDotOrGraph, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (PathAfterStep, Variable(r)) =>
+      (
+        {
+          ..model,
+          state: ExpectDotOrGraph,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm PathAfterStep+Lbracket
-    (PathAfterStep, Lbracket(r)) => if model.path_fwd { (frame_push({ ..model, subject: model.path_src, predicate: model.path_pend, path_src: None, path_pend: None,  }, r, ExpectDotOrGraph, false, BnpExpectPredicate, false, false), Continue) } else { ({ ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None,  }, Error(1)) }
+    (PathAfterStep, Lbracket(r)) =>
+      if model.path_fwd {
+        (
+          frame_push(
+            {
+              ..model,
+              subject: model.path_src,
+              predicate: model.path_pend,
+              path_src: None,
+              path_pend: None,
+            },
+            r,
+            ExpectDotOrGraph,
+            false,
+            BnpExpectPredicate,
+            false,
+            false,
+          ),
+          Continue,
+        )
+      } else {
+        (
+          { ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None, },
+          Error(1),
+        )
+      }
     // @arm PathAfterStep+Lparen
-    (PathAfterStep, Lparen(r)) => if model.path_fwd { (frame_push({ ..model, subject: model.path_src, predicate: model.path_pend, path_src: None, path_pend: None,  }, r, ExpectDotOrGraph, false, ListExpectElemOrEnd, false, false), Continue) } else { ({ ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None,  }, Error(1)) }
+    (PathAfterStep, Lparen(r)) =>
+      if model.path_fwd {
+        (
+          frame_push(
+            {
+              ..model,
+              subject: model.path_src,
+              predicate: model.path_pend,
+              path_src: None,
+              path_pend: None,
+            },
+            r,
+            ExpectDotOrGraph,
+            false,
+            ListExpectElemOrEnd,
+            false,
+            false,
+          ),
+          Continue,
+        )
+      } else {
+        (
+          { ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None, },
+          Error(1),
+        )
+      }
     // @arm PathAfterStep+Lbrace
-    (PathAfterStep, Lbrace(r)) => if model.path_fwd { (frame_push({ ..model, subject: model.path_src, predicate: model.path_pend, path_src: None, path_pend: None,  }, r, ExpectDotOrGraph, false, FormulaExpectSubject, true, false), Continue) } else { ({ ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None,  }, Error(1)) }
+    (PathAfterStep, Lbrace(r)) =>
+      if model.path_fwd {
+        (
+          frame_push(
+            {
+              ..model,
+              subject: model.path_src,
+              predicate: model.path_pend,
+              path_src: None,
+              path_pend: None,
+            },
+            r,
+            ExpectDotOrGraph,
+            false,
+            FormulaExpectSubject,
+            true,
+            false,
+          ),
+          Continue,
+        )
+      } else {
+        (
+          { ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None, },
+          Error(1),
+        )
+      }
     // --- FormulaPathAfterStep ---
     // @arm FormulaPathAfterStep+Bang
-    (FormulaPathAfterStep, Bang(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: match ref_id(r) { Some(id) => Some(id); None => model.path_src }, path_pend: None, path_fwd: true,  }, FormulaPathExpectVerb)
+    (FormulaPathAfterStep, Bang(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_src
+          },
+          path_pend: None,
+          path_fwd: true,
+        },
+        FormulaPathExpectVerb,
+      )
     // @arm FormulaPathAfterStep+Caret
-    (FormulaPathAfterStep, Caret(r)) => emit_spo({ ..model, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: match ref_id(r) { Some(id) => Some(id); None => model.path_src }, path_pend: None, path_fwd: false,  }, FormulaPathExpectVerb)
+    (FormulaPathAfterStep, Caret(r)) =>
+      emit_spo(
+        {
+          ..model,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: match ref_id(r) {
+            Some(id) => Some(id)
+            None => model.path_src
+          },
+          path_pend: None,
+          path_fwd: false,
+        },
+        FormulaPathExpectVerb,
+      )
     // @arm FormulaPathAfterStep+Iri
-    (FormulaPathAfterStep, Iri(r)) => ({ ..model, state: FormulaAfterObject, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (FormulaPathAfterStep, Iri(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm FormulaPathAfterStep+BlankNode
-    (FormulaPathAfterStep, BlankNode(r)) => ({ ..model, state: FormulaAfterObject, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (FormulaPathAfterStep, BlankNode(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm FormulaPathAfterStep+Literal
-    (FormulaPathAfterStep, Literal(r)) => ({ ..model, state: FormulaAfterObject, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (FormulaPathAfterStep, Literal(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm FormulaPathAfterStep+PrefName
-    (FormulaPathAfterStep, PrefName(r)) => ({ ..model, state: FormulaAfterObject, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (FormulaPathAfterStep, PrefName(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm FormulaPathAfterStep+TripleTerm
-    (FormulaPathAfterStep, TripleTerm(r)) => ({ ..model, state: FormulaAfterObject, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (FormulaPathAfterStep, TripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm FormulaPathAfterStep+BracketTripleTerm
-    (FormulaPathAfterStep, BracketTripleTerm(r)) => ({ ..model, state: FormulaAfterObject, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (FormulaPathAfterStep, BracketTripleTerm(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm FormulaPathAfterStep+Anon
-    (FormulaPathAfterStep, Anon(r)) => ({ ..model, state: FormulaAfterObject, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (FormulaPathAfterStep, Anon(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm FormulaPathAfterStep+Variable
-    (FormulaPathAfterStep, Variable(r)) => ({ ..model, state: FormulaAfterObject, subject: if model.path_fwd { model.path_src } else { match ref_id(r) { Some(id) => Some(id); None => model.subject } }, predicate: model.path_pend, object: if model.path_fwd { match ref_id(r) { Some(id) => Some(id); None => model.object } } else { model.path_src }, path_src: None, path_pend: None,  }, Continue)
+    (FormulaPathAfterStep, Variable(r)) =>
+      (
+        {
+          ..model,
+          state: FormulaAfterObject,
+          subject: if model.path_fwd {
+            model.path_src
+          } else {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.subject
+            }
+          },
+          predicate: model.path_pend,
+          object: if model.path_fwd {
+            match ref_id(r) {
+              Some(id) => Some(id)
+              None => model.object
+            }
+          } else {
+            model.path_src
+          },
+          path_src: None,
+          path_pend: None,
+        },
+        Continue,
+      )
     // @arm FormulaPathAfterStep+Lbracket
-    (FormulaPathAfterStep, Lbracket(r)) => if model.path_fwd { (frame_push({ ..model, subject: model.path_src, predicate: model.path_pend, path_src: None, path_pend: None,  }, r, FormulaAfterObject, false, BnpExpectPredicate, false, false), Continue) } else { ({ ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None,  }, Error(1)) }
+    (FormulaPathAfterStep, Lbracket(r)) =>
+      if model.path_fwd {
+        (
+          frame_push(
+            {
+              ..model,
+              subject: model.path_src,
+              predicate: model.path_pend,
+              path_src: None,
+              path_pend: None,
+            },
+            r,
+            FormulaAfterObject,
+            false,
+            BnpExpectPredicate,
+            false,
+            false,
+          ),
+          Continue,
+        )
+      } else {
+        (
+          { ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None, },
+          Error(1),
+        )
+      }
     // @arm FormulaPathAfterStep+Lparen
-    (FormulaPathAfterStep, Lparen(r)) => if model.path_fwd { (frame_push({ ..model, subject: model.path_src, predicate: model.path_pend, path_src: None, path_pend: None,  }, r, FormulaAfterObject, false, ListExpectElemOrEnd, false, false), Continue) } else { ({ ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None,  }, Error(1)) }
+    (FormulaPathAfterStep, Lparen(r)) =>
+      if model.path_fwd {
+        (
+          frame_push(
+            {
+              ..model,
+              subject: model.path_src,
+              predicate: model.path_pend,
+              path_src: None,
+              path_pend: None,
+            },
+            r,
+            FormulaAfterObject,
+            false,
+            ListExpectElemOrEnd,
+            false,
+            false,
+          ),
+          Continue,
+        )
+      } else {
+        (
+          { ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None, },
+          Error(1),
+        )
+      }
     // @arm FormulaPathAfterStep+Lbrace
-    (FormulaPathAfterStep, Lbrace(r)) => if model.path_fwd { (frame_push({ ..model, subject: model.path_src, predicate: model.path_pend, path_src: None, path_pend: None,  }, r, FormulaAfterObject, false, FormulaExpectSubject, true, false), Continue) } else { ({ ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None,  }, Error(1)) }
+    (FormulaPathAfterStep, Lbrace(r)) =>
+      if model.path_fwd {
+        (
+          frame_push(
+            {
+              ..model,
+              subject: model.path_src,
+              predicate: model.path_pend,
+              path_src: None,
+              path_pend: None,
+            },
+            r,
+            FormulaAfterObject,
+            false,
+            FormulaExpectSubject,
+            true,
+            false,
+          ),
+          Continue,
+        )
+      } else {
+        (
+          { ..model, state: ExpectDotOrGraph, path_src: None, path_pend: None, },
+          Error(1),
+        )
+      }
     // --- FormulaAfterObject ---
     // @arm FormulaAfterObject+Dot
-    (FormulaAfterObject, Dot) => ({ ..model, state: FormulaExpectSubject, subject: None, predicate: None, object: None,  }, Continue)
+    (FormulaAfterObject, Dot) =>
+      (
+        {
+          ..model,
+          state: FormulaExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+        },
+        Continue,
+      )
     // @arm FormulaAfterObject+Rbrace
     (FormulaAfterObject, Rbrace) => (frame_pop(model), Continue)
     // @arm FormulaAfterObject+Comma
-    (FormulaAfterObject, Comma) => ({ ..model, state: FormulaExpectObject, object: None,  }, Continue)
+    (FormulaAfterObject, Comma) =>
+      ({ ..model, state: FormulaExpectObject, object: None, }, Continue)
     // @arm FormulaAfterObject+Semicolon
-    (FormulaAfterObject, Semicolon) => ({ ..model, state: FormulaExpectPredicate, predicate: None, object: None,  }, Continue)
+    (FormulaAfterObject, Semicolon) =>
+      (
+        {
+          ..model,
+          state: FormulaExpectPredicate,
+          predicate: None,
+          object: None,
+        },
+        Continue,
+      )
     // --- AnnotExpectEnd ---
     // @arm AnnotExpectEnd+Comma
     (AnnotExpectEnd, Comma) => emit_object(model, AnnotExpectObject)
@@ -884,6 +4459,7 @@ fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
     (_, _) => (model, Error(0))
   }
 }
+
 ///|
 /// 纯模型执行（R-19 恢复窗包装）：窗内事件**不进表**（`recovery_swallow` 收窗/吞咽），
 /// 错误响应 ⇒ 开窗清账（`recovery_enter`）——与引擎 `recover_consume` /
@@ -909,7 +4485,8 @@ fn set_subject(model : Model, r : @qcs.Ref[RefId], to : ModelState) -> Model {
     Some(id) => Some(id)
     None => model.subject
   }
-  { ..model, state: to, subject }}
+  { ..model, state: to, subject, }
+}
 
 ///|
 /// 槽位更新辅助: predicate（action set_predicate）
@@ -920,7 +4497,8 @@ fn set_predicate(model : Model, r : @qcs.Ref[RefId], to : ModelState) -> Model {
     Some(id) => Some(id)
     None => model.predicate
   }
-  { ..model, state: to, predicate }}
+  { ..model, state: to, predicate, }
+}
 
 ///|
 /// 槽位更新辅助: object（action set_object）
@@ -931,7 +4509,8 @@ fn set_object(model : Model, r : @qcs.Ref[RefId], to : ModelState) -> Model {
     Some(id) => Some(id)
     None => model.object
   }
-  { ..model, state: to, object }}
+  { ..model, state: to, object, }
+}
 
 ///|
 /// 发射槽位快照: 无条件 EmitQuad(快照) 并按 Object 清槽
@@ -939,34 +4518,63 @@ fn set_object(model : Model, r : @qcs.Ref[RefId], to : ModelState) -> Model {
 /// 与引擎 `under_formula()` 同口径；倒装结算照常（take_pending 副作用全跑）。
 fn emit_object(model : Model, to : ModelState) -> (Model, Response) {
   if model.frames.any(fn(frame) { frame.is_formula }) {
-    (inversion_settle({ ..model, state: to, object: None }, true), Continue)
+    (inversion_settle({ ..model, state: to, object: None, }, true), Continue)
   } else {
     let quad = inversion_swap(model, take_quad(model))
-    (inversion_settle({ ..model, state: to, object: None }, true), EmitQuad(quad))
+    (
+      inversion_settle({ ..model, state: to, object: None, }, true),
+      EmitQuad(quad),
+    )
   }
 }
+
 ///|
 /// 发射槽位快照: 无条件 EmitQuad(快照) 并按 PredObj 清槽
 /// 罩内压制（笔 3c）：任一帧 `is_formula` 为真 ⇒ 只收拾不上抛（ADR-002），
 /// 与引擎 `under_formula()` 同口径；倒装结算照常（take_pending 副作用全跑）。
 fn emit_predobj(model : Model, to : ModelState) -> (Model, Response) {
   if model.frames.any(fn(frame) { frame.is_formula }) {
-    (inversion_settle({ ..model, state: to, predicate: None, object: None }, false), Continue)
+    (
+      inversion_settle(
+        { ..model, state: to, predicate: None, object: None, },
+        false,
+      ),
+      Continue,
+    )
   } else {
     let quad = inversion_swap(model, take_quad(model))
-    (inversion_settle({ ..model, state: to, predicate: None, object: None }, false), EmitQuad(quad))
+    (
+      inversion_settle(
+        { ..model, state: to, predicate: None, object: None, },
+        false,
+      ),
+      EmitQuad(quad),
+    )
   }
 }
+
 ///|
 /// 发射槽位快照: 无条件 EmitQuad(快照) 并按 SPO 清槽
 /// 罩内压制（笔 3c）：任一帧 `is_formula` 为真 ⇒ 只收拾不上抛（ADR-002），
 /// 与引擎 `under_formula()` 同口径；倒装结算照常（take_pending 副作用全跑）。
 fn emit_spo(model : Model, to : ModelState) -> (Model, Response) {
   if model.frames.any(fn(frame) { frame.is_formula }) {
-    (inversion_settle({ ..model, state: to, subject: None, predicate: None, object: None }, false), Continue)
+    (
+      inversion_settle(
+        { ..model, state: to, subject: None, predicate: None, object: None, },
+        false,
+      ),
+      Continue,
+    )
   } else {
     let quad = inversion_swap(model, take_quad(model))
-    (inversion_settle({ ..model, state: to, subject: None, predicate: None, object: None }, false), EmitQuad(quad))
+    (
+      inversion_settle(
+        { ..model, state: to, subject: None, predicate: None, object: None, },
+        false,
+      ),
+      EmitQuad(quad),
+    )
   }
 }
 
@@ -977,23 +4585,25 @@ fn inversion_swap(model : Model, quad : Quad) -> Quad {
   match model.is_src {
     Some(src) =>
       if quad.subject == Some(src) {
-        { ..quad, subject: quad.object, object: quad.subject }
+        { ..quad, subject: quad.object, object: quad.subject, }
       } else {
         quad
       }
     None => quad
   }
 }
+
 ///|
 /// 倒装结算：scope 非 Object 且栈深回到 is_depth 记录位 ⇒ 清 is_src
 /// （Comma Object 保键连换；嵌套内层发射深度不齐保键——settle_inversion 同口径）
 fn inversion_settle(model : Model, object_scope : Bool) -> Model {
   if !object_scope && model.frames.length() == model.is_depth {
-    { ..model, is_src: None }
+    { ..model, is_src: None, }
   } else {
     model
   }
 }
+
 ///|
 /// 压帧（P4.2e）：记外层三槽快照 + `open_span` + `ret_state` + `as_subject`，
 /// 再把 `subject = open_span`、`predicate = None`（与引擎 open_bnode_prop/open_collection 同机械）；
@@ -1004,14 +4614,14 @@ fn frame_push(
   open : @qcs.Ref[RefId],
   ret_state : ModelState,
   as_subject : Bool,
-  to : ModelState,  f0 : Bool,
+  to : ModelState,
+  f0 : Bool,
   f1 : Bool,
-
 ) -> Model {
   // 符号期无具体值 ⇒ 哨兵 RefId(0)（结构期只需"有节点"；执行期解析真值）
   let open_span = match ref_id(open) {
     Some(id) => id
-    None => { id: 0 }
+    None => { id: 0, }
   }
   let frames = model.frames.copy()
   frames.push({
@@ -1027,8 +4637,19 @@ fn frame_push(
     id_subject: None,
   })
   // 状态由**转移表**给（`to`）；`ret_state` 只是压进帧、弹帧时才兑现
-  { ..model, state: to, subject: if f0 { None } else { Some(open_span) }, predicate: None, frames }
+  {
+    ..model,
+    state: to,
+    subject: if f0 {
+      None
+    } else {
+      Some(open_span)
+    },
+    predicate: None,
+    frames,
+  }
 }
+
 ///|
 /// 弹帧（P4.2e）：恢复外层三槽 + **`state = ret_state`**（"状态由表管理"的唯一例外，
 /// 引擎在 pop_bnode_prop 尾行兑现）；新节点引用取 `open_span`
@@ -1045,7 +4666,15 @@ fn frame_pop(model : Model) -> Model {
 
       // 弹帧回写（笔 3c 下半·三）：谓位帧弹帧把占位回写谓词槽（引擎 pop 尾行同机械）。
       if fr.as_pred {
-        return { ..model, state: fr.ret_state, subject: fr.subject, predicate: Some(target), object: model.object, graph: fr.graph, frames }
+        return {
+          ..model,
+          state: fr.ret_state,
+          subject: fr.subject,
+          predicate: Some(target),
+          object: model.object,
+          graph: fr.graph,
+          frames,
+        }
       }
       let subject = if fr.as_subject { Some(target) } else { fr.subject }
       let object = if fr.as_subject { model.object } else { Some(target) }
@@ -1062,6 +4691,7 @@ fn frame_pop(model : Model) -> Model {
     None => model
   }
 }
+
 ///|
 /// 帧栈顶 `prev_node` 读助手（笔 3b 起；笔 3c 支持带类型帧位）：**被读**时生成。
 /// 空栈兜底 = `None`（与该位的声明类型一致）。
@@ -1071,39 +4701,55 @@ fn frame_prev_node(model : Model) -> RefId? {
     _ => model.frames[model.frames.length() - 1].prev_node
   }
 }
+
 ///|
 /// 帧顶写助手（笔 3a 起；笔 3b 改为按声明字段逐支发射）：`frame.prev_node=<来源>` 声明时生成。
-fn frames_top_set_prev_node(frames : Array[Frame], prev_node : RefId?) -> Array[Frame] {
+fn frames_top_set_prev_node(
+  frames : Array[Frame],
+  prev_node : RefId?,
+) -> Array[Frame] {
   let frames = frames.copy()
   if frames.length() > 0 {
-    frames[frames.length() - 1] = { ..frames[frames.length() - 1], prev_node }
+    frames[frames.length() - 1] = { ..frames[frames.length() - 1], prev_node, }
   }
   frames
 }
+
 ///|
 /// 帧顶写助手（笔 3a 起；笔 3b 改为按声明字段逐支发射）：`frame.ret_state=<来源>` 声明时生成。
-fn frames_top_set_ret_state(frames : Array[Frame], ret_state : ModelState) -> Array[Frame] {
+fn frames_top_set_ret_state(
+  frames : Array[Frame],
+  ret_state : ModelState,
+) -> Array[Frame] {
   let frames = frames.copy()
   if frames.length() > 0 {
-    frames[frames.length() - 1] = { ..frames[frames.length() - 1], ret_state }
+    frames[frames.length() - 1] = { ..frames[frames.length() - 1], ret_state, }
   }
   frames
 }
+
 ///|
 /// 帧顶写助手（笔 3a 起；笔 3b 改为按声明字段逐支发射）：`frame.open_span=<来源>` 声明时生成。
-fn frames_top_set_open_span(frames : Array[Frame], open_span : RefId) -> Array[Frame] {
+fn frames_top_set_open_span(
+  frames : Array[Frame],
+  open_span : RefId,
+) -> Array[Frame] {
   let frames = frames.copy()
   if frames.length() > 0 {
-    frames[frames.length() - 1] = { ..frames[frames.length() - 1], open_span }
+    frames[frames.length() - 1] = { ..frames[frames.length() - 1], open_span, }
   }
   frames
 }
+
 ///|
 /// 帧顶写助手（笔 3a 起；笔 3b 改为按声明字段逐支发射）：`frame.id_subject=<来源>` 声明时生成。
-fn frames_top_set_id_subject(frames : Array[Frame], id_subject : RefId?) -> Array[Frame] {
+fn frames_top_set_id_subject(
+  frames : Array[Frame],
+  id_subject : RefId?,
+) -> Array[Frame] {
   let frames = frames.copy()
   if frames.length() > 0 {
-    frames[frames.length() - 1] = { ..frames[frames.length() - 1], id_subject }
+    frames[frames.length() - 1] = { ..frames[frames.length() - 1], id_subject, }
   }
   frames
 }
@@ -1112,16 +4758,40 @@ fn frames_top_set_id_subject(frames : Array[Frame], id_subject : RefId?) -> Arra
 /// 恢复窗开窗（R-19）：任何 Error 响应后的可观测清账面——帧栈/倒装交换键随错回收
 /// （引擎 recover_cleanup_half 同面；path 三账不清），并置 recovering 旗开窗。
 fn recovery_enter(model : Model) -> Model {
-  { ..model, recovering: true, frames: [], is_src: None }
+  { ..model, recovering: true, frames: [], is_src: None, }
 }
+
 ///|
 /// 恢复窗吞咽（R-19）：窗内事件不进表；收窗事件按声明清槽归位（引擎
 /// recover_consume 同判据）。恒报 Skip（≠ Continue：Continue = 进了表）。
 fn recovery_swallow(model : Model, cmd : Command) -> (Model, Response) {
   match cmd {
-    Dot => ({ ..model, state: ExpectSubject, subject: None, predicate: None, object: None, graph: None, recovering: false }, Skip)
-    EOF => ({ ..model, state: ExpectSubject, subject: None, predicate: None, object: None, recovering: false }, Skip)
-    _ => ({ ..model, recovering: true }, Skip)
+    Dot =>
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+          graph: None,
+          recovering: false,
+        },
+        Skip,
+      )
+    EOF =>
+      (
+        {
+          ..model,
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+          recovering: false,
+        },
+        Skip,
+      )
+    _ => ({ ..model, recovering: true, }, Skip)
   }
 }
 
@@ -1138,18 +4808,21 @@ fn transition(model : Model, command : Command, response : Response) -> Model {
 test "n3_quick_machine model_exec: 非法转移兜底 / transition 不推进" {
   // 非法转移兜底 + transition: 错误响应不推进
   let m = model_empty()
-  let (m_bad, resp_bad) = model_execute(m, BracketTripleTerm(Concrete({ id: 1 })))
+  let (m_bad, resp_bad) = model_execute(
+    m,
+    BracketTripleTerm(Concrete({ id: 1, })),
+  )
   assert_eq(resp_bad, Error(0))
   assert_eq(m_bad, recovery_enter(m)) // R-19：错误一步即在 model_execute 内开窗
-  let t_err = transition(m, BracketTripleTerm(Concrete({ id: 1 })), Error(0))
+  let t_err = transition(m, BracketTripleTerm(Concrete({ id: 1, })), Error(0))
   assert_true(t_err != m) // R-19：错误响应 ⇒ 开窗（recovering 已置）
-  let (m_sw, resp_sw) = model_execute(t_err, Iri(Concrete({ id: 3 })))
+  let (m_sw, resp_sw) = model_execute(t_err, Iri(Concrete({ id: 3, })))
   assert_eq(resp_sw, Skip) // 窗内吞咽：不进表
   let (m_close, resp_close) = model_execute(m_sw, Dot)
   assert_eq(resp_close, Skip) // 收窗事件也不进表
   assert_eq(m_close, model_empty()) // 归位：与初始模型全等
   // transition: 正常推进
-  let t_ok = transition(m, Iri(Concrete({ id: 1 })), Continue)
+  let t_ok = transition(m, Iri(Concrete({ id: 1, })), Continue)
   assert_true(t_ok != m)
 }
 
@@ -1159,20 +4832,20 @@ test "n3_quick_machine model_exec: EmitQuad 发射路径与空槽照发" {
   let ready = {
     ..model_empty(),
     state: ExpectDotOrGraph,
-    subject: Some({ id: 1 }),
-    predicate: Some({ id: 2 }),
-    object: Some({ id: 3 }),
-    graph: Some({ id: 4 }),
-    path_src: Some({ id: 5 }),
-    path_pend: Some({ id: 6 }),
-    path_tail: Some({ id: 7 }),
+    subject: Some({ id: 1, }),
+    predicate: Some({ id: 2, }),
+    object: Some({ id: 3, }),
+    graph: Some({ id: 4, }),
+    path_src: Some({ id: 5, }),
+    path_pend: Some({ id: 6, }),
+    path_tail: Some({ id: 7, }),
   }
   let (m1, r1) = model_execute(ready, AnnotStart)
   assert_true(r1 is EmitQuad(_))
   assert_true(m1.predicate is None) // scope 清槽
   assert_true(m1.object is None) // scope 清槽
   // 空槽快照：仍发 EmitQuad（不设"槽位齐全"前置），状态照常推进
-  let empty = { ..model_empty(), state: ExpectDotOrGraph }
+  let empty = { ..model_empty(), state: ExpectDotOrGraph, }
   let (m2, r2) = model_execute(empty, AnnotStart)
   assert_true(r2 is EmitQuad(_))
   assert_eq(m2.state, AnnotExpectVerb)

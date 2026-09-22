@@ -132,11 +132,7 @@ fn[L] SliceParser::validate(
       }
     }
   }
-  let graph = if g_len > 0 {
-    Some(graph_view)
-  } else {
-    None
-  }
+  let graph = if g_len > 0 { Some(graph_view) } else { None }
 
   Ok({
     subj: subject,

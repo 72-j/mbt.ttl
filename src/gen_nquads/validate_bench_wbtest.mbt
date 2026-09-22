@@ -94,7 +94,9 @@ async test "P1 逐门剖析: 验证段分阶计时（A 引擎 / B 组装 / C 全
     d_graph = d_graph + @bench.monotonic_clock_end(start)
   }
 
-  println("=== P1 逐门剖析（10k 全 IRI 语料 / native release / 3 次取均值）===")
+  println(
+    "=== P1 逐门剖析（10k 全 IRI 语料 / native release / 3 次取均值）===",
+  )
   println(
     "A 引擎裸跑:      \{a_elapsed[0]} / \{a_elapsed[1]} / \{a_elapsed[2]} µs",
   )

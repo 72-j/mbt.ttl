@@ -286,7 +286,7 @@ pub fn[L : LexerSource] NQuadsEngine::next(
     } else {
       match self.lexer.next() {
         None => return self.finish_at_end()
-        Some(ev) => {
+        Some(ev) =>
           // P2 热路径零分配：判点只读词尾；剥点重构仅冷路径（吞点词形）发生
           if self.event_ends_with_dot(ev) {
             synth_dot = true
@@ -294,7 +294,6 @@ pub fn[L : LexerSource] NQuadsEngine::next(
           } else {
             ev
           }
-        }
       }
     }
     match step(self.ctx, event, self.hooks) {
