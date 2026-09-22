@@ -39,6 +39,9 @@ pub(all) enum ResetScope {
 } derive(Debug)
 
 ///|
+pub extend ResetScope with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 /// Effect 枚举：状态机可能产生的副作用（纯数据）
 pub(all) enum NQuadsEffect {
   Continue
@@ -101,6 +104,9 @@ pub(all) struct NQuadsPendingQuad {
   obj : Span?
   graph : Span?
 } derive(Eq)
+
+///|
+pub extend NQuadsPendingQuad with Eq::{equal, not_equal}
 
 ///|
 /// 发射槽位脏净判定：任一发射槽非空即有待发射残留（loop 的 EOF 收尾判据）

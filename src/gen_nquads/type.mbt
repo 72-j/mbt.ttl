@@ -59,11 +59,5 @@ pub extend QuadSpan with @moonbitlang/core/debug.Debug::{to_repr}
 // }
 
 ///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
-// 归位说明：`ResetScope`/`NQuadsPendingQuad` 声明在直产件 `nquads.mbt`（G9 黄金门逐字节比它）
-// ⇒ 提升**必须写在手写件**（生成物禁手写）。
-pub extend ResetScope with @moonbitlang/core/debug.Debug::{to_repr}
-
-///|
-// W18 同上：`NQuadsPendingQuad` 的 Eq 提升。
-pub extend NQuadsPendingQuad with Eq::{equal, not_equal}
+// W18（2026-09-22 主仓半·二）：`ResetScope`/`NQuadsPendingQuad` 的提升已由**模板直产**
+// （codegen_effects.mbt / codegen.mbt 各发显式提升，黄金门逐字节钉）——手写件条目删除防 [4056] 撞车。

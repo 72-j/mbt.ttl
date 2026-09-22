@@ -184,11 +184,5 @@ pub impl Show for TrigEvent with fn output(self : TrigEvent, logger : &Logger) -
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
 pub extend TrigEvent with Show::{output, to_string}
 
-///|
-// W18 同上：`ResetScope`（@nquads 词表）与 `TrigPendingQuad`（`trig.mbt` 直产件内声明）
-// 的提升**写在手写件**（生成物禁手写；`trig.mbt` 由 triggen 直产）。
-pub extend ResetScope with @moonbitlang/core/debug.Debug::{to_repr}
-
-///|
-// W18 同上：`TrigPendingQuad` 的 Eq 提升。
-pub extend TrigPendingQuad with Eq::{equal, not_equal}
+// W18（2026-09-22 主仓半·二）：`ResetScope`/`TrigPendingQuad` 的提升已由**模板直产**
+// （黄金门逐字节钉）——手写件条目删除防 [4056] 撞车。

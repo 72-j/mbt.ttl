@@ -94,6 +94,9 @@ pub(all) enum ResetScope {
 } derive(Debug)
 
 ///|
+pub extend ResetScope with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 /// Effect 枚举：状态机可能产生的副作用（纯数据）
 pub(all) enum TrigEffect {
   Continue
@@ -191,6 +194,9 @@ pub(all) struct TrigPendingQuad {
   base_version : Int
   subj_shell : Bool
 } derive(Eq)
+
+///|
+pub extend TrigPendingQuad with Eq::{equal, not_equal}
 
 ///|
 /// 发射槽位脏净判定：任一发射槽非空即有待发射残留（loop 的 EOF 收尾判据）
