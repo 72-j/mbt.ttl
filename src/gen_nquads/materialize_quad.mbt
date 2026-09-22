@@ -1,30 +1,30 @@
 ///|
-/// 物化 Quad（批量优化）
-fn materialize_quad(
-  quad : QuadSpan,
-  // data : ArrayView[Byte],
-) -> Result[QuadEmit, ParseError] {
-
-  // 物化
-  let subject = match materialize_subject(quad.subj, quad.subj_type) {
-    Ok(s) => s
-    Err(e) => return Err(e)
+/// 物化 Quad（P3 扁平化：类型已由 validate 探测，此处纯标注搬运——view 零拷贝。
+/// 消 4 层 helper 调用与 Result 往返；错误臂只留主语位防御钉）
+fn materialize_quad(quad : QuadSpan) -> Result[QuadEmit, ParseError] {
+  let subject = match quad.subj_type {
+    TermType::Iri => Subject::Iri(quad.subj)
+    TermType::BNode => Subject::BNode(quad.subj)
+    TermType::Literal =>
+      return Err(ParseError::ValidationErr("Subject cannot be literal"))
+    // 表只开宾语位 TripleTerm，主语位不可达；防御性报错钉住不变量
+    TermType::TripleTerm =>
+      return Err(ParseError::ValidationErr("Subject cannot be triple term"))
   }
-  let predicate = match materialize_predicate(quad.pred) {
-    Ok(p) => p
-    Err(e) => return Err(e)
+  // 谓语必须是 IRI——校验已在 validate_helper（严格模式）完成，物化层只搬运
+  let object = match quad.obj_type {
+    TermType::Iri => Object::Iri(quad.obj)
+    TermType::BNode => Object::BNode(quad.obj)
+    TermType::Literal => Object::Literal(quad.obj)
+    // 整段 span 原文持有：<<( ... )>> 字节保真，不递归拆解（拆解属下游语义层）
+    TermType::TripleTerm => Object::TripleTerm(quad.obj)
   }
-  let object = match materialize_object(quad.obj, quad.obj_type) {
-    Ok(o) => o
-    Err(e) => return Err(e)
+  let graph = match quad.graph {
+    // 首字节探测（与 subj/obj 同一规则：`_`→BNode，否则 Iri）
+    Some(g) => if g[0] == b'_' { GraphName::BNode(g) } else { GraphName::Iri(g) }
+    None => GraphName::None
   }
-  // 图名（可选）
-
-  let graph = match materialize_graph_name(quad.graph) {
-    Ok(g) => g
-    Err(e) => return Err(e)
-  }
-  Ok({ subject, predicate, object, graph, })
+  Ok({ subject, predicate: quad.pred, object, graph })
 }
 
 ///|
@@ -44,60 +44,6 @@ pub fn materialize_all(
   }
 
   (results, errors)
-}
-
-///|
-fn materialize_subject(
-  subject : ArrayView[Byte],
-  t : TermType,
-) -> Result[Subject, ParseError] {
-  match t {
-    TermType::Iri => Ok(Subject::Iri(subject))
-    TermType::BNode => Ok(Subject::BNode(subject))
-    TermType::Literal =>
-      Err(ParseError::ValidationErr("Subject cannot be literal"))
-    // 表只开宾语位 TripleTerm，主语位不可达；防御性报错钉住不变量
-    TermType::TripleTerm =>
-      Err(ParseError::ValidationErr("Subject cannot be triple term"))
-  }
-}
-
-///|
-fn materialize_object(
-  object : ArrayView[Byte],
-  t : TermType,
-) -> Result[Object, ParseError] {
-  match t {
-    TermType::Iri => Ok(Object::Iri(object))
-    TermType::BNode => Ok(Object::BNode(object))
-    TermType::Literal => Ok(Object::Literal(object))
-    // 整段 span 原文持有：<<( ... )>> 字节保真，不递归拆解（拆解属下游语义层）
-    TermType::TripleTerm => Ok(Object::TripleTerm(object))
-  }
-}
-
-///|
-fn materialize_predicate(
-  predicate : ArrayView[Byte],
-) -> Result[Predicate, ParseError] {
-  // 谓语必须是 IRI——校验已在 validate_helper（严格模式）完成，物化层只搬运
-  Ok(predicate)
-}
-
-///|
-fn materialize_graph_name(
-  graph : ArrayView[Byte]?,
-) -> Result[GraphName, ParseError] {
-  match graph {
-    Some(g) =>
-      // 首字节探测（与 subj/obj 同一规则：`_`→BNode，否则 Iri）
-      if g[0] == b'_' {
-        Ok(GraphName::BNode(g))
-      } else {
-        Ok(GraphName::Iri(g))
-      }
-    None => Ok(GraphName::None)
-  }
 }
 
 ///|
