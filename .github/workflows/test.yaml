@@ -255,6 +255,15 @@ jobs:
           # （默认 Continue 恰为真值；表源缺口另立，非生成器债）。
           check_default_arms src/gen_n3v2/quicktest/model_exec.mbt 48
 
+      - name: "净检出复跑（CI-6 元门：crlf 口径 = Windows 检出快速替身）"
+        run: |
+          # CI-6（2026-09-23 立）：**净检出复跑**——判据是"净检出绿"，不是"本地绿"。
+          # 本步在临时克隆里以 `core.autocrlf=true` 复跑测试，用来抓 Windows 检出把文本件
+          # 转 CRLF 打穿的"行尾敏感"一族（实测：`n3tests_suite_wbtest` 读 `parser_index.tsv`
+          # 后按 `\n` 切行 ⇒ 路径带 `\r` ⇒ OSError）。本作业自己的检出已是净检出，
+          # 故 `lf` 口径不必再跑（本地两口径都跑：`sh ci/netcheck.sh lf|crlf`）。
+          sh ci/netcheck.sh crlf
+
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
