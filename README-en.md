@@ -382,3 +382,10 @@ under the Apache-2.0 license) shall be dual-licensed as above, without any addit
 - N-Quads Specification (https://www.w3.org/TR/n-quads/)
 - Turtle Specification (https://www.w3.org/TR/turtle/)
 - MoonBit Documentation (https://docs.moonbitlang.com)
+
+## 性能实测（2026-09-23）与对端口径
+
+- **本机实测**（口径 = `--target native --release` · 10k 语料）：**6.137 ms / 1.630M triples·s⁻¹**（0.000614 ms/三元）。
+- **对端为公开读数、非同口径**：Oxigraph 0.0020 ms/三元（本 README 上表；500k 语料、异机，且其建图而本实现解析 + 四门深验 + 物化不建图）⇒ **同量纲换算 ≈3.3× 量级参照**。
+- **单一声明源**：数字、判据体、复现条件（target / 冷缓存 / 命令 / 机器指纹）与沿革勘误一律见 `perf-review.txt`（面四）；本 README 只引用，不另立数字。
+  （沿革：旧账面"5–6×"系**预估投影**，非实测；自 2026-09-23 起以 `perf-review.txt` 为准。）
