@@ -136,7 +136,7 @@ moon info && moon fmt        # .mbti diff 逐行审（当前 166 行 / 29 pub）
 | 候选 | 内容 | 触发条件 / 判据 |
 |---|---|---|
 | 役32 | 生成器包清账：`src/rdf/n3gen` 33 处 deprecation（`StringBuilder::new` / `not(x)` / `to_string`） | 换气役，零语义风险；`moon check src/rdf/n3gen` 警告数 → 0 |
-| 役33 | R-16 影子缺口修口（内建前缀预绑定 + `<=` / `=>` 谓词白名单） | 影子钉 5/0/123/13 → 0/0/0/0 |
+| 役33 | ✅ R-16 影子缺口修口（step1–4：隐式空前缀 + `<=`/`=>` 白名单 + 结构性词项放行 + 校验层升格主判定链；**路线翻案**内建前缀表不需要） | 影子钉 5/0/123/13 → **0/0/0/0**（2026-09-22 复跑；`5ff9755` + `10a6434`） |
 | 役34 | 命名对齐 world 词表：`N3LoopPolicy → N3Supervisor`（trig `TrigLoopPolicy` 同笔） | world `vocabulary.spec.md` 废弃别名表；与 trig T13 同源 |
 
 ---
