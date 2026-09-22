@@ -620,6 +620,19 @@ pub fn N3Materializer::materialize_quad(
       ),
     )
   }
+  // 役34 谓位空集合：p 槽同门三分（pop 层唯一构造点 pop_bnode_prop，offset
+  // 恒指 `(` 原文位；事故零长 span 报错口径与 s/o 一致）
+  // pk≠Normal 的合成谓词（KwA/RDFFirst/RDFRest/SameAs）p span 恒零长占位，
+  // 语义由 pk 臂出账——不适用 nil 门（役34 手术首版误拦全量 `a` 谓词，实证收窄）
+  if quad.pk is PredKind::Normal &&
+    quad.p.1 == 0 &&
+    self.data[quad.p.0] != b'(' {
+    return Err(
+      ParseError::ValidationErr(
+        "Zero-length predicate span is not a valid nil marker",
+      ),
+    )
+  }
   // 主语位：Iri / BNode / fresh 结构 / PrefName（TT 壳臂为防御位：N3 表无
   // 主语位壳行）。融合深验在词项构造点就地执行
   let subject : @nquads.Subject = if quad.subj_shell {
@@ -749,13 +762,21 @@ pub fn N3Materializer::materialize_quad(
     self.push_vocab(@nquads.owl_sameas)
     let pspan = (start, self.arena.length() - start)
     slice_span(self.arena[:], pspan)
+  } else if quad.p.1 == 0 {
+    // rdf:nil 标记（空集合谓位，役34）：合成词表 IRI，可信免深验（s/o 同械；
+    // 必须先于 raw 臂——零长 span 的 data[p.0] 恰是 `(`，会误入白名单臂）
+    let start = self.arena.length()
+    self.push_vocab(@nquads.rdf_nil)
+    slice_span(self.arena[:], (start, self.arena.length() - start))
   } else if self.data[quad.p.0] == b'"' ||
     self.data[quad.p.0] == b'?' ||
     self.data[quad.p.0] == b'[' ||
     self.data[quad.p.0] == b'{' ||
-    self.data[quad.p.0] == b'=' {
+    self.data[quad.p.0] == b'=' ||
+    self.data[quad.p.0] == b'(' {
     // 役10 词位扩展：非词项谓词原文保真直出——字面量/变量谓词按原文重发
-    // （cwm 口径）；`[`/`{` 谓词只持全 token span，保真以 token 为界。
+    // （cwm 口径）；`[`/`{`/`(` 谓词只持开括号 token span，保真以 token 为界
+    // （役34 集合谓位：身份 = 开括号，ADR-003a，与 s/o 位同口径）。
     // 役17 增 `=`：规则蕴含 `=>`（N3Implies，全 token span）原文保真直出；
     // 裸 `=` 走上方 SameAs 臂（owl:sameAs 展开），不落此臂
     slice_span(self.data, quad.p)

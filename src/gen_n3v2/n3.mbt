@@ -321,6 +321,10 @@ priv trait N3Actions {
     N3Effect,
     N3ActionError,
   ]
+  fn open_collection_pred(Self, N3Context, Span, Bool, N3State) -> Result[
+    N3Effect,
+    N3ActionError,
+  ]
   fn open_bnode_prop(Self, N3Context, Span, Bool, N3State) -> Result[
     N3Effect,
     N3ActionError,
@@ -996,6 +1000,10 @@ fn[A : N3Actions] step(
       ctx.state = N3BnpExpectPredicate
       actions.open_bnode_pred(ctx, payload, false, N3FormulaExpectObject)
     }
+    (N3FormulaExpectPredicate, N3Lparen(payload)) => {
+      ctx.state = N3ListExpectElemOrEnd
+      actions.open_collection_pred(ctx, payload, false, N3FormulaExpectObject)
+    }
     (N3BnpExpectObject, N3Anon(payload)) => {
       ctx.state = N3BnpAfterObject
       actions.set_object(ctx, payload)
@@ -1228,6 +1236,22 @@ fn[A : N3Actions] step(
     (N3ExpectObject, N3Lparen(payload)) => {
       ctx.state = N3ListExpectElemOrEnd
       actions.open_collection(ctx, payload, false, N3ExpectDotOrGraph)
+    }
+    (N3ExpectPredicate, N3Lparen(payload)) => {
+      ctx.state = N3ListExpectElemOrEnd
+      actions.open_collection_pred(ctx, payload, false, N3ExpectObject)
+    }
+    (N3ExpectVerbOrEnd, N3Lparen(payload)) => {
+      ctx.state = N3ListExpectElemOrEnd
+      actions.open_collection_pred(ctx, payload, false, N3ExpectObject)
+    }
+    (N3ExpectVerbRequired, N3Lparen(payload)) => {
+      ctx.state = N3ListExpectElemOrEnd
+      actions.open_collection_pred(ctx, payload, false, N3ExpectObject)
+    }
+    (N3ExpectVerbOrDot, N3Lparen(payload)) => {
+      ctx.state = N3ListExpectElemOrEnd
+      actions.open_collection_pred(ctx, payload, false, N3ExpectObject)
     }
     (N3BnpExpectObject, N3Lparen(payload)) => {
       ctx.state = N3ListExpectElemOrEnd

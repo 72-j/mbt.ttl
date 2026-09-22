@@ -230,8 +230,12 @@ ListAfterElem+Bang	path_elem_trail	Continue	path_pend=none,path_tail=arg0,frame.
 ExpectSubject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,true,state:ExpectVerbRequired
 AnnotExpectObject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,false,state:AnnotExpectEnd
 ListAfterElem+Caret	path_elem_trail	Continue	path_pend=none,path_tail=arg0,frame.top.prev_node=arg0,path_src=frame.prev_node	-	false	payload,false
+ExpectPredicate+Lparen	open_collection_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:ExpectObject
+ExpectVerbOrDot+Lparen	open_collection_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:ExpectObject
+ExpectVerbOrEnd+Lparen	open_collection_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:ExpectObject
 ExpectVerbRequired+Lbracket	open_bnode_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:ExpectObject
 ExpectDirectiveEnd+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,true,state:ExpectVerbRequired
+ExpectVerbRequired+Lparen	open_collection_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:ExpectObject
 SubjTrailVerbDone+Iri	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
 FormulaExpectObject+Lbrace	open_formula	Continue	subject=none,predicate=none,frame.top.is_formula=true	push	false	payload,false,state:FormulaAfterObject
 SubjTrailVerbDone+Anon	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
@@ -250,6 +254,7 @@ SubjTrailVerbDone+TripleTerm	path_subj_object	Continue	object=arg0,path_pend=non
 SubjTrailVerbDoneFormula+Iri	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
 SubjTrailVerbDone+Bang	path_verb_hop	EmitQuad(SPO)	object=arg0,path_pend=none,path_tail=arg0,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload,true
 SubjTrailVerbDoneFormula+Anon	path_subj_object	Continue	object=arg0,path_pend=none,path_tail=none,subject=ctx.path_tail,predicate=ctx.path_pend	-	false	payload
+FormulaExpectPredicate+Lparen	open_collection_pred	Continue	subject=arg0,predicate=none,frame.top.as_pred=true	push	false	payload,false,state:FormulaExpectObject
 ListExpectElemOrEnd+Lbrace	list_first_nested	OpenSlot	subject=none,predicate=none,frame.below.prev_node=arg0	-	true	payload,SlotType::Formula,state:ListAfterElem
 PathAfterStep+Lparen	path_end_nested	OpenSlot	subject=arg0,path_src=none,path_pend=none,predicate=none	-	true	payload,SlotType::Collection,state:ExpectDotOrGraph
 SubjTrailVerbDone+Caret	path_verb_hop	EmitQuad(SPO)	subject=arg0,path_pend=none,path_tail=arg0,object=ctx.path_tail,predicate=ctx.path_pend	-	false	payload,false

@@ -194,7 +194,9 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 （交换键 `is_src` + 槽深 `is_depth`）/ 役7 `=` 等同 / 役8 注解壳（`<<锚三元组原文>>` TT，壳账四字段）/
 役10 词位扩展（`verb ::= expression`）/ 役11 `has` 与 `[]` 谓词位 / 役12 罩内 `is/of` / 役13 量化指令 /
 役16 `id`/`<-` + 尾随路径 / 役18 词法 `^` 门 + `path_obj_close` 双发 / 役20 负例缺口 3 收口（`this` 晋升门、
-声明名验形门、`bad_prefix2` 翻案 skip）。
+声明名验形门、`bad_prefix2` 翻案 skip）/ 役33 R-16 影子缺口修口（隐式空前缀放行 +
+validate_pred 白名单）/ **役34 集合谓位**（CG 定案 collections any position，`open_collection_pred`
++ 表 5 行 + 物化 p-nil 门 pk 收窄 + raw 白名单 `(`——役10 开位收尾）。
 
 物化口径：`arena` 展开 + `view` 零拷贝直引；`gate_iri/gate_bnode/gate_tt/gate_literal` 四门就地深验；
 `formula_body_end` 配对扫描（串/IRI/注释/两字节操作符跳过）；字面量主语臂；谓词 raw 集（字面量/变量/

@@ -655,7 +655,7 @@ fn data_face_compare(
 async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值 + 台账钉死" {
   let snapshot = @fs.read_file("src/gen_n3v2/quicktest/actions_truth.gen").text()
   let rows = parse_data_face_rows(snapshot)
-  assert_eq(rows.length(), 314)
+  assert_eq(rows.length(), 319)
   let (compared, incomparable, unreachable_rows, mismatches) = data_face_compare(
     rows,
   )

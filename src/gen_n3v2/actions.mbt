@@ -237,6 +237,37 @@ impl N3Actions for N3ActionsImpl with fn open_collection(
 }
 
 ///|
+/// 集合谓位入口（役34）：帧携 as_pred——弹栈身份（单一 BNode = 开括号，
+/// ADR-003a；空集合 = nil 零长标记）落外层谓词槽。N3 CG 规范明文 collections
+/// 可居 any position（谓位合法），役10 verb::=expression 开位的收尾一笔。
+/// 入帧/占位记账与 open_collection 全同，仅 as_pred 置位；as_subject 恒 false
+///（谓位非主位，行参占位），pop 三向裁决按 as_pred 落 p 槽（帧型无关共用机械）。
+impl N3Actions for N3ActionsImpl with fn open_collection_pred(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+  open_span : Span,
+  _as_subject : Bool,
+  ret_state : N3State,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.slot_stack.push({
+    typ: SlotType::Collection,
+    open_span,
+    subject: ctx.subject,
+    predicate: ctx.predicate,
+    graph: ctx.graph,
+    ret_state,
+    as_subject: false,
+    as_pred: true,
+    prev_node: None,
+    node_seq: 0,
+    id_subject: None,
+  })
+  ctx.subject = Some(open_span)
+  ctx.predicate = None
+  Ok(N3Effect::Continue)
+}
+
+///|
 /// OpenSlot 意图兑现 action（嵌套元素开帧，`[`/`(` 作集合元素）：按 typ 压对应帧。
 /// as_subject 恒 false（嵌套开帧只发生元素位，主位开帧走直连行）
 impl N3Actions for N3ActionsImpl with fn open_slot(
