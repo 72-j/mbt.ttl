@@ -32,22 +32,50 @@ pub fn Lexermoon::current_pos(self : Lexermoon) -> Int {
 }
 
 ///|
+/// 字节类表（**P4 词法役**，2026-09-23）：把 `is_name_char` 的**逐字节 5 次比较**收成
+/// **1 次查表**（与 P1 `iri_cls` 同法：`FixedArray` + `unsafe_get`，热循环零边界检查）。
+/// 位义：`1` = alpha；`2` = 非字母的 name 追加（`0-9` / `_` / `-` / `.`）；`4` = hex 位。
+/// ⇒ `is_name_char = (cls & 3) != 0`、`is_alpha = (cls & 1) != 0`、`is_hex = (cls & 4) != 0`
+/// （**逐字节同义**：本表只是同一判据的查表实现，不改任何接受面）。
+let lexer_cls : FixedArray[Int] = {
+  let t : FixedArray[Int] = FixedArray::make(256, 0)
+  for i in 0..<256 {
+    let c = i.to_byte()
+    let is_alpha = (c >= b'a' && c <= b'z') || (c >= b'A' && c <= b'Z')
+    let is_num = (c >= b'0' && c <= b'9') || c == b'_' || c == b'-' || c == b'.'
+    let is_hex = (c >= b'0' && c <= b'9') ||
+      (c >= b'a' && c <= b'f') ||
+      (c >= b'A' && c <= b'F')
+    let mut cls = 0
+    if is_alpha {
+      cls = cls | 1
+    }
+    if is_num {
+      cls = cls | 2
+    }
+    if is_hex {
+      cls = cls | 4
+    }
+    t[i] = cls
+  }
+  t
+}
+
+///|
 fn is_alpha(c : Byte) -> Bool {
-  (c >= b'a' && c <= b'z') || (c >= b'A' && c <= b'Z')
+  (lexer_cls.unsafe_get(c.to_int()) & 1) != 0
 }
 
 ///|
 /// 名字字符：字母数字下划线连字符点（与 C 版 is_name_char 对齐）
 fn is_name_char(c : Byte) -> Bool {
-  is_alpha(c) || (c >= b'0' && c <= b'9') || c == b'_' || c == b'-' || c == b'.'
+  (lexer_cls.unsafe_get(c.to_int()) & 3) != 0
 }
 
 ///|
 /// 十六进制位（%HH 百分号对判定用）
 fn is_hex(c : Byte) -> Bool {
-  (c >= b'0' && c <= b'9') ||
-  (c >= b'a' && c <= b'f') ||
-  (c >= b'A' && c <= b'F')
+  (lexer_cls.unsafe_get(c.to_int()) & 4) != 0
 }
 
 ///|
