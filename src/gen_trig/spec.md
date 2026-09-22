@@ -114,7 +114,11 @@ cd src/ttl && moon test src/gen_trig                          # 3) 子仓回归
 - 零空格指令名拆分：`@prefix:<iri>` 在 `@` 邻接位精确命中 `prefix:`/`base:`/`version:` 才拆
   （`kw:foo` 带本地部不拆，term 位 `prefix:x` 不受扰）。
 
-### 5.3 引擎表（`src/rdf/fsm_out/trig_fsm.toml`；规模 36 态 / 34 事件 / 10 效果 / 195 转移）
+### 5.3 引擎表（`src/rdf/fsm_out/trig_fsm.toml`；规模 **37 态 / 35 事件 / 10 效果 / 206 转移**）
+
+> 规模沿革：36/34/10/195 → **37/35/10/206**（役35 35-B1：`@keywords` 表源化 +11 行、
+> 事件 `KeywordX`、状态 `ExpectKeywordsList`；表源 = `src/rdf/domain2/trig_{base,domain}.toml`，
+> 计数钉 = `src/rdf/domain_to_ir.mbt`）。
 
 - **指令双风格**：`@prefix` / `@base`（精确小写，Dot 收尾）与 `PREFIX` / `BASE` / `VERSION`
   （SPARQL 风格，无 Dot）；两者都要求精确小写拼写。
@@ -132,6 +136,10 @@ cd src/ttl && moon test src/gen_trig                          # 3) 子仓回归
 - **TT 拆壳**：独立 `<< s p o >> .` 语句拆成三槽 plain 判定 → lenient 负值（数值主语等）在槽位即拒，不到深验。
 - 轻验 `validate_term`：形态嗅探（IRI 壳 / bnode 字符集 / prefname 冒号分账 / 数值整词 / 字面量引号壳），
   不做全量文法；`lenient=true` 跳过它。
+- **裸名（无冒号）口径**（役35 35-B1）：`prefix_declared` 对**无冒号裸名放行**（视作
+  **空前缀本地名**）——合法性已由**转移表**裁定（listed ⇒ `KeywordX` 词位行；未列 ⇒ 表上无行
+  ⇒ 引擎先拒，到不了本层）。**本层放行 + 物化层严格**是**有意分层**（物化层按
+  `DefaultPrefixIRI` 径展开，默认前缀未声明 ⇒ `Ok(None)` ⇒ 槽位错误面）——见 §7.2 与 ADR-TRIG-018。
 
 ### 5.5 物化 + 深验（`materialize_trig.mbt`，单遍）
 
@@ -231,7 +239,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 | 14 项纯函数（`deep_check_literal` / `deep_check_tt` / `literal_body_end` / `is_pn_local_esc` / `check_iri_view` / `check_bnode_view` / `tt_bool_word` / `is_scheme_byte` / `view_has_scheme` / `eq_ignore_case` / `eq_lower` / `at_style_kw` / `triple_term_inner_terms` / `slice_span`） | **A 抽共享件** | 去注释后两包**逐字同源**；零方言类型耦合（只吃 `Byte` / `ArrayView[Byte]` / `Bytes` / `String` / `Span` / `ParseError`）；包级 `using @gs` ⇒ **零改调用点** |
 | `deep_check_literal` 的 `rdf12` 门控 | **A + 取严者** | trig = `has_dir && rdf12`、n3v2 = `has_dir` ⇒ n3v2 落后的单开关副本；取严者后 473/473 + 四套件自报行不变 |
 | `classify_structural` / `validate_term` | **B 有意分叉** | 方言语义显著（n3v2 388/361 行含 path/集合/公式；trig 53/78 行含图块/注解） |
-| `prefix_declared` | **B 有意分叉** | 差异 = 隐式空前缀放行（N3/cwm 语义，R-16 / C-16），非工具差异 |
+| `prefix_declared` | **B 有意分叉** | 差异 = ① 隐式空前缀放行（N3/cwm 语义，R-16 / C-16）；② **役35 35-B1 起 trig 另放行无冒号裸名**（视作空前缀本地名，合法性归表）——两处皆为**方言语义差**，非工具差异（见 §7.2 第 2 条 / ADR-TRIG-018） |
 | `classify_prefname` / `span_of_event` | **B 有意分叉** | 签名含**方言事件类型**；抽件需中间枚举 + 双向映射，代价 > 收益 |
 | `ctx_span` / `list_top` | **B 有意分叉** | 签名含**方言 ctx / Slot**；抽件需改签名拆参 |
 | `message`（`ErrOut` impl） | **B 有意分叉** | impl 属方言包的错误外观（7 行收益低） |
@@ -239,6 +247,19 @@ quad.o 形如 << ... >> 且语句无图名位:
 | `bytes_of`（`*_wbtest` 内） | **B 有意分叉** | 测试助手；跨包共享需公开面（污染 `.mbti`），不值 |
 
 > 口径：本表只列**裁定 + 一句理由**；决策全文 = `adr.md` ADR-TRIG-017；实现 = `src/gen_shared/`。
+
+### 7.2 役35 35-B1 **三处口径/分叉入册**（2026-09-22 用户裁：账补齐，代码不动）
+
+| # | 事项 | 定性 | 分叉层 / 判据载体 | 重评估条件 / 补法 |
+|---|---|---|---|---|
+| 1 | **`a` 在台账在册即"复活"**（`@keywords a` 声明后 `a` 仍是 turtle `rdf:type` 简写） | **口径选择**（照 n3v2 `kw_a_live` 支），**不是规范强制** | `engine.mbt normalize_term_span` 的 `TrigKeywordA` 支条件：`dialect is N3 ∧ kw_directive_seen ∧ 非列表区 ∧ !kw_ledger_hits` 才降 `PrefName`；判据载体 = 产物 `pk`（`KwA` vs `Normal`） | **要改"恒失效"**（无论是否在册）：删去末一条件 `!self.kw_ledger_hits(s2)` 一个合取项即可；受影响钉 = 钉 4 第 ③ 支（`@keywords a b .` 后 `a` 的 `pk` 期望 `KwA → Normal`）+ 需核 `declared_keyword` 的列表申报支（列表区判定在失效条件之前，故不动） |
+| 2 | **组装层放行无冒号裸名**（`prefix_declared` 的 `colon < 0 ⇒ true`） | **有意分叉**（n3v2 组装层仍拒裸名）——**分叉层 = 组装/轻验层**（`parser_slice.mbt`） | 原因：listed 词到组装层时是**裸名 span**，按旧口径报 `Undeclared prefix`（钉 8/9 首跑实测红）⇒ 与 §AS.8 ⑤"照 `PrefName` 径"的兜底一致：**合法性归表，组装层不二次裁决**。边界：**只有引擎收下的词才到得了本层**（TriG/Turtle 档裸词被适配层降 `Unknown`、N3 档未列裸词被表外拒）⇒ **不放宽被接受的语言** | **"组装层放行 + 物化层严格"是有意分层，不是口径漂移**：物化层 `resolve_prefname` 裸名按**空前缀展开**（`DefaultPrefixIRI` 同源），**默认前缀未声明 ⇒ `Ok(None)` ⇒ 槽位错误面**（钉 2 载体② / 钉 8 载体②）。重评估条件：若 n3v2 组装层同步放行（消分叉），本行降为同源项 |
+| 3 | **两行"不译"**（n3v2 的 `ExpectKeywordsList + Comma`、`ExpectIsProp + KeywordX`） | **表源无此行 ⇒ `UnexpectedEvent`**（干净拒 + 恢复）——**不是"显式拒绝"**：表上没有 `Comma`/`ExpectIsProp` 相关行（`ExpectIsProp` 态在 trig 根本不存在），故**无"拒绝行"可指**，语义为"表即裁决者"的兜底臂 | 判据载体 = 错误面（`errors > 0`）：`@keywords a, b .` 在 N3 档报错；`ExpectIsProp` 无对应态 | **补法**：加 `ExpectKeywordsList + Comma → ExpectKeywordsList`（无 action）一行 ⇒ IR 钉 **205→206→207**（现 206 行；`[[transitions]]` 计数钉在 `src/rdf/domain_to_ir.mbt`），并同笔走黄金门 scratch 交付 + 子仓 quicktest valid/臂成对补行。**`ExpectIsProp` 行不建议补**（trig 无 `Is` 族词行，补它须连带来 `Is` 事件/状态族） |
+
+> **余项保留（明确划界）**：**"更宽裸词语义"未顺手扩张**——当前只放行 **listed 词到组装层的裸名**
+> （即"引擎已收、组装层照 `PrefName` 径兜底"），**不是所有裸词**：无声明裸词在 N3 档仍被表外拒
+> （钉 10）、在 TriG/Turtle 档仍被适配层降 `Unknown` 后拒。要开"一般化裸词语义"须**另立案**
+> （会动 `validate_term` / 物化默认前缀 / W3C 负例面）。
 
 ## 8 整改裁决台账（R）
 
