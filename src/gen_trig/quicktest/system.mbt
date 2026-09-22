@@ -87,7 +87,8 @@ fn command_to_event(command : Command) -> @trig.TrigEvent {
     ForAllKw => TrigForAllKw
     ForSomeKw => TrigForSomeKw
     KeywordsKw => TrigKeywordsKw
-    Unknown => TrigUnknown
+    // Unknown 模型面不带引用（常量命令）⇒ 载荷给 (0,0)；引擎侧只作表外兜底
+    Unknown => TrigUnknown((0, 0))
     EOF => TrigEOF
   }
 }

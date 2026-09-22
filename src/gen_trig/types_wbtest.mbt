@@ -56,7 +56,6 @@ test "trig types: TrigEvent 展示面——无载荷 24 变体逐条等值" {
   assert_eq(Show::to_string(TrigEvent::TrigRbrace), "Rbrace")
   assert_eq(Show::to_string(TrigEvent::TrigRbracket), "Rbracket")
   assert_eq(Show::to_string(TrigEvent::TrigRparen), "Rparen")
-  assert_eq(Show::to_string(TrigEvent::TrigUnknown), "Unknown")
   assert_eq(Show::to_string(TrigEvent::TrigEOF), "EOF")
   assert_eq(Show::to_string(TrigEvent::TrigAnnotStart), "AnnotStart")
   assert_eq(Show::to_string(TrigEvent::TrigAnnotEnd), "AnnotEnd")
@@ -84,6 +83,7 @@ test "trig types: TrigEvent 展示面——带载荷 10 变体（前缀 + 载荷
     (TrigEvent::TrigLbracket(span), "Lbracket "),
     (TrigEvent::TrigLparen(span), "Lparen "),
     (TrigEvent::TrigAnon(span), "Anon "),
+    (TrigEvent::TrigUnknown(span), "Unknown "),
   ]
   for case in cases {
     let (event, prefix) = case

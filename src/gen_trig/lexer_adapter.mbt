@@ -7,6 +7,8 @@
 //                   双字节 {| |} -> Annot*；=> <= -> Implies/ImpliedBy（N3 预埋）；
 //                   单字节 { } [ ] ( ) @ ~ ! ^ -> 结构/路径事件（! ^ 为 N3 预埋）；
 //                   其余 Unknown（表外垃圾）
+//   注：Unknown 事件**恒带 span 载荷**（役35 35-B0）——表外报错定位与 `@keywords`
+//       台账登记共用同一 span 面；分类降级点一律原样上抛本 token 的 span。
 //   PrefName 按 span 内容: "a" -> TrigKeywordA；"true"/"false"（小写精确）-> TrigLiteral；
 //                          "graph"/"GRAPH" -> TrigGraphKw；
 //                          "prefix"/"PREFIX" -> TrigPrefixKw；
@@ -80,7 +82,7 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> TrigEvent {
       // N3 预埋：<= 被蕴含
       TrigEvent::TrigImpliedBy
     } else {
-      TrigEvent::TrigUnknown
+      TrigEvent::TrigUnknown(span)
     }
   } else if span.1 == 1 {
     let c = data[span.0]
@@ -110,10 +112,10 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> TrigEvent {
       // N3 预埋：^ 反向路径引导符
       TrigEvent::TrigCaret
     } else {
-      TrigEvent::TrigUnknown
+      TrigEvent::TrigUnknown(span)
     }
   } else {
-    TrigEvent::TrigUnknown
+    TrigEvent::TrigUnknown(span)
   }
 }
 
@@ -131,7 +133,7 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> TrigEvent {
     // SPARQL 风格 GRAPH 关键字（大小写不敏感；裸词 "graph" 本就非法，无误分类面）
     // @ 风格（'@' 紧邻）指令名须小写精确，降级 Unknown → 转移表外报错
     if at_style_kw(data, off) && !eq_lower(data, off, b"graph") {
-      TrigEvent::TrigUnknown
+      TrigEvent::TrigUnknown(span)
     } else {
       TrigEvent::TrigGraphKw
     }
@@ -139,7 +141,7 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> TrigEvent {
     // RDF 1.2 VERSION 指令关键词（大小写不敏感；全局保留词，与 graph 同取舍）
     // @ 风格（'@' 紧邻）指令名须小写精确，降级 Unknown → 转移表外报错
     if at_style_kw(data, off) && !eq_lower(data, off, b"version") {
-      TrigEvent::TrigUnknown
+      TrigEvent::TrigUnknown(span)
     } else {
       TrigEvent::TrigVersionKw
     }
@@ -147,7 +149,7 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> TrigEvent {
     // @ 风格（'@' 紧邻）指令名须小写精确：@Prefix 非法（bad-base-02 同族），
     // 降级 Unknown → 转移表外报错；SPARQL 风格裸词才大小写不敏感
     if at_style_kw(data, off) && !eq_lower(data, off, b"prefix") {
-      TrigEvent::TrigUnknown
+      TrigEvent::TrigUnknown(span)
     } else {
       TrigEvent::TrigPrefixKw
     }
@@ -155,7 +157,7 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> TrigEvent {
     // @ 风格（'@' 紧邻）指令名须小写精确：@BASE 非法（bad-base-02 口径），
     // 降级 Unknown → 转移表外报错；SPARQL 风格裸词才大小写不敏感
     if at_style_kw(data, off) && !eq_lower(data, off, b"base") {
-      TrigEvent::TrigUnknown
+      TrigEvent::TrigUnknown(span)
     } else {
       TrigEvent::TrigBaseKw
     }
@@ -186,7 +188,7 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> TrigEvent {
     if has_colon {
       TrigEvent::TrigPrefName(span)
     } else {
-      TrigEvent::TrigUnknown
+      TrigEvent::TrigUnknown(span)
     }
   }
 }
@@ -208,7 +210,8 @@ pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) 
     self.anon_swallow = false
     match self.inner.next() {
       Some(Token::Unknown((o2, l2))) if l2 == 1 && self.data[o2] == b']' => ()
-      _ => return Some(TrigEvent::TrigUnknown)
+      Some(Token::Unknown(s2)) => return Some(TrigEvent::TrigUnknown(s2))
+      _ => return Some(TrigEvent::TrigUnknown((0, 0)))
     }
   }
   match self.inner.next() {

@@ -26,6 +26,7 @@ pub(all) enum PredKind {
   Normal
   RDFFirst
   RDFRest
+  KwA
 } derive(Eq)
 pub fn PredKind::equal(Self, Self) -> Bool
 pub fn PredKind::not_equal(Self, Self) -> Bool
@@ -107,6 +108,7 @@ pub fn TrigContext::snapshot(Self) -> TrigPendingQuad
 pub(all) enum TrigDialect {
   TriG
   Turtle
+  N3
 } derive(Eq)
 pub fn TrigDialect::equal(Self, Self) -> Bool
 pub fn TrigDialect::not_equal(Self, Self) -> Bool
@@ -177,7 +179,7 @@ pub(all) enum TrigEvent {
   TrigForAllKw
   TrigForSomeKw
   TrigKeywordsKw
-  TrigUnknown
+  TrigUnknown((Int, Int))
   TrigEOF
 }
 pub fn TrigEvent::output(Self, &Logger) -> Unit

@@ -415,7 +415,8 @@ test "适配器: 指令收紧——@ 风格小写精确 / 无冒号 PrefName 降
   // @BASE：@ 风格大写拒（bad-base-02）；@base 小写精确放行
   let e1 = evs(bytes_of("@BASE"))
   assert_true(e1[0] is TrigEvent::TrigAt)
-  assert_true(e1[1] is TrigEvent::TrigUnknown)
+  // 35-B0：Unknown 带 span 载荷，降级点原样上抛本 token 的 span（"BASE" = (1,4)）
+  assert_true(e1[1] is TrigEvent::TrigUnknown((1, 4)))
   let e2 = evs(bytes_of("@base"))
   assert_true(e2[0] is TrigEvent::TrigAt)
   assert_true(e2[1] is TrigEvent::TrigBaseKw)
@@ -424,7 +425,7 @@ test "适配器: 指令收紧——@ 风格小写精确 / 无冒号 PrefName 降
   assert_true(e3[0] is TrigEvent::TrigBaseKw)
   // 无冒号 PrefName 全域降级 Unknown（bad-prefix-05）；带冒号照旧
   let e4 = evs(bytes_of("x"))
-  assert_true(e4[0] is TrigEvent::TrigUnknown)
+  assert_true(e4[0] is TrigEvent::TrigUnknown((0, 1)))
   let e5 = evs(bytes_of("ex:p"))
   assert_true(e5[0] is TrigEvent::TrigPrefName(_))
 }
@@ -584,7 +585,7 @@ test "N3 预埋: ! ^ => <= 与 @forAll/@forSome/@keywords 分类" {
           TrigEvent::TrigDot => "Dot"
           TrigEvent::TrigKeywordA(_) => "KeywordA"
           TrigEvent::TrigPrefName(_) => "PrefName"
-          TrigEvent::TrigUnknown => "Unknown"
+          TrigEvent::TrigUnknown(_) => "Unknown"
           _ => "other"
         }
         events.push(name)

@@ -45,6 +45,7 @@ fn span_of_event(event : TrigEvent) -> Span {
     TrigLbracket(span) => span
     TrigAnon(span) => span
     TrigLparen(span) => span
+    TrigUnknown(span) => span
     TrigAt
     | TrigPrefixKw
     | TrigBaseKw
@@ -67,7 +68,6 @@ fn span_of_event(event : TrigEvent) -> Span {
     | TrigForAllKw
     | TrigForSomeKw
     | TrigKeywordsKw
-    | TrigUnknown
     | TrigEOF => (0, 0)
   }
 }

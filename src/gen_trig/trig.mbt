@@ -39,7 +39,7 @@ pub(all) enum TrigEvent {
   TrigForAllKw
   TrigForSomeKw
   TrigKeywordsKw
-  TrigUnknown
+  TrigUnknown(Span)
   TrigEOF
 }
 
