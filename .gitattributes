@@ -1,0 +1,37 @@
+# ===== 行尾归一（CI 役 CI-2，2026-09-23）=====
+# 背景：Windows（`core.autocrlf=true`）检出会把文本件转 CRLF ⇒ 打穿"逐字节黄金门 /
+# token 扫描 / 按行切分"一族判据（实测：本仓 1 处 `n3tests_suite_wbtest` 读
+# `parser_index.tsv` 后路径带 `\r`；主仓 12 处）。
+# 口径：判据面文本件一律 **LF 检出**——判据是字节/行，必须跨 OS 同形。
+# 边界：只规范化"检出与提交"，不改**内容语义**（行内裸 CR 不受影响）。
+* text=auto eol=lf
+
+# 判据直接依赖字节的几族：点名钉死（防将来 `* text=auto` 被改动）
+*.mbt text eol=lf
+*.mbti text eol=lf
+*.toml text eol=lf
+*.tsv text eol=lf
+*.gen text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.sh text eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.n3 text eol=lf
+*.ttl text eol=lf
+*.nt text eol=lf
+*.nq text eol=lf
+
+# ---- 冻结：上游原样 CRLF 的 W3C fixture（**判据输入，不得改字节**）----
+# 这些文件在仓库里的 blob 本身就是 CRLF（`git ls-files --eol` = `i/crlf` / `i/mixed`）。
+# 若被 `eol=lf` 归一化，**三个平台**的解析输入都会变（= 偷偷改判据输入）⇒ 标 `-text`
+# 冻结字节：检出/提交都不转换，Linux 与 Windows 读到同一份字节。
+src/gen_n3v2/rdf-tests/N3Tests/cwm_includes/n3ExprFor.n3 -text
+src/gen_n3v2/rdf-tests/N3Tests/cwm_list/r1.n3 -text
+src/gen_n3v2/rdf-tests/N3Tests/cwm_list/double.n3 -text
+src/gen_n3v2/rdf-tests/rdf-turtle/reports/earl-turtle-v101-2013-08-19.ttl -text
+src/gen_n3v2/rdf-tests/rdf-turtle/reports/turtleparserjava-earl-2013-08-10.ttl -text
+src/gen_trig/rdf-tests/rdf-turtle/reports/earl-turtle-v101-2013-08-19.ttl -text
+src/gen_trig/rdf-tests/rdf-turtle/reports/turtleparserjava-earl-2013-08-10.ttl -text
