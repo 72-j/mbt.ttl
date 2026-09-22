@@ -8,7 +8,8 @@
 #     `moon fmt --check` 承担，CI 因此只在"提交形态"上判定。
 #   · 版本漂移可观测：CI 装的是最新工具链，static 作业与已知良好版本比对并打 warning。
 #
-# 本地已知良好工具链：moon 0.1.20260915 (2e1a46d 2026-09-15)
+# 本地已知良好工具链：**moon 0.1.20260920 (914d7da 2026-09-20)**（CI-5 2026-09-23 勘正——
+# 原注释写 20260915 系跟升前沿革，与下方 `known_good` 值不一致）
 name: Test
 
 on:
@@ -268,6 +269,11 @@ jobs:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
+    # CI-4（2026-09-23）**平台矩阵策略**：Windows **保留逐字节黄金门**，不做平台豁免——
+    # CI-2 行尾治本后它就是"跨平台可复现"的真判据（平台豁免会让判据失去跨机效力）。
+    # 分工：CRLF 类问题由 static 作业的 **CI-6 元门**（`sh ci/netcheck.sh crlf`）**先**抓
+    # （Linux 上快速失败、省三 OS 排队）；本矩阵继续承担**真机集成**（路径分隔符 / 工具链安装 /
+    # native 目标 / MSYS2 链接）。
     strategy:
       fail-fast: false
       matrix:
