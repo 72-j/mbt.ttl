@@ -33,6 +33,11 @@ async test "N3Tests parser suite: first sweep (print-only)" {
       continue
     }
     lines_total = lines_total + 1
+    // CI-3（2026-09-23）：**读时归一**——本表按 `\n` 切行、第二列直接拼路径；工作树若为
+    // CRLF（老检出/手改文件），`\r` 会进路径 ⇒ `OSError: ...D-ref.n3\r`（Windows 实测）。
+    // 逐行 `trim()` = 只削行尾空白（归一化只发生在**读取/匹配处**，不写回、不改语义）。
+    // 注：不能改用 `String::replace("\r\n","\n")`——该 API **只替换第一处**（实测）。
+    let line = line.trim().to_owned()
     let parts : Array[StringView] = line.split("\t").collect()
     let kind = parts[0]
     let path = parts[1]
