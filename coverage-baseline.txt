@@ -70,8 +70,10 @@
   冷口径连跑两次均 9982/10998；面三 `coverage-review.txt` 同笔重生成（仅 Total 行随读数）；
   可达覆盖账三方言（40/8/25 缺口全 0）逐字节不变。
 covered_permille = 907
-covered_lines = 10001
-total_lines = 11016
+covered_lines = 10002
+total_lines = 11022
   → P1 性能役（2026-09-22：`validate_iri` 类表驱动 + unsafe 读 + graph 视图去重，
   分子 9982 → **10001**、分母 10998 → **11016**，floor = **907 permille 不变**——
   机件改造非补测试，分子分母同步膨胀；判据字段不动）。
+  → P2 引擎勘役（2026-09-22：loop 热路径零分配 + P2 三段式剖析器落库，
+  分子 10001 → **10002**、分母 11016 → **11022**，floor = **907 permille 不变**）。

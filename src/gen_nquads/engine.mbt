@@ -105,32 +105,32 @@ fn[L : LexerSource] trim_trailing_dot(lexer : L, span : Span) -> (Span, Bool) {
 }
 
 ///|
-fn[L : LexerSource] NQuadsEngine::normalize_term_span(
+/// 词事件尾点判定（P2 热路径零分配）：只读词尾字节，不重构事件/元组。
+fn[L : LexerSource] NQuadsEngine::event_ends_with_dot(
   self : NQuadsEngine[L],
   event : NQuadsEvent,
-) -> (NQuadsEvent, Bool) {
+) -> Bool {
   match event {
-    NQuadsIri(span) => {
-      let (span2, dot) = trim_trailing_dot(self.lexer, span)
-      (NQuadsIri(span2), dot)
-    }
-    NQuadsBlankNode(span) => {
-      let (span2, dot) = trim_trailing_dot(self.lexer, span)
-      (NQuadsBlankNode(span2), dot)
-    }
-    NQuadsLiteral(span) => {
-      let (span2, dot) = trim_trailing_dot(self.lexer, span)
-      (NQuadsLiteral(span2), dot)
-    }
-    NQuadsPrefName(span) => {
-      let (span2, dot) = trim_trailing_dot(self.lexer, span)
-      (NQuadsPrefName(span2), dot)
-    }
-    NQuadsTripleTerm(span) => {
-      let (span2, dot) = trim_trailing_dot(self.lexer, span)
-      (NQuadsTripleTerm(span2), dot)
-    }
-    other => (other, false)
+    NQuadsIri(span) => trim_trailing_dot(self.lexer, span).1
+    NQuadsBlankNode(span) => trim_trailing_dot(self.lexer, span).1
+    NQuadsLiteral(span) => trim_trailing_dot(self.lexer, span).1
+    NQuadsPrefName(span) => trim_trailing_dot(self.lexer, span).1
+    NQuadsTripleTerm(span) => trim_trailing_dot(self.lexer, span).1
+    NQuadsComma | NQuadsSemicolon | NQuadsDot | NQuadsUnknown | NQuadsEOF =>
+      false
+  }
+}
+
+///|
+/// 冷路径：剥尾点重构事件（仅 dot=true 时调用；标准词形不吞点，热路径不走此）
+fn strip_trailing_dot_event(event : NQuadsEvent) -> NQuadsEvent {
+  match event {
+    NQuadsIri(span) => NQuadsIri((span.0, span.1 - 1))
+    NQuadsBlankNode(span) => NQuadsBlankNode((span.0, span.1 - 1))
+    NQuadsLiteral(span) => NQuadsLiteral((span.0, span.1 - 1))
+    NQuadsPrefName(span) => NQuadsPrefName((span.0, span.1 - 1))
+    NQuadsTripleTerm(span) => NQuadsTripleTerm((span.0, span.1 - 1))
+    other => other
   }
 }
 
@@ -194,7 +194,9 @@ impl[L : LexerSource] NQuadsLoopPolicy for NQuadsEngine[L] with fn begin_record(
 ) -> Unit {
   self.ctx.reset(ResetScope::All)
   // 记录边界 = 状态归位：reset 按正交设计只清槽位不复位 state，
-  // 若不复位，EOF 脏记录会在 finish_at_end 无限重报（parse_all 死循环）
+  // 若不复位，EOF 脏记录会在 finish_at_end 无限重报（parse_all 死循环）。
+  // P2 剖析曾试 no-op 化（干净行归位已由终结臂保证）⇒ EOF 脏行二连 Err
+  // 无限循环 OOM（SIGKILL 实证）——此钩子是 EOF 脏行的唯一归位点，**不可省**。
   self.ctx.state = NQuadsState::NQuadsExpectSubject
 }
 
@@ -285,9 +287,13 @@ pub fn[L : LexerSource] NQuadsEngine::next(
       match self.lexer.next() {
         None => return self.finish_at_end()
         Some(ev) => {
-          let (ev2, dot) = self.normalize_term_span(ev)
-          synth_dot = dot
-          ev2
+          // P2 热路径零分配：判点只读词尾；剥点重构仅冷路径（吞点词形）发生
+          if self.event_ends_with_dot(ev) {
+            synth_dot = true
+            strip_trailing_dot_event(ev)
+          } else {
+            ev
+          }
         }
       }
     }
