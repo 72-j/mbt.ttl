@@ -200,25 +200,28 @@ fn utf8_name_advance(v : ArrayView[Byte], pos : Int, l : Int) -> Int {
 fn Lexermoon::scan_literal_suffix(self : Lexermoon) -> Unit {
   let v = self.view
   let l = self.len
-  if self.pos >= l {
+  // P4 第三刀：`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
+  let mut p = self.pos
+  if p >= l {
     return
   }
-  let caret_dt = v[self.pos] == b'^' &&
-    self.pos + 1 < l &&
-    v[self.pos + 1] == b'^'
-  if !caret_dt && v[self.pos] != b'@' {
+  let caret_dt = v.unsafe_get(p) == b'^' &&
+    p + 1 < l &&
+    v.unsafe_get(p + 1) == b'^'
+  if !caret_dt && v.unsafe_get(p) != b'@' {
     return
   }
-  while self.pos < l &&
-        v[self.pos] != b' ' &&
-        v[self.pos] != b'\t' &&
-        v[self.pos] != b'\r' &&
-        v[self.pos] != b'\n' &&
-        v[self.pos] != b')' &&
-        v[self.pos] != b']' &&
-        v[self.pos] != b'}' {
-    self.pos = self.pos + 1
+  while p < l &&
+        v.unsafe_get(p) != b' ' &&
+        v.unsafe_get(p) != b'\t' &&
+        v.unsafe_get(p) != b'\r' &&
+        v.unsafe_get(p) != b'\n' &&
+        v.unsafe_get(p) != b')' &&
+        v.unsafe_get(p) != b']' &&
+        v.unsafe_get(p) != b'}' {
+    p = p + 1
   }
+  self.pos = p
   // 役16（moonttl N3）C 桶 xsd：右括族 ) ] } 停扫——后缀合法域 = IRIREF/
   // PrefName/langtag，闭括号终结它；`"a"^^xsd:int)` 旧扫描连闭括号带后随
   // 路径符整段吞进词尾。`.`/`,`/`;` 仍吞——引擎 trim_trailing_punct 三瓣
@@ -253,56 +256,63 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
     self.pos + 2 < l &&
     v[self.pos + 1] == c &&
     v[self.pos + 2] == c {
-    self.pos = self.pos + 3
-    while self.pos + 2 < l {
-      let ch = v[self.pos]
-      if ch == b'\\' && self.pos + 1 < l {
+    // P4 第三刀：`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
+    let mut p = self.pos + 3
+    while p + 2 < l {
+      let ch = v.unsafe_get(p)
+      if ch == b'\\' && p + 1 < l {
         // 转义对整对消费（ECHAR/UCHAR）：`\\` 是字面反斜杠，其后闭 `"""`
         // 照常闭壳（pos-1 单字节嗅探会把 `\\"""` 误判成转义引号——LITERAL_LONG2 坑）
-        self.pos = self.pos + 2
-      } else if ch == c && v[self.pos + 1] == c && v[self.pos + 2] == c {
+        p = p + 2
+      } else if ch == c && v.unsafe_get(p + 1) == c && v.unsafe_get(p + 2) == c {
         // 闭壳 = 引号连跑的末尾 quote_run 个：`""""` = 内容引号 + 闭三连
         //（Turtle '"""' (...)* '"'? '"""' 口径）；连跑被转义对跳过自然打断
-        while self.pos < l && v[self.pos] == c {
-          self.pos = self.pos + 1
+        while p < l && v.unsafe_get(p) == c {
+          p = p + 1
         }
         break
       } else {
-        self.pos = self.pos + 1
+        p = p + 1
       }
     }
+    self.pos = p
     self.scan_literal_suffix()
     return Some(Token::Literal((start, self.pos - start)))
   }
   // 普通字符串（含转义；后缀 ^^ / @ 一并切出）
   if c == b'"' || c == b'\'' {
-    self.pos = self.pos + 1
-    while self.pos < l && v[self.pos] != c {
-      if v[self.pos] == b'\\' && self.pos + 1 < l {
-        self.pos = self.pos + 2
+    // P4 第三刀：`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
+    let mut p = self.pos + 1
+    while p < l && v.unsafe_get(p) != c {
+      if v.unsafe_get(p) == b'\\' && p + 1 < l {
+        p = p + 2
       } else {
-        self.pos = self.pos + 1
+        p = p + 1
       }
     }
-    if self.pos < l {
-      self.pos = self.pos + 1 // 消费结尾引号
+    if p < l {
+      p = p + 1 // 消费结尾引号
     }
+    self.pos = p
     self.scan_literal_suffix()
     return Some(Token::Literal((start, self.pos - start)))
   }
   // _:name → BlankNode（名字含 .，与 C 版一致；多字节标签字符加宽同 PrefName 口径）
   if c == b'_' && self.pos + 1 < l && v[self.pos + 1] == b':' {
     self.pos = self.pos + 2
+    // P4 第三刀：ASCII 门后 utf8_name_advance（多字节标签才走），收束字节省空转调用
     while self.pos < l {
       let ch = v[self.pos]
       if is_name_char(ch) {
         self.pos = self.pos + 1
-      } else {
+      } else if ch.to_int() >= 0x80 {
         let adv = utf8_name_advance(v, self.pos, l)
         if adv == 0 {
           break
         }
         self.pos = self.pos + adv
+      } else {
+        break
       }
     }
     return Some(Token::BlankNode((start, self.pos - start)))
@@ -405,7 +415,14 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
   // 名字内允许 : 与名字字符（含内部 '.'、\X 转义对、%HH 百分号对、多字节 UTF-8）；
   // 语法对错（转义字符集/首字符限制）归验证层。尾部裸 '.' 回退留给语句终结符
   //（\X 转义的 '.' 是字面点，不回退）
-  let lead = utf8_name_advance(v, self.pos, l)
+  // P4 第三刀：ASCII 首字节直判——utf8_name_advance 收录码点全 ≥ 0xB7，ASCII
+  // 字节必然 0；门后调用只留多字节前导（每个 PrefName 省一次调用 + 码点解码
+  // + 14 段区间级联）
+  let lead = if c.to_int() >= 0x80 {
+    utf8_name_advance(v, self.pos, l)
+  } else {
+    0
+  }
   if lead > 0 || is_alpha(c) || c == b':' {
     self.pos = self.pos + (if lead > 0 { lead } else { 1 })
     // P4 第二刀：同一循环体，`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
@@ -423,12 +440,16 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
         p = p + 3
       } else if ch == b':' || is_name_char(ch) {
         p = p + 1
-      } else {
+      } else if ch.to_int() >= 0x80 {
+        // P4 第三刀：ASCII 字节必然 0（同首字节门），门后只留多字节——
+        // 每个 PrefName 的收束字节（空白/结构符）省一次空转调用
         let adv = utf8_name_advance(v, p, l)
         if adv == 0 {
           break
         }
         p = p + adv
+      } else {
+        break
       }
     }
     self.pos = p
@@ -465,58 +486,61 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
       v[self.pos + 1] <= b'9'
     )
   if is_number {
-    if v[self.pos] == b'.' {
+    // P4 第三刀：`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
+    let mut p = self.pos
+    if v.unsafe_get(p) == b'.' {
       // 前导点形态 '.5'：吞点 + 整数部
-      self.pos = self.pos + 1
-      while self.pos < l && v[self.pos] >= b'0' && v[self.pos] <= b'9' {
-        self.pos = self.pos + 1
+      p = p + 1
+      while p < l && v.unsafe_get(p) >= b'0' && v.unsafe_get(p) <= b'9' {
+        p = p + 1
       }
     } else {
       // 整数部
-      self.pos = self.pos + 1
-      while self.pos < l && v[self.pos] >= b'0' && v[self.pos] <= b'9' {
-        self.pos = self.pos + 1
+      p = p + 1
+      while p < l && v.unsafe_get(p) >= b'0' && v.unsafe_get(p) <= b'9' {
+        p = p + 1
       }
       // 小数部：'.' 后随数字吞整段；'.' 后随指数前导（[eE][+-]?[0-9]）只吞点（`123.E+1`）
-      if self.pos + 1 < l && v[self.pos] == b'.' {
-        let d = v[self.pos + 1]
+      if p + 1 < l && v.unsafe_get(p) == b'.' {
+        let d = v.unsafe_get(p + 1)
         let exp_ahead = (d == b'e' || d == b'E') &&
-          self.pos + 2 < l &&
+          p + 2 < l &&
           (
-            (v[self.pos + 2] >= b'0' && v[self.pos + 2] <= b'9') ||
-            v[self.pos + 2] == b'+' ||
-            v[self.pos + 2] == b'-'
+            (v.unsafe_get(p + 2) >= b'0' && v.unsafe_get(p + 2) <= b'9') ||
+            v.unsafe_get(p + 2) == b'+' ||
+            v.unsafe_get(p + 2) == b'-'
           )
         if d >= b'0' && d <= b'9' {
-          self.pos = self.pos + 1
-          while self.pos < l && v[self.pos] >= b'0' && v[self.pos] <= b'9' {
-            self.pos = self.pos + 1
+          p = p + 1
+          while p < l && v.unsafe_get(p) >= b'0' && v.unsafe_get(p) <= b'9' {
+            p = p + 1
           }
         } else if exp_ahead {
-          self.pos = self.pos + 1
+          p = p + 1
         }
       }
     }
     // 指数部：[eE] 后随数字或带符号数字才并入（EXPONENT 要求指数数字，`1e` 垃圾不并）
-    if self.pos + 1 < l && (v[self.pos] == b'e' || v[self.pos] == b'E') {
-      let d = v[self.pos + 1]
+    if p + 1 < l && (v.unsafe_get(p) == b'e' || v.unsafe_get(p) == b'E') {
+      let d = v.unsafe_get(p + 1)
       let has_exp = (d >= b'0' && d <= b'9') ||
         (
           (d == b'+' || d == b'-') &&
-          self.pos + 2 < l &&
-          v[self.pos + 2] >= b'0' &&
-          v[self.pos + 2] <= b'9'
+          p + 2 < l &&
+          v.unsafe_get(p + 2) >= b'0' &&
+          v.unsafe_get(p + 2) <= b'9'
         )
       if has_exp {
-        self.pos = self.pos + 1
-        if self.pos < l && (v[self.pos] == b'+' || v[self.pos] == b'-') {
-          self.pos = self.pos + 1
+        p = p + 1
+        if p < l && (v.unsafe_get(p) == b'+' || v.unsafe_get(p) == b'-') {
+          p = p + 1
         }
-        while self.pos < l && v[self.pos] >= b'0' && v[self.pos] <= b'9' {
-          self.pos = self.pos + 1
+        while p < l && v.unsafe_get(p) >= b'0' && v.unsafe_get(p) <= b'9' {
+          p = p + 1
         }
       }
     }
+    self.pos = p
     return Some(Token::Unknown((start, self.pos - start)))
   }
   // 结构标点（# 不可达：skip 已处理）
