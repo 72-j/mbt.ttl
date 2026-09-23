@@ -51,6 +51,7 @@ priv enum Response {
   Continue
   EmitQuad(Quad)
   Done
+  Skip // 恢复窗吞咽（R-19）：窗内事件不进表（≠ Continue：Continue = 进了表）
   Error(Int)
 } derive(Eq, Debug)
 
@@ -72,6 +73,7 @@ priv struct Model {
   predicate : RefId?
   object : RefId?
   graph : RefId?
+  recovering : Bool
 } derive(Eq, Debug)
 
 ///|
@@ -83,6 +85,7 @@ fn model_empty() -> Model {
     predicate: None,
     object: None,
     graph: None,
+    recovering: false,
   }
 }
 

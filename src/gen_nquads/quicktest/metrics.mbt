@@ -103,6 +103,7 @@ fn ready_model(state : ModelState) -> Model {
         predicate: Some(predicate),
         object: Some(object),
         graph: Some(graph),
+        recovering: false,
       }
   }
 }
@@ -186,7 +187,7 @@ test "指标·转移覆盖: 全 (状态,命令) 对逐对判定" {
           illegal = illegal + 1
           assert_false(valid(model, command)) // 无转移 ⇒ 非法
           assert_eq(response, Error(0)) // 未定义转移归一到错误码 0
-          assert_eq(next, model) // 非法命令不推进模型
+          assert_eq(next, recovery_enter(model)) // 非法命令不进表，但开窗清账（R-19）
         }
       }
     }

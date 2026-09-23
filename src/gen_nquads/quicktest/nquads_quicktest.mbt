@@ -263,6 +263,7 @@ test "nquads quick machine invariant 负例矩阵" {
       predicate: Some({ id: 2, }),
       object: Some({ id: 3, }),
       graph: None,
+      recovering: false,
     }, // ExpectDot: graph 必须已填
   ]
   for model in broken {
@@ -368,6 +369,7 @@ fn quick_state_machine(
             ["resp:emit", "resp:emit:default"]
           }
         Done => ["resp:done"]
+        Skip => ["resp:skip"] // R-19 恢复窗吞咽（valid 过滤 ⇒ 门内不可达）
         Error(_) => ["resp:error"]
       }
     },
@@ -456,5 +458,6 @@ test "nquads quick machine 无转移命令被拒" {
   assert_eq(run_command(EOF, system), Error(UNDEFINED_TRANSITION_CODE))
   let (after, response) = model_execute(model, PrefName(Concrete({ id: 1, })))
   assert_eq(response, Error(0))
-  assert_eq(after, model)
+  // R-19：非法不进表，但错误响应 ⇒ 开窗清账（recovering 置旗）——旗位变化是规格
+  assert_eq(after, recovery_enter(model))
 }

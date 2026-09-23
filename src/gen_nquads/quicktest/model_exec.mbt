@@ -8,6 +8,8 @@
 // >>> EVIDENCE（P4.4 钉子①：证据注释留位——领域证据/役次账写在这里；
 //     生成器只产"机械注释"，物化/生成不得覆盖本区间，守卫测试按本对标记校验）
 // （臂的稳定名 `// @arm <from_state>+<on_event>` 已与生成物同名，2026-09-17 对齐）
+// （R-19 续役 2026-09-23：恢复窗机件镜像生成形——core 改名 + wrapper + enter/swallow +
+//   transition/emit_all 切恢复形；声明面 quick_machine_gen.toml Dot/EOF ⇒ All，与引擎同源）
 // <<< EVIDENCE
 
 ///|
@@ -32,7 +34,7 @@ fn take_quad(model : Model) -> Quad {
 ///|
 /// 纯模型执行: (Model, Command) -> (Model, Response)
 /// 兜底 (_, _) => Error(0) 对应引擎的 UnexpectedEvent（未定义转移）
-fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
+fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
   match (model.state, cmd) {
     // --- ExpectSubject ---
     // @arm ExpectSubject+Iri
@@ -76,6 +78,62 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
     (ExpectDot, Dot) => emit_all(model, ExpectSubject)
     // 兜底: 非法转移（valid 已过滤，防御性保留）
     (_, _) => (model, Error(0))
+  }
+}
+
+///|
+/// 纯模型执行（R-19 恢复窗包装）：窗内事件**不进表**（`recovery_swallow` 收窗/吞咽），
+/// 错误响应 ⇒ 开窗清账（`recovery_enter`）——与引擎 `NQuadsLoopPolicy::recover` +
+/// `consume_to_dot`（engine.mbt，唯一实现）同面。窗内恒报 `Skip`
+/// （≠ `Continue`：`Continue` = 进了表）。
+fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
+  if model.recovering {
+    return recovery_swallow(model, cmd)
+  }
+  let (next, resp) = model_execute_core(model, cmd)
+  match resp {
+    Error(_) => (recovery_enter(model), resp)
+    _ => (next, resp)
+  }
+}
+
+///|
+/// 恢复窗开窗（R-19）：任何 Error 响应后的可观测清账面（本方言无帧栈/倒装特字段，
+/// 开窗 = 置旗）。并置 recovering 旗开窗。
+fn recovery_enter(model : Model) -> Model {
+  { ..model, recovering: true, }
+}
+
+///|
+/// 恢复窗吞咽（R-19）：窗内事件不进表；收窗事件按声明清槽归位（引擎
+/// `NQuadsLoopPolicy::recover` + `consume_to_dot` 同判据）。恒报 Skip。
+fn recovery_swallow(model : Model, cmd : Command) -> (Model, Response) {
+  match cmd {
+    Dot =>
+      (
+        {
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+          graph: None,
+          recovering: false,
+        },
+        Skip,
+      )
+    EOF =>
+      (
+        {
+          state: ExpectSubject,
+          subject: None,
+          predicate: None,
+          object: None,
+          graph: None,
+          recovering: false,
+        },
+        Skip,
+      )
+    _ => ({ ..model, recovering: true, }, Skip)
   }
 }
 
@@ -126,7 +184,14 @@ fn emit_all(model : Model, to : ModelState) -> (Model, Response) {
   if quad_ready(model) {
     let quad = take_quad(model)
     (
-      { state: to, subject: None, predicate: None, object: None, graph: None, },
+      {
+        state: to,
+        subject: None,
+        predicate: None,
+        object: None,
+        graph: None,
+        recovering: false,
+      },
       EmitQuad(quad),
     )
   } else {
@@ -158,10 +223,10 @@ fn emit_predobj(model : Model, to : ModelState) -> (Model, Response) {
 
 ///|
 /// 模型推进（quickcheck_statemachine transition_symbolic/concrete 接口形态）
-/// 非法/错误响应不推进模型
+/// 非法/错误响应不进表，但错误 ⇒ 开窗清账（recovery_enter，R-19）
 fn transition(model : Model, command : Command, response : Response) -> Model {
   match response {
-    Error(_) => model
+    Error(_) => recovery_enter(model)
     _ => model_execute(model, command).0
   }
 }
@@ -268,11 +333,30 @@ test "nquads quick machine model oracle" {
     object: { id: 6, },
     graph: Some({ id: 7, }),
   })
-  // 非法转移：模型不推进且报 Error(0)
+  // 非法转移：报 Error(0)；模型不进表但开窗清账（R-19 恢复窗）
   let (after_error, response) = model_execute(
     model,
     Literal(Concrete({ id: 8, })),
   )
   assert_eq(response, Error(0))
-  assert_eq(after_error, model)
+  assert_eq(after_error, recovery_enter(model))
+}
+
+///|
+test "nquads quick machine R-19 恢复窗自测: 开窗/吞咽/收窗" {
+  let m = model_empty()
+  // 非法转移兜底：错误一步即在 model_execute 内开窗
+  let (m_bad, resp_bad) = model_execute(m, Semicolon)
+  assert_eq(resp_bad, Error(0))
+  assert_eq(m_bad, recovery_enter(m))
+  // 窗内吞咽：不进表
+  let (m_sw, resp_sw) = model_execute(m_bad, Iri(Concrete({ id: 3, })))
+  assert_eq(resp_sw, Skip)
+  // 收窗事件：清槽归位关旗，也不进表
+  let (m_close, resp_close) = model_execute(m_sw, Dot)
+  assert_eq(resp_close, Skip)
+  assert_eq(m_close, model_empty())
+  // transition: 错误响应 ⇒ 开窗
+  let t_err = transition(m, Semicolon, Error(0))
+  assert_true(t_err != m)
 }
