@@ -105,9 +105,9 @@ fn lexmoon_stream(data : Array[Byte]) -> Array[(Int, Int, Int)] {
           NQuadsEvent::NQuadsTripleTerm(s) => s
           NQuadsEvent::NQuadsPrefName(s) => s
           NQuadsEvent::NQuadsUnknown => lexer.last_unknown_span()
-          NQuadsEvent::NQuadsDot |
-          NQuadsEvent::NQuadsSemicolon |
-          NQuadsEvent::NQuadsComma => (lexer.current_pos() - 1, 1)
+          NQuadsEvent::NQuadsDot
+          | NQuadsEvent::NQuadsSemicolon
+          | NQuadsEvent::NQuadsComma => (lexer.current_pos() - 1, 1)
           NQuadsEvent::NQuadsEOF => (0, 0)
         }
         out.push((bench_span_kind(data, span.0), span.0, span.1))

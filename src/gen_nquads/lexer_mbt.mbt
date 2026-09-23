@@ -767,7 +767,9 @@ fn lexer_test_battery() -> Array[(String, String)] {
     ("\"text\"@en", "Literal(0,9) EOF@9 "),
     ("\"text\"@en-US", "Literal(0,12) EOF@12 "),
     // 类型字面量：^^<...> 后缀并入 Literal（域名中的 . 不得切断）
-    ("\"42\"^^<http://www.w3.org/2001/XMLSchema#integer>", "Literal(0,48) EOF@48 "),
+    (
+      "\"42\"^^<http://www.w3.org/2001/XMLSchema#integer>", "Literal(0,48) EOF@48 ",
+    ),
     // 语句结束与结构标点（单词符）
     (".", "Dot@0 EOF@1 "),
     (";", "Semicolon@0 EOF@1 "),
@@ -888,7 +890,8 @@ test "lexdbg: 三引号壳内 4 连引号 + 双反斜杠" {
     match lexer.next() {
       None => break
       Some(NQuadsEOF) => break
-      Some(ev) => println("\{lexer_test_fmt_event_at(ev, lexer.current_pos() - 1)}")
+      Some(ev) =>
+        println("\{lexer_test_fmt_event_at(ev, lexer.current_pos() - 1)}")
     }
   }
   assert_true(true)

@@ -169,10 +169,7 @@ fn tok_kind_key(t : Token) -> (Int, Int, Int) {
 ///|
 /// 事件 → (类型号, offset, len) 归一键（类型号沿用 C 侧 ctype 编号；P2 直产：
 /// 结构事件 span 收窄 ⇒ 起点/长度由消费位补齐——单字符消费后回退一位）
-fn event_key(
-  lexer : Lexermoon,
-  ev : NQuadsEvent,
-) -> (Int, Int, Int) {
+fn event_key(lexer : Lexermoon, ev : NQuadsEvent) -> (Int, Int, Int) {
   match ev {
     NQuadsDot => (0, lexer.current_pos() - 1, 1)
     NQuadsSemicolon => (1, lexer.current_pos() - 1, 1)

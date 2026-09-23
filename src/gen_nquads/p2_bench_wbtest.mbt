@@ -138,4 +138,3 @@ async test "P2 逐层剖析: 引擎分层计时（A 全链 / F 适配净 / E FSM
     "分解: FSM 层开销 ≈ A[\{a_elapsed[2]}] − F[\{f_elapsed[2]}] − E[\{e_elapsed[2]}] = \{a_elapsed[2] - f_elapsed[2] - e_elapsed[2]} µs",
   )
 }
-

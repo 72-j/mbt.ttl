@@ -383,7 +383,8 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
         //   只认 6 字节整词 → 落普通 PrefName。此处按 @ 邻接位拆成关键词事件 +
         //   冒号 PrefName（声明名 token，槽位 pending 先入后兑）。仅精确 "kw:"
         //   形拆分——"kw:foo" 带本地部非法（prefixID 只收 PNAME_NS），不拆
-        if ev is NQuadsEvent::NQuadsPrefName((off, len)) && at_style_kw(self.data, off) {
+        if ev is NQuadsEvent::NQuadsPrefName((off, len)) &&
+          at_style_kw(self.data, off) {
           let colon_at = if len == 7 &&
             eq_lower(self.data, off, b"prefix") &&
             self.data[off + 6] == b':' {
