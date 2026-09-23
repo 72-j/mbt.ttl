@@ -327,6 +327,8 @@ pub(all) enum TrigState {
 // Type aliases
 pub using @gen_nquads {type Lexermoon}
 
+pub using @gen_nquads {type NQuadsEvent}
+
 pub using @gen_nquads {type ParseError}
 
 pub type Span = (Int, Int)

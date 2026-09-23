@@ -334,13 +334,14 @@ pub(all) struct Lexermoon {
   view : ArrayView[Byte]
   mut pos : Int
   mut len : Int
+  mut last_unknown : (Int, Int)
 }
 pub fn Lexermoon::byte_at(Self, Int) -> Byte
 pub fn Lexermoon::current_pos(Self) -> Int
 pub fn Lexermoon::extract(Self, Int, Int) -> String
-pub fn Lexermoon::extract_iri(Self, Token) -> String
+pub fn Lexermoon::last_unknown_span(Self) -> (Int, Int)
 pub fn Lexermoon::new(ArrayView[Byte]) -> Self
-pub fn Lexermoon::next(Self) -> Token?
+pub fn Lexermoon::next(Self) -> NQuadsEvent?
 pub fn Lexermoon::pos(Self) -> Int
 pub impl LexerSource for Lexermoon
 
