@@ -1,15 +1,19 @@
-// ===== 纯 MoonBit 词法器（Token 类型与 span 口径与 C 版 Lexerc 完全对齐） =====
-// 复用 lexerc.mbt 的 Token：统一 (offset, length)，全词含定界符。
-// 本文件不再有 Tokenfast —— 两条词法路径共用同一 Token 字母表与同一
-// Token→Event 映射（engine.mbt token_to_event），span 口径天然一致。
+// ===== 纯 MoonBit 词法器（直产 NQuadsEvent —— P2 刀 a)，2026-09-23） =====
+// 出词点直接构造事件枚举：消 Token→Event 双箱往返（每 token −1 分配）。
+// span 口径不变：全词含定界符，与 C 版 Token 逐字对齐（token_to_event 纯透传
+// 的历史对齐由 nquads_wbtest 双词法器同口径钉继续看护）。Token 字母表现为
+// Lexerc FFI 专用（token.mbt/lexerc.mbt 不动）。
 // 词法语义以 C 版（lexerc_ffi.c）为标准对齐：
 //   - 字面量分三引号/普通两种；含转义；后缀 ^^datatype / @lang 并入 Literal
 //   - _:name → BlankNode；字母/:起头 → PrefName；数字（可带±符号）→ Unknown
 //   - 未闭合 IRI/字面量宽容出词（不再 None 硬错）；其余单字符一律 Unknown(1)
 //   - PrefName 无脑扫：名字内 : / 内部 '.' / \X 转义对 / %HH / 多字节一律并入，
 //     尾部裸 '.' 回退；语法对错归验证层（词法加宽口径，双引擎同机械）
-// EOF 协议：结尾返回 Some(Token::EOF(pos))（pos 不再推进，调用方按变体断环）；
+// EOF 协议：结尾返回 Some(NQuadsEOF)（pos 冻结，由 current_pos() 钉）；
 // None 仅保留给异常分支，正常流不会出现。
+// Unknown/结构事件 span 不在生成契约（NQuadsUnknown 为常量构造子）——出词点
+// 把 span 写入 last_unknown 单槽旁路（消费方 Unknown 事件后即读；trig/n3v2
+// 适配层结构分类与 ANON 校验依赖此面）。
 // 热路径纪律：view/len 以局部缓存参与每字节循环（debug 构建不内联字段加载），
 // 逐字节判别内联比较，不做任何函数调用。
 
@@ -18,11 +22,21 @@ pub(all) struct Lexermoon {
   view : ArrayView[Byte]
   mut pos : Int
   mut len : Int
+  mut last_unknown : Span // 单槽旁路：Unknown 出词点 span（P2 刀 a) 生成契约无 span 载荷）
 }
 
 ///|
 pub fn Lexermoon::new(view : ArrayView[Byte]) -> Lexermoon {
-  Lexermoon::{ view, pos: 0, len: view.length(), }
+  Lexermoon::{ view, pos: 0, len: view.length(), last_unknown: (0, 0), }
+}
+
+///|
+/// Unknown span 单槽旁路（P2 刀 a)：NQuadsUnknown 为常量构造子（生成契约无
+/// span 载荷），出词点把 span 写入 last_unknown 槽；消费方（trig/n3v2 适配层
+/// 分类结构字符、ANON 吞槽校验）收到 Unknown 事件后**立即**读取本槽——两次
+/// next() 之间读才不失真（后一次 Unknown 会覆盖）。
+pub fn Lexermoon::last_unknown_span(self : Lexermoon) -> Span {
+  self.last_unknown
 }
 
 ///|
@@ -230,13 +244,13 @@ fn Lexermoon::scan_literal_suffix(self : Lexermoon) -> Unit {
 
 ///|
 /// 获取下一个 Token（与 lexerc_ffi.c 的 lexer_next 分支一一对应）
-pub fn Lexermoon::next(self : Lexermoon) -> Token? {
+pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
   let v = self.view // 热循环局部缓存：字段加载不内联，每 token 只取一次
   let l = self.len
   // 空白/注释跳过（换行直接跳过不产出 token；行号由上层按数据惰性统计）
   for ;; {
     if self.pos >= l {
-      return Some(Token::EOF(self.pos))
+      return Some(NQuadsEOF)
     }
     match v[self.pos] {
       b' ' | b'\t' | b'\r' | b'\n' => self.pos = self.pos + 1
@@ -277,7 +291,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
     }
     self.pos = p
     self.scan_literal_suffix()
-    return Some(Token::Literal((start, self.pos - start)))
+    return Some(NQuadsLiteral((start, self.pos - start)))
   }
   // 普通字符串（含转义；后缀 ^^ / @ 一并切出）
   if c == b'"' || c == b'\'' {
@@ -295,7 +309,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
     }
     self.pos = p
     self.scan_literal_suffix()
-    return Some(Token::Literal((start, self.pos - start)))
+    return Some(NQuadsLiteral((start, self.pos - start)))
   }
   // _:name → BlankNode（名字含 .，与 C 版一致；多字节标签字符加宽同 PrefName 口径）
   if c == b'_' && self.pos + 1 < l && v[self.pos + 1] == b':' {
@@ -315,7 +329,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
         break
       }
     }
-    return Some(Token::BlankNode((start, self.pos - start)))
+    return Some(NQuadsBlankNode((start, self.pos - start)))
   }
   // <...> → IRI；<<(...)>> → TripleTerm（平衡配对）；<< → Unknown(1)；未闭合宽容出词
   if c == b'<' {
@@ -352,7 +366,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
           self.pos = self.pos + 1
         }
       }
-      return Some(Token::TripleTerm((start, self.pos - start)))
+      return Some(NQuadsTripleTerm((start, self.pos - start)))
     }
     if self.pos + 1 < l && v[self.pos + 1] == b'<' {
       // RDF 1.2 引用三元组壳：<< s p o >>（可嵌套）。`<<(` 括号壳已在上分支，
@@ -384,12 +398,13 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
           self.pos = self.pos + 1
         }
       }
-      return Some(Token::TripleTerm((start, self.pos - start)))
+      return Some(NQuadsTripleTerm((start, self.pos - start)))
     }
     if self.pos + 1 < l && v[self.pos + 1] == b'=' {
       // N3 预埋：<= 整词 Unknown(2)（{|/|} 同机械，适配层按双字节分类）
       self.pos = self.pos + 2
-      return Some(Token::Unknown((start, 2)))
+      self.last_unknown = (start, self.pos - start)
+      return Some(NQuadsUnknown)
     }
     // P4 第二刀：`self.pos` 局部化为 `p` + `unsafe_get` + 类表终止位（同一判据的查表实现，
     // 逐字节同义）⇒ 每字节省一次边界检查与一次字段 load/store。
@@ -404,12 +419,13 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
       p = p + 1
     }
     self.pos = p
-    return Some(Token::Iri((start, self.pos - start)))
+    return Some(NQuadsIri((start, self.pos - start)))
   }
   // > → Unknown(1)（>> 收尾等）
   if c == b'>' {
     self.pos = self.pos + 1
-    return Some(Token::Unknown((start, 1)))
+    self.last_unknown = (start, self.pos - start)
+    return Some(NQuadsUnknown)
   }
   // 字母/:起头（或多字节 PN_CHARS_BASE 字母）→ PrefName。PN_LOCAL 加宽口径：
   // 名字内允许 : 与名字字符（含内部 '.'、\X 转义对、%HH 百分号对、多字节 UTF-8）；
@@ -459,7 +475,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
           v[self.pos - 2] != b'\\' {
       self.pos = self.pos - 1
     }
-    return Some(Token::PrefName((start, self.pos - start)))
+    return Some(NQuadsPrefName((start, self.pos - start)))
   }
   // 数字（可带±符号、可前导点）→ Unknown（Turtle 数值口径）：
   //   INTEGER [+-]?[0-9]+；DECIMAL [+-]?([0-9]+'.'[0-9]+ | '.'[0-9]+)；
@@ -541,50 +557,55 @@ pub fn Lexermoon::next(self : Lexermoon) -> Token? {
       }
     }
     self.pos = p
-    return Some(Token::Unknown((start, self.pos - start)))
+    self.last_unknown = (start, self.pos - start)
+    return Some(NQuadsUnknown)
   }
   // 结构标点（# 不可达：skip 已处理）
   if c == b'.' {
     self.pos = self.pos + 1
-    return Some(Token::Dot((start, 1)))
+    return Some(NQuadsDot)
   }
   if c == b';' {
     self.pos = self.pos + 1
-    return Some(Token::Semicolon((start, 1)))
+    return Some(NQuadsSemicolon)
   }
   if c == b',' {
     self.pos = self.pos + 1
-    return Some(Token::Comma((start, 1)))
+    return Some(NQuadsComma)
   }
   // RDF 1.2 注解定界符：{| 与 |} 整词出（单 token 机械，适配层按双字节分类；
   // 裸 | 与裸 { 仍是 Unknown(1)）
   if c == b'{' && self.pos + 1 < l && v[self.pos + 1] == b'|' {
     self.pos = self.pos + 2
-    return Some(Token::Unknown((start, 2)))
+    self.last_unknown = (start, self.pos - start)
+    return Some(NQuadsUnknown)
   }
   if c == b'|' && self.pos + 1 < l && v[self.pos + 1] == b'}' {
     self.pos = self.pos + 2
-    return Some(Token::Unknown((start, 2)))
+    self.last_unknown = (start, self.pos - start)
+    return Some(NQuadsUnknown)
   }
   // N3 预埋：=> 整词 Unknown(2)（裸 = 仍是 Unknown(1)；>= 不存在，N3 无此操作符）
   if c == b'=' && self.pos + 1 < l && v[self.pos + 1] == b'>' {
     self.pos = self.pos + 2
-    return Some(Token::Unknown((start, 2)))
+    self.last_unknown = (start, self.pos - start)
+    return Some(NQuadsUnknown)
   }
   // 其余字符一律 Unknown(1)，词法不中断
   self.pos = self.pos + 1
-  Some(Token::Unknown((start, 1)))
+  self.last_unknown = (start, self.pos - start)
+  Some(NQuadsUnknown)
 }
 
 ///|
-/// 解析所有 Token（含末位 EOF；调用方按 EOF 变体判终止）
-fn Lexermoon::tokenize(self : Lexermoon) -> Array[Token] {
-  let tokens : Array[Token] = []
+/// 解析全部事件（含末位 NQuadsEOF 哨兵；调用方按哨兵判终止）
+fn Lexermoon::tokenize(self : Lexermoon) -> Array[NQuadsEvent] {
+  let tokens : Array[NQuadsEvent] = []
   while true {
     match self.next() {
       Some(token) => {
         tokens.push(token)
-        if token is Token::EOF(_) {
+        if token is NQuadsEOF {
           break
         }
       }
@@ -605,38 +626,24 @@ pub fn Lexermoon::extract(self : Lexermoon, start : Int, end : Int) -> String {
 }
 
 ///|
-/// 从 Token 提取 IRI（去掉 <> 包裹）
-pub fn Lexermoon::extract_iri(self : Lexermoon, token : Token) -> String {
-  match token {
-    Token::Iri((start, length)) => {
-      let end = start + length
-      if length > 2 && self.view[start] == b'<' && self.view[end - 1] == b'>' {
-        self.extract(start + 1, end - 1)
-      } else {
-        self.extract(start, end)
-      }
-    }
-    _ => ""
-  }
-}
-
-///|
 test "cursor tokenizer" {
   let input = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .\n"
   let data = @utf8.encode(input).to_array()
   let tokenizer = Lexermoon::new(data[:])
-  let tokens = tokenizer.tokenize()
-  for token in tokens {
-    match token {
-      Token::Iri((start, _)) =>
-        debug("IRI: \{tokenizer.extract_iri(token)} at [\{start}:...]")
-      Token::Dot((start, _)) => debug("Dot at [\{start}:...]")
-      Token::EOF(pos) => debug("EOF at \{pos}")
+  let events = tokenizer.tokenize()
+  for ev in events {
+    match ev {
+      NQuadsIri(span) =>
+        debug(
+          "IRI: \{tokenizer.extract(span.0 + 1, span.0 + span.1 - 1)} at [\{span.0}:...]",
+        )
+      NQuadsDot => debug("Dot at [\{tokenizer.current_pos() - 1}:...]")
+      NQuadsEOF => debug("EOF at \{tokenizer.current_pos()}")
       _ => ()
     }
   }
   // 3 IRI + Dot + EOF
-  assert_eq(tokens.length(), 5)
+  assert_eq(events.length(), 5)
 }
 
 ///|
@@ -648,15 +655,15 @@ test "token 类型与 span 口径与 C 版对齐（全词含定界符/后缀并�
   for ;; {
     match lexer.next() {
       None => break
-      Some(Token::EOF(_)) => break
-      Some(t) =>
+      Some(NQuadsEOF) => break
+      Some(ev) =>
         kinds.push(
-          match t {
-            Token::Iri(_) => "iri"
-            Token::BlankNode(_) => "bnode"
-            Token::Literal(_) => "literal"
-            Token::PrefName(_) => "prefname"
-            Token::Dot(_) => "dot"
+          match ev {
+            NQuadsIri(_) => "iri"
+            NQuadsBlankNode(_) => "bnode"
+            NQuadsLiteral(_) => "literal"
+            NQuadsPrefName(_) => "prefname"
+            NQuadsDot => "dot"
             _ => "other"
           },
         )
@@ -680,11 +687,11 @@ test "benchmark: tokenizer 1000 quad" {
   let bytes = @utf8.encode(input).to_array()
   let start1 = @bench.monotonic_clock_start()
   let tokenizer = Lexermoon::new(bytes[:])
-  let tokens = tokenizer.tokenize()
+  let events = tokenizer.tokenize()
   let mut count = 0
-  for token in tokens {
-    match token {
-      Token::Iri(_) => count = count + 1
+  for ev in events {
+    match ev {
+      NQuadsIri(_) => count = count + 1
       _ => ()
     }
   }
@@ -695,27 +702,30 @@ test "benchmark: tokenizer 1000 quad" {
   println("Lexer:       \{elapsed1} µs (\{count} iri tokens)")
 }
 
-// ===== 词法口径测试（仅 Lexermoon，仅词法层：token 种类 + span，不涉语法/引擎）=====
+// ===== 词法口径测试（仅 Lexermoon，仅词法层：事件种类 + span/结构起点，不涉语法/引擎）=====
 // 口径约定：span = (offset, length) 全词含定界符；官方要素逐项 pin。
 
 ///|
-fn lexer_test_fmt_token(t : Token) -> String {
-  match t {
-    Token::Dot((o, l)) => "Dot(\{o},\{l})"
-    Token::Semicolon((o, l)) => "Semicolon(\{o},\{l})"
-    Token::Comma((o, l)) => "Comma(\{o},\{l})"
-    Token::Iri((o, l)) => "Iri(\{o},\{l})"
-    Token::Literal((o, l)) => "Literal(\{o},\{l})"
-    Token::BlankNode((o, l)) => "BlankNode(\{o},\{l})"
-    Token::PrefName((o, l)) => "PrefName(\{o},\{l})"
-    Token::TripleTerm((o, l)) => "TripleTerm(\{o},\{l})"
-    Token::Unknown((o, l)) => "Unknown(\{o},\{l})"
-    Token::EOF(o) => "EOF(\{o})"
+/// 事件流口径串（P2 直产分母）：字面事件保 span 串（与原 Token span 同值）；
+/// 结构事件 span 已在直产时收窄 ⇒ 以 "@<start>" 钉起点（钉力与原 span 同价——
+/// start = current_pos()−1，单字符消费后回退一位 = 原 Token span.0）
+fn lexer_test_fmt_event_at(ev : NQuadsEvent, start : Int) -> String {
+  match ev {
+    NQuadsIri(s) => "Iri(\{s.0},\{s.1})"
+    NQuadsBlankNode(s) => "BlankNode(\{s.0},\{s.1})"
+    NQuadsLiteral(s) => "Literal(\{s.0},\{s.1})"
+    NQuadsPrefName(s) => "PrefName(\{s.0},\{s.1})"
+    NQuadsTripleTerm(s) => "TripleTerm(\{s.0},\{s.1})"
+    NQuadsUnknown => "Unknown" // 生成契约无 span（宽度语义由终点 EOF@ 钉）
+    NQuadsDot => "Dot@\{start}"
+    NQuadsSemicolon => "Semicolon@\{start}"
+    NQuadsComma => "Comma@\{start}"
+    NQuadsEOF => "EOF@\{start}"
   }
 }
 
 ///|
-/// Lexermoon 词法流口径串（EOF 不计：终端 token 单独 pin）
+/// Lexermoon 事件流口径串（EOF 不计：终端事件单独 pin）
 fn lexer_test_moon_stream(input : String) -> String {
   let data = @utf8.encode(input).to_array()
   let lexer = Lexermoon::new(data[:])
@@ -723,10 +733,16 @@ fn lexer_test_moon_stream(input : String) -> String {
   for ;; {
     match lexer.next() {
       None => break
-      Some(Token::EOF(_)) => break
-      Some(t) => {
-        buf.write_string(lexer_test_fmt_token(t))
+      Some(ev) => {
+        // 终点 EOF@<pos> 一并入串：钉整词宽度（补 Unknown 无 span 的宽度语义）；
+        // 结构事件起点 = pos−1（单字符消费后回退）；EOF 无宽，起点 = pos
+        let after = lexer.current_pos()
+        let start = if ev is NQuadsEOF { after } else { after - 1 }
+        buf.write_string(lexer_test_fmt_event_at(ev, start))
         buf.write_string(" ")
+        if ev is NQuadsEOF {
+          break
+        }
       }
     }
   }
@@ -734,76 +750,78 @@ fn lexer_test_moon_stream(input : String) -> String {
 }
 
 ///|
-/// 官方 N-Quads 要素逐项：输入 → 期望词法流
+/// 官方 N-Quads 要素逐项：输入 → 期望事件流
+/// （P2 直产口径：字面事件保 span 串；结构/Unknown 事件以 @<pos> 钉消费位；
+///   终点 EOF@<len> 钉整词宽度——补 Unknown 无 span 的宽度语义）
 fn lexer_test_battery() -> Array[(String, String)] {
   [
     // 完整 URI：<...> 全词含定界符
-    ("<http://example.org/a>", "Iri(0,22) "),
-    ("<http://e.org/s> <http://e.org/o>", "Iri(0,16) Iri(17,16) "),
+    ("<http://example.org/a>", "Iri(0,22) EOF@22 "),
+    ("<http://e.org/s> <http://e.org/o>", "Iri(0,16) Iri(17,16) EOF@33 "),
     // 空白节点：_: 前缀 + 标签
-    ("_:b0", "BlankNode(0,4) "),
+    ("_:b0", "BlankNode(0,4) EOF@4 "),
     // 纯字面量：含转义引号
-    ("\"text\"", "Literal(0,6) "),
-    ("\"a\\\"b\"", "Literal(0,6) "),
+    ("\"text\"", "Literal(0,6) EOF@6 "),
+    ("\"a\\\"b\"", "Literal(0,6) EOF@6 "),
     // 语言标签：@ 后缀并入 Literal
-    ("\"text\"@en", "Literal(0,9) "),
-    ("\"text\"@en-US", "Literal(0,12) "),
+    ("\"text\"@en", "Literal(0,9) EOF@9 "),
+    ("\"text\"@en-US", "Literal(0,12) EOF@12 "),
     // 类型字面量：^^<...> 后缀并入 Literal（域名中的 . 不得切断）
-    ("\"42\"^^<http://www.w3.org/2001/XMLSchema#integer>", "Literal(0,48) "),
+    ("\"42\"^^<http://www.w3.org/2001/XMLSchema#integer>", "Literal(0,48) EOF@48 "),
     // 语句结束与结构标点（单词符）
-    (".", "Dot(0,1) "),
-    (";", "Semicolon(0,1) "),
-    (",", "Comma(0,1) "),
+    (".", "Dot@0 EOF@1 "),
+    (";", "Semicolon@0 EOF@1 "),
+    (",", "Comma@0 EOF@1 "),
     // 命名图：第 4 元素（URI 或空白节点）
-    ("<s> <p> <o> <g> .", "Iri(0,3) Iri(4,3) Iri(8,3) Iri(12,3) Dot(16,1) "),
+    ("<s> <p> <o> <g> .", "Iri(0,3) Iri(4,3) Iri(8,3) Iri(12,3) Dot@16 EOF@17 "),
     (
-      "_:s <p> <o> _:g .", "BlankNode(0,3) Iri(4,3) Iri(8,3) BlankNode(12,3) Dot(16,1) ",
+      "_:s <p> <o> _:g .", "BlankNode(0,3) Iri(4,3) Iri(8,3) BlankNode(12,3) Dot@16 EOF@17 ",
     ),
-    // 数字：无脑扫出 Unknown（整型/浮点/科学计数整段一词）
-    ("42", "Unknown(0,2) "),
-    ("4.2e-1", "Unknown(0,6) "),
-    ("-1", "Unknown(0,2) "),
-    ("+1.5e-3", "Unknown(0,7) "),
-    ("1.", "Unknown(0,1) Dot(1,1) "),
+    // 数字：无脑扫出 Unknown（整型/浮点/科学计数整段一词；宽度由 EOF@ 终点钉）
+    ("42", "Unknown EOF@2 "),
+    ("4.2e-1", "Unknown EOF@6 "),
+    ("-1", "Unknown EOF@2 "),
+    ("+1.5e-3", "Unknown EOF@7 "),
+    ("1.", "Unknown Dot@1 EOF@2 "),
     // 前导点 / 点后接指数（Turtle DECIMAL/DOUBLE 数字部可空）
-    (".5", "Unknown(0,2) "),
-    ("-.2e3", "Unknown(0,5) "),
-    ("123.E+1", "Unknown(0,7) "),
-    ("1.e5", "Unknown(0,4) "),
+    (".5", "Unknown EOF@2 "),
+    ("-.2e3", "Unknown EOF@5 "),
+    ("123.E+1", "Unknown EOF@7 "),
+    ("1.e5", "Unknown EOF@4 "),
     // PrefName：字母 / : 起头
-    ("ex:p", "PrefName(0,4) "),
-    (":p", "PrefName(0,2) "),
+    ("ex:p", "PrefName(0,4) EOF@4 "),
+    (":p", "PrefName(0,2) EOF@2 "),
     // 词法加宽口径（双引擎一致）：\X 转义对 / %HH 百分号对 / 内部点 / 尾点回退 /
     // 转义尾点不回退 / 多字节名字字符 / 多字节起头整词
-    ("ex:a\\~\\.\\-\\!", "PrefName(0,12) "),
-    (":a%3Eb", "PrefName(0,6) "),
-    ("ex:a.b", "PrefName(0,6) "),
-    ("ex:o.", "PrefName(0,4) Dot(4,1) "),
-    ("ex:o\\.", "PrefName(0,6) "),
-    ("p:a·̀ͯ‿.⁀", "PrefName(0,16) "),
-    ("_:b·", "BlankNode(0,5) "),
-    ("é:x", "PrefName(0,4) "),
-    // 空白与注释跳过，不产出 token，span 保持全局定位
-    ("# comment\n<s> <p> .", "Iri(10,3) Iri(14,3) Dot(18,1) "),
+    ("ex:a\\~\\.\\-\\!", "PrefName(0,12) EOF@12 "),
+    (":a%3Eb", "PrefName(0,6) EOF@6 "),
+    ("ex:a.b", "PrefName(0,6) EOF@6 "),
+    ("ex:o.", "PrefName(0,4) Dot@4 EOF@5 "),
+    ("ex:o\\.", "PrefName(0,6) EOF@6 "),
+    ("p:a·̀ͯ‿.⁀", "PrefName(0,16) EOF@16 "),
+    ("_:b·", "BlankNode(0,5) EOF@5 "),
+    ("é:x", "PrefName(0,4) EOF@4 "),
+    // 空白与注释跳过，不产出事件，span 保持全局定位
+    ("# comment\n<s> <p> .", "Iri(10,3) Iri(14,3) Dot@18 EOF@19 "),
     // 无脑扫尾巴：后缀只认空白，尾点并入词内（结构裁决归引擎/校验层）
     // 三元组词项 <<( )>>：平衡配对出整词（RDF 1.2；嵌套/引号内容不参与配对）
-    ("<<( <s> <p> <o> )>>", "TripleTerm(0,19) "),
-    ("<<(<s><p><o>)>>.", "TripleTerm(0,15) Dot(15,1) "),
+    ("<<( <s> <p> <o> )>>", "TripleTerm(0,19) EOF@19 "),
+    ("<<(<s><p><o>)>>.", "TripleTerm(0,15) Dot@15 EOF@16 "),
     // RDF 1.2 裸 << >> 引用三元组（可嵌套，深度配对）
-    ("<< <s> <p> <o> >>", "TripleTerm(0,17) "),
-    ("<< :a << :b :c :d >> :e >>", "TripleTerm(0,26) "),
-    ("<<:s :p :o >>.", "TripleTerm(0,13) Dot(13,1) "),
-    ("<<(<a><b><<(<c><d><e>)>>)>>", "TripleTerm(0,27) "),
-    ("<<( <s> <p> \"a)>>b\" )>>", "TripleTerm(0,23) "),
+    ("<< <s> <p> <o> >>", "TripleTerm(0,17) EOF@17 "),
+    ("<< :a << :b :c :d >> :e >>", "TripleTerm(0,26) EOF@26 "),
+    ("<<:s :p :o >>.", "TripleTerm(0,13) Dot@13 EOF@14 "),
+    ("<<(<a><b><<(<c><d><e>)>>)>>", "TripleTerm(0,27) EOF@27 "),
+    ("<<( <s> <p> \"a)>>b\" )>>", "TripleTerm(0,23) EOF@23 "),
     // RDF 1.2 裸 << >>（RDF 1.2 起为合法引用三元组壳，不再是垃圾口径）：
     // 词法整词出壳，壳内语法（项是否齐全/合法）由验证/引擎层裁决
-    ("<< <s> >>", "TripleTerm(0,9) "),
+    ("<< <s> >>", "TripleTerm(0,9) EOF@9 "),
     // 容错口径：未闭合 IRI / 字面量 / 引用三元组壳宽容出词
-    ("<<a>", "TripleTerm(0,4) "),
-    ("<http://a", "Iri(0,9) "),
-    ("\"abc", "Literal(0,4) "),
-    ("_ x", "Unknown(0,1) PrefName(2,1) "),
-    ("@x", "Unknown(0,1) PrefName(1,1) "),
+    ("<<a>", "TripleTerm(0,4) EOF@4 "),
+    ("<http://a", "Iri(0,9) EOF@9 "),
+    ("\"abc", "Literal(0,4) EOF@4 "),
+    ("_ x", "Unknown PrefName(2,1) EOF@3 "),
+    ("@x", "Unknown PrefName(1,1) EOF@2 "),
   ]
 }
 
@@ -819,13 +837,13 @@ test "词法口径: 官方要素逐项（token 种类 + span）" {
 test "词法口径: 无脑扫尾巴——后缀门收紧，结构字节出独立 Dot（lists-05 口径）" {
   // "text". → 闭引号后非 ^/@：立即收束，尾点出独立 Dot（旧吞点口径退役——
   // "a") 紧邻结构符被吞进词项，集合元素位失配）。语句点语义裁决仍归引擎
-  assert_eq(lexer_test_moon_stream("\"text\"."), "Literal(0,6) Dot(6,1) ")
+  assert_eq(lexer_test_moon_stream("\"text\"."), "Literal(0,6) Dot@6 EOF@7 ")
   // @ 门通过：@lang 后缀照旧吞到空白，尾点并入词内（引擎 trim 兜底不变）
-  assert_eq(lexer_test_moon_stream("\"text\"@en."), "Literal(0,10) ")
+  assert_eq(lexer_test_moon_stream("\"text\"@en."), "Literal(0,10) EOF@10 ")
   // 名字字符含 . ：_:b0. 整词吞点
-  assert_eq(lexer_test_moon_stream("_:b0."), "BlankNode(0,5) ")
+  assert_eq(lexer_test_moon_stream("_:b0."), "BlankNode(0,5) EOF@5 ")
   // 对照：IRI 的 > 自身定界，尾点正常出 Dot
-  assert_eq(lexer_test_moon_stream("<s>."), "Iri(0,3) Dot(3,1) ")
+  assert_eq(lexer_test_moon_stream("<s>."), "Iri(0,3) Dot@3 EOF@4 ")
 }
 
 ///|
@@ -834,27 +852,20 @@ test "词法口径: <<( )>> 平衡配对（已升入共享电池，双引擎一�
   // 宽容出词的残余 token 顺序属实现细节，双引擎对齐以整词口径为准）
   assert_eq(
     lexer_test_moon_stream("<<( <s>"),
-    "TripleTerm(0,5) PrefName(5,1) Unknown(6,1) ",
+    "TripleTerm(0,5) PrefName(5,1) Unknown EOF@7 ",
   )
 }
 
 ///|
-test "词法口径: EOF 协议（EOF(pos) 冻结，重复 next 恒同值）" {
+test "词法口径: EOF 协议（EOF 哨兵冻结，重复 next 恒同值）" {
   let data = @utf8.encode("a").to_array()
   let lexer = Lexermoon::new(data[:])
   let _ = lexer.next() // PrefName(0,1)
-  assert_true(
-    match lexer.next() {
-      Some(Token::EOF(1)) => true
-      _ => false
-    },
-  )
-  assert_true(
-    match lexer.next() {
-      Some(Token::EOF(1)) => true
-      _ => false
-    },
-  )
+  // 原 Token::EOF(pos) 载荷改由 current_pos() 钉死（P2 直产：事件无 EOF 载荷）
+  assert_true(lexer.next() is Some(NQuadsEOF))
+  assert_eq(lexer.current_pos(), 1)
+  assert_true(lexer.next() is Some(NQuadsEOF))
+  assert_eq(lexer.current_pos(), 1)
 }
 
 ///|
@@ -876,8 +887,8 @@ test "lexdbg: 三引号壳内 4 连引号 + 双反斜杠" {
   for ;; {
     match lexer.next() {
       None => break
-      Some(Token::EOF(_)) => break
-      Some(t) => println("\{lexer_test_fmt_token(t)}")
+      Some(NQuadsEOF) => break
+      Some(ev) => println("\{lexer_test_fmt_event_at(ev, lexer.current_pos() - 1)}")
     }
   }
   assert_true(true)

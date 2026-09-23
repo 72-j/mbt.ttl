@@ -1,4 +1,4 @@
-// ===== 词法适配层：Token → N3Event 逐 token 机械分类 =====
+// ===== 词法适配层：NQuadsEvent → N3Event 逐事件机械分类 =====
 // ★ 补偿点单点台账（役29 R-04）：Lexermoon 吞边界/整词出词口径下，词法
 //   边界修正全仓六处——五处在本文件，一处在引擎。一次词法口径变动必查此单：
 //   ① [] ANON peek-merge（本文件 next，trig 战役①同款）：`[` 后零空格窥
@@ -50,28 +50,31 @@ fn N3LexerAdapter::new(view : ArrayView[Byte]) -> N3LexerAdapter {
 }
 
 ///|
-/// Token -> N3Event：单 token 机械分类（无语法判断）
-fn token_to_n3_event(data : ArrayView[Byte], token : Token) -> N3Event {
-  match token {
-    Token::Iri(span) => N3Event::N3Iri(span)
-    Token::BlankNode(span) => N3Event::N3BlankNode(span)
-    Token::Literal(span) =>
+/// NQuadsEvent -> N3Event：单事件机械分类（无语法判断）。P2 刀 a) 起
+/// Lexermoon 直产事件，Unknown 的 span 经 last_unknown 单槽即读
+fn token_to_n3_event(lexer : N3LexerAdapter, ev : NQuadsEvent) -> N3Event {
+  let data = lexer.data
+  match ev {
+    NQuadsEvent::NQuadsIri(span) => N3Event::N3Iri(span)
+    NQuadsEvent::NQuadsBlankNode(span) => N3Event::N3BlankNode(span)
+    NQuadsEvent::NQuadsLiteral(span) =>
       // 双载荷拆分：语言标签子 span 词法期出（恰覆盖子标签，不含 @）；
       // ^^dt 折文本不拆（物化层拆口径）
       N3Event::N3Literal(span, split_langtag(data, span))
-    Token::TripleTerm(span) =>
+    NQuadsEvent::NQuadsTripleTerm(span) =>
       // 括号壳 <<( 分流（兼容口径同 trig：N-Triples 1.2 形态只开宾语位，表裁决）
       if span.1 >= 3 && data[span.0 + 2] == b'(' {
         N3Event::N3BracketTripleTerm(span)
       } else {
         N3Event::N3TripleTerm(span)
       }
-    Token::Dot(_) => N3Event::N3Dot
-    Token::Comma(_) => N3Event::N3Comma
-    Token::Semicolon(_) => N3Event::N3Semicolon
-    Token::Unknown(span) => classify_structural(data, span)
-    Token::PrefName(span) => classify_prefname(data, span)
-    Token::EOF(_) => N3Event::N3EOF // LexerSource 协议在此过滤为 None
+    NQuadsEvent::NQuadsDot => N3Event::N3Dot
+    NQuadsEvent::NQuadsComma => N3Event::N3Comma
+    NQuadsEvent::NQuadsSemicolon => N3Event::N3Semicolon
+    NQuadsEvent::NQuadsUnknown =>
+      classify_structural(data, lexer.inner.last_unknown_span())
+    NQuadsEvent::NQuadsPrefName(span) => classify_prefname(data, span)
+    NQuadsEvent::NQuadsEOF => N3Event::N3EOF // LexerSource 协议在此过滤为 None
   }
 }
 
@@ -306,14 +309,19 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
   if self.anon_swallow {
     self.anon_swallow = false
     match self.inner.next() {
-      Some(Token::Unknown((o2, l2))) if l2 == 1 && self.data[o2] == b']' => ()
+      Some(NQuadsEvent::NQuadsUnknown) => {
+        let s2 = self.inner.last_unknown_span()
+        if !(s2.1 == 1 && self.data[s2.0] == b']') {
+          return Some(N3Event::N3Unknown((LexerSource::pos(self), 0)))
+        }
+      }
       _ => return Some(N3Event::N3Unknown((LexerSource::pos(self), 0)))
     }
   }
   match self.inner.next() {
     None => None
-    Some(token) =>
-      if token is Token::EOF(_) {
+    Some(ev) =>
+      if ev is NQuadsEvent::NQuadsEOF {
         if self.eof_seen {
           None
         } else {
@@ -324,51 +332,58 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
         // [] ANON 合并（`[]` 在语法上是 ANON 产生式，不是开括号）：`[` 后按
         // 数据面跳空白窥 `]`（只跳空白不跳注释——ANON 产生式不容注释，从严）；
         // 命中 → 单事件 N3Anon（span 贯通 `]`，fresh 身份 = `[` offset）
-        if token is Token::Unknown((boff, blen)) &&
-          blen == 1 &&
-          self.data[boff] == b'[' {
-          let mut j = boff + 1
-          while j < self.data.length() &&
-                (
-                  self.data[j] == b' ' ||
-                  self.data[j] == b'\t' ||
-                  self.data[j] == b'\r' ||
-                  self.data[j] == b'\n'
-                ) {
-            j = j + 1
-          }
-          if j < self.data.length() && self.data[j] == b']' {
-            self.anon_swallow = true
-            return Some(N3Event::N3Anon((boff, j + 1 - boff)))
+        if ev is NQuadsEvent::NQuadsUnknown {
+          // Unknown span 单槽即读：`[` 单字节形态才进 ANON 合并决策
+          let bs = self.inner.last_unknown_span()
+          if bs.1 == 1 && self.data[bs.0] == b'[' {
+            let boff = bs.0
+            let mut j = boff + 1
+            while j < self.data.length() &&
+                  (
+                    self.data[j] == b' ' ||
+                    self.data[j] == b'\t' ||
+                    self.data[j] == b'\r' ||
+                    self.data[j] == b'\n'
+                  ) {
+              j = j + 1
+            }
+            if j < self.data.length() && self.data[j] == b']' {
+              self.anon_swallow = true
+              return Some(N3Event::N3Anon((boff, j + 1 - boff)))
+            }
           }
         }
         // ?x 变量 peek-merge（gen.md §4.2）：`?` 后零空格邻接无冒号 PrefName
         // 合成 N3Variable（span 贯通变量名）。peek 失配（裸 ? / ??x / ? 后带
         // 空格 / ?x:y 形）不吞词：peek 到的 token 转事件入 pending 槽，`?`
         // 自身落 N3Unknown 走错误路径——语法决策仍留给表
-        if token is Token::Unknown((qoff, qlen)) &&
-          qlen == 1 &&
-          self.data[qoff] == b'?' {
-          match self.inner.next() {
-            Some(Token::PrefName((poff, plen))) =>
-              if poff == qoff + 1 && !span_has_colon(self.data, poff, plen) {
-                return Some(N3Event::N3Variable((qoff, poff + plen - qoff)))
-              } else {
-                self.pending = Some(
-                  token_to_n3_event(self.data, Token::PrefName((poff, plen))),
-                )
-              }
-            Some(t2) => self.pending = Some(token_to_n3_event(self.data, t2))
-            None => ()
+        if ev is NQuadsEvent::NQuadsUnknown {
+          // Unknown span 单槽即读（先捕获再 peek——peek 的 Unknown 会覆盖槽）
+          let qs = self.inner.last_unknown_span()
+          let qoff = qs.0
+          let qlen = qs.1
+          if qlen == 1 && self.data[qoff] == b'?' {
+            match self.inner.next() {
+              Some(NQuadsEvent::NQuadsPrefName((poff, plen))) =>
+                if poff == qoff + 1 && !span_has_colon(self.data, poff, plen) {
+                  return Some(N3Event::N3Variable((qoff, poff + plen - qoff)))
+                } else {
+                  self.pending = Some(
+                    classify_prefname(self.data, (poff, plen)),
+                  )
+                }
+              Some(ev2) => self.pending = Some(token_to_n3_event(self, ev2))
+              None => ()
+            }
+            return Some(N3Event::N3Unknown((qoff, qlen)))
           }
-          return Some(N3Event::N3Unknown((qoff, qlen)))
         }
         // ★ @ 风格指令名零空格直连冒号拆分（minimal-whitespace 口径同 trig）：
         //   `@prefix:<iri>` 词法整词扫出 `prefix:`（冒号是名字字符），关键词臂
         //   只认 6 字节整词 → 落普通 PrefName。此处按 @ 邻接位拆成关键词事件 +
         //   冒号 PrefName（声明名 token，槽位 pending 先入后兑）。仅精确 "kw:"
         //   形拆分——"kw:foo" 带本地部非法（prefixID 只收 PNAME_NS），不拆
-        if token is Token::PrefName((off, len)) && at_style_kw(self.data, off) {
+        if ev is NQuadsEvent::NQuadsPrefName((off, len)) && at_style_kw(self.data, off) {
           let colon_at = if len == 7 &&
             eq_lower(self.data, off, b"prefix") &&
             self.data[off + 6] == b':' {
@@ -395,7 +410,7 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
         //     `<- `（未闭合 len2）→ Invert；`<-:p`（未闭合带余量）→ Invert +
         //     PrefName 余量入 pending；`<-<-p>`（闭合内域 `-<` 起头）→ Invert +
         //     Iri 余量入 pending。合法 IRI `<-s>`（闭合、内域非 `-<`）原样不扰
-        if token is Token::Iri((ioff, ilen)) &&
+        if ev is NQuadsEvent::NQuadsIri((ioff, ilen)) &&
           ilen >= 2 &&
           self.data[ioff] == b'<' &&
           self.data[ioff + 1] == b'-' {
@@ -416,7 +431,7 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
             return Some(N3Event::N3Invert)
           }
         }
-        Some(token_to_n3_event(self.data, token))
+        Some(token_to_n3_event(self, ev))
       }
   }
 }

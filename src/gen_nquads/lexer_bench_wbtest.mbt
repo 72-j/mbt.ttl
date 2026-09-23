@@ -4,6 +4,8 @@
 // debug 档数字只作代码形状回归用，不作性能结论（同一份代码差 8×）。
 // 口径：
 //   - 只测**纯词法**（`next()` 拉取循环），不涉引擎/验证/物化——便于逐 step 归因；
+//   - P2 刀 a)（2026-09-23）起 Lexermoon 直产 NQuadsEvent：月侧口径 = 出事件
+//     （含事件构造），与 C 侧（出 Token）**不再逐字同口径**，比值列仅作参考；
 //   - token 计数规则两引擎一致：EOF 不计（Lexermoon 的 EOF 变体 / Lexerc 的 None 都不计）；
 //   - 语料优先取 `src/bench/` 真实文件，缺省内存生成同形状语料（<s> <p> <o> . 每行）；
 //   - 单次计时，同一进程内先后跑（对照的是同一批机器状态）。
@@ -30,7 +32,7 @@ fn lexer_bench_moon(data : Array[Byte]) -> Int {
   let mut token_count = 0
   for ;; {
     match lexer.next() {
-      Some(Token::EOF(_)) => break
+      Some(NQuadsEOF) => break
       Some(_) => token_count = token_count + 1
       None => break
     }

@@ -18,12 +18,12 @@
 //   吞到 EOF → reset(All) → finish_at_end 判净；终局 = 错 1 条 + 零四元。
 
 ///|
-fn bytes_of(input : String) -> Array[Byte] {
+fn r19_bytes(input : String) -> Array[Byte] {
   @utf8.encode(input).to_array()
 }
 
 ///|
-fn view_str(view : ArrayView[Byte]) -> String {
+fn r19_view_str(view : ArrayView[Byte]) -> String {
   let buf = StringBuilder()
   for i = 0; i < view.length(); i = i + 1 {
     buf.write_char(view[i].to_char())
@@ -34,20 +34,20 @@ fn view_str(view : ArrayView[Byte]) -> String {
 ///|
 test "R19/nquads 阶段0 真值钉：Object 位裸 `;` ⇒ 环级恢复（错1 + 恰 (a,b,c)）" {
   let input = "<http://e/s> <http://e/p> ; <http://e/j> . <http://e/a> <http://e/b> <http://e/c> .\n"
-  let (quads, errors) = nquads_parser(bytes_of(input))
+  let (quads, errors) = nquads_parser(r19_bytes(input))
   assert_eq(errors.length(), 1)
   assert_eq(quads.length(), 1)
   let q = quads[0]
-  assert_eq(view_str(q.subj), "<http://e/a>")
-  assert_eq(view_str(q.pred), "<http://e/b>")
-  assert_eq(view_str(q.obj), "<http://e/c>")
+  assert_eq(r19_view_str(q.subj), "<http://e/a>")
+  assert_eq(r19_view_str(q.pred), "<http://e/b>")
+  assert_eq(r19_view_str(q.obj), "<http://e/c>")
   assert_true(q.graph is None)
 }
 
 ///|
 test "R19/nquads 阶段0 真值钉：Object 位裸 `;` 无句点 ⇒ EOF 收窗（错1 + 零四元）" {
   let input = "<http://e/s> <http://e/p> ;\n"
-  let (quads, errors) = nquads_parser(bytes_of(input))
+  let (quads, errors) = nquads_parser(r19_bytes(input))
   assert_eq(errors.length(), 1)
   assert_eq(quads.length(), 0)
 }

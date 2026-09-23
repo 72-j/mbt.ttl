@@ -19,20 +19,17 @@
 trait LexerSource {
   fn next(Self) -> NQuadsEvent? // 下一个事件；换行/注释/EOF 已过滤，None = 输入结束
   fn pos(Self) -> Int // 当前词法位置（兜底错误定位用）
-  fn byte_at(Self, offset : Int) -> Byte // 数据直查（词内尾点裁决用，见 normalize_term_span）
+  fn byte_at(Self, offset : Int) -> Byte // 数据直查（词内尾点裁决用，见 trim_trailing_dot）
 }
 
 ///|
-/// Lexermoon 实现 LexerSource（纯 MoonBit 词法器；Token 与 C 版同型同宽）
+/// Lexermoon 实现 LexerSource（纯 MoonBit 词法器；P2 刀 a) 直产事件——
+/// 本 impl 只滤 EOF 哨兵，事件零转换透传）
 pub impl LexerSource for Lexermoon with fn next(self : Lexermoon) -> NQuadsEvent? {
   match Lexermoon::next(self) {
-    None => None // 保留给异常分支；正常 EOF 由词法器以 EOF 变体告知
-    Some(token) =>
-      if token is Token::EOF(_) {
-        None
-      } else {
-        Some(token_to_event(token))
-      }
+    None => None // 保留给异常分支；正常 EOF 由词法器以 NQuadsEOF 哨兵告知
+    Some(NQuadsEOF) => None
+    other => other
   }
 }
 
@@ -57,24 +54,6 @@ pub impl LexerSource for Lexermoon with fn byte_at(
 // pub impl LexerSource for Lexermoon with fn destroy(_self : Lexermoon) -> Unit {
 //   () // 纯 MoonBit 词法器无需释放
 // }
-
-///|
-/// Token(offset,length) → 事件载荷 Span —— 两套词法器（Lexermoon/Lexerc）共用，
-/// 词法适配层已把 span 统一为全词含定界符，此处零补偿直接透传
-fn token_to_event(token : Token) -> NQuadsEvent {
-  match token {
-    Token::Iri(span) => NQuadsEvent::NQuadsIri(span)
-    Token::BlankNode(span) => NQuadsEvent::NQuadsBlankNode(span)
-    Token::Literal(span) => NQuadsEvent::NQuadsLiteral(span)
-    Token::PrefName(span) => NQuadsEvent::NQuadsPrefName(span)
-    Token::TripleTerm(span) => NQuadsEvent::NQuadsTripleTerm(span)
-    Token::Dot(_) => NQuadsEvent::NQuadsDot
-    Token::Comma(_) => NQuadsEvent::NQuadsComma
-    Token::Semicolon(_) => NQuadsEvent::NQuadsSemicolon
-    Token::Unknown(_) => NQuadsEvent::NQuadsUnknown
-    Token::EOF(_) => NQuadsEvent::NQuadsEOF // 已被 LexerSource 过滤，保底映射
-  }
-}
 
 ///|
 /// 事件载荷 span 提取：无载荷事件给 (0,0)（UnexpectedEvent 兜底定位用，

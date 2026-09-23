@@ -1,17 +1,24 @@
 // ===== P2 引擎 step 逐层剖析（役：引擎 3.14 → 1.5-2 ms，第①步）=====
-// 分层口径（native release）：
+// 分层口径（native release；2026-09-23 P2 开役同笔校准）：
 //   A 引擎裸跑（= P1 剖析器 A 段，含词法 + 适配 + FSM + loop 骨架）
-//   F 词法→事件适配净（lexer.next + token_to_event + normalize_term_span，无 FSM）
+//   F 词法→事件适配净（LexerSource.next + 尾点只读检查，含 sink 交通）
+//   （T0/T1 切分段退役：P2 刀 a) 后词法器直产事件，Token→Event 转换层不存在）
 //   E FSM 净（预构造事件数组直驱 step + hooks + 发射点 snapshot/reset，无词法/loop）
-//   ⇒ FSM 层开销 ≈ A − F − E（loop 骨架 + 每事件分支/Option 往返）
-// 分配嫌疑（50k 事件）：lexer.next Option 装箱 / normalize+trim 两个返回元组 /
-//   token_to_event 枚举重建 / set_* 的 Some(payload) 装箱 / step 的 Result 包装。
+//   ⇒ FSM 层开销 ≈ A − F − E；开役基线（刀前）见 §AP.17
+// 分配嫌疑（50k 事件）：Token/Event 双枚举分配 / Span 元组 / set_* 的 Some 装箱 /
+//   snapshot 的 PendingQuad+Some 族 / step 的 Result 包装。
 // 纪律：读数只留证；本测试断言只做计数一致性。
 
 ///|
 async fn p2_bench_data() -> Array[Byte] {
   let path = "./src/bench/test_10000.nq"
   Array::from_fixed_array(@fs.read_file(path).binary().to_fixedarray())
+}
+
+///|
+/// 强制 LexerSource trait 分派（引擎 self.lexer.next() 的真实调度形）
+fn[F : LexerSource] p2_trait_next(lexer : F) -> NQuadsEvent? {
+  lexer.next()
 }
 
 ///|
@@ -61,7 +68,9 @@ async test "P2 逐层剖析: 引擎分层计时（A 全链 / F 适配净 / E FSM
     assert_eq(count, 10000)
   }
 
-  // F 适配净 ×3：lexer.next + token_to_event + normalize（50k 事件全走）
+  // F 适配净 ×3：LexerSource.next（P2 直产后 = EOF 滤哨 + 零转换透传）
+  // + loop 适配（词尾点只读检查；标准语料点=false，strip 冷路径不走）
+  // —— 2026-09-23 P2 开役同笔校准：旧 F 段量的是勘役前 normalize 旧形，读数虚高退役
   let f_elapsed : Array[Double] = []
   for _rep in 0..<3 {
     let lexer = Lexermoon::new(data.copy()[:])
@@ -69,21 +78,20 @@ async test "P2 逐层剖析: 引擎分层计时（A 全链 / F 适配净 / E FSM
     let mut count = 0
     let sink : Array[NQuadsEvent] = []
     for ;; {
-      match lexer.next() {
+      match p2_trait_next(lexer) {
         None => break
-        Some(token) =>
-          if token is Token::EOF(_) {
-            break
-          } else {
-            let ev = token_to_event(token)
-            let (ev2, _dot) = normalize_term_span_for_bench(lexer, ev)
-            sink.push(ev2)
-            count = count + 1
-          }
+        Some(ev) => {
+          // event_ends_with_dot 等价（词尾字节只读；span 剥点判定同 engine.mbt）
+          let span = span_of_event(ev)
+          let dot = span.1 > 0 && lexer.byte_at(span.0 + span.1 - 1) == b'.'
+          let ev2 = if dot { strip_trailing_dot_event(ev) } else { ev }
+          sink.push(ev2)
+          count = count + 1
+        }
       }
     }
     f_elapsed.push(@bench.monotonic_clock_end(start))
-    assert_eq(count, 50000)
+    assert_eq(count, 50_000)
     let _ = sink
   }
 
@@ -131,18 +139,3 @@ async test "P2 逐层剖析: 引擎分层计时（A 全链 / F 适配净 / E FSM
   )
 }
 
-///|
-/// bench 专用适配（engine.mbt 的 normalize_term_span 是泛型私有扩展；此处等价复刻，
-/// 走同一 trim_trailing_dot 机械——F 段量的是"词法→事件"链的真实成本）
-fn normalize_term_span_for_bench(
-  lexer : Lexermoon,
-  event : NQuadsEvent,
-) -> (NQuadsEvent, Bool) {
-  match event {
-    NQuadsIri(span) => {
-      let (span2, dot) = trim_trailing_dot(lexer, span)
-      (NQuadsIri(span2), dot)
-    }
-    other => (other, false)
-  }
-}

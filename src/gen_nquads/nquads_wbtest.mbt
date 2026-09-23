@@ -167,45 +167,76 @@ fn tok_kind_key(t : Token) -> (Int, Int, Int) {
 }
 
 ///|
+/// 事件 → (类型号, offset, len) 归一键（类型号沿用 C 侧 ctype 编号；P2 直产：
+/// 结构事件 span 收窄 ⇒ 起点/长度由消费位补齐——单字符消费后回退一位）
+fn event_key(
+  lexer : Lexermoon,
+  ev : NQuadsEvent,
+) -> (Int, Int, Int) {
+  match ev {
+    NQuadsDot => (0, lexer.current_pos() - 1, 1)
+    NQuadsSemicolon => (1, lexer.current_pos() - 1, 1)
+    NQuadsComma => (2, lexer.current_pos() - 1, 1)
+    NQuadsIri(s) => (3, s.0, s.1)
+    NQuadsLiteral(s) => (4, s.0, s.1)
+    NQuadsBlankNode(s) => (5, s.0, s.1)
+    NQuadsPrefName(s) => (6, s.0, s.1)
+    NQuadsUnknown => (7, 0, 0)
+    NQuadsEOF => (8, 0, 0)
+    NQuadsTripleTerm(s) => (9, s.0, s.1)
+  }
+}
+
+///|
 /// 加字词（N3 预埋）pin：=> 与 <= 整词 Unknown(2)（{|/|} 同机械）；
 /// 裸 = / > 单字 Unknown(1) 不变，>> 拆两单字，<g> 普通 IRI 不受 <= 判别干扰；
 /// 双词法器逐 token 同口径（口径一致是硬约定，分歧即失败）
 test "lexer 加字词: => / <= 整词出，双词法器同口径" {
   let input = "ex:a => ex:b .\nex:c <= ex:d .\nex:e = ex:f .\n<g> >> <h> .\n"
   let data = bytes_of(input)
-  let moon = Lexermoon::new(data[:]).tokenize()
-  // MoonBit 侧形态断言（末位 EOF 不计）
+  let lexer = Lexermoon::new(data[:])
+  let moon : Array[(Int, Int, Int)] = []
+  // 月侧形态断言（P2 直产：Unknown 无 span ⇒ 词形由消费尾字节对钉——
+  // c0 = 末字节，c1 = 次末字节；"=> " 尾对 (=,>)、"<=" 尾对 (<,=)、裸 =/> 单字）
   let mut arrow = 0
   let mut implied = 0
   let mut bare_eq = 0
   let mut bare_gt = 0
-  for i in 0..<(moon.length() - 1) {
-    match moon[i] {
-      Token::Unknown((off, len)) => {
-        let c0 = data[off]
-        if len == 2 && c0 == b'=' {
-          arrow = arrow + 1
-        } else if len == 2 && c0 == b'<' {
-          implied = implied + 1
-        } else if len == 1 && c0 == b'=' {
-          bare_eq = bare_eq + 1
-        } else if len == 1 && c0 == b'>' {
-          bare_gt = bare_gt + 1
-        } else {
-          ()
+  for ;; {
+    match lexer.next() {
+      None => break
+      Some(NQuadsEOF) => break
+      Some(ev) => {
+        moon.push(event_key(lexer, ev))
+        if ev is NQuadsUnknown {
+          let pos = lexer.current_pos()
+          let c0 = data[pos - 1]
+          let c1 = data[pos - 2]
+          // 尾字节对（c1,c0）："=>" = (=> 门先判)、"<=" = (=< 不存在—— c1='<' 判 <=)；
+          // 裸 = 尾对 (空,=)、裸 > 尾对 (空/> , >)。"="/"≤" 同 c0 ⇒ 整词门先行
+          if c0 == b'>' && c1 == b'=' {
+            arrow = arrow + 1
+          } else if c0 == b'=' && c1 == b'<' {
+            implied = implied + 1
+          } else if c0 == b'>' {
+            bare_gt = bare_gt + 1
+          } else if c0 == b'=' {
+            bare_eq = bare_eq + 1
+          } else {
+            ()
+          }
         }
       }
-      _ => ()
     }
   }
   assert_eq(arrow, 1)
   assert_eq(implied, 1)
   assert_eq(bare_eq, 1)
   assert_eq(bare_gt, 2)
-  // C 侧同口径比对
+  // C 侧同口径比对（C Token 经 tok_kind_key vs 月事件 event_key，同 ctype 编号）
   let fa = @utf8.encode(input).to_fixedarray()
   let lex = Lexerc::new(fa)
-  let n = moon.length() - 1
+  let n = moon.length()
   let mut i = 0
   for ;; {
     match lex.next() {
@@ -214,7 +245,12 @@ test "lexer 加字词: => / <= 整词出，双词法器同口径" {
         break
       }
       Some(t) => {
-        assert_eq(tok_kind_key(t), tok_kind_key(moon[i]))
+        let ck = tok_kind_key(t)
+        let mk = moon[i]
+        assert_eq(ck.0, mk.0) // ctype 序列逐位同（含 Unknown）
+        if ck.0 != 7 {
+          assert_eq(ck, mk) // 字面词 span 逐位同（Unknown 无 span = 生成契约口径）
+        }
         i = i + 1
       }
     }

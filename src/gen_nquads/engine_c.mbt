@@ -1,10 +1,28 @@
 // ===== 装配层（Assembly）：C FFI 词法适配（对比版） =====
 // 状态机与 loop 均复用 engine.mbt；本文件只做 C 词法器侧的适配：
-//   - Token → NQuadsEvent 共用 engine.mbt 的 token_to_event
-//     （Lexermoon 的 Token 类型与 span 口径已与 C 版对齐，映射零补偿透传）
+//   - Token → NQuadsEvent 映射（token_to_event 本文件持有：Lexermoon 自
+//     P2 刀 a) 起直产事件，此处是它唯一消费者；span 口径与 C 版逐字对齐）
 //   - LexerSource 运行时接口实现（仅 next/pos）
 // 构造/释放是 Lexerc 的显式 API（Lexerc::new / Lexerc::destroy），
 // 由入口函数负责调用；LexerSource 只约束 next/pos 运行时接口。
+
+///|
+/// Token(offset,length) → 事件载荷 Span（Lexerc FFI 专用；span 全词含定界符，
+/// 零补偿透传——Lexermoon 直产后不再共用）
+fn token_to_event(token : Token) -> NQuadsEvent {
+  match token {
+    Token::Iri(span) => NQuadsEvent::NQuadsIri(span)
+    Token::BlankNode(span) => NQuadsEvent::NQuadsBlankNode(span)
+    Token::Literal(span) => NQuadsEvent::NQuadsLiteral(span)
+    Token::PrefName(span) => NQuadsEvent::NQuadsPrefName(span)
+    Token::TripleTerm(span) => NQuadsEvent::NQuadsTripleTerm(span)
+    Token::Dot(_) => NQuadsEvent::NQuadsDot
+    Token::Comma(_) => NQuadsEvent::NQuadsComma
+    Token::Semicolon(_) => NQuadsEvent::NQuadsSemicolon
+    Token::Unknown(_) => NQuadsEvent::NQuadsUnknown
+    Token::EOF(_) => NQuadsEvent::NQuadsEOF // 已被 LexerSource 过滤，保底映射
+  }
+}
 
 ///|
 /// Lexerc 实现 LexerSource（运行时接口仅 next/pos）

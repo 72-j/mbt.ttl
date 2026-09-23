@@ -1,6 +1,6 @@
 // ===== fsm 分层开销基准（白盒） =====
-// 把引擎阶段拆成：Token→Event 转换层 / step+actions 状态机层 / 完整引擎循环
-// 用于定位生成器（nquads.mbt 的 step）相对手写版的每 token 开销来源
+// 把引擎阶段拆成：step+actions 状态机层 / 完整引擎循环
+// （P2 刀 a) 后词法器直产事件，Token→Event 转换层退役）
 
 ///|
 test "fsm 分层开销: 事件转换 / step 重放 / 完整引擎" {
@@ -16,35 +16,25 @@ test "fsm 分层开销: 事件转换 / step 重放 / 完整引擎" {
   let input = buf.to_string()
   let fa = @utf8.encode(input).to_fixedarray()
 
-  // (0) 纯词法 → Token 数组（重放的输入，也是词法基线）
-  // 注意：Lexermoon::next 到结尾永远返回 Some(EOF)（pos 不推进），必须显式断环；
+  // (0) 纯词法 → 事件数组（重放的输入，也是词法基线；P2 直产）
+  // 注意：Lexermoon::next 到结尾永远返回 Some(NQuadsEOF)（pos 不推进），必须显式断环；
   // None 只在词法错误（未闭合 IRI 等）时出现
   let lexer = Lexermoon::new(fa[:])
-  let tokens : Array[Token] = []
+  let events : Array[NQuadsEvent] = []
   for ;; {
     match lexer.next() {
       None => break
-      Some(t) => if t is Token::EOF(_) { break } else { tokens.push(t) }
+      Some(ev) => if ev is NQuadsEOF { break } else { events.push(ev) }
     }
   }
 
-  // (1) 仅事件转换：Token → NQuadsEvent（生成的词法适配层）
-  let start1 = @bench.monotonic_clock_start()
-  let mut conv_count = 0
-  for t in tokens {
-    ignore(token_to_event(t))
-    conv_count = conv_count + 1
-  }
-  let elapsed1 = @bench.monotonic_clock_end(start1)
-
-  // (2) step 重放：转换 + 生成的状态机 + actions 回调（无词法、无 FFI）
+  // (1) step 重放：事件直驱生成的状态机 + actions 回调（无词法、无 FFI）
   // 语义对齐引擎主循环：EmitQuad 后按意图粒度重置 ctx，UnexpectedEvent 视为行错误重置
   let hooks = Hooks::new()
   let mut quads_replay = 0
-  let start2 = @bench.monotonic_clock_start()
+  let start1 = @bench.monotonic_clock_start()
   let ctx = NQuadsContext::new()
-  for t in tokens {
-    let event = token_to_event(t)
+  for event in events {
     match step(ctx, event, hooks) {
       Ok(effect) =>
         // mutable 契约：step 原地推进 ctx；发射后按 scope 重置复用同一 ctx（零分配）
@@ -62,28 +52,25 @@ test "fsm 分层开销: 事件转换 / step 重放 / 完整引擎" {
       }
     }
   }
-  let elapsed2 = @bench.monotonic_clock_end(start2)
+  let elapsed1 = @bench.monotonic_clock_end(start1)
 
-  // (3) 完整链路（词法 + 转换 + 状态机 + 组装 + 验证），对照手写 Parser 阶段
-  let start3 = @bench.monotonic_clock_start()
+  // (2) 完整链路（词法 + 事件 + 状态机 + 组装 + 验证），对照手写 Parser 阶段
+  let start2 = @bench.monotonic_clock_start()
   let engine = NQuadsEngine::new(Lexermoon::new(fa[:]))
   let slice = SliceParser::new(engine, fa[:])
   let (quads_full, _errs) = slice.parse_all()
   let engine_count = quads_full.length()
-  let elapsed3 = @bench.monotonic_clock_end(start3)
+  let elapsed2 = @bench.monotonic_clock_end(start2)
 
-  println("=== fsm 分层开销（\{n} quads, \{tokens.length()} tokens）===")
+  println("=== fsm 分层开销（\{n} quads, \{events.length()} events）===")
   println(
-    "事件转换:   \{elapsed1} µs (\{conv_count} tokens, 仅 Token→Event)",
+    "step 重放:  \{elapsed1} µs (\{quads_replay} quads, 事件+状态机+回调)",
   )
   println(
-    "step 重放:  \{elapsed2} µs (\{quads_replay} quads, 转换+状态机+回调)",
+    "完整引擎:   \{elapsed2} µs (\{engine_count} quads, 含词法+事件+循环)",
   )
   println(
-    "完整引擎:   \{elapsed3} µs (\{engine_count} quads, 含词法+转换+循环)",
-  )
-  println(
-    "纯状态机:   \{elapsed2 - elapsed1} µs (重放-转换 = step+actions 每token成本)",
+    "引擎骨架:   \{elapsed2 - elapsed1} µs (完整-重放 = 词法+loop 每事件成本)",
   )
   assert_eq(quads_replay, n)
   assert_eq(engine_count, n)

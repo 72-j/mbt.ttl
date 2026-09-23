@@ -1,5 +1,5 @@
 // ===== 装配层（Assembly）：基础类型 =====
-// 复用 @nquads 的共享词表（Span/PendingQuad/ResetScope/TermType/ParseError/Token/Lexermoon），
+// 复用 @nquads 的共享词表（Span/PendingQuad/ResetScope/TermType/ParseError/Token/Lexermoon/NQuadsEvent），
 // 本包只保留 TriG 自身的输出形状 QuadSpan（纯 span 四元组）与 ErrOut 错误外观。
 // todo：生成器回灌后 using 清单由 spec 的 imports 段生成。
 
@@ -7,6 +7,7 @@
 pub using @nquads {
   type Token,
   type Lexermoon,
+  type NQuadsEvent,
   type ParseError,
   type Span,
   type TermType,

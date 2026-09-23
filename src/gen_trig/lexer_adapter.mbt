@@ -1,4 +1,4 @@
-// ===== 词法适配层：Token → TrigEvent 逐 token 机械分类 =====
+// ===== 词法适配层：NQuadsEvent → TrigEvent 逐事件机械分类 =====
 // 复用 @nquads.Lexermoon 的无脑扫；TriG 需要的结构字符/关键词由本层按
 // 单 token 判别合成事件（无跨 token 状态——语法决策全部留给转移表；
 // 唯一例外：@ 风格指令名零空格直连冒号的拆分槽 pending，见 next 内注）。
@@ -7,8 +7,10 @@
 //                   双字节 {| |} -> Annot*；=> <= -> Implies/ImpliedBy（N3 预埋）；
 //                   单字节 { } [ ] ( ) @ ~ ! ^ -> 结构/路径事件（! ^ 为 N3 预埋）；
 //                   其余 Unknown（表外垃圾）
-//   注：Unknown 事件**恒带 span 载荷**（役35 35-B0）——表外报错定位与 `@keywords`
-//       台账登记共用同一 span 面；分类降级点一律原样上抛本 token 的 span。
+//   注：Unknown span 经 Lexermoon.last_unknown 单槽旁路保留（P2 刀 a)：生成
+//       契约 NQuadsUnknown 为常量构造子，span 出词点落槽、Unknown 事件后即读
+//       ——表外报错定位与 `@keywords` 台账登记共用同一 span 面（役35 35-B0
+//       语义不变）；分类降级点一律原样上抛本 token 的 span。
 //   PrefName 按 span 内容: "a" -> TrigKeywordA；"true"/"false"（小写精确）-> TrigLiteral；
 //                          "graph"/"GRAPH" -> TrigGraphKw；
 //                          "prefix"/"PREFIX" -> TrigPrefixKw；
@@ -38,13 +40,15 @@ pub fn TrigLexerAdapter::new(view : ArrayView[Byte]) -> TrigLexerAdapter {
 }
 
 ///|
-/// Token -> TrigEvent：单 token 机械分类（无语法判断）
-fn token_to_trig_event(data : ArrayView[Byte], token : Token) -> TrigEvent {
-  match token {
-    Token::Iri(span) => TrigEvent::TrigIri(span)
-    Token::BlankNode(span) => TrigEvent::TrigBlankNode(span)
-    Token::Literal(span) => TrigEvent::TrigLiteral(span)
-    Token::TripleTerm(span) =>
+/// NQuadsEvent -> TrigEvent：单事件机械分类（无语法判断）。P2 刀 a) 起
+/// Lexermoon 直产事件，Unknown 的 span 经 last_unknown 单槽即读
+fn token_to_trig_event(lexer : TrigLexerAdapter, ev : NQuadsEvent) -> TrigEvent {
+  let data = lexer.data
+  match ev {
+    NQuadsEvent::NQuadsIri(span) => TrigEvent::TrigIri(span)
+    NQuadsEvent::NQuadsBlankNode(span) => TrigEvent::TrigBlankNode(span)
+    NQuadsEvent::NQuadsLiteral(span) => TrigEvent::TrigLiteral(span)
+    NQuadsEvent::NQuadsTripleTerm(span) =>
       // 括号壳 <<( 分流（兼容口径：N-Triples 1.2 形态只开宾语位，表裁决）；
       // `<<(` 无空格形态同命中（basic-03 `<<(:s` 口径）
       if span.1 >= 3 && data[span.0 + 2] == b'(' {
@@ -52,12 +56,13 @@ fn token_to_trig_event(data : ArrayView[Byte], token : Token) -> TrigEvent {
       } else {
         TrigEvent::TrigTripleTerm(span)
       }
-    Token::Dot(_) => TrigEvent::TrigDot
-    Token::Comma(_) => TrigEvent::TrigComma
-    Token::Semicolon(_) => TrigEvent::TrigSemicolon
-    Token::Unknown(span) => classify_structural(data, span)
-    Token::PrefName(span) => classify_prefname(data, span)
-    Token::EOF(_) => TrigEvent::TrigEOF // LexerSource 协议在此过滤为 None
+    NQuadsEvent::NQuadsDot => TrigEvent::TrigDot
+    NQuadsEvent::NQuadsComma => TrigEvent::TrigComma
+    NQuadsEvent::NQuadsSemicolon => TrigEvent::TrigSemicolon
+    NQuadsEvent::NQuadsUnknown =>
+      classify_structural(data, lexer.inner.last_unknown_span())
+    NQuadsEvent::NQuadsPrefName(span) => classify_prefname(data, span)
+    NQuadsEvent::NQuadsEOF => TrigEvent::TrigEOF // LexerSource 协议在此过滤为 None
   }
 }
 
@@ -209,15 +214,21 @@ pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) 
   if self.anon_swallow {
     self.anon_swallow = false
     match self.inner.next() {
-      Some(Token::Unknown((o2, l2))) if l2 == 1 && self.data[o2] == b']' => ()
-      Some(Token::Unknown(s2)) => return Some(TrigEvent::TrigUnknown(s2))
+      Some(NQuadsEvent::NQuadsUnknown) => {
+        let s2 = self.inner.last_unknown_span()
+        if s2.1 == 1 && self.data[s2.0] == b']' {
+          ()
+        } else {
+          return Some(TrigEvent::TrigUnknown(s2))
+        }
+      }
       _ => return Some(TrigEvent::TrigUnknown((0, 0)))
     }
   }
   match self.inner.next() {
     None => None
-    Some(token) =>
-      if token is Token::EOF(_) {
+    Some(ev) =>
+      if ev is NQuadsEvent::NQuadsEOF {
         if self.eof_seen {
           None
         } else {
@@ -231,22 +242,25 @@ pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) 
         // 物化层 memo genid 口径不变）；未命中 → 普通 Lbracket 走 Bnp 区域。
         // 窥探只跳空白不跳注释——`[ # c \n ]` 不合并（ANON 产生式不容注释，
         // 词法口径从严）；跨 token 决策仍零语法味：ANON 是词法产生式
-        if token is Token::Unknown((boff, blen)) &&
-          blen == 1 &&
-          self.data[boff] == b'[' {
-          let mut j = boff + 1
-          while j < self.data.length() &&
-                (
-                  self.data[j] == b' ' ||
-                  self.data[j] == b'\t' ||
-                  self.data[j] == b'\r' ||
-                  self.data[j] == b'\n'
-                ) {
-            j = j + 1
-          }
-          if j < self.data.length() && self.data[j] == b']' {
-            self.anon_swallow = true
-            return Some(TrigEvent::TrigAnon((boff, j + 1 - boff)))
+        if ev is NQuadsEvent::NQuadsUnknown {
+          // Unknown span 单槽即读：`[` 单字节形态才进 ANON 合并决策
+          let bs = self.inner.last_unknown_span()
+          if bs.1 == 1 && self.data[bs.0] == b'[' {
+            let boff = bs.0
+            let mut j = boff + 1
+            while j < self.data.length() &&
+                  (
+                    self.data[j] == b' ' ||
+                    self.data[j] == b'\t' ||
+                    self.data[j] == b'\r' ||
+                    self.data[j] == b'\n'
+                  ) {
+              j = j + 1
+            }
+            if j < self.data.length() && self.data[j] == b']' {
+              self.anon_swallow = true
+              return Some(TrigEvent::TrigAnon((boff, j + 1 - boff)))
+            }
           }
         }
         // ★ @ 风格指令名零空格直连冒号拆分（minimal-whitespace-01 口径）：
@@ -256,7 +270,7 @@ pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) 
         //   仅精确 "kw:" 形拆分——"kw:foo" 带本地部非法（prefixID 只收 PNAME_NS
         //   无 local），不拆、落普通 PrefName 表外报错；term 位 `prefix:x` 无
         //   @ 邻接永不命中（合法 pname 不受扰）
-        if token is Token::PrefName((off, len)) && at_style_kw(self.data, off) {
+        if ev is NQuadsEvent::NQuadsPrefName((off, len)) && at_style_kw(self.data, off) {
           let colon_at = if len == 7 &&
             eq_lower(self.data, off, b"prefix") &&
             self.data[off + 6] == b':' {
@@ -283,7 +297,7 @@ pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) 
             )
           }
         }
-        Some(token_to_trig_event(self.data, token))
+        Some(token_to_trig_event(self, ev))
       }
   }
 }

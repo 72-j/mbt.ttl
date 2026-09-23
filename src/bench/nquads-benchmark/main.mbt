@@ -19,7 +19,7 @@ async fn bench_all(path : String, content : Bytes) -> Unit {
     let mut lexer_count = 0
     for ;; {
       match lexer.next() {
-        Some(@nquads.Token::EOF(_)) => break
+        Some(@nquads.NQuadsEvent::NQuadsEOF) => break
         Some(_) => lexer_count = lexer_count + 1
         None => break
       }
