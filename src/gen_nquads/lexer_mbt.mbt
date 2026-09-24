@@ -703,7 +703,7 @@ test "benchmark: tokenizer 1000 quad" {
 // 口径约定：span = (offset, length) 全词含定界符；官方要素逐项 pin。
 
 ///|
-/// 事件流口径串（P2 直产分母）：字面事件保 span 串（与原 Token span 同值）；
+/// 事件流口径串（判据本体：下面的构造规则即"什么算一致"）：字面事件保 span 串（与原 Token span 同值）；
 /// 结构事件 span 已在直产时收窄 ⇒ 以 "@<start>" 钉起点（钉力与原 span 同价——
 /// start = current_pos()−1，单字符消费后回退一位 = 原 Token span.0）
 fn lexer_test_fmt_event_at(ev : NQuadsEvent, start : Int) -> String {
@@ -748,7 +748,7 @@ fn lexer_test_moon_stream(input : String) -> String {
 
 ///|
 /// 官方 N-Quads 要素逐项：输入 → 期望事件流
-/// （P2 直产口径：字面事件保 span 串；结构/Unknown 事件以 @<pos> 钉消费位；
+/// （口径：字面事件保 span 串；结构/Unknown 事件以 @<pos> 钉消费位；
 ///   终点 EOF@<len> 钉整词宽度——补 Unknown 无 span 的宽度语义）
 fn lexer_test_battery() -> Array[(String, String)] {
   [
@@ -834,8 +834,8 @@ test "词法口径: 官方要素逐项（token 种类 + span）" {
 
 ///|
 test "词法口径: 无脑扫尾巴——后缀门收紧，结构字节出独立 Dot（lists-05 口径）" {
-  // "text". → 闭引号后非 ^/@：立即收束，尾点出独立 Dot（旧吞点口径退役——
-  // "a") 紧邻结构符被吞进词项，集合元素位失配）。语句点语义裁决仍归引擎
+  // "text". → 闭引号后非 ^/@：立即收束，尾点出独立 Dot；**不得把紧邻结构符**
+  //（如 `"a")` 的 `)`）吞进词项——起因（集合元素位失配）见 **ADR-NQ-011**；语句点语义裁决仍归引擎
   assert_eq(lexer_test_moon_stream("\"text\"."), "Literal(0,6) Dot@6 EOF@7 ")
   // @ 门通过：@lang 后缀照旧吞到空白，尾点并入词内（引擎 trim 兜底不变）
   assert_eq(lexer_test_moon_stream("\"text\"@en."), "Literal(0,10) EOF@10 ")
@@ -860,7 +860,7 @@ test "词法口径: EOF 协议（EOF 哨兵冻结，重复 next 恒同值）" {
   let data = @utf8.encode("a").to_array()
   let lexer = Lexermoon::new(data[:])
   let _ = lexer.next() // PrefName(0,1)
-  // 原 Token::EOF(pos) 载荷改由 current_pos() 钉死（P2 直产：事件无 EOF 载荷）
+  // EOF 载荷：事件**不带** EOF 载荷，词法位置由 `current_pos()` 钉死
   assert_true(lexer.next() is Some(NQuadsEOF))
   assert_eq(lexer.current_pos(), 1)
   assert_true(lexer.next() is Some(NQuadsEOF))
