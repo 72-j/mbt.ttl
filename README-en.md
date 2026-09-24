@@ -252,6 +252,19 @@ This project uses these test cases under the BSD license for development testing
 adaptations to the test framework as needed. For complete copyright terms, please refer to the W3C Test Suites
 Licenses (https://www.w3.org/Consortium/Legal/2008/04-testsuite-license) official page.
 
+**Corpus location & license split**: the test corpora live in `./.rdf-tests/**` (a top-level dot directory ⇒
+**kept in the repo, excluded from the published package**); third-party corpora there are covered by their
+**own W3C dual license** (full terms in `.rdf-tests/LICENSE.md` and `.rdf-tests/**/LICENSE*`) and are
+**not** covered by this project's Apache-2.0.
+
+**Unmodified-source statement**: the upstream test files are **byte-for-byte unmodified** (the migration only
+moved them; integrity is anchored by `.rdf-tests/SHA256SUMS` and checked by `ci/release-check.sh`); the only
+derived files are `all_combined.nq` / `all_combined_nt.nt` (script-concatenated); the corpus is a **subset**
+(see `.rdf-tests/README.md` → Modifications & attribution).
+
+**No-endorsement statement**: the pass counts listed below are **our own test results**; they do not imply
+W3C certification or endorsement, and the W3C name and trademarks must not be used in advertising or publicity.
+
 ### Test Coverage
 
 Current W3C test suite coverage:

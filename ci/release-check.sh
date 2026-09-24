@@ -74,6 +74,18 @@ chk $? "dry-run 服务器验收（认文本不认退出码）"
 slot="$(curl -s -m 20 "https://mooncakes.io/api/v0/search?kw=moonttl" 2>/dev/null | grep -o '"version":"[^"]*"' | head -3 | tr '\n' ' ')"
 [ -n "$slot" ] && ok "注册表查询可达：$slot" || bad "注册表查询不可达（网络/代理？）"
 
+echo "== 7. 语料完整性（.rdf-tests 未被无声改动）=="
+# 合规：一旦改了上游原件内容，W3C Test Suite License 分支下的"性能声明"权利即失效 ⇒ 用哈希锚住。
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256sum -c .rdf-tests/SHA256SUMS --quiet >/dev/null 2>&1
+  chk $? "SHA256SUMS 校核通过（$(wc -l < .rdf-tests/SHA256SUMS) 件；改动须同笔重生成清单并在 NOTICE 声明）"
+elif command -v shasum >/dev/null 2>&1; then
+  shasum -a 256 -c .rdf-tests/SHA256SUMS >/dev/null 2>&1
+  chk $? "SHA256SUMS 校核通过（shasum 回退；$(wc -l < .rdf-tests/SHA256SUMS) 件）"
+else
+  bad "无 sha256sum/shasum 可用 ⇒ 语料完整性未校核"
+fi
+
 echo
 if [ "$fail" = "0" ]; then
   echo "== 发版预检全绿 ✓ 按 release-checklist.md §发版日序 执行 =="

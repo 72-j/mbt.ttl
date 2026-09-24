@@ -19,3 +19,20 @@
 
 **沿革**：2026-09-24 发版准备役从 `src/gen_{nquads,n3v2,trig}/rdf-tests/` 迁入；
 `.gitattributes` 的 7 条"上游原样 CRLF 冻结"同步改到新路径（冻结语义不变）。
+
+## Modifications & attribution（合规要点，2026-09-24）
+
+- **未修改原件**：上游原始测试文件**逐字节未改**——本轮迁移只换路径，并加目录级 `* -text` 冻结 EOL
+  （防 Windows 检出转换）；`SHA256SUMS` 对 **2414 件**语料做完整性锚。
+- **新增派生件（非上游）**：`nquads/all_combined.nq`、`nquads/all_combined_nt.nt`（把官方单件**脚本拼接**
+  成单文件，供"整合-vs-循环"对拍）；`SHA256SUMS` 亦覆盖它们 ⇒ 任何改动都会被校核抓到。
+- **收录为子集**：本目录是**部分收录**（例：N3Tests 的 `rdfcore-tests.n3` 以 skip 行排除、
+  `bad_prefix2` 依 `rdft:Rejected` 略过）——详见 `n3v2/adr.md` 与各 `rdf_suite_wbtest.mbt` 表头。
+- **版权**：语料版权归 **W3C 及其贡献者**（各子树 `LICENSE`/`README` 与本声明并存；顶层指路页见 `LICENSE.md`）。
+- **无背书**：W3C 名称与商标**不得**用于本项目的广告或宣传；各套件通过计数是**自测结果**，非 W3C 认证。
+- **许可分流**：上游 **dual license**（W3C Test Suite License / W3C 3-clause BSD，二选一）；
+  本目录语料**不适用**本项目根 `LICENSE` 的 Apache-2.0。
+- **为什么在 dot 目录**：留仓库（套件照跑）但**不进发布包**（`moon publish` 打包面 = git 跟踪 ∧ 排除 dot 路径；
+  实证：打包 zip 内 dot 条目 0、本目录条目 0）。⇒ 发布包不必随带语料许可证；若将来把语料放回包内，须随包带 `LICENSE`。
+- **完整性校核（门）**：`sh ci/release-check.sh` 内含 `sha256sum -c .rdf-tests/SHA256SUMS`
+  （macOS 回退 `shasum -a 256 -c`）⇒ **无声改语料即红**。

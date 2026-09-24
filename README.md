@@ -226,6 +226,17 @@ moon test src/gen_n3v2        # 122/122（turtle 316/316、rdf12 75/75、N3Tests
   本项目在开发测试和 CI 回归测试中采用 BSD 许可证 使用这些测试用例，并根据项目需求对测试框架进行了适配包装。如需了解
   完整版权条款，请参阅 W3C Test Suites Licenses 官方页面。
 
+  **语料位置与许可分流**：测试语料在 `./.rdf-tests/**`（顶层 dot 目录 ⇒ **留在仓库、不进发布包**）；
+  该目录下第三方语料适用其**自带的 W3C dual license**（条款全文见 `.rdf-tests/LICENSE.md` 与 `.rdf-tests/**/LICENSE*`），
+  **不适用**本项目根 `LICENSE` 的 Apache-2.0。
+
+  **未修改声明**：仓库内**原始测试文件逐字节未改**（本轮迁移只换位置；`.rdf-tests/SHA256SUMS` + `ci/release-check.sh`
+  对其做完整性校核）；新增派生件 = `all_combined.nq` / `all_combined_nt.nt`（脚本拼接）；收录为**子集**
+  （逐条见 `.rdf-tests/README.md` 的 Modifications & attribution）。
+
+  **无背书声明**：下文套件通过计数是本项目**自测结果**，只表示本方实现能通过相应用例，
+  **不代表 W3C 认证、合规认定或任何形式的背书**；W3C 名称与商标不得用于本项目的广告或宣传。
+
   ### 测试覆盖范围
 
   当前 W3C 测试套件的覆盖情况：
