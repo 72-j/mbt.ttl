@@ -1,5 +1,7 @@
 # PrefixedName
 
+> 指南：[索引](../../README.md) ｜ 方言：[TriG](../README.md) ｜ [语法](../syntax.md) ｜ [术语](README.md) ｜ [数据类型](../datatypes.md) ｜ [对照](../comparison.md)
+
 TriG 支持前缀缩写，依赖 `PREFIX` 或上下文隐式映射。
 
 ---

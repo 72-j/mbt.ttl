@@ -1,5 +1,7 @@
 # N-Triples / N-Quads 数据类型与节点类型
 
+> 指南：[索引](../README.md) ｜ 方言：[N-Quads](README.md) ｜ [语法](syntax.md) ｜ [术语](terms/README.md) ｜ [数据类型](datatypes.md) ｜ [对照](comparison.md)
+
 本文按“节点类型 -> 字面量细分 -> 常用 XSD 类型 -> RDF 内置特殊类型 -> 图相关概念 -> 格式间对照”的顺序整理，方便实现层快速查阅。
 
 ---

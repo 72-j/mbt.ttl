@@ -70,7 +70,9 @@
 
 1. **预检（一条命令）**：`sh ci/release-check.sh` ⇒ 必须**全 ✓**（版本三处一致 / `check --deny-warn` /
    `fmt --warn` 零 offender / `.mbti` 无漂移 / 面一 + 面三复现逐字节 / 覆盖率棘轮 909‰ /
-   三方言可达缺口全 0 / wasm 507 + native 521 / dry-run 服务器验收 / 注册表可达）。**任一 ✗ = 缺一不发**。
+   三方言可达缺口全 0 / wasm 507 + native 521 / dry-run 服务器验收 / 注册表可达 /
+   **语料完整性**（`SHA256SUMS` 2414 件）/ **文档门**（`guides/**`：H1 · 导航 · 零死链 · 命名 · 无孤岛））。
+   **任一 ✗ = 缺一不发**。
 2. **凭据在位**：`~/.moon/credentials.json`（`moon login` 产物）。本地发布**不依赖** CI secret。
 3. **真发布**：`moon publish`。**判据 = 注册表回查**（`curl -s 'https://mooncakes.io/api/v0/search?kw=moonttl'`
    出现 **`0.3.0`**）；**不认退出码**（202-后-255 怪癖，见 §发布前预检 2）。

@@ -1,5 +1,7 @@
 # TriG 语法说明
 
+> 指南：[索引](../README.md) ｜ 方言：[TriG](README.md) ｜ [语法](syntax.md) ｜ [术语](terms/README.md) ｜ [数据类型](datatypes.md) ｜ [对照](comparison.md)
+
 TriG 是 Turtle 的扩展语法，专门用于表达命名图。
 
 ---

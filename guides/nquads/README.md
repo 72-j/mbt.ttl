@@ -1,5 +1,7 @@
 # N-Quads 用户指南
 
+> 指南：[索引](../README.md) ｜ 方言：[N-Quads](README.md) ｜ [语法](syntax.md) ｜ [术语](terms/README.md) ｜ [数据类型](datatypes.md) ｜ [对照](comparison.md)
+
 本文面向使用 `gen_nquads` 包解析、物化与序列化 N-Quads 数据的开发者与集成者。文档聚焦三件事：`N-Quads` 格式本身、`gen_nquads` 的实现架构，以及对外 API 的用法。
 
 ---

@@ -1,5 +1,7 @@
 # TriG 术语总览
 
+> 指南：[索引](../../README.md) ｜ 方言：[TriG](../README.md) ｜ [语法](../syntax.md) ｜ [术语](README.md) ｜ [数据类型](../datatypes.md) ｜ [对照](../comparison.md)
+
 本文概览 TriG 下新增的主要术语类型，并说明它们在语法中的位置与约束。
 
 ---

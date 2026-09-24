@@ -1,5 +1,7 @@
 # N3 数据类型与节点类型
 
+> 指南：[索引](../README.md) ｜ 方言：[N3](README.md) ｜ [语法](syntax.md) ｜ [术语](terms/README.md) ｜ [数据类型](datatypes.md) ｜ [对照](comparison.md)
+
 N3 兼容 Turtle/N-Quads 的词项体系，并扩展公式、规则与变量语义。
 
 ---

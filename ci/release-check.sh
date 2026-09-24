@@ -86,6 +86,10 @@ else
   bad "无 sha256sum/shasum 可用 ⇒ 语料完整性未校核"
 fi
 
+echo "== 8. 文档门（guides/** 结构：H1 / 导航 / 零死链 / 命名 / 无孤岛）=="
+sh ci/docs-check.sh >/dev/null 2>&1
+chk $? "sh ci/docs-check.sh（详见其输出）"
+
 echo
 if [ "$fail" = "0" ]; then
   echo "== 发版预检全绿 ✓ 按 release-checklist.md §发版日序 执行 =="

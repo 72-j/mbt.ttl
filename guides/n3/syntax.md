@@ -1,5 +1,7 @@
 # N3 语法说明
 
+> 指南：[索引](../README.md) ｜ 方言：[N3](README.md) ｜ [语法](syntax.md) ｜ [术语](terms/README.md) ｜ [数据类型](datatypes.md) ｜ [对照](comparison.md)
+
 N3 在 Turtle 基础上增加规则、公式、集合与资源路径。
 
 ---

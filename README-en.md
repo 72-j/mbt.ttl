@@ -132,6 +132,14 @@ for ;; {
 }
 ```
 
+## User Guides (`guides/`)
+
+User-facing guides for the RDF text formats (Chinese, three dialects with an identical page layout and
+per-page navigation): entry point = [`guides/README.md`](./guides/README.md) — syntax · term reference ·
+datatypes · cross-format comparison for N3 / TriG / N-Quads.
+The guides are original text under this project's Apache-2.0; the W3C test **corpora** in `./.rdf-tests/**`
+carry their own license — see [`.rdf-tests/README.md`](./.rdf-tests/README.md).
+
 ## Project Structure
 
 ```

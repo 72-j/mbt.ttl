@@ -1,5 +1,7 @@
 # Literal
 
+> 指南：[索引](../../README.md) ｜ 方言：[N-Quads](../README.md) ｜ [语法](../syntax.md) ｜ [术语](README.md) ｜ [数据类型](../datatypes.md) ｜ [对照](../comparison.md)
+
 字面量表示带类型的文本值。
 
 ---

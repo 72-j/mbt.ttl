@@ -1,5 +1,7 @@
 # TriG 数据类型与节点类型
 
+> 指南：[索引](../README.md) ｜ 方言：[TriG](README.md) ｜ [语法](syntax.md) ｜ [术语](terms/README.md) ｜ [数据类型](datatypes.md) ｜ [对照](comparison.md)
+
 TriG 兼容 Turtle 的词项体系，并新增图块组织语义。
 
 ---

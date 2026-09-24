@@ -256,6 +256,9 @@ jobs:
           # （默认 Continue 恰为真值；表源缺口另立，非生成器债）。
           check_default_arms src/gen_n3v2/quicktest/model_exec.mbt 48
 
+      - name: "文档门（guides/** 结构：H1 / 导航 / 零死链 / 命名 / 无孤岛）"
+        run: sh ci/docs-check.sh
+
       - name: "净检出复跑（CI-6 元门：crlf 口径 = Windows 检出快速替身）"
         run: |
           # CI-6（2026-09-23 立）：**净检出复跑**——判据是"净检出绿"，不是"本地绿"。

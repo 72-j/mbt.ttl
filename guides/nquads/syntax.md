@@ -1,5 +1,7 @@
 # N-Triples / N-Quads 语法说明
 
+> 指南：[索引](../README.md) ｜ 方言：[N-Quads](README.md) ｜ [语法](syntax.md) ｜ [术语](terms/README.md) ｜ [数据类型](datatypes.md) ｜ [对照](comparison.md)
+
 本文把 `N-Triples` 与 `N-Quads` 的语法拆开说明，方便对照实现边界与解析细节。
 
 ---

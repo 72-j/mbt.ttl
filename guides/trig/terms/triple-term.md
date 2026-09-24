@@ -1,5 +1,7 @@
 # TripleTerm
 
+> 指南：[索引](../../README.md) ｜ 方言：[TriG](../README.md) ｜ [语法](../syntax.md) ｜ [术语](README.md) ｜ [数据类型](../datatypes.md) ｜ [对照](../comparison.md)
+
 TripleTerm 可在主语或宾语位置表达引用三元组，支持嵌套到图块中。
 
 ---

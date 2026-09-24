@@ -1,5 +1,7 @@
 # N3 用户指南
 
+> 指南：[索引](../README.md) ｜ 方言：[N3](README.md) ｜ [语法](syntax.md) ｜ [术语](terms/README.md) ｜ [数据类型](datatypes.md) ｜ [对照](comparison.md)
+
 本文面向使用 `gen_n3v2` 包解析、物化与序列化 N3 数据的开发者与集成者。文档聚焦三件事：N3 格式本身、N3 与 Turtle/TriG/N-Quads 的关系，以及 `gen_n3v2` 的对外 API。
 
 ---
