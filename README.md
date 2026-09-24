@@ -204,11 +204,14 @@ moon run src/examples/n3
 ### 测试与验证
 
 ```bash
-moon test                     # 全模块：330/330
-moon test src/gen_nquads      # 124/124（W3C N-Quads 89/89、rdf12-nt 29/29、rdf12-nq 27/27、ntriples 72/72）
-moon test src/gen_trig        # 80/80（rdf-trig 357/357、rdf-turtle 316/316、rdf12 36/36 + 75/75）
-moon test src/gen_n3v2        # 117/117（turtle 316/316、rdf12 75/75、N3Tests neg 23ok/0miss + pos+eval 205 clean）
+moon test                     # 全模块：507/507（默认档）；--target native 521/521
+moon test src/gen_nquads      # 146/146（W3C N-Quads 89/89、rdf12-nt 29/29、rdf12-nq 27/27、ntriples 72/72）
+moon test src/gen_trig        # 105/105（rdf-trig 357/357、rdf-turtle 316/316、rdf12 36/36 + 75/75）
+moon test src/gen_n3v2        # 122/122（turtle 316/316、rdf12 75/75、N3Tests neg 23ok/0miss + pos+eval 205 clean）
 ```
+
+版本沿革见 `CHANGELOG.md`（对外）；变更日志口径：0.3.0 起 `QuadEmit` 为
+`TermKind` + 逐位 kind/view 平化形态（破坏性 API 变更，迁移见 CHANGELOG）。
 
 三方言的**生成物**（`nquads.mbt` / `trig.mbt` / `n3.mbt`）都有黄金对拍门：钉死头横幅 ts、
 经工具链 `moon fmt` 后与 check-in 产物**逐字节**相等且强幂等（`n3.mbt` 由 `src/rdf/n3gen` 的 G9 门把关）。

@@ -1,13 +1,13 @@
 name = "thy1016/moonttl"
 
-version = "0.2.2"
+version = "0.3.0"
 
 import {
   "moonbitlang/async@0.20.3",
   "moonbit-community/quickcheck_statemachine@0.0.1",
 }
 
-readme = "README.mbt.md"
+readme = "README.md"
 
 repository = "https://www.gitlink.org.cn/thy7/mbt.ttl"
 

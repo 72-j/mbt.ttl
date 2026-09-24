@@ -204,10 +204,10 @@ Six cases cover: plain triples, `@prefix` + `@base`, **formulas `{ ... }` with r
 ### Tests and Verification
 
 ```bash
-moon test                     # whole module: 330/330
-moon test src/gen_nquads      # 124/124 (W3C N-Quads 89/89, rdf12-nt 29/29, rdf12-nq 27/27, ntriples 72/72)
-moon test src/gen_trig        # 80/80 (rdf-trig 357/357, rdf-turtle 316/316, rdf12 36/36 + 75/75)
-moon test src/gen_n3v2        # 117/117 (turtle 316/316, rdf12 75/75, N3Tests neg 23ok/0miss + pos+eval 205 clean)
+moon test                     # whole module: 507/507 (default); --target native 521/521
+moon test src/gen_nquads      # 146/146 (W3C N-Quads 89/89, rdf12-nt 29/29, rdf12-nq 27/27, ntriples 72/72)
+moon test src/gen_trig        # 105/105 (rdf-trig 357/357, rdf-turtle 316/316, rdf12 36/36 + 75/75)
+moon test src/gen_n3v2        # 122/122 (turtle 316/316, rdf12 75/75, N3Tests neg 23ok/0miss + pos+eval 205 clean)
 ```
 
 Every dialect's **generated artifact** (`nquads.mbt` / `trig.mbt` / `n3.mbt`) is protected by a golden

@@ -1,45 +1,106 @@
-name: publish-package
+# 发版工作流（thy1016/moonttl）—— **仅手动触发（workflow_dispatch）**
+#
+# 为什么不是自动发版（发版红线 6，2026-09-24 立）：
+#   发版是"**有意动作**"，不是"推代码就发"。自动发版会把"推了一笔未验证的改动"
+#   变成"发了一个坏版本"；本工作流的触发语义 = **人确认发版清单（release-checklist.md）
+#   逐项勾完，才手动触发**。manual dispatch + 发版清单 = 人对对外交付负责。
+#
+# 鉴权：mooncakes 的凭据 = `~/.moon/credentials.json`（本机 `moon login` 产物，内容为
+#   token）。CI 从仓库既有 secret `MOONCAKES_MOONBIT_COMMUNITY_TOKEN`（0.2.2 发布即用，
+#   值 = token 本身）注入同形文件。凭据永不入库；轮换 = 重新 `moon login` 后更新 secret。
+#
+# 发版顺序：本工作流只在子仓 test 工作流（三 OS）于**同一 commit** 全绿后手动触发；
+#   publish 成功后，主仓（BitBang）同笔把 import 依赖号跟跳到本版（0.2.2 → 0.3.0）。
+
+name: Publish
 
 on:
   workflow_dispatch:
 
+concurrency:
+  group: publish
+  cancel-in-progress: false # 发版不互相取消：后触发者排队（防半发布态）
+
 jobs:
   publish:
-    # Use macos-latest or windows-latest if you want to publish to those platforms
+    name: Publish to mooncakes (manual)
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
+    timeout-minutes: 20
 
-      - name: install-ubuntu
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: post install
-        run: |
-          moon version --all
-          moon update
-
-      # Add -C if your moon.mod.json or moon.pkg.json is not in the root directory
-      - name: prepublish check
-        run: |
-          moon check
-          moon test
-
-      - name: publish
-        env:
-          SECRET: ${{ secrets.MOONCAKES_MOONBIT_COMMUNITY_TOKEN }}
+    defaults:
+      run:
         shell: bash
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Moon env (Linux)
         run: |
-          if [ -z "$SECRET" ]; then
-            echo "Error: MOONCAKES_MOONBIT_COMMUNITY_TOKEN secret is not set."
-            echo "Please contact an admin to grant access to this secret."
+          sudo apt-get update
+          sudo apt-get install -y gcc libssl-dev
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+
+      - name: Verify MoonBit installation
+        run: |
+          moon --version
+          moon version --all
+
+      - name: Version three-way consistency gate
+        run: |
+          # 发版红线 5：版本号三处一致——包元数据（moon.mod）= CHANGELOG 最新节 = README。
+          set -e
+          ver="$(sed -nE 's/^version *= *"([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' moon.mod | head -n 1)"
+          if [ -z "$ver" ]; then
+            echo "::error::moon.mod 里解析不到 version"
             exit 1
           fi
-          echo "$SECRET" > ~/.moon/credentials.json
+          echo "版本 = $ver"
+          grep -q "^## ${ver}（" CHANGELOG.md || {
+            echo "::error::CHANGELOG.md 没有 ## ${ver}（...） 节——三处一致门红"
+            exit 1
+          }
+          grep -q "${ver}" README.md || {
+            echo "::error::README.md 没有提到 ${ver}——三处一致门红"
+            exit 1
+          }
+          echo "版本三处一致 ✓（moon.mod = CHANGELOG = README）"
+
+      - name: Pre-publish gates
+        run: |
+          # 与 static 作业同款的两道快门：发布物必须是干净形态。
+          moon check --deny-warn
+          offenders="$(moon fmt --warn 2>&1 | sed -n 's/^File not formatted: //p' || true)"
+          if [ -n "$offenders" ]; then
+            echo "::error::以下文件未按内仓口径格式化："
+            echo "$offenders"
+            exit 1
+          fi
+
+      - name: Publish dry-run (server acceptance)
+        run: |
+          # 先让注册服务器验收元数据（包名/版本/readme 指针/依赖解析），
+          # 不落任何变更——202 Accepted 才进真发布。
+          moon publish --dry-run
+
+      - name: Restore mooncakes credentials
+        env:
+          MOONCAKES_TOKEN: ${{ secrets.MOONCAKES_MOONBIT_COMMUNITY_TOKEN }}
+        run: |
+          if [ -z "$MOONCAKES_TOKEN" ]; then
+            echo "::error::secret MOONCAKES_MOONBIT_COMMUNITY_TOKEN 未配置（值 = mooncakes token，即本机 ~/.moon/credentials.json 内容）"
+            exit 1
+          fi
+          mkdir -p "$HOME/.moon"
+          printf '%s' "$MOONCAKES_TOKEN" > "$HOME/.moon/credentials.json"
+
+      - name: Publish
+        run: |
           moon publish
-          rm ~/.moon/credentials.json
+          echo "::notice::thy1016/moonttl 已发布——主仓 import 依赖号同笔跟跳（见 publish.yml 头注顺序）"
+
+      - name: Cleanup credentials
+        if: always()
+        run: |
+          rm -f "$HOME/.moon/credentials.json"
