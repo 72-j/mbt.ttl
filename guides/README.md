@@ -16,6 +16,7 @@ N-Quads 见 [nquads/syntax.md](./nquads/syntax.md)）→ 再翻该族的 [术语
 
 ## 文档索引
 
+- [术语对照：代码注释里的"黑话" → 大白话](./terminology.md)（读代码注释 / 提交信息 / CI 报错前先看这页）
 - [N3](./n3/README.md)
   - [N3 / Turtle / TriG / N-Quads 对照](./n3/comparison.md)
   - [语法说明](./n3/syntax.md)

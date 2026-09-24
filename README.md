@@ -135,6 +135,7 @@ for ;; {
 
 面向使用者的 RDF 文本格式指南（**中文**，三方言同构、每页带导航）：**入口 = [`guides/README.md`](./guides/README.md)**
 —— N3 / TriG / N-Quads 各自的**语法说明 · 术语总览 · 数据类型 · 跨格式对照**。
+读代码注释 / 提交信息 / CI 报错时，先看 **[`guides/terminology.md`](./guides/terminology.md)**（"黑话 → 大白话"对照）。
 指南为原创文本、适用本项目 Apache-2.0；W3C 测试**语料**（`./.rdf-tests/**`）另有其许可，见
 [`.rdf-tests/README.md`](./.rdf-tests/README.md)。
 
