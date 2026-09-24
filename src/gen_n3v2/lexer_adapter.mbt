@@ -1,13 +1,13 @@
 // ===== 词法适配层：NQuadsEvent → N3Event 逐事件机械分类 =====
-// ★ 补偿点单点台账（役29 R-04）：Lexermoon 吞边界/整词出词口径下，词法
+// ★ 补偿点单点台账（R-04）：Lexermoon 吞边界/整词出词口径下，词法
 //   边界修正全仓六处——五处在本文件，一处在引擎。一次词法口径变动必查此单：
-//   ① [] ANON peek-merge（本文件 next，trig 战役①同款）：`[` 后零空格窥
+//   ① [] ANON peek-merge（本文件 next，trig 侧同款）：`[` 后零空格窥
 //     `]` 合成 N3Anon（span 贯通），吞槽兑现吃 scanner 必扫出的 `]`；
 //   ② ?x 变量 peek-merge（本文件 next，gen.md §4.2）：`?` 后零空格邻接
 //     无冒号 PrefName 合成 N3Variable；失配 token 入 pending 先入后兑；
 //   ③ @ 指令零空格拆分（本文件 next）：`@prefix:`/`@base:` 整词扫出
 //     `kw:`（冒号是名字字符），@ 邻接拆关键词事件 + 冒号半边 pending；
-//   ④ `<-` 拆字（本文件 next，役16 A 桶）：IRI 宽容出词三形态拆
+//   ④ `<-` 拆字（本文件 next）：IRI 宽容出词三形态拆
 //     Invert + 余量 pending（`<- `/`<-:p`/`<-<-p>`）；
 //   ⑤ langtag 词法期拆分（本文件 split_langtag）：Literal span 整段含
 //     @lang，收引号锚定嗅 @（span 可能胖一字，锚定不受扰）；拆不出折文本
@@ -18,13 +18,13 @@
 //   钉面（动 Lexermoon 口径先跑三面）：n3_wbtest（①–⑤ 事件流）/
 //   engine_wbtest 骨架 Comma·Semicolon 合成件（⑥）/ lexerc_parity_wbtest
 //   （Lexermoon≡C 共享电池，已知分歧形态不入电池）。
-//   数值/布尔复核 = @nquads.is_numeric_span / is_boolean_word（役29 R-15
+//   数值/布尔复核 = @nquads.is_numeric_span / is_boolean_word（R-15
 //   单一实现，gen_nquads/numeric.mbt——adapter/校验/物化三面同源）。
 // 分类面：数值整段一词 → N3Literal；双字节 => <= → Implies/ImpliedBy；
 //   单字节 { } [ ] ( ) @ = ! ^ → 结构/路径事件（N3 无 ~/{| |}/graph/version，
 //   落 Unknown）；@forAll/@forSome/@keywords @ 邻接精确拼写 → *Kw（N3 正牌）；
 //   @prefix/@base 零空格直连冒号拆分槽；'a' → KeywordA；true/false → Literal；
-//   裸 is/of → 正牌事件 Is/Of（役6 事件化：倒装接表；未接位置无行 = 干净拒）；
+//   裸 is/of → 正牌事件 Is/Of（事件化：倒装接表；未接位置无行 = 干净拒）；
 //   其余无冒号词降 Unknown（bad-prefix-05 口径）。
 // 跨 token 决策仍零语法味：ANON/变量都是词法产生式，语法决策全留转移表。
 
@@ -50,7 +50,7 @@ fn N3LexerAdapter::new(view : ArrayView[Byte]) -> N3LexerAdapter {
 }
 
 ///|
-/// NQuadsEvent -> N3Event：单事件机械分类（无语法判断）。P2 刀 a) 起
+/// NQuadsEvent -> N3Event：单事件机械分类（无语法判断）。
 /// Lexermoon 直产事件，Unknown 的 span 经 last_unknown 单槽即读
 fn token_to_n3_event(lexer : N3LexerAdapter, ev : NQuadsEvent) -> N3Event {
   let data = lexer.data
@@ -93,7 +93,7 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
     } else if data[span.0] == b'|' && data[span.0 + 1] == b'}' {
       N3Event::N3AnnotEnd
     } else if data[span.0] == b'=' && data[span.0 + 1] == b'>' {
-      // 载荷 = 操作符 token span（役4：规则谓词身份）
+      // 载荷 = 操作符 token span（规则谓词身份）
       N3Event::N3Implies(span)
     } else if data[span.0] == b'<' && data[span.0 + 1] == b'=' {
       N3Event::N3ImpliedBy(span)
@@ -121,10 +121,10 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
       N3Event::N3At
     } else if c == b'=' {
       // N3 `=`：owl:sameAs 语法糖标识（ADR-005）；载荷化 = token 自身 span
-      //（役7 接表：= 占谓词槽，语义身份在 pk=SameAs，操作符族同教义）
+      //（`=` 占谓词槽，语义身份在 pk=SameAs，操作符族同教义）
       N3Event::N3Equals(span)
     } else if c == b'!' {
-      // N3 前向路径引导符（ADR-006，役3 接表）；载荷化 = token 自身 span
+      // N3 前向路径引导符（ADR-006）；载荷化 = token 自身 span
       // ——路径中间节点 fresh 身份（开括号族同教义）
       N3Event::N3Bang(span)
     } else if c == b'~' {
@@ -142,7 +142,7 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> N3Event {
 }
 
 ///|
-/// PrefName 内容分类：'a' 缩写 / 指令关键词 / N3 量化指令 / 裸 is·of（役6 事件化）/ 普通前缀名。
+/// PrefName 内容分类：'a' 缩写 / 指令关键词 / N3 量化指令 / 裸 is·of 事件化 / 普通前缀名。
 /// 只对完整 span 内容精确判别："a:x"、"prefix:" 这类不会误分类。
 fn classify_prefname(data : ArrayView[Byte], span : Span) -> N3Event {
   let (off, len) = span
@@ -187,11 +187,11 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> N3Event {
     at_style_kw(data, off) &&
     eq_lower(data, off, b"keywords") {
     // @keywords：关键词声明指令（@keywords 声明后裸词皆名——词法仍机械出
-    // KeywordA，声明语义归表/action，役5 已接表：ExpectKeywordsList 台账）
+    // KeywordA，声明语义归表/action，ExpectKeywordsList 台账）
     N3Event::N3KeywordsKw
   } else if len == 2 &&
     (eq_lower(data, off, b"is") || eq_lower(data, off, b"of")) {
-    // 裸 is/of（N3 `?x is :p of ?y` 集合等价倒装 ≡ `Y P X`）：役6 事件化——
+    // 裸 is/of（N3 `?x is :p of ?y` 集合等价倒装 ≡ `Y P X`）：事件化——
     // 正牌事件入表（顶层四动词位接倒装行）；未接位置（bnp/公式/注解）无行 =
     // UnexpectedEvent 干净拒。此前保 PrefName 被谓词行误收编：is 成谓词、
     // 整句随 of 无行静默吞（零 quad 零报错）
@@ -201,14 +201,14 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> N3Event {
       N3Event::N3Of
     }
   } else if len == 3 && eq_lower(data, off, b"has") {
-    // 裸 `has`（N3 `X has P` 谓词引导词，役11）：is/of 同款事件化——cwm 词法
+    // 裸 `has`（N3 `X has P` 谓词引导词）：is/of 同款事件化——cwm 词法
     // 保留，六动词位 self-loop 行接表（下个事件在本态收动词，罩/框包含不破）；
     // 其余位置无行 = 干净拒
     N3Event::N3Has
   } else if len == 2 && eq_lower(data, off, b"id") {
-    // 裸 `id`（N3 `[ id :X p o ]` iriPropertyList，役16）：is/of/has 同款事件化——
+    // 裸 `id`（N3 `[ id :X p o ]` iriPropertyList）：is/of/has 同款事件化——
     // 正牌事件入表（BnpExpectPredicate 接行，后随 PrefName 落帧 id_subject）；
-    // 他位无行 = UnexpectedEvent 干净拒（is·of 役6 先例：保 PrefName 会被
+    // 他位无行 = UnexpectedEvent 干净拒（is·of 先例：保 PrefName 会被
     // 谓词行误收编，故无条件事件化）
     N3Event::N3Id
     // 无冒号 PrefName 全域非法：term 位 PNAME_NS 必带冒号（bad-prefix-05 口径）；
@@ -406,7 +406,7 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
             )
           }
         }
-        // ★ N3 `<-` 倒装引导符拆字（役16 A 桶）：Lexermoon IRI 宽容出词下三形态
+        // ★ N3 `<-` 倒装引导符拆字：Lexermoon IRI 宽容出词下三形态
         //   全落 Iri token，适配层拆字分流——
         //     `<- `（未闭合 len2）→ Invert；`<-:p`（未闭合带余量）→ Invert +
         //     PrefName 余量入 pending；`<-<-p>`（闭合内域 `-<` 起头）→ Invert +
@@ -438,7 +438,7 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
 }
 
 ///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+// 工具链 `implicit_impl_as_method` 弃用 ⇒ trait 方法显式提升。
 pub extend N3LexerAdapter with LexerSource::{byte_at, next, pos}
 
 ///|

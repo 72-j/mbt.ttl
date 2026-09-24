@@ -7,10 +7,10 @@
 //                   双字节 {| |} -> Annot*；=> <= -> Implies/ImpliedBy（N3 预埋）；
 //                   单字节 { } [ ] ( ) @ ~ ! ^ -> 结构/路径事件（! ^ 为 N3 预埋）；
 //                   其余 Unknown（表外垃圾）
-//   注：Unknown span 经 Lexermoon.last_unknown 单槽旁路保留（P2 刀 a)：生成
+//   注：Unknown span 经 Lexermoon.last_unknown 单槽旁路保留：生成
 //       契约 NQuadsUnknown 为常量构造子，span 出词点落槽、Unknown 事件后即读
-//       ——表外报错定位与 `@keywords` 台账登记共用同一 span 面（役35 35-B0
-//       语义不变）；分类降级点一律原样上抛本 token 的 span。
+//       ——表外报错定位与 `@keywords` 台账登记共用同一 span 面；
+//       分类降级点一律原样上抛本 token 的 span。
 //   PrefName 按 span 内容: "a" -> TrigKeywordA；"true"/"false"（小写精确）-> TrigLiteral；
 //                          "graph"/"GRAPH" -> TrigGraphKw；
 //                          "prefix"/"PREFIX" -> TrigPrefixKw；
@@ -40,7 +40,7 @@ pub fn TrigLexerAdapter::new(view : ArrayView[Byte]) -> TrigLexerAdapter {
 }
 
 ///|
-/// NQuadsEvent -> TrigEvent：单事件机械分类（无语法判断）。P2 刀 a) 起
+/// NQuadsEvent -> TrigEvent：单事件机械分类（无语法判断）。
 /// Lexermoon 直产事件，Unknown 的 span 经 last_unknown 单槽即读
 fn token_to_trig_event(lexer : TrigLexerAdapter, ev : NQuadsEvent) -> TrigEvent {
   let data = lexer.data
@@ -101,7 +101,7 @@ fn classify_structural(data : ArrayView[Byte], span : Span) -> TrigEvent {
     } else if c == b']' {
       TrigEvent::TrigRbracket
     } else if c == b'(' {
-      // 同 Lbracket 口径（集合链节点身份，阶段3 接表）
+      // 同 Lbracket 口径（集合链节点身份，★3 接表）
       TrigEvent::TrigLparen(span)
     } else if c == b')' {
       TrigEvent::TrigRparen
@@ -132,7 +132,7 @@ fn classify_prefname(data : ArrayView[Byte], span : Span) -> TrigEvent {
   if len == 1 && data[off] == b'a' {
     TrigEvent::TrigKeywordA(span)
   } else if @nquads.is_boolean_word(data, off, len) {
-    // 布尔字面量（小写精确；物化层展开 xsd:boolean）——役29 R-15 共享判定
+    // 布尔字面量（小写精确；物化层展开 xsd:boolean）——共享判定（单一实现 gen_nquads/numeric.mbt）
     TrigEvent::TrigLiteral(span)
   } else if len == 5 && eq_ignore_case(data, off, b"graph") {
     // SPARQL 风格 GRAPH 关键字（大小写不敏感；裸词 "graph" 本就非法，无误分类面）
@@ -304,8 +304,8 @@ pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) 
 }
 
 ///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
-// 注：`next` 在 TrigLexerAdapter 上另有私有方法（诊断原文已提示），此处显式提升与私有方法并存。
+// 工具链 `implicit_impl_as_method` 弃用 ⇒ trait 方法显式提升。
+// 注：`next` 另有私有方法，显式提升与私有方法并存。
 pub extend TrigLexerAdapter with LexerSource::{next, byte_at, pos}
 
 ///|

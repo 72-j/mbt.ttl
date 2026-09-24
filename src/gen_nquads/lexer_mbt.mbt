@@ -23,7 +23,7 @@ pub(all) struct Lexermoon {
   view : ArrayView[Byte]
   mut pos : Int
   mut len : Int
-  mut last_unknown : Span // 单槽旁路：Unknown 出词点 span（P2 刀 a) 生成契约无 span 载荷）
+  mut last_unknown : Span // 单槽旁路：Unknown 出词点 span（生成契约无 span 载荷）
 }
 
 ///|

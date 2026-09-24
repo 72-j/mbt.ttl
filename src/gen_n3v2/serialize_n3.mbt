@@ -49,7 +49,7 @@ fn n3_append_terms(
     // 变量 `?x`（ADR-004：只记身份）整段原文回写——名与位置即全部语义，
     // round-trip 不变量
     @nquads.TermKind::Variable => n3_ser_span(quad.s_view, buf)
-    // N3 役10：verb ::= expression，主语位字面量合法——整段原文回写
+    // 词位扩展（verb ::= expression）：主语位字面量合法——整段原文回写
     @nquads.TermKind::Literal => n3_ser_span(quad.s_view, buf)
     // N3 ADR-002：GraphTerm 公式主语整段原文回写（不透明，不断言为真）
     @nquads.TermKind::Formula => n3_ser_span(quad.s_view, buf)
@@ -102,7 +102,7 @@ pub fn N3Serializer::serialize(
 ) -> Result[String, ParseError] {
   let buf = StringBuilder()
   for quad in quads {
-    // 图位封闭门（P3 运行时对应物，清点表第 2/5 条）：N3 无图语法，
+    // 图位封闭门（类型级保证的运行时对应物）：N3 无图语法，
     // g_kind ≠ DefaultGraph 一律报错（结构非法与方言越界同一门收口）
     if !(quad.g_kind is @nquads.TermKind::DefaultGraph) {
       return Err(

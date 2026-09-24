@@ -1,7 +1,7 @@
-// ===== 共享装配层件（T17 / C-T8 双包重复治理，2026-09-20 立）=====
+// ===== 共享装配层件（T17 / C-T8 双包重复治理）=====
 // 口径：**零方言语义纯函数**（入参出参只含 Byte / ArrayView[Byte] / Bytes / String / Int / Bool / Span 族）。
-// 来源：逐字摘取；去注释后两包代码**逐字一致**（唯一分歧 `deep_check_literal` 的 `rdf12` 门控已取**严者**=trig 版，
-//       见两包 `spec.md` C-T8 裁定表；注释取 trig 侧（方言中立化））。
+// 来源：n3v2/trig 两包重复合并；唯一分歧 `deep_check_literal` 的 `rdf12` 门控取**严者** = trig 版
+//       （裁定表见 `gen_trig/spec.md` C-T8；注释已方言中立化）。
 // 引入方式：方言包 `using @gs { fn <name> }` ⇒ 本地调用点**零改写**。
 
 ///|

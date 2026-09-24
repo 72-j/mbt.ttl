@@ -701,9 +701,6 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
   assert_eq(violations, [])
   assert_eq(debt_hits, 0)
   // 台账**按类钉死**（首跑回填；任一类数字变化即红——比"只钉总数"强，能抓类间搬家）。
-  // 沿革：83（§AN.10 末）→ 77（§AN.11）→ 81（§AN.12 修截断后如实露出）→ **0 面外（§AN.13 帧面开面）**：
-  // 帧栈 + 倒装两槽进观测面 ⇒ 压帧落位/帧读/`is_src`/`is_depth` 全部转真判，
-  // 只剩 **`pop_writes` 立项族 15 项**（弹帧行的"行终态"数据面尚无声明通道）。
   let mut off_face = 0
   let mut order_sensitive = 0 // 清-读同槽（需读序数据）
   let mut conditional = 0 // 条件式来源（fwd:/nfwd:）
@@ -729,6 +726,6 @@ async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值
   assert_eq(order_sensitive, 0)
   // 条件式（fwd:/nfwd:）**清零**（§AN.12）：运行时旗读 + `nfwd:` 编译期坍缩
   assert_eq(conditional, 0)
-  // `argN` 未解析形态**清零**（§AN.12）：缺省绑定写实（span 事件 ⇒ payload）后 76 项转真判
+  // `argN` 未解析形态**清零**（§AN.12）：缺省绑定写实（span 事件 ⇒ payload）后转真判
   assert_eq(arg_unparsed, 0)
 }

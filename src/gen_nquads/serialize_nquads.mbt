@@ -9,8 +9,8 @@
 //   only_named_graph —— 行选择（查询语义，独立于格式）：仅输出带图名的行
 // 序列化是字节保真回写：词项 span 来自已验证输入，原样拷贝不重编码
 // （round-trip 不变量：serialize ∘ parse = 恒等，Drop/行选择除外——它们是有损的显式选择）
-// P3 平化产物模型：Subject/Object/GraphName 三枚举并入单 TermKind 轴，词项零箱；
-// 图位封闭由运行时门钉住（原类型级保证的运行时对应物，见 todo.md §AP.19 清点表）：
+// 产物模型：Subject/Object/GraphName 三枚举并入单 TermKind 轴，词项零箱；
+// 图位封闭由运行时门钉住（原类型级保证的运行时对应物，沿革见 perf-review.txt）：
 // 图名位只许 Iri/BNode/DefaultGraph，其余 kind 报错而非透传
 // ============================================================
 
@@ -22,11 +22,11 @@ pub(all) enum SerializeFormat {
 } derive(Debug, Eq)
 
 ///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+// 工具链 `implicit_impl_as_method` 弃用 ⇒ trait 方法显式提升。
 pub extend SerializeFormat with Eq::{equal, not_equal}
 
 ///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+// 工具链 `implicit_impl_as_method` 弃用 ⇒ trait 方法显式提升。
 pub extend SerializeFormat with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
@@ -37,11 +37,11 @@ pub(all) enum GraphPolicy {
 } derive(Debug, Eq)
 
 ///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+// 工具链 `implicit_impl_as_method` 弃用 ⇒ trait 方法显式提升。
 pub extend GraphPolicy with Eq::{equal, not_equal}
 
 ///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+// 工具链 `implicit_impl_as_method` 弃用 ⇒ trait 方法显式提升。
 pub extend GraphPolicy with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
@@ -104,7 +104,7 @@ fn Serializer::append_span(
 
 ///|
 /// 序列化主语（BNode 原文回写，含 _: 前缀，不剥不重拼）。
-/// 位-种类合法性（P3 平化后为运行时门，清点表第 3 条）：
+/// 位-种类合法性（运行时门）：
 /// 受纳 Iri/BNode/TripleTerm；拒 PrefName/Variable/Literal/Formula
 fn Serializer::append_subject(
   self : Serializer,
@@ -212,7 +212,7 @@ fn Serializer::append_object(
           (0, 0),
         ),
       )
-    // N-Triples/N-Quads 无公式词项（N3 方言专属，ADR-002 GraphTerm 不透明）：
+    // N-Triples/N-Quads 无公式词项（N3 方言专属，n3v2 ADR-002 GraphTerm 不透明）：
     // 方言不产出，透传会写出上层语言语法，报错钉住不变量
     TermKind::Formula =>
       Err(
@@ -256,7 +256,7 @@ fn Serializer::append_terms(
 ///|
 /// per-quad 分派（唯一分派点，单条/批量共用）：
 /// 行选择 → 格式 × graph 策略 → 句点终结。append_quad / append_triple 的重复由此收敛。
-/// 图位封闭门（P3 运行时对应物，清点表第 2 条）：图名位只许 Iri/BNode/DefaultGraph，
+/// 图位封闭门（类型级保证的运行时对应物）：图名位只许 Iri/BNode/DefaultGraph，
 /// 其余 kind 无论格式与策略一律报错——透传会写出非法语法
 fn Serializer::append_dispatch(
   self : Serializer,
