@@ -28,7 +28,7 @@
 // ========================================
 
 ///|
-/// 全部状态（源 [[states]]，37 个；役35 35-B1 增 `ExpectKeywordsList`）
+/// 全部状态（源 [[states]]，37 个；`ExpectKeywordsList` 随 `@keywords` 表源化增入——见 `spec.md` §5.3）
 fn all_states() -> Array[ModelState] {
   [
     ExpectSubject,
@@ -72,7 +72,7 @@ fn all_states() -> Array[ModelState] {
 }
 
 ///|
-/// 全部命令构造子（各带具体载荷；源 [[events]]，35 个；役35 35-B1 增 `KeywordX`）
+/// 全部命令构造子（各带具体载荷；源 [[events]]，35 个；`KeywordX` 随 `@keywords` 表源化增入）
 fn all_commands() -> Array[Command] {
   [
     Iri(Concrete({ id: 1, })),
@@ -232,7 +232,7 @@ test "指标·转移普查: valid ⟺ model_exec 全对一致 + 计数守恒" {
     }
   }
   // 组合数守恒（改表即变，写死防漏）：37 状态 × 35 命令 = 1295，合法 206 / 非法 1089
-  // （役35 35-B1：+1 状态 × +1 命令 + 11 行 ⇒ 合法 195 → 206）
+  // （+1 状态 × +1 命令 + 11 行 ⇒ 合法 195 → 206；表源规模见 `spec.md` §5.3）
   assert_eq(legal + illegal, 37 * 35)
   assert_eq(legal, 206)
   assert_eq(illegal, 1089)
@@ -440,7 +440,7 @@ fn transition_expectation_is_anywhere(name : String) -> Bool {
 test "指标·结构钉子: 可达 37 / 无死态（ExpectVerbRequired、ListAfterElem 皆可达）/ graph 可达 / 命令名 28+7" {
   let (seen, state_models, names) = explore()
   // 状态可达性：37 / 37（P4.2f 快照档后 list 内层路径打通 ⇒ 盲区消失；
-  // 役35 35-B1 增 `ExpectKeywordsList`（经 `At → KeywordsKw` 受理行可达））
+  // `ExpectKeywordsList` 经 `At → KeywordsKw` 受理行可达）
   let mut reachable_states = 0
   let mut missing_states = 0
   for state in all_states() {
@@ -473,7 +473,7 @@ test "指标·结构钉子: 可达 37 / 无死态（ExpectVerbRequired、ListAft
   assert_true(state_model_of(state_models, ExpectVerbRequired) is Some(_))
   assert_true(state_model_of(state_models, ListAfterElem) is Some(_))
   // 可达命令名 = 覆盖门要求集（28）；不可达 = 7（与 runner 注释口径互证）
-  // 役35 35-B1：`KeywordsKw`（受理行）/ `Unknown`（列表申报行）/ `KeywordX`（词位行）
+  // 三条命令随表源化入册：`KeywordsKw`（受理行）/ `Unknown`（列表申报行）/ `KeywordX`（词位行）
   // 三条命令随表源化由"无臂"转**可达** ⇒ 25 + 3 = 28。
   let required = [
     "Iri", "BlankNode", "Literal", "PrefName", "TripleTerm", "BracketTripleTerm",
@@ -556,7 +556,7 @@ test "指标·强制形态: 23 态单形态（BFS 派生 ⟺ 声明表）+ 负�
     (ExpectBaseIri, false, false, false),
     (ExpectVersionLiteral, false, false, false),
     (ExpectDirectiveEnd, false, false, false),
-    // 役35 35-B1：`@keywords` 声明列表区（受理行清槽后进区 ⇒ 全空）
+    // `@keywords` 声明列表区（受理行清槽后进区 ⇒ 全空）
     (ExpectKeywordsList, false, false, false),
     // 单主语族：subject 已填
     (ExpectPredicate, true, false, false),
@@ -619,7 +619,7 @@ test "指标·强制形态: 23 态单形态（BFS 派生 ⟺ 声明表）+ 负�
   ]
   assert_false(multi_form.contains(ExpectVerbRequired)) // 死态不在豁免清单
   assert_false(multi_form.contains(ListAfterElem)) // 死态不在豁免清单
-  // 状态守恒：23 强制 + 12 多形态 + 2 死态 = 37（役35 35-B1：+1 强制形态态）
+  // 状态守恒：23 强制 + 12 多形态 + 2 死态 = 37（较前 +1 强制形态态）
   assert_eq(forced.length() + multi_form.length() + 2, all_states().length())
 }
 
@@ -686,7 +686,7 @@ test "指标·label 钉子: resp:Done 不适用（表零引用）+ 引擎单步�
 
 ///|
 /// **权重表钉子**（2026-09-18 补，覆盖率实测发现 `command_weight` 有臂从没被查过——
-/// 例如 `"Caret"`）：35 个命令名逐条等值 + 表外名回落 1（役35 35-B1：+1 = `KeywordX`）。
+/// 例如 `"Caret"`）：35 个命令名逐条等值 + 表外名回落 1（+1 = `KeywordX`）。
 /// 权重决定随机门的分布（属判据面）⇒ 改表即红，必须与
 /// `src/quick_machine/quick_machine_trig.toml` 的 `[business.weights]` 同笔说明。
 test "指标·权重表逐名等值（35 名全量 + 默认档）" {
