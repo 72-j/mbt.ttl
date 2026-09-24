@@ -7,7 +7,7 @@
 
 ///|
 async test "examples sweep: bucket N3 sample files (pinned)" {
-  let dir = "src/gen_n3v2/rdf-tests/examples"
+  let dir = ".rdf-tests/n3v2/examples"
   let files = @fs.readdir(dir, sort=true).filter(fn(x) { x.has_suffix(".n3") })
   let mut a_full = 0
   let mut b_mat = 0

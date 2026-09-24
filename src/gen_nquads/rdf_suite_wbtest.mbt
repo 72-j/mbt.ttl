@@ -1,5 +1,5 @@
 // ===== W3C rdf-n-quads 官方测试套件（合并语料版） =====
-// 语料：rdf-tests/all_combined.nq —— 89 个官方 .nq 由脚本拼成单文件，
+// 语料：`.rdf-tests/nquads/all_combined.nq`（dot 顶层 = 留在仓库但**不进发布包**）—— 89 个官方 .nq 由脚本拼成单文件，
 //   每段前置标记行 "# >>> <原文件名>"（# 行被词法器当注释跳过，不影响解析）
 // 判定：段名含 "bad"（负例）→ 必须报错且零 quad；其余（正例）→ 零错误且 ≥1 quad
 // 失败诊断：read_context 以 [>>> ... <<<] 标出错误 span 附近的原始字节
@@ -127,7 +127,7 @@ fn section_has_content(data : ArrayView[Byte]) -> Bool {
 
 ///|
 async test "step 1: parse one positive file" {
-  let path = "src/gen_nquads/rdf-tests/rdf-n-quads/literal.nq"
+  let path = ".rdf-tests/nquads/rdf-n-quads/literal.nq"
   let data = @fs.read_file(path).binary().to_array()
   let (quads, errors) = nquads_parser(data, lenient=false)
   debug("literal.nq: quads=\{quads.length()} errors=\{errors.length()}")
@@ -137,7 +137,7 @@ async test "step 1: parse one positive file" {
 
 ///|
 async test "step 2: parse one negative file" {
-  let path = "src/gen_nquads/rdf-tests/rdf-n-quads/nq-syntax-bad-literal-01.nq"
+  let path = ".rdf-tests/nquads/rdf-n-quads/nq-syntax-bad-literal-01.nq"
   let data = @fs.read_file(path).binary().to_array()
   let (quads, errors) = nquads_parser(data, lenient=false)
   debug("bad-literal-01: quads=\{quads.length()} errors=\{errors.length()}")
@@ -148,7 +148,7 @@ async test "step 2: parse one negative file" {
 ///|
 /// 全套件：单文件读入 → 内存切段 → 逐段判定
 async test "step 3: full suite via combined corpus" {
-  let path = "src/gen_nquads/rdf-tests/all_combined.nq"
+  let path = ".rdf-tests/nquads/all_combined.nq"
   let data = @fs.read_file(path).binary().to_array()
   let view = data[:]
   let sections = split_sections(view)
@@ -264,7 +264,7 @@ fn nt_index_of(names : Array[String], name : String) -> Int {
 /// 循环读文件版：@fs.readdir 列目录 → 逐文件读 → Lexermoon 引擎全链路判定。
 /// 与整合语料版（见下）同判据，两种读法互相印证。
 async test "ntriples 套件: 循环读文件（Lexermoon）" {
-  let test_dir = "src/gen_nquads/rdf-tests/rdf-n-triples"
+  let test_dir = ".rdf-tests/nquads/rdf-n-triples"
   let nt_files = @fs.readdir(test_dir, sort=true).filter(fn(x) {
     x.has_suffix(".nt")
   })
@@ -297,7 +297,7 @@ async test "ntriples 套件: 循环读文件（Lexermoon）" {
 ///   循环：readdir 逐文件
 async test "ntriples 套件: 整合文件 vs 循环文件 对比" {
   // ---- 整合：切段逐段判定 ----
-  let corpus = @fs.read_file("src/gen_nquads/rdf-tests/all_combined_nt.nt")
+  let corpus = @fs.read_file(".rdf-tests/nquads/all_combined_nt.nt")
     .binary()
     .to_array()
   let view = corpus[:]
@@ -315,7 +315,7 @@ async test "ntriples 套件: 整合文件 vs 循环文件 对比" {
     )
   }
   // ---- 循环：逐文件判定，逐项对比 ----
-  let test_dir = "src/gen_nquads/rdf-tests/rdf-n-triples"
+  let test_dir = ".rdf-tests/nquads/rdf-n-triples"
   let nt_files = @fs.readdir(test_dir, sort=true).filter(fn(x) {
     x.has_suffix(".nt")
   })
@@ -376,10 +376,6 @@ async fn run_rdf12_suite(test_dir : String, label : String) -> Unit {
 
 ///|
 async test "rdf12 套件: 循环读文件（现状摸底）" {
-  run_rdf12_suite(
-    "src/gen_nquads/rdf-tests/rdf12/rdf-n-triples/syntax", "rdf12-nt",
-  )
-  run_rdf12_suite(
-    "src/gen_nquads/rdf-tests/rdf12/rdf-n-quads/syntax", "rdf12-nq",
-  )
+  run_rdf12_suite(".rdf-tests/nquads/rdf12/rdf-n-triples/syntax", "rdf12-nt")
+  run_rdf12_suite(".rdf-tests/nquads/rdf12/rdf-n-quads/syntax", "rdf12-nq")
 }

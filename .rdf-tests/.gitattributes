@@ -1,0 +1,2 @@
+# 本目录语料是**上游原样字节**（含 7 件 CRLF，见仓根 `.gitattributes` 的 -text 冻结）：一律不转换。
+* -text

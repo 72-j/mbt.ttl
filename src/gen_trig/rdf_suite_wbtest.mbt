@@ -107,7 +107,7 @@ async fn run_trig_suite(
 ///|
 async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底）" {
   run_trig_suite(
-    "src/gen_trig/rdf-tests/rdf-trig",
+    ".rdf-tests/trig/rdf-trig",
     ".trig",
     "rdf-trig",
     "http://www.w3.org/2013/TriGTests/",
@@ -115,7 +115,7 @@ async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底�
     rdf12=false,
   )
   run_trig_suite(
-    "src/gen_trig/rdf-tests/rdf-turtle",
+    ".rdf-tests/trig/rdf-turtle",
     ".ttl",
     "rdf-turtle",
     "http://www.w3.org/2013/TurtleTests/",
@@ -124,7 +124,7 @@ async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底�
     dialect=Turtle,
   )
   run_trig_suite(
-    "src/gen_trig/rdf-tests/rdf12/rdf-trig/syntax",
+    ".rdf-tests/trig/rdf12/rdf-trig/syntax",
     ".trig",
     "rdf12-trig",
     "https://w3c.github.io/rdf-tests/rdf12/rdf-trig/syntax/",
@@ -132,7 +132,7 @@ async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底�
     rdf12=true,
   )
   run_trig_suite(
-    "src/gen_trig/rdf-tests/rdf12/rdf-turtle/syntax",
+    ".rdf-tests/trig/rdf12/rdf-turtle/syntax",
     ".ttl",
     "rdf12-turtle",
     "https://w3c.github.io/rdf-tests/rdf12/rdf-turtle/syntax/",

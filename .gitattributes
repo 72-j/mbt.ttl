@@ -28,10 +28,10 @@
 # 这些文件在仓库里的 blob 本身就是 CRLF（`git ls-files --eol` = `i/crlf` / `i/mixed`）。
 # 若被 `eol=lf` 归一化，**三个平台**的解析输入都会变（= 偷偷改判据输入）⇒ 标 `-text`
 # 冻结字节：检出/提交都不转换，Linux 与 Windows 读到同一份字节。
-src/gen_n3v2/rdf-tests/N3Tests/cwm_includes/n3ExprFor.n3 -text
-src/gen_n3v2/rdf-tests/N3Tests/cwm_list/r1.n3 -text
-src/gen_n3v2/rdf-tests/N3Tests/cwm_list/double.n3 -text
-src/gen_n3v2/rdf-tests/rdf-turtle/reports/earl-turtle-v101-2013-08-19.ttl -text
-src/gen_n3v2/rdf-tests/rdf-turtle/reports/turtleparserjava-earl-2013-08-10.ttl -text
-src/gen_trig/rdf-tests/rdf-turtle/reports/earl-turtle-v101-2013-08-19.ttl -text
-src/gen_trig/rdf-tests/rdf-turtle/reports/turtleparserjava-earl-2013-08-10.ttl -text
+.rdf-tests/n3v2/N3Tests/cwm_includes/n3ExprFor.n3 -text
+.rdf-tests/n3v2/N3Tests/cwm_list/r1.n3 -text
+.rdf-tests/n3v2/N3Tests/cwm_list/double.n3 -text
+.rdf-tests/n3v2/rdf-turtle/reports/earl-turtle-v101-2013-08-19.ttl -text
+.rdf-tests/n3v2/rdf-turtle/reports/turtleparserjava-earl-2013-08-10.ttl -text
+.rdf-tests/trig/rdf-turtle/reports/earl-turtle-v101-2013-08-19.ttl -text
+.rdf-tests/trig/rdf-turtle/reports/turtleparserjava-earl-2013-08-10.ttl -text

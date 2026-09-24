@@ -69,7 +69,7 @@ spec.md / const.md / todo.adr.md 历史卷 / N3Tests 语料 / v1 双表 n3.mbt�
 
 **涟漪清理（本役落两仓）**：
 - 嵌套仓：① N3Tests/rdf-turtle/rdf12/examples 语料 15M 迁居
-  `src/gen_n3v2/rdf-tests/`（v2 唯一消费者），三套件 wbtest 路径
+  `.rdf-tests/n3v2/`（v2 唯一消费者；2026-09-24 起语料迁至**顶层 dot 目录**）：三套件 wbtest 路径
   `src/gen_n3/rdf-tests` → `src/gen_n3v2/rdf-tests` 改写；② moon.pkg 头注
   v1 冻结表述退役。
 - 外层仓：① n3gen G0 v1 黄金门删除（读 gen_n3/n3.mbt 对拍 + n3_out.gen

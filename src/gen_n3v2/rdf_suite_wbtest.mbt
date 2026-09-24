@@ -183,7 +183,7 @@ async fn run_n3_suite(
 ///|
 async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
   run_n3_suite(
-    "src/gen_n3v2/rdf-tests/rdf-turtle",
+    ".rdf-tests/n3v2/rdf-turtle",
     ".ttl",
     "rdf-turtle",
     "http://www.w3.org/2013/TurtleTests/",
@@ -193,7 +193,7 @@ async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
     expect_strict_gap=0, // R-16 修口后清零（2026-09-13）
   )
   run_n3_suite(
-    "src/gen_n3v2/rdf-tests/rdf12/rdf-turtle/syntax",
+    ".rdf-tests/n3v2/rdf12/rdf-turtle/syntax",
     ".ttl",
     "rdf12-turtle",
     "https://w3c.github.io/rdf-tests/rdf12/rdf-turtle/syntax/",
