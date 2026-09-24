@@ -90,6 +90,10 @@ echo "== 8. 文档门（guides/** 结构：H1 / 导航 / 零死链 / 命名 / �
 sh ci/docs-check.sh >/dev/null 2>&1
 chk $? "sh ci/docs-check.sh（详见其输出）"
 
+echo "== 9. 锚点漂移门（文档/注释里的 *.mbt:NNN 是否仍指向原处）=="
+sh ci/anchor-check.sh >/dev/null 2>&1
+chk $? "sh ci/anchor-check.sh（改锚点须同笔重生成本表）"
+
 echo
 if [ "$fail" = "0" ]; then
   echo "== 发版预检全绿 ✓ 按 release-checklist.md §发版日序 执行 =="

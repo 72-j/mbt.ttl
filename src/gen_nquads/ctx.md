@@ -108,7 +108,7 @@
 | 主题 | 锚点 |
 |---|---|
 | 测量仪（本役新立） | `lexer_bench_wbtest.mbt`（1k/10k 纯词法双词法器对照，native-only） |
-| 被测对象 | `lexer_mbt.mbt:198`（`Lexermoon::next`，**终态零改动**）、`:129`（`utf8_name_advance`） |
+| 被测对象 | `lexer_mbt.mbt:247`（`Lexermoon::next`，**终态零改动**）、`lexer_mbt.mbt:175`（`utf8_name_advance`）——**2026-09-24 重钉**：P2 刀 a 重排后原 `:198`/`:129` 已漂（锚点门首跑抓到）；并改**全形**写法（弃 `:NNN` 缩写，缩写不在门视野内） |
 | 对照 | `lexerc.mbt:124`（`Lexerc::next`：清零 12B + FFI + `read_int32`×3） |
 | 管线口径 | `src/bench/nquads-benchmark/main.mbt`（native + release 正式口径） |
 

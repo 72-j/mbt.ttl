@@ -1,0 +1,57 @@
+# 锚点期望快照（生成物：首次由 ci/anchor-check.sh bootstrap；改锚点须同笔重生成）
+# 列：referrer<TAB>anchor<TAB>target<TAB>line<TAB>expected_prefix(60)
+src/gen_n3v2/ctx.md	n3.mbt:299	src/gen_n3v2/n3.mbt	299	/// 每个方法：(ctx, 事件载荷) → 副作用意图或错误（ctx 为原地写，state 由 step 管理）
+src/gen_n3v2/ctx.md	n3.mbt:2044	src/gen_n3v2/n3.mbt	2044	}
+src/gen_n3v2/ctx.md	n3.mbt:2128	src/gen_n3v2/n3.mbt	2128	Stop // 终止循环
+src/gen_n3v2/ctx.md	n3.mbt:2100	src/gen_n3v2/n3.mbt	2100	/// handle_reset 模板默认：无操作（观测位）
+src/gen_n3v2/ctx.md	n3.mbt:2108	src/gen_n3v2/n3.mbt	2108	Ok(())
+src/gen_n3v2/ctx.md	n3.mbt:216	src/gen_n3v2/n3.mbt	216	fn N3Context::reset(self : N3Context, scope : ResetScope) ->
+src/gen_n3v2/ctx.md	n3.mbt:282	src/gen_n3v2/n3.mbt	282	priv trait N3Supervisor {
+src/gen_n3v2/ctx.md	n3.mbt:2044	src/gen_n3v2/n3.mbt	2044	}
+src/gen_n3v2/ctx.md	materialize_n3.mbt:683	src/gen_n3v2/materialize_n3.mbt	683	}
+src/gen_n3v2/ctx.md	n3tests_suite_wbtest.mbt:50	src/gen_n3v2/n3tests_suite_wbtest.mbt	50	debug("UNKNOWN-KIND \{path} kind=\{kind}")
+src/gen_n3v2/ctx.md	materialize_n3.mbt:30	src/gen_n3v2/materialize_n3.mbt	30	prefixes : Array[(Span, Span)] // (name, iri) 声明账本（与 ctx.pre
+src/gen_n3v2/ctx.md	n3.mbt:282	src/gen_n3v2/n3.mbt	282	priv trait N3Supervisor {
+src/gen_n3v2/ctx.md	n3.mbt:2128	src/gen_n3v2/n3.mbt	2128	Stop // 终止循环
+src/gen_n3v2/ctx.md	n3.mbt:148	src/gen_n3v2/n3.mbt	148	priv struct N3Context {
+src/gen_n3v2/ctx.md	materialize_n3.mbt:683	src/gen_n3v2/materialize_n3.mbt	683	}
+src/gen_n3v2/ctx.md	n3tests_suite_wbtest.mbt:50	src/gen_n3v2/n3tests_suite_wbtest.mbt	50	debug("UNKNOWN-KIND \{path} kind=\{kind}")
+src/gen_n3v2/ctx.md	examples_wbtest.mbt:9	src/gen_n3v2/examples_wbtest.mbt	9	async test "examples sweep: bucket N3 sample files (pinned)"
+src/gen_n3v2/spec.md	n3.mbt:301	src/gen_n3v2/n3.mbt	301	fn set_subject(Self, N3Context, Span) -> Result[N3Effect, N3
+src/gen_n3v2/spec.md	n3.mbt:2045	src/gen_n3v2/n3.mbt	2045	(N3ExpectTildeEnd, N3Comma) => {
+src/gen_n3v2/spec.md	n3.mbt:282	src/gen_n3v2/n3.mbt	282	priv trait N3Supervisor {
+src/gen_n3v2/spec.md	n3.mbt:2128	src/gen_n3v2/n3.mbt	2128	Stop // 终止循环
+src/gen_n3v2/spec.md	n3.mbt:2108	src/gen_n3v2/n3.mbt	2108	Ok(())
+src/gen_n3v2/spec.md	n3.mbt:216	src/gen_n3v2/n3.mbt	216	fn N3Context::reset(self : N3Context, scope : ResetScope) ->
+src/gen_n3v2/spec.md	n3tests_suite_wbtest.mbt:50	src/gen_n3v2/n3tests_suite_wbtest.mbt	50	debug("UNKNOWN-KIND \{path} kind=\{kind}")
+src/gen_n3v2/spec.md	examples_wbtest.mbt:9	src/gen_n3v2/examples_wbtest.mbt	9	async test "examples sweep: bucket N3 sample files (pinned)"
+src/gen_n3v2/spec.md	n3.mbt:140	src/gen_n3v2/n3.mbt	140	Done
+src/gen_n3v2/todo.md	materialize_n3.mbt:1107	src/gen_n3v2/materialize_n3.mbt	1107	/// 变量门（ADR-004：只记身份——语法面收紧在此）：`?` + varname，varname
+src/gen_nquads/ctx.md	nquads.mbt:146	src/gen_nquads/nquads.mbt	146	BusinessFailed(String) // 装配层业务逻辑抛出：Action 执行失败（如解析格式错误）
+src/gen_nquads/ctx.md	validate_helper.mbt:427	src/gen_nquads/validate_helper.mbt	427	ParseError::SyntaxErr("Bad string escape", (base + i, len - 
+src/gen_nquads/ctx.md	lexer_mbt.mbt:247	src/gen_nquads/lexer_mbt.mbt	247	pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
+src/gen_nquads/ctx.md	lexer_mbt.mbt:175	src/gen_nquads/lexer_mbt.mbt	175	fn utf8_name_advance(v : ArrayView[Byte], pos : Int, l : Int
+src/gen_nquads/ctx.md	lexerc.mbt:124	src/gen_nquads/lexerc.mbt	124	pub fn Lexerc::next(self : Lexerc) -> Token? {
+src/gen_nquads/spec.md	nquads.mbt:13	src/gen_nquads/nquads.mbt	13	NQuadsPrefName(Span)
+src/gen_nquads/todo.md	validate_helper.mbt:530	src/gen_nquads/validate_helper.mbt	530	)
+src/gen_trig/adr.md	materialize_trig.mbt:392	src/gen_trig/materialize_trig.mbt	392	)
+src/gen_trig/adr.md	trig.mbt:223	src/gen_trig/trig.mbt	223	pred: self.predicate,
+src/gen_trig/architecture.md	trig.mbt:4	src/gen_trig/trig.mbt	4	// Generated at: 1788654011855
+src/gen_trig/architecture.md	trig.mbt:240	src/gen_trig/trig.mbt	240	fn finish_at_end(Self) -> Result[TrigPendingQuad, ParseError
+src/gen_trig/architecture.md	trig.mbt:1138	src/gen_trig/trig.mbt	1138	(TrigBnpExpectObject, TrigLparen(payload)) => {
+src/gen_trig/architecture.md	trig.mbt:223	src/gen_trig/trig.mbt	223	pred: self.predicate,
+src/gen_trig/ctx.md	trig.mbt:4	src/gen_trig/trig.mbt	4	// Generated at: 1788654011855
+src/gen_trig/ctx.md	trig.mbt:240	src/gen_trig/trig.mbt	240	fn finish_at_end(Self) -> Result[TrigPendingQuad, ParseError
+src/gen_trig/ctx.md	trig.mbt:1138	src/gen_trig/trig.mbt	1138	(TrigBnpExpectObject, TrigLparen(payload)) => {
+src/gen_trig/ctx.md	trig.mbt:1138	src/gen_trig/trig.mbt	1138	(TrigBnpExpectObject, TrigLparen(payload)) => {
+src/gen_trig/ctx.md	trig.mbt:1138	src/gen_trig/trig.mbt	1138	(TrigBnpExpectObject, TrigLparen(payload)) => {
+src/gen_trig/ctx.md	trig.mbt:223	src/gen_trig/trig.mbt	223	pred: self.predicate,
+src/gen_trig/ctx.md	serialize_trig.mbt:236	src/gen_trig/serialize_trig.mbt	236	}
+src/gen_trig/ctx.md	trig.mbt:223	src/gen_trig/trig.mbt	223	pred: self.predicate,
+src/gen_trig/ctx.md	trig.mbt:1172	src/gen_trig/trig.mbt	1172	actions.set_predicate(ctx, payload)
+src/gen_trig/ctx.md	materialize_trig.mbt:36	src/gen_trig/materialize_trig.mbt	36	pub struct TrigMaterializer {
+src/gen_trig/ctx.md	serialize_trig.mbt:236	src/gen_trig/serialize_trig.mbt	236	}
+src/gen_trig/todo.md	materialize_trig.mbt:392	src/gen_trig/materialize_trig.mbt	392	)
+src/gen_trig/todo.md	trig.mbt:4	src/gen_trig/trig.mbt	4	// Generated at: 1788654011855
+src/gen_trig/todo.md	trig.mbt:1138	src/gen_trig/trig.mbt	1138	(TrigBnpExpectObject, TrigLparen(payload)) => {
+src/gen_trig/todo.md	trig.mbt:223	src/gen_trig/trig.mbt	223	pred: self.predicate,
