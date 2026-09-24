@@ -93,8 +93,8 @@
 | 主题 | 锚点 |
 |---|---|
 | 契约三成员 | `nquads.mbt:146`（Actions，`pub(open)`）、`:245`（EffectHandler）、`:129`（LoopPolicy） |
-| 主循环 | `engine.mbt:290`（`step` 调用）、`:320`（便捷入口 `rdf12?`）、`:157`（`from_bytes`） |
-| 校验层开关 | `parser_slice.mbt:8/17`（`rdf12`）、`validate_helper.mbt:427/491`（langdir）、`:530`（`scalar_only`） |
+| 主循环 | `gen_nquads/engine.mbt:290`（`step` 调用）、`:320`（便捷入口 `rdf12?`）、`:157`（`from_bytes`） |
+| 校验层开关 | `gen_nquads/parser_slice.mbt:8/17`（`rdf12`）、`validate_helper.mbt:427/491`（langdir）、`:530`（`scalar_only`） |
 | 物化 / 序列化 | `materialize_quad.mbt`（构造与槽位路由）、`serialize_nquads.mbt`（旋钮 + round-trip） |
 | 跨包扩展点 | `quicktest/system.mbt:59-92`（`impl NQuadsActions for EngineActions`） |
 | 门 | `src/rdf/nquads_domain_toml_gen.mbt`（三腿 + **产物黄金门**）、`src/rdf/adr.md` ADR-9 |

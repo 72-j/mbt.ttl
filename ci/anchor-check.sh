@@ -5,7 +5,9 @@
 # 锚点会无声失准。本门把"锚点是否仍指向原处"从**人肉**变成**门判**。
 #
 # 口径（诚实声明）：
-#   · **只校 basename 唯一**的目标（`actions.mbt` 有三个方言版本 ⇒ basename 不唯一，跳过并计数）；
+#   · **解析口径**：① 锚点写**全形**（`X.mbt:NNN`）且 basename 唯一 ⇒ 直接解析；
+#     ② 锚点写**方言限定形**（`gen_n3v2/actions.mbt:NNN` 等**带路径**）⇒ 按**路径后缀唯一匹配**解析；
+#     ③ 裸 basename 而仓内多份、又未限定 ⇒ **跳过并计数**（这类须先"方言限定化"才可校）。
 #   · 期望 = **目标行首 60 字**（首次运行 bootstrap 写入 `.anchors/expected.tsv`；dot 目录 ⇒ **不进发布包**）；
 #   · 校验 = ① 引用处**仍写着该锚点**（引用被删/被改也必须同笔重生成本表，否则表会留下幽灵行）；
 #             ② 目标行仍以期望片段开头；③ 锚点一律写全形 `X.mbt:NNN`（**禁 `:NNN` 缩写**，缩写在门视野外）。
@@ -18,7 +20,7 @@ mkdir -p .anchors
 python3 - <<'PY'
 import re,os,subprocess,collections,sys
 TSV='.anchors/expected.tsv'
-pat=re.compile(r'([A-Za-z_][A-Za-z0-9_]*\.mbt):([0-9]+)')
+pat=re.compile(r'((?:[A-Za-z0-9_.-]+/)*[A-Za-z_][A-Za-z0-9_]*\.mbt):([0-9]+)')
 mbts=subprocess.run(['git','ls-files','*.mbt'],capture_output=True,text=True).stdout.split()
 by=collections.defaultdict(list)
 for f in mbts: by[os.path.basename(f)].append(f)
@@ -30,10 +32,13 @@ for d in docs:
     except Exception: continue
     for i,l in enumerate(lines):
         for m in pat.finditer(l):
-            base,num=m.group(1),int(m.group(2))
-            cands=by.get(base,[])
+            name,num=m.group(1),int(m.group(2))
+            if '/' in name:
+                cands=[f for f in mbts if f==name or f.endswith('/'+name)]
+            else:
+                cands=by.get(name,[])
             if len(cands)!=1: skipped+=1; continue
-            rows.append((d,i+1,base,num,cands[0]))
+            rows.append((d,i+1,name,num,cands[0]))
 if not os.path.exists(TSV):
     with open(TSV,'w',encoding='utf-8') as w:
         w.write('# 锚点期望快照（生成物：首次由 ci/anchor-check.sh bootstrap；改锚点须同笔重生成）\n')

@@ -1,33 +1,94 @@
 # 锚点期望快照（生成物：首次由 ci/anchor-check.sh bootstrap；改锚点须同笔重生成）
 # 列：referrer<TAB>anchor<TAB>target<TAB>line<TAB>expected_prefix(60)
+src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:929	src/gen_n3v2/actions.mbt	929	Some(src) => src
+src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
+src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:200	src/gen_n3v2/actions.mbt	200	frame.ret_state = N3BnpIdAfterClose
+src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
+src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
+src/gen_n3v2/adr.md	gen_nquads/parser_slice.mbt:8	src/gen_nquads/parser_slice.mbt	8	rdf12 : Bool // 语法版本：true=RDF 1.2（langdir 等），false=1.1 严格契约
 src/gen_n3v2/ctx.md	n3.mbt:299	src/gen_n3v2/n3.mbt	299	/// 每个方法：(ctx, 事件载荷) → 副作用意图或错误（ctx 为原地写，state 由 step 管理）
 src/gen_n3v2/ctx.md	n3.mbt:2044	src/gen_n3v2/n3.mbt	2044	}
 src/gen_n3v2/ctx.md	n3.mbt:2128	src/gen_n3v2/n3.mbt	2128	Stop // 终止循环
 src/gen_n3v2/ctx.md	n3.mbt:2100	src/gen_n3v2/n3.mbt	2100	/// handle_reset 模板默认：无操作（观测位）
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:577	src/gen_n3v2/engine.mbt	577	/// 帧携带返回状态），经 on_* 注入位进 interpret；其余成员全用套装默认
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:517	src/gen_n3v2/engine.mbt	517	/// 组清·路径账（役28 R-13）：路径三槽一组回收（src/tail/pend）。方向位
 src/gen_n3v2/ctx.md	n3.mbt:2108	src/gen_n3v2/n3.mbt	2108	Ok(())
 src/gen_n3v2/ctx.md	n3.mbt:216	src/gen_n3v2/n3.mbt	216	fn N3Context::reset(self : N3Context, scope : ResetScope) ->
 src/gen_n3v2/ctx.md	n3.mbt:282	src/gen_n3v2/n3.mbt	282	priv trait N3Supervisor {
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:350	src/gen_n3v2/engine.mbt	350	impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn b
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:388	src/gen_n3v2/engine.mbt	388	fn N3Context::recover_cleanup_half(self : N3Context) -> Unit
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:388	src/gen_n3v2/engine.mbt	388	fn N3Context::recover_cleanup_half(self : N3Context) -> Unit
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:336	src/gen_n3v2/engine.mbt	336	fn N3Context::under_formula(self : N3Context) -> Bool {
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:192	src/gen_n3v2/engine.mbt	192	fn[L : LexerSource] N3Engine::normalize_term_span(
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:423	src/gen_n3v2/engine.mbt	423	for ;; {
+src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
 src/gen_n3v2/ctx.md	n3.mbt:2044	src/gen_n3v2/n3.mbt	2044	}
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:517	src/gen_n3v2/engine.mbt	517	/// 组清·路径账（役28 R-13）：路径三槽一组回收（src/tail/pend）。方向位
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:136	src/gen_n3v2/engine.mbt	136	fn[L : LexerSource] N3Engine::kw_ledger_hits(
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
+src/gen_n3v2/ctx.md	gen_n3v2/parser_slice.mbt:52	src/gen_n3v2/parser_slice.mbt	52	}
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:366	src/gen_n3v2/engine.mbt	366	impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn r
 src/gen_n3v2/ctx.md	materialize_n3.mbt:683	src/gen_n3v2/materialize_n3.mbt	683	}
+src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:137	src/gen_n3v2/actions.mbt	137	impl N3Actions for N3ActionsImpl with fn pop_bnode_prop(
+src/gen_n3v2/ctx.md	gen_n3v2/rdf_suite_wbtest.mbt:116	src/gen_n3v2/rdf_suite_wbtest.mbt	116	// R-16 升格（2026-09-13）：主判定链改走**严格**组装校验（影子缺口已清零）
 src/gen_n3v2/ctx.md	n3tests_suite_wbtest.mbt:50	src/gen_n3v2/n3tests_suite_wbtest.mbt	50	debug("UNKNOWN-KIND \{path} kind=\{kind}")
 src/gen_n3v2/ctx.md	materialize_n3.mbt:30	src/gen_n3v2/materialize_n3.mbt	30	prefixes : Array[(Span, Span)] // (name, iri) 声明账本（与 ctx.pre
+src/gen_n3v2/ctx.md	gen_nquads/rdf_suite_wbtest.mbt:101	src/gen_nquads/rdf_suite_wbtest.mbt	101	let content_start = e + 1
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
+src/gen_n3v2/ctx.md	gen_n3v2/parser_slice.mbt:63	src/gen_n3v2/parser_slice.mbt	63	/// 引擎结构错排空（役23 R-05：error_spans 累积 → 行号化 ParseError 转入
+src/gen_n3v2/ctx.md	gen_n3v2/rdf_suite_wbtest.mbt:118	src/gen_n3v2/rdf_suite_wbtest.mbt	118	let (quads, perrs) = slice.parse_all()
 src/gen_n3v2/ctx.md	n3.mbt:282	src/gen_n3v2/n3.mbt	282	priv trait N3Supervisor {
 src/gen_n3v2/ctx.md	n3.mbt:2128	src/gen_n3v2/n3.mbt	2128	Stop // 终止循环
 src/gen_n3v2/ctx.md	n3.mbt:148	src/gen_n3v2/n3.mbt	148	priv struct N3Context {
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:517	src/gen_n3v2/engine.mbt	517	/// 组清·路径账（役28 R-13）：路径三槽一组回收（src/tail/pend）。方向位
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:577	src/gen_n3v2/engine.mbt	577	/// 帧携带返回状态），经 on_* 注入位进 interpret；其余成员全用套装默认
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:350	src/gen_n3v2/engine.mbt	350	impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn b
+src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
+src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
+src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:370	src/gen_n3v2/actions.mbt	370	as_subject: false,
+src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:137	src/gen_n3v2/actions.mbt	137	impl N3Actions for N3ActionsImpl with fn pop_bnode_prop(
+src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:1115	src/gen_n3v2/actions.mbt	1115	
+src/gen_n3v2/ctx.md	gen_n3v2/parser_slice.mbt:431	src/gen_n3v2/parser_slice.mbt	431	None => {
 src/gen_n3v2/ctx.md	materialize_n3.mbt:683	src/gen_n3v2/materialize_n3.mbt	683	}
+src/gen_n3v2/ctx.md	gen_n3v2/rdf_suite_wbtest.mbt:116	src/gen_n3v2/rdf_suite_wbtest.mbt	116	// R-16 升格（2026-09-13）：主判定链改走**严格**组装校验（影子缺口已清零）
 src/gen_n3v2/ctx.md	n3tests_suite_wbtest.mbt:50	src/gen_n3v2/n3tests_suite_wbtest.mbt	50	debug("UNKNOWN-KIND \{path} kind=\{kind}")
 src/gen_n3v2/ctx.md	examples_wbtest.mbt:9	src/gen_n3v2/examples_wbtest.mbt	9	async test "examples sweep: bucket N3 sample files (pinned)"
 src/gen_n3v2/spec.md	n3.mbt:301	src/gen_n3v2/n3.mbt	301	fn set_subject(Self, N3Context, Span) -> Result[N3Effect, N3
 src/gen_n3v2/spec.md	n3.mbt:2045	src/gen_n3v2/n3.mbt	2045	(N3ExpectTildeEnd, N3Comma) => {
 src/gen_n3v2/spec.md	n3.mbt:282	src/gen_n3v2/n3.mbt	282	priv trait N3Supervisor {
+src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:346	src/gen_n3v2/engine.mbt	346	/// N3Supervisor 实现（Engine 持有 lexer/ctx/last_error，钩子落在此处）
+src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:381	src/gen_n3v2/engine.mbt	381	}
+src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:529	src/gen_n3v2/actions.mbt	529	ctx.object = Some(obj)
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:719	src/gen_n3v2/actions.mbt	719	op : Span,
+src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
+src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:105	src/gen_n3v2/engine.mbt	105	fn[L : LexerSource] is_version_lit_form(
+src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:225	src/gen_n3v2/engine.mbt	225	N3KeywordA(span) => {
+src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:241	src/gen_n3v2/engine.mbt	241	N3Unknown(span) => {
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
+src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:577	src/gen_n3v2/engine.mbt	577	/// 帧携带返回状态），经 on_* 注入位进 interpret；其余成员全用套装默认
 src/gen_n3v2/spec.md	n3.mbt:2128	src/gen_n3v2/n3.mbt	2128	Stop // 终止循环
 src/gen_n3v2/spec.md	n3.mbt:2108	src/gen_n3v2/n3.mbt	2108	Ok(())
 src/gen_n3v2/spec.md	n3.mbt:216	src/gen_n3v2/n3.mbt	216	fn N3Context::reset(self : N3Context, scope : ResetScope) ->
+src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:225	src/gen_n3v2/engine.mbt	225	N3KeywordA(span) => {
+src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
+src/gen_n3v2/spec.md	gen_n3v2/rdf_suite_wbtest.mbt:116	src/gen_n3v2/rdf_suite_wbtest.mbt	116	// R-16 升格（2026-09-13）：主判定链改走**严格**组装校验（影子缺口已清零）
 src/gen_n3v2/spec.md	n3tests_suite_wbtest.mbt:50	src/gen_n3v2/n3tests_suite_wbtest.mbt	50	debug("UNKNOWN-KIND \{path} kind=\{kind}")
 src/gen_n3v2/spec.md	examples_wbtest.mbt:9	src/gen_n3v2/examples_wbtest.mbt	9	async test "examples sweep: bucket N3 sample files (pinned)"
+src/gen_n3v2/spec.md	gen_n3v2/types.mbt:50	src/gen_n3v2/types.mbt	50	/// N3 按 ADR-003a：集合语法 ( ... ) 展开为单一 BNode，无合成链——恒 Normal；
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:14	src/gen_n3v2/actions.mbt	14	struct N3ActionsImpl {}
 src/gen_n3v2/spec.md	n3.mbt:140	src/gen_n3v2/n3.mbt	140	Done
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:200	src/gen_n3v2/actions.mbt	200	frame.ret_state = N3BnpIdAfterClose
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:529	src/gen_n3v2/actions.mbt	529	ctx.object = Some(obj)
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:719	src/gen_n3v2/actions.mbt	719	op : Span,
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:976	src/gen_n3v2/actions.mbt	976	None => return Err(N3ActionError::BusinessFailed("Path sourc
 src/gen_n3v2/todo.md	materialize_n3.mbt:1107	src/gen_n3v2/materialize_n3.mbt	1107	/// 变量门（ADR-004：只记身份——语法面收紧在此）：`?` + varname，varname
 src/gen_nquads/ctx.md	nquads.mbt:146	src/gen_nquads/nquads.mbt	146	BusinessFailed(String) // 装配层业务逻辑抛出：Action 执行失败（如解析格式错误）
+src/gen_nquads/ctx.md	gen_nquads/engine.mbt:290	src/gen_nquads/engine.mbt	290	synth_dot = false // 恢复消费整行，待发 Dot 一并作废
+src/gen_nquads/ctx.md	gen_nquads/parser_slice.mbt:8	src/gen_nquads/parser_slice.mbt	8	rdf12 : Bool // 语法版本：true=RDF 1.2（langdir 等），false=1.1 严格契约
 src/gen_nquads/ctx.md	validate_helper.mbt:427	src/gen_nquads/validate_helper.mbt	427	ParseError::SyntaxErr("Bad string escape", (base + i, len - 
 src/gen_nquads/ctx.md	lexer_mbt.mbt:244	src/gen_nquads/lexer_mbt.mbt	244	pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
 src/gen_nquads/ctx.md	lexer_mbt.mbt:176	src/gen_nquads/lexer_mbt.mbt	176	fn utf8_name_advance(v : ArrayView[Byte], pos : Int, l : Int
@@ -36,22 +97,47 @@ src/gen_nquads/spec.md	nquads.mbt:13	src/gen_nquads/nquads.mbt	13	NQuadsPrefName
 src/gen_nquads/todo.md	validate_helper.mbt:530	src/gen_nquads/validate_helper.mbt	530	)
 src/gen_trig/adr.md	materialize_trig.mbt:392	src/gen_trig/materialize_trig.mbt	392	)
 src/gen_trig/adr.md	trig.mbt:223	src/gen_trig/trig.mbt	223	pred: self.predicate,
+src/gen_trig/adr.md	gen_trig/engine.mbt:227	src/gen_trig/engine.mbt	227	/// 引擎用**表管的 state** 判定"本事件是否落在谓词位"，据此归属 `pk`（`a` ⇒ `KwA`，其余
+src/gen_trig/adr.md	gen_trig/actions.mbt:9	src/gen_trig/actions.mbt	9	priv struct TrigActionsImpl {}
+src/gen_trig/adr.md	gen_trig/engine.mbt:404	src/gen_trig/engine.mbt	404	let err : ParseError = ParseError::SyntaxErr(
 src/gen_trig/architecture.md	trig.mbt:4	src/gen_trig/trig.mbt	4	// Generated at: 1788654011855
 src/gen_trig/architecture.md	trig.mbt:240	src/gen_trig/trig.mbt	240	fn finish_at_end(Self) -> Result[TrigPendingQuad, ParseError
 src/gen_trig/architecture.md	trig.mbt:1138	src/gen_trig/trig.mbt	1138	(TrigBnpExpectObject, TrigLparen(payload)) => {
 src/gen_trig/architecture.md	trig.mbt:223	src/gen_trig/trig.mbt	223	pred: self.predicate,
+src/gen_trig/architecture.md	gen_trig/engine.mbt:227	src/gen_trig/engine.mbt	227	/// 引擎用**表管的 state** 判定"本事件是否落在谓词位"，据此归属 `pk`（`a` ⇒ `KwA`，其余
 src/gen_trig/ctx.md	trig.mbt:4	src/gen_trig/trig.mbt	4	// Generated at: 1788654011855
+src/gen_trig/ctx.md	gen_trig/rdf_suite_wbtest.mbt:47	src/gen_trig/rdf_suite_wbtest.mbt	47	/// pin=true：failed==0 且 passed+failed==files.length()（全集闭合）
 src/gen_trig/ctx.md	trig.mbt:240	src/gen_trig/trig.mbt	240	fn finish_at_end(Self) -> Result[TrigPendingQuad, ParseError
+src/gen_trig/ctx.md	gen_trig/actions.mbt:9	src/gen_trig/actions.mbt	9	priv struct TrigActionsImpl {}
 src/gen_trig/ctx.md	trig.mbt:1138	src/gen_trig/trig.mbt	1138	(TrigBnpExpectObject, TrigLparen(payload)) => {
 src/gen_trig/ctx.md	trig.mbt:1138	src/gen_trig/trig.mbt	1138	(TrigBnpExpectObject, TrigLparen(payload)) => {
+src/gen_trig/ctx.md	gen_trig/engine.mbt:240	src/gen_trig/engine.mbt	240	| TrigAnnotExpectVerbTail
+src/gen_trig/ctx.md	gen_trig/actions.mbt:9	src/gen_trig/actions.mbt	9	priv struct TrigActionsImpl {}
+src/gen_trig/ctx.md	gen_trig/engine.mbt:515	src/gen_trig/engine.mbt	515	match TrigEffectHandler::interpret(self, self.ctx, effect) {
 src/gen_trig/ctx.md	trig.mbt:1138	src/gen_trig/trig.mbt	1138	(TrigBnpExpectObject, TrigLparen(payload)) => {
+src/gen_trig/ctx.md	gen_trig/engine.mbt:364	src/gen_trig/engine.mbt	364	return
 src/gen_trig/ctx.md	trig.mbt:223	src/gen_trig/trig.mbt	223	pred: self.predicate,
+src/gen_trig/ctx.md	gen_trig/engine.mbt:227	src/gen_trig/engine.mbt	227	/// 引擎用**表管的 state** 判定"本事件是否落在谓词位"，据此归属 `pk`（`a` ⇒ `KwA`，其余
+src/gen_trig/ctx.md	gen_trig/actions.mbt:9	src/gen_trig/actions.mbt	9	priv struct TrigActionsImpl {}
 src/gen_trig/ctx.md	serialize_trig.mbt:236	src/gen_trig/serialize_trig.mbt	236	}
 src/gen_trig/ctx.md	trig.mbt:223	src/gen_trig/trig.mbt	223	pred: self.predicate,
 src/gen_trig/ctx.md	trig.mbt:1172	src/gen_trig/trig.mbt	1172	actions.set_predicate(ctx, payload)
+src/gen_trig/ctx.md	gen_trig/engine.mbt:364	src/gen_trig/engine.mbt	364	return
+src/gen_trig/ctx.md	gen_trig/engine.mbt:227	src/gen_trig/engine.mbt	227	/// 引擎用**表管的 state** 判定"本事件是否落在谓词位"，据此归属 `pk`（`a` ⇒ `KwA`，其余
+src/gen_trig/ctx.md	gen_trig/engine.mbt:78	src/gen_trig/engine.mbt	78	/// 由 loop 合成 Dot 事件回灌转移表（决策仍在表，机械在此）。
+src/gen_trig/ctx.md	gen_trig/parser_slice.mbt:257	src/gen_trig/parser_slice.mbt	257	} else {
 src/gen_trig/ctx.md	materialize_trig.mbt:36	src/gen_trig/materialize_trig.mbt	36	pub struct TrigMaterializer {
 src/gen_trig/ctx.md	serialize_trig.mbt:236	src/gen_trig/serialize_trig.mbt	236	}
+src/gen_trig/ctx.md	gen_trig/rdf_suite_wbtest.mbt:47	src/gen_trig/rdf_suite_wbtest.mbt	47	/// pin=true：failed==0 且 passed+failed==files.length()（全集闭合）
+src/gen_trig/spec.md	gen_trig/rdf_suite_wbtest.mbt:108	src/gen_trig/rdf_suite_wbtest.mbt	108	async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底）" {
+src/gen_trig/spec.md	gen_trig/rdf_suite_wbtest.mbt:115	src/gen_trig/rdf_suite_wbtest.mbt	115	rdf12=false,
+src/gen_trig/spec.md	gen_trig/rdf_suite_wbtest.mbt:123	src/gen_trig/rdf_suite_wbtest.mbt	123	rdf12=false,
+src/gen_trig/spec.md	gen_trig/rdf_suite_wbtest.mbt:131	src/gen_trig/rdf_suite_wbtest.mbt	131	pin=true,
 src/gen_trig/todo.md	materialize_trig.mbt:392	src/gen_trig/materialize_trig.mbt	392	)
 src/gen_trig/todo.md	trig.mbt:4	src/gen_trig/trig.mbt	4	// Generated at: 1788654011855
+src/gen_trig/todo.md	gen_trig/engine.mbt:404	src/gen_trig/engine.mbt	404	let err : ParseError = ParseError::SyntaxErr(
 src/gen_trig/todo.md	trig.mbt:1138	src/gen_trig/trig.mbt	1138	(TrigBnpExpectObject, TrigLparen(payload)) => {
+src/gen_trig/todo.md	gen_trig/engine.mbt:364	src/gen_trig/engine.mbt	364	return
 src/gen_trig/todo.md	trig.mbt:223	src/gen_trig/trig.mbt	223	pred: self.predicate,
+src/gen_trig/todo.md	gen_trig/engine.mbt:227	src/gen_trig/engine.mbt	227	/// 引擎用**表管的 state** 判定"本事件是否落在谓词位"，据此归属 `pk`（`a` ⇒ `KwA`，其余
+src/gen_trig/todo.md	gen_trig/actions.mbt:9	src/gen_trig/actions.mbt	9	priv struct TrigActionsImpl {}

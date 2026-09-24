@@ -174,8 +174,8 @@ v1 层之外的产物/文档面——**2.0 数据面（`domain2/trig_*`）实际
 **决策**：`LoopPolicy → Supervisor`（控制流 Hook 面的正名）、`Hooks → <方言>ActionsImpl`；
 `Biz`/`User`/`Impl` 等旧词不再使用（`bangto/world/vocabulary.spec.md` v2.0 废弃别名表）。
 
-**本包落点**：`TrigLoopPolicy → TrigSupervisor`（`trig.mbt:223` + `engine.mbt:227/240/314/344/353`）；
-`Hooks → TrigActionsImpl`（`actions.mbt:9` + `engine.mbt` 字段）。**执行**归 T13（跨仓原子变更，
+**本包落点**：`TrigLoopPolicy → TrigSupervisor`（`trig.mbt:223` + `gen_trig/engine.mbt:227/240/314/344/353`）；
+`Hooks → TrigActionsImpl`（`gen_trig/actions.mbt:9` + `engine.mbt` 字段）。**执行**归 T13（跨仓原子变更，
 与 T10 门同笔最省）。
 
 **为什么收进本卷**：世界卷的命名 ADR 是跨模块决策；本卷只记录"本包如何落地、何时执行"。
@@ -217,7 +217,7 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 
 **验证**：`moon test src/gen_trig` **80/80**（四套件 357/316/36/75 不变）；
 `moon test src/rdf` **21/21**（产物黄金门对新产物仍逐字节绿）；模块 **329/329**；
-验收锚点：`engine.mbt:404`（调用点）+ `:476/489/496/504/513`（impl）。
+验收锚点：`gen_trig/engine.mbt:404`（调用点）+ `:476/489/496/504/513`（impl）。
 
 **风险/遗留**：图块语义（ADR-TRIG-008 双路由）未被收形改动；Turtle 路径仍走数组旧口径（ADR-5）。
 

@@ -163,7 +163,7 @@ trig 80、外层 n3gen 9/9（零再生实证）；turtle 316/316、rdf12 75/75
 
 **翻案（ADR-003a 单发认知）**：表内 Sequence 构造唯一（BnpAfterObject+Rbracket
 = 单发 [EmitQuad(PredObj), PopBnp]）不等于全系统单发——役18 `path_obj_close`
-（actions.mbt:929，用户层）动态构造**三发**
+（gen_n3v2/actions.mbt:929，用户层）动态构造**三发**
 `[EmitQuad(SPO), PopBnp, EmitQuad(scope)]`。首版 interpret 单缓冲
 （pending 覆盖式）丢首跳，役18 钉红实证（`1 != 2`）。裁定：`emit_queue`
 下沉 `N3Context`（引擎字段退役），interpret Sequence 臂罩外 EmitQuad 逐条
@@ -493,9 +493,9 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 只按 `trans` 的 `from/to` 建邻接表 + 自初始态 BFS），**n3gen 门当场红（9/10）**，报两个"不可达态"：
 
 - `ExpectVerbRequired` —— **表行参数入口**：由 `action_args` 的 `state:ExpectVerbRequired` 携带
-  （现表内 `state:` 参数 **51 处 / 12 个不同态**）→ `open_collection` 入帧 → `actions.mbt:172`
+  （现表内 `state:` 参数 **51 处 / 12 个不同态**）→ `open_collection` 入帧 → `gen_n3v2/actions.mbt:172`
   （`ctx.state = frame.ret_state`）兑现；
-- `BnpIdAfterClose` —— **手写锚点入口**：`actions.mbt:200`（`set_id_subject` 写 `frame.ret_state = N3BnpIdAfterClose`）
+- `BnpIdAfterClose` —— **手写锚点入口**：`gen_n3v2/actions.mbt:200`（`set_id_subject` 写 `frame.ret_state = N3BnpIdAfterClose`）
   → 同点兑现；表内只有出边（`n3v2_trans.toml:550`）。
 
 另有一类危险源：**模板占位行**（`n3v2_base.toml` `{from = "$directive", on = "ForAllKw", to = "$var"},`，9 处含 `$`）
@@ -511,9 +511,9 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 
 1. **可达源三源**（缺一即假红）：
    ① `to =` 表边（**含模板 `$param` 展开后的真名**）；
-   ② 表行 **`state:X` 参数**（`action_args` → `OpenSlot` / `open_collection` → 帧 → `actions.mbt:172` 兑现）；
+   ② 表行 **`state:X` 参数**（`action_args` → `OpenSlot` / `open_collection` → 帧 → `gen_n3v2/actions.mbt:172` 兑现）；
    ③ **手写锚点登记**：`ctx.state = …` 直写与 `frame.ret_state = …` 改写共 **4 点**
-      （`actions.mbt:172` / `:200` / `:529` / `:719` / `:976`），逐条登记 `state ← 写入点 file:line + 一句语义`
+      （`gen_n3v2/actions.mbt:172` / `:200` / `:529` / `:719` / `:976`），逐条登记 `state ← 写入点 file:line + 一句语义`
       （与役23 R-01 的 `[R-03-N]` 锚同源，**禁止锚点只活在代码注释里**）。
 2. **两前置**：A 模板 `$param` **先展开再建边**；B `terminal_states` **可选声明**（否则"无出边"误判 dead）。
 3. **分级**：三源之外才报"真不可达"；G11 首版落 **警告级**（不 pin 失败），
@@ -544,7 +544,7 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 也被接受，与 WG 语法不一致，且与 nquads 的口径不对称。
 
 **对照口径（nquads，本仓对齐基准）**：`SliceParser` 持 `rdf12 : Bool`
-（`parser_slice.mbt:8/17`，**默认 `true` = RDF 1.2**），语义 = **语法版本**；
+（`gen_nquads/parser_slice.mbt:8/17`，**默认 `true` = RDF 1.2**），语义 = **语法版本**；
 `validate_helper.mbt` 由它门控 `--ltr/--rtl`（`:427/491`）与 langString 变体（`:616/621`）。
 
 **裁决（与 gen_trig 同批，题 B 统一模式开关）**：

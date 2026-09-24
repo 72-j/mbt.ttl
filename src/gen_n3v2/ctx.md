@@ -72,19 +72,19 @@
 - 成员：`handle_continue / handle_emit_quad / handle_reset / handle_done / handle_sequence /
   handle_pop_bnp / handle_open_slot`、`snapshot`、`apply_scope`、`on_exit_graph`、`on_pop_bnp`、
   `on_open_slot`、`interpret`；配套 `N3EffectOutcome`（`n3.mbt:2100`）。
-- 现状（役22 接活后）：`interpret` = **唯一解释器**，`engine.next`（`engine.mbt:577`）只做
-  "取事件 → step → interpret → 上抛"；倒装/注解壳交换已下沉 `N3Context::take_pending`（`engine.mbt:517`）；
+- 现状（役22 接活后）：`interpret` = **唯一解释器**，`engine.next`（`gen_n3v2/engine.mbt:577`）只做
+  "取事件 → step → interpret → 上抛"；倒装/注解壳交换已下沉 `N3Context::take_pending`（`gen_n3v2/engine.mbt:517`）；
   `apply_scope`（`n3.mbt:2108`）调用 `N3Context::reset`（`n3.mbt:216`）而非另实现。
   ⚠ `dispatch` 已不存在（旧卷记载作废）。
 - 挂点用途：观测（quad 计数 / span 范围）与容灾（丢弃 / 改写 / 降级）都经此面。
 
 ### 成员 ③ `N3Supervisor`（控制流 Hook；旧名 `N3LoopPolicy`，2026-09-13 已改名）
 
-- 声明 / 实现锚点：`n3.mbt:282` / `engine.mbt:350`（`begin_record`）、`:366`（`recover`）、
+- 声明 / 实现锚点：`n3.mbt:282` / `gen_n3v2/engine.mbt:350`（`begin_record`）、`:366`（`recover`）、
   `:423`（`finish_at_end`）、`:454`（`on_business_failed`）；模板注释 `emit.mbt:660`。
 - 契约：循环骨架固定（入口/终止 → step → interpret → 错误降级），领域知识全在 4 钩子。
 - 钩子语义：`begin_record` 会话起点（计数器/trace 注入）｜`recover` 容灾决策点（现行 = 记录 +
-  清栈 + `consume_to_recover_point`，`engine.mbt:388`）｜`finish_at_end` 脏尾兜底（⚠ 自排水不许破坏，
+  清栈 + `consume_to_recover_point`，`gen_n3v2/engine.mbt:388`）｜`finish_at_end` 脏尾兜底（⚠ 自排水不许破坏，
   否则 `parse_all` 死循环）｜`on_business_failed` 失败映射（现行 = `ParseError::SyntaxErr`）。
 - **命名已对齐（沿革）**：world 词表（v2.0）把 `LoopPolicy` 列为废弃别名、正名为 `Supervisor`；
   本包已于 **2026-09-13 落地改名**（**ADR-33** + **役34**）：`N3LoopPolicy → N3Supervisor`——
@@ -99,7 +99,7 @@
 | 观测：步级 trace (state,event,effect) | ③ `Supervisor` 或 ② `EffectHandler` | **需新增钩子**（现无步级挂点） |
 | 观测：quad 计数 / span 范围 | ② `interpret` 的 EmitQuad 臂 | 可以（役22 接活） |
 | 容灾：丢弃 / 改写 / 降级为注释 | ② `interpret` | 可以（效果面全控，役22 题1=A） |
-| 容灾：错误分类 / skip / 重试 | ③ `recover` | 可以（机械在 `engine.mbt:388`，切面在此决策） |
+| 容灾：错误分类 / skip / 重试 | ③ `recover` | 可以（机械在 `gen_n3v2/engine.mbt:388`，切面在此决策） |
 | 观测/容灾：会话级注入 | ③ `begin_record` | 可以 |
 
 **切面纪律**：默认实现 = 现行行为；切面**零语义副作用**且可开关；开/关两态下套件判据必须一致。
@@ -112,15 +112,15 @@
 |---|---|
 | 役N | 一次可独立交付/验收的战役编号（`adr.md`） |
 | ADR-00X | 语义裁决编号：002 公式不透明 / 003a 集合单一 BNode / 003b 显式链预留 / 004 变量只记身份 / 005 规则与等同谓词 / 006 路径 fresh 链 |
-| 罩 | 公式帧在栈上；"罩内" = `N3Context::under_formula`（`engine.mbt:336`）为真 |
+| 罩 | 公式帧在栈上；"罩内" = `N3Context::under_formula`（`gen_n3v2/engine.mbt:336`）为真 |
 | 胶 | 词法吞边界，相邻标点粘进词项 span（如 `"x"@en,` 的 `,`） |
-| 归位点 | 事件进表前的引擎预处理点（`N3Engine::normalize_term_span`，`engine.mbt:192`） |
+| 归位点 | 事件进表前的引擎预处理点（`N3Engine::normalize_term_span`，`gen_n3v2/engine.mbt:192`） |
 | 账 | ctx 上的记账数组/字段（`prefixes` / `bases` / `kw_ledger` / `is_src` / 壳账四字段） |
 | 门 | 生成器门 G1–G13（外层仓）与物化四门（`gate_iri` 等） |
 | 钉 | 断言式测试（数字写死，漂移即红） |
 | 死位 / 预留位 | 有意保留但当前不生效的口径（ADR-003b 的 `RDFFirst/RDFRest`；`graph` 恒 `None`；`iri_upcast` 为**活机制**非死位） |
 | 桶 | 套件分类记账（neg / pos / eval、deferred / mat-only 等） |
-| 自排水 | `finish_at_end` 报告一次即清零，防 `parse_all` 无限重报（`engine.mbt:423`） |
+| 自排水 | `finish_at_end` 报告一次即清零，防 `parse_all` 无限重报（`gen_n3v2/engine.mbt:423`） |
 
 > `Contract` / `Policy` / `Assembly`(asm) / `Business` / `Supervisor` / `Runtime` / `Aspect` / `Hook`
 > 的定义与废弃别名（`Biz` / `User` / `Impl` / `LoopPolicy`）见 `bangto/world/vocabulary.spec.md`，本卷不复制。
@@ -136,13 +136,13 @@
 
 | R | 役 | ADR | 现口径（一句） | 现行锚点 |
 |---|---|---|---|---|
-| R-01 | 役23 | ADR-24 | 状态权威 = 表边为主 + 3 处破例入册（id 特例刻帧 + pop 无条件读帧） | `actions.mbt:172/529/719`；`spec.md` §5.1 |
-| R-02 | 役22 | ADR-22 | `interpret` 唯一解释器；engine 只做控制流；`take_pending` 下沉 ctx | `n3.mbt:2044/2128`；`engine.mbt:517/577` |
-| R-03 | 役23 | ADR-24 | 归位点分类清单（A 直写 / B 引擎归位 / C 关键词真相）；事件重分类出表模型 | `spec.md` §5.1；`engine.mbt:136/171/192` |
-| R-04 | 役29 | ADR-29 | 短期 = 补偿点单点台账（六点地图 + 钉面清单）；长期见 §4.2 | `lexer_adapter.mbt` 头注；`engine.mbt:84` |
-| R-05 | 役24 | ADR-25 | `error_spans` 累积 + recover 拆层 + drain 三点保文件序 | `parser_slice.mbt:52`；`engine.mbt:366` |
-| R-06 | 役24 | ADR-25 | 零长 span 带内通道保留 + 物化验形双门（唯一构造点 `pop_bnode_prop`） | `materialize_n3.mbt:683`；`actions.mbt:137` |
-| R-07 | 役25 | ADR-23 | 三 runner 双判 + 绝对计数钉 + 桶闭合钉 | `rdf_suite_wbtest.mbt:116/118`；`n3tests_suite_wbtest.mbt:50` |
+| R-01 | 役23 | ADR-24 | 状态权威 = 表边为主 + 3 处破例入册（id 特例刻帧 + pop 无条件读帧） | `gen_n3v2/actions.mbt:172/529/719`；`spec.md` §5.1 |
+| R-02 | 役22 | ADR-22 | `interpret` 唯一解释器；engine 只做控制流；`take_pending` 下沉 ctx | `n3.mbt:2044/2128`；`gen_n3v2/engine.mbt:517/577` |
+| R-03 | 役23 | ADR-24 | 归位点分类清单（A 直写 / B 引擎归位 / C 关键词真相）；事件重分类出表模型 | `spec.md` §5.1；`gen_n3v2/engine.mbt:136/171/192` |
+| R-04 | 役29 | ADR-29 | 短期 = 补偿点单点台账（六点地图 + 钉面清单）；长期见 §4.2 | `lexer_adapter.mbt` 头注；`gen_n3v2/engine.mbt:84` |
+| R-05 | 役24 | ADR-25 | `error_spans` 累积 + recover 拆层 + drain 三点保文件序 | `gen_n3v2/parser_slice.mbt:52`；`gen_n3v2/engine.mbt:366` |
+| R-06 | 役24 | ADR-25 | 零长 span 带内通道保留 + 物化验形双门（唯一构造点 `pop_bnode_prop`） | `materialize_n3.mbt:683`；`gen_n3v2/actions.mbt:137` |
+| R-07 | 役25 | ADR-23 | 三 runner 双判 + 绝对计数钉 + 桶闭合钉 | `gen_n3v2/rdf_suite_wbtest.mbt:116/118`；`n3tests_suite_wbtest.mbt:50` |
 | R-08 | 役28 | ADR-28 | 生成件与装配层机械降 `priv`；`.mbti` 只留入口 + 数据面（pub 55→29 行） | `emit.mbt`（模板 priv 化）；`pkg.generated.mbti` |
 | R-09 | 役26 | ADR-26 | 0 warning（全模块 30 条清零）；死字段先改表源再生 | `n3v2_base.toml`；`moon check` |
 | R-10 | 役27a/28 | ADR-27·28 | `prefix_version/base_version/iri_version`；`fr→frame`；`Hooks→N3ActionsImpl` | `types.mbt`；`actions.mbt`；trig 同笔 |
@@ -151,7 +151,7 @@
 | R-13 | 役28 | ADR-28 | 组清方法：`clear_annotation`（四件套）/ `clear_path`（三槽）；keywords/directive 不立项 | `engine.mbt` ctx 方法区；`actions.mbt` |
 | R-14 | 役30 | ADR-30 | 交叉族全部改为**子机声明 + 构建期求积**；G10 装配门；声明面 schema 见 `spec.md` §10.6 | `compose.mbt:161`；`validate.mbt:687`；`n3v2_base.toml` |
 | R-15 | 役29 | ADR-29 | 识别件单点 `gen_nquads/numeric.mbt`（八消费点三面收编；展开件留各物化层） | `numeric.mbt`；`rg "has_digit" src` 单点 |
-| （口径对齐，非 R） | — | **ADR-32** | **RDF 1.2 单开关**：`scalar_only_escapes → rdf12`（构造默认 `true`=1.2，对齐 nquads）；一个开关门控转义代理 + 方向后缀 `--ltr/--rtl`（1.1 显式拒） | `materialize_n3.mbt:30/47/1230`；`rdf_suite_wbtest.mbt:101`（rdf11 显式 `false`）；钉子 `materialize_n3_wbtest.mbt`（双向） |
+| （口径对齐，非 R） | — | **ADR-32** | **RDF 1.2 单开关**：`scalar_only_escapes → rdf12`（构造默认 `true`=1.2，对齐 nquads）；一个开关门控转义代理 + 方向后缀 `--ltr/--rtl`（1.1 显式拒） | `materialize_n3.mbt:30/47/1230`；`gen_nquads/rdf_suite_wbtest.mbt:101`（rdf11 显式 `false`）；钉子 `materialize_n3_wbtest.mbt`（双向） |
 
 ### 4.2 存活项上下文（[立案]，完整七字段）
 
@@ -160,7 +160,7 @@
 - 目标：词法边界欠账不再"一次改动四处同步"——adapter 退回纯分类，方言差异收进词法器本身。
 - 锚点：`gen_nquads/lexer_mbt.mbt`（Moon 词法器）+ `lexerc_ffi.c`（C 词法器，**必须同步**）；
   `lexer_adapter.mbt`（①`[]` 合并 ②`?x` peek ③`@kw:` 拆字 ④`<-` 拆字 ⑤langtag 拆字）；
-  `engine.mbt:84`（尾标点三瓣 + 合成事件回灌）。
+  `gen_n3v2/engine.mbt:84`（尾标点三瓣 + 合成事件回灌）。
 - 现状证据：役29 只做了**补偿点台账**（头注六点地图 + 钉面清单），五点仍在 adapter 内就地手术；
   ADR-18 的 `^` 门事故即"一次词法口径变动牵动 Moon/C/适配/引擎"的实证。
 - 动作：给共享 `Lexermoon` 加方言参数（消费方言能力表）→ 五点并入词法扫描 → adapter 退化为分类器 →
@@ -174,8 +174,8 @@
 #### R-16 影子缺口修口 `[立案]`（C-16 + C-17）
 
 - 目标：把影子扫描暴露的**真校验缺口**修掉，使校验层能进主判定链（`lenient=true` 旁路可撤）。
-- 锚点：`parser_slice.mbt:63`（`prefix_declared`）、`:263`（`validate_term`）、`:364`（`validate_prefname`）；
-  影子面 `rdf_suite_wbtest.mbt:118`、`n3tests_suite_wbtest.mbt`（skip 名单）、`examples_wbtest.mbt`。
+- 锚点：`gen_n3v2/parser_slice.mbt:63`（`prefix_declared`）、`:263`（`validate_term`）、`:364`（`validate_prefname`）；
+  影子面 `gen_n3v2/rdf_suite_wbtest.mbt:118`、`n3tests_suite_wbtest.mbt`（skip 名单）、`examples_wbtest.mbt`。
 - 现状证据（strict-gap 基线 **5 / 0 / 123 / 13**，役25 冻结）：
   ① C-16 主因 **486 处**——N3/cwm 内建前缀（`log:` / `string:` + 隐式空前缀）不声明即用，
   官方正例 `extra/good_prefix.n3` 也翻；② C-17 次因 **2 处**——`<=`（`=>` 同构）作为 raw 谓词
@@ -252,19 +252,19 @@
 |---|---|
 | 契约成员声明 | `n3.mbt:282`（trait 名 `N3Supervisor`，旧名 `N3LoopPolicy`）、`:299`（Actions）、`:2044`（EffectHandler） |
 | 效果解释器 | `n3.mbt:2128`（impl `interpret`）、`:2108`（`apply_scope`）、`:2100`（`N3EffectOutcome`）；`emit.mbt:1085`（套装生成） |
-| ctx 基座 | `n3.mbt:148`（struct）、`:216`（reset）、`:264`（snapshot）；`engine.mbt:517`（take_pending） |
-| 主循环 | `engine.mbt:577`（`next`）、`:336`（under_formula）、`:388`（consume_to_recover_point） |
-| Supervisor 四钩子 | `engine.mbt:350` / `:366` / `:423` / `:454`；模板 `emit.mbt:660` |
-| 归位点 | `engine.mbt:84`（trim_trailing_punct）、`:136`（kw_ledger_hits）、`:171`（is_deprecated_this）、`:192`（normalize_term_span） |
-| 状态直写三处 | `actions.mbt:172`、`:529`、`:719`（全入册 `spec.md` §5.1-A） |
-| 路径机器 | `actions.mbt:370`（path_hop_resolve）、`:563`（path_tail_hop_resolve）、`:938`（path_obj_close） |
-| 集合 / 帧 | `actions.mbt:137`（pop_bnode_prop）、`:990`（list_top）、`:1002`（list_first） |
-| 倒装 / 等同 / 注解 | `actions.mbt:1115`（is_of）、`:1128`（set_inversion）、`:1142`（set_sameas）、`:1155` 起（annot_*） |
-| 组装 / 校验 | `parser_slice.mbt:431`（assemble）、`:263`（validate_term）、`:364`（validate_prefname）、`:63`（prefix_declared）、`:52`（drain_engine_errors） |
+| ctx 基座 | `n3.mbt:148`（struct）、`:216`（reset）、`:264`（snapshot）；`gen_n3v2/engine.mbt:517`（take_pending） |
+| 主循环 | `gen_n3v2/engine.mbt:577`（`next`）、`:336`（under_formula）、`:388`（consume_to_recover_point） |
+| Supervisor 四钩子 | `gen_n3v2/engine.mbt:350` / `:366` / `:423` / `:454`；模板 `emit.mbt:660` |
+| 归位点 | `gen_n3v2/engine.mbt:84`（trim_trailing_punct）、`:136`（kw_ledger_hits）、`:171`（is_deprecated_this）、`:192`（normalize_term_span） |
+| 状态直写三处 | `gen_n3v2/actions.mbt:172`、`:529`、`:719`（全入册 `spec.md` §5.1-A） |
+| 路径机器 | `gen_n3v2/actions.mbt:370`（path_hop_resolve）、`:563`（path_tail_hop_resolve）、`:938`（path_obj_close） |
+| 集合 / 帧 | `gen_n3v2/actions.mbt:137`（pop_bnode_prop）、`:990`（list_top）、`:1002`（list_first） |
+| 倒装 / 等同 / 注解 | `gen_n3v2/actions.mbt:1115`（is_of）、`:1128`（set_inversion）、`:1142`（set_sameas）、`:1155` 起（annot_*） |
+| 组装 / 校验 | `gen_n3v2/parser_slice.mbt:431`（assemble）、`:263`（validate_term）、`:364`（validate_prefname）、`:63`（prefix_declared）、`:52`（drain_engine_errors） |
 | 物化门 | `materialize_n3.mbt:683`（materialize_quad）、`:1008`（materialize_all）、`:1107` 起（gate_iri 等四门） |
 | 生成链 | `compose.mbt:161`（n3gen_compose）、`emit.mbt:1273`（n3gen_build）、`validate.mbt:687`（G10 装配门）、`:567`（G11 可达性）、`:489`（可达性报告纯函数）、`:558`（`n3_g11_strict`） |
 | 生成门测试 | `src/rdf/n3gen/n3gen_test.mbt:31`（G1）→ `:209`（G9）→ `:234`（G12）→ `:284`（G13） |
-| 套件 runner | `rdf_suite_wbtest.mbt:116/118`、`n3tests_suite_wbtest.mbt:50`、`examples_wbtest.mbt:9` |
+| 套件 runner | `gen_n3v2/rdf_suite_wbtest.mbt:116/118`、`n3tests_suite_wbtest.mbt:50`、`examples_wbtest.mbt:9` |
 
 ---
 

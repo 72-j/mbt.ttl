@@ -138,7 +138,7 @@ moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 |---|---|
 | 范围 | `src/fsm/codegen_effects.mbt`（队列模式 interpret 发射，数据驱动开关）+ `domain2/trig_base.toml`（`emit_queue` ctx 字段）+ `gen_trig/engine.mbt`（loop 纯化 + handler 接活） |
 | 交付 | `interpret` 唯一解释器；观测/容灾切面可挂；`emit_queue` 下沉 ctx（Sequence 多发不丢） |
-| 验收 | `moon test src/gen_trig` **80/80**（四套件 357/316/36/75 不变）；`moon test src/rdf` **21/21**（产物黄金门对新产物仍逐字节绿）；模块 329/329；锚点 `engine.mbt:404` + `:476/489/496/504/513` |
+| 验收 | `moon test src/gen_trig` **80/80**（四套件 357/316/36/75 不变）；`moon test src/rdf` **21/21**（产物黄金门对新产物仍逐字节绿）；模块 329/329；锚点 `gen_trig/engine.mbt:404` + `:476/489/496/504/513` |
 | 风险 | 图块双路由语义未动（ADR-TRIG-008）；Turtle 路径仍走数组旧口径（ADR-5） |
 | 待裁 | 题T1 = **A 落地** |
 
@@ -152,7 +152,7 @@ moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 | 风险 | 数组函数路由侧零消费（留档，删除另役）；Turtle 方言语义（禁图块）仍由运行时开关裁决 |
 | 待裁 | 无（与 ADR-5 口径一致：v1 TOML 只服务 nquads） |
 
-- 范围：`trig.mbt:1138–1168`（trait）+ `:1172` 起（默认 impl）+ `engine.mbt:364`（`next`）。
+- 范围：`trig.mbt:1138–1168`（trait）+ `:1172` 起（默认 impl）+ `gen_trig/engine.mbt:364`（`next`）。
 - 交付：`TrigEffectHandler` 有 impl + 调用点；观测/容灾切面可挂；效果语义只有一份。
 - 验收：`rg "TrigEffectHandler"` 出现 impl 与调用点；80/80；四套件数字不变；门绿。
 - 风险：**trig 有图块**——收形不得动 `EnterGraph`/`ExitGraph` 双路由语义（ADR-TRIG-008）。
@@ -168,8 +168,8 @@ moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 
 ### T13 命名回灌（R-T4）— P1，前置：T10
 
-- 范围：`TrigLoopPolicy → TrigSupervisor`（`trig.mbt:223` + `engine.mbt:227/240/314/344/353` + 文档）；
-  `Hooks → TrigActionsImpl`（`actions.mbt:9` + `engine.mbt` 字段）。
+- 范围：`TrigLoopPolicy → TrigSupervisor`（`trig.mbt:223` + `gen_trig/engine.mbt:227/240/314/344/353` + 文档）；
+  `Hooks → TrigActionsImpl`（`gen_trig/actions.mbt:9` + `engine.mbt` 字段）。
 - 交付：`grep -rn 'TrigLoopPolicy'` 只剩迁移记录。
 - 验收：门绿；80/80；`moon info` diff 只含改名。
 - 待裁：与 T10 同笔（跨仓最省）。
