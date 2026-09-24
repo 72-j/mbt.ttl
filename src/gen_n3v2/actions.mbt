@@ -1,5 +1,5 @@
 // ===== 装配层补充（Assembly）：Actions 实现（mutable 契约，与 trig N3ActionsImpl 同构） =====
-// 口径（与 n3.mbt 头注 / trig actions.mbt 同宪法）：
+// 口径（与 n3.mbt 头注 / trig actions.mbt 同宪法）；权威面见 `spec.md` §5.1/§6 与 `adr.md`：
 //   - action 只写槽位/账本，返回意图；永不重置 ctx，也拿不到数据视图
 //   - 与 trig 的语义差全部落在本文件（表形状同源，ADR-003a）：
 //     ① 集合族五动作：单一 BNode、不发链 quad、pred_kind 恒 Normal——
@@ -35,8 +35,8 @@ impl N3Actions for N3ActionsImpl with fn set_predicate(
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
   ctx.predicate = Some(payload)
-  // 役5：KeywordA 活性随行旗标（引擎归位点置位）此刻兑现落 pk——Comma
-  // 连发同谓词不再过 action，pk 快照直引保真；他谓词恒 Normal
+  // `a` 活性旗标（引擎归位点置位）在此兑现落 pk——Comma 连发同谓词不再过
+  // action，pk 快照直引保真；他谓词恒 Normal（`spec.md` §6 役5）
   ctx.pred_kind = if ctx.kw_a_live { PredKind::KwA } else { PredKind::Normal }
   ctx.kw_a_live = false
   Ok(N3Effect::Continue)
@@ -126,8 +126,8 @@ impl N3Actions for N3ActionsImpl with fn open_bnode_prop(
 
 ///|
 /// 区域栈：弹栈 action——恢复外层 s/p/g，区域身份落入目标槽（as_subject 定槽位），
-/// 返回状态兑现帧携带的决策（役23 R-01：id 特例前移刻帧后，此处无条件读
-/// frame.ret_state——actions 层 ctx.state 直写唯一机制位，归位清单 [R-03-1]）。
+/// 返回状态兑现帧携带的决策：id 特例已在刻帧时前移，此处无条件读
+/// frame.ret_state——本行是 ctx.state 直写唯一机制位 [R-03-1]（`spec.md` §5.1）。
 /// Bnp 帧与 Collection 帧共用本动作（Formula 帧同径：身份 = { span，无 nil 特判）；目标裁决：
 ///     （零长 span = 物化层 rdf:nil 识别位；ADR-003a"无 rdf:nil 发射"指不发
 ///     rest 链尾 quad，值位 nil 标记保留）
@@ -143,21 +143,21 @@ impl N3Actions for N3ActionsImpl with fn pop_bnode_prop(
       ctx.subject = frame.subject
       ctx.predicate = frame.predicate
       ctx.graph = frame.graph
-      // 役16 B 桶：`[ id :X p o ]` 语义锚——帧携 id_subject 时属性表施加于
-      // 该 IRI（语义 ≡ :x p o），fresh 开括号身份让位；无 id 走原径
+      // `[ id :X p o ]` 语义锚：帧携 id_subject 时属性表施加于该 IRI
+      //（语义 ≡ :x p o），fresh 开括号身份让位；无 id 走原径（`spec.md` §6 役16）
       let target = match frame.id_subject {
         Some(x) => x
         None =>
           if frame.typ is SlotType::Collection && frame.node_seq == 0 {
             // 空集合收口：无元素 = rdf:nil（Span(open.0, 0) 零长 in-band 标记，
-            // 全仓唯一构造点；物化层 nil 验形门校验 data[offset]=='('，役23 R-06）
+            // 全仓唯一构造点；物化层 nil 验形门校验 data[offset]=='('，R-06/ADR-25）
             (frame.open_span.0, 0)
           } else {
             // `[]` fresh / 非空集合单一 BNode：开括号 span 即身份（ADR-003a）
             frame.open_span
           }
       }
-      // 役10 三向：公式谓词位帧（as_pred）身份落 p 槽；主/宾位随 as_subject
+      // 三向落位（`spec.md` §6 役10/役11）：as_pred 帧身份落 p 槽，主/宾随 as_subject
       if frame.as_pred {
         ctx.predicate = Some(target)
       } else if frame.as_subject {
@@ -165,10 +165,10 @@ impl N3Actions for N3ActionsImpl with fn pop_bnode_prop(
       } else {
         ctx.object = Some(target)
       }
-      // 役23 R-01：state 兑现统一 = 帧携带返回态（OpenSlot ret 同机制）。
-      // id 形特例已前移 set_id_subject 刻帧（役16 B 桶语义注释随迁），此处
-      // 无条件读帧——本行是 actions 层 ctx.state 直写唯一机制位（归位清单
-      // [R-03-1]，spec §5）
+      // state 兑现统一 = 帧携带返回态（OpenSlot ret 同机制）；id 形特例已前移
+      // set_id_subject 刻帧，此处无条件读帧——本行是 ctx.state 直写唯一机制位，
+      // 破例登记 [R-03-1]：为何表内表达不了、为何恒可数 = `spec.md` §5.1 与
+      // `adr.md` ADR-24。
       ctx.state = frame.ret_state
       Ok(N3Effect::Continue)
     }
@@ -179,9 +179,9 @@ impl N3Actions for N3ActionsImpl with fn pop_bnode_prop(
 }
 
 ///|
-/// 役16 B 桶 iriPropertyList：`[ id :X p o ]`——id 事件化（is/of/has 同款），
-/// 后随 PrefName 落帧 id_subject（pop 落位权威，盖写 fresh 开括号身份），
-/// 兼刻下占 s 槽（属性施加于该 IRI）；p 清空候动词。
+/// iriPropertyList `[ id :X p o ]`——id 事件化（is/of/has 同款），后随 PrefName
+/// 落帧 id_subject（pop 落位权威，盖写 fresh 开括号身份），兼刻下占 s 槽
+///（属性施加于该 IRI）；p 清空候动词。（口径：`spec.md` §6 役16）
 impl N3Actions for N3ActionsImpl with fn set_id_subject(
   _self : N3ActionsImpl,
   ctx : N3Context,
@@ -190,12 +190,12 @@ impl N3Actions for N3ActionsImpl with fn set_id_subject(
   match ctx.slot_stack.last() {
     Some(frame) => {
       frame.id_subject = Some(payload)
-      // 役23 R-01：id 特例前移登记点——主位 id 形的收口态在刻帧时定，pop
-      // 兑现统一读帧，分叉判断不留在兑现点（帧携带 ret_state 先例：役14
-      // path_obj_close 按事件改写）。役16 B 桶语义：] 处 PredObj 已随 :X
-      // 出账完毕，语句完结；ret_state(ExpectVerbOrDot) 的 Dot 行会再发
-      // 不完整 SPO，故改指无出账闭合行 N3BnpIdAfterClose（object 位 id 形
-      // 身份落 o 槽续外层，不受影响）
+      // id 特例的登记点：主位 id 形的收口态在刻帧时定，pop 兑现统一读帧，
+      // 分叉判断不留在兑现点（帧携带 ret_state 先例 = path_obj_close 按事件
+      // 改写）。语义：`]` 处 PredObj 已随 :X 出账完毕、语句完结；而
+      // ret_state(ExpectVerbOrDot) 的 Dot 行会再发一条不完整 SPO，故改指
+      // 无出账闭合行 N3BnpIdAfterClose（object 位 id 形身份落 o 槽续外层，
+      // 不受影响）。（口径：`spec.md` §5.1 [R-03-1] + §6 役16）
       if frame.as_subject {
         frame.ret_state = N3BnpIdAfterClose
       }
@@ -237,11 +237,11 @@ impl N3Actions for N3ActionsImpl with fn open_collection(
 }
 
 ///|
-/// 集合谓位入口（役34）：帧携 as_pred——弹栈身份（单一 BNode = 开括号，
-/// ADR-003a；空集合 = nil 零长标记）落外层谓词槽。N3 CG 规范明文 collections
-/// 可居 any position（谓位合法），役10 verb::=expression 开位的收尾一笔。
-/// 入帧/占位记账与 open_collection 全同，仅 as_pred 置位；as_subject 恒 false
-///（谓位非主位，行参占位），pop 三向裁决按 as_pred 落 p 槽（帧型无关共用机械）。
+/// 集合谓位入口：帧携 as_pred——弹栈身份（单一 BNode = 开括号，ADR-003a；
+/// 空集合 = nil 零长标记）落外层谓词槽。N3 CG 规范明文 collections 可居
+/// any position（谓位合法），是「词位可放表达式」这一步的收尾（口径：
+/// `spec.md` §6 役34 + 役10）。入帧/占位记账与 open_collection 全同，仅
+/// as_pred 置位；as_subject 恒 false（行参占位），pop 三向按 as_pred 落 p 槽。
 impl N3Actions for N3ActionsImpl with fn open_collection_pred(
   _self : N3ActionsImpl,
   ctx : N3Context,
@@ -321,9 +321,9 @@ impl N3Actions for N3ActionsImpl with fn open_formula(
 /// 恢复外层槽位 + 身份落位 + 返回状态兑现——list_nil 同款形状）。
 
 ///|
-/// 公式谓词位入口（役10）：帧携 as_pred——弹栈身份落外层谓词槽（bad-preds-formula
+/// 公式谓词位入口：帧携 as_pred——弹栈身份落外层谓词槽（bad-preds-formula
 /// 正典 `:e { :f :g :h } :i .`）。入帧快照/内层清空与 open_formula 全同，仅
-/// as_pred 置位；ret_state 由行定夺（各区宾态）。
+/// as_pred 置位；ret_state 由行定夺（各区宾态）。（口径：`spec.md` §6 役10）
 impl N3Actions for N3ActionsImpl with fn open_formula_pred(
   _self : N3ActionsImpl,
   ctx : N3Context,
@@ -350,9 +350,9 @@ impl N3Actions for N3ActionsImpl with fn open_formula_pred(
 }
 
 ///|
-/// 区域栈：`[]` 谓词位入口（役11，anon-prop 正典）——同 open_formula_pred 教义，
-/// 帧携 as_pred=true（pop 三向支役10 已建）；内容 = fresh 主语属性表
-///（subject 装 fresh，同 open_bnode_prop），帧型 BnodeProp。
+/// 区域栈：`[]` 谓词位入口（anon-prop 正典；口径：`spec.md` §6 役11）——
+/// 同 open_formula_pred 教义，帧携 as_pred=true（pop 三向裁决按 as_pred）；
+/// 内容 = fresh 主语属性表（subject 装 fresh，同 open_bnode_prop），帧型 BnodeProp。
 impl N3Actions for N3ActionsImpl with fn open_bnode_pred(
   _self : N3ActionsImpl,
   ctx : N3Context,
@@ -387,7 +387,7 @@ impl N3Actions for N3ActionsImpl with fn close_formula(
   Ok(N3Effect::PopBnp)
 }
 
-// —— !/^ 路径区（ADR-006 + spec §4.7：跟随谓语；役3）——
+// —— !/^ 路径区（ADR-006 + `spec.md` §4.7：跟随谓语；口径 `spec.md` §6 役3）——
 // desugar = fresh 中间节点链：每操作符一个中间节点（身份 = 操作符 token
 // span），中间跳急发 EmitQuad(SPO)，末跳只装 ctx 槽（发射交既有收口行
 // Dot/Comma/Semicolon——零新发射语义）。方向旗标 path_fwd 随操作符事件
@@ -553,8 +553,8 @@ impl N3Actions for N3ActionsImpl with fn path_end_nested(
     // 拒绝落点：state 已随行进到嵌套态——原地拨回 ExpectDotOrGraph，
     // 后续流走 UnexpectedEvent 正规恢复（skip-to-Dot），不出垃圾内部
     // quad（BusinessFailed 本身不 resync，context 带病续跑）。
-    // 役23 R-03 归位清单 [R-03-2]：同 (from,on) 行内按链形（path_fwd）
-    // 异判，静态表行表达不了（spec §5）
+    // 归位清单 [R-03-2]：同 (from,on) 行内按链形（path_fwd）异判，静态表行
+    // 表达不了——"为何"入册 `spec.md` §5.1-A（`adr.md` ADR-24）
     ctx.path_src = None
     ctx.path_pend = None
     ctx.state = N3ExpectDotOrGraph
@@ -579,11 +579,11 @@ impl N3Actions for N3ActionsImpl with fn path_end_nested(
   N3Actions::open_slot(self, ctx, open_span, typ, ret_state)
 }
 
-// —— 尾随路径区（役14，B 桶）：主位/元素位/宾位路径贴前置节点——语料
-// 16/16 全此形态，役3 裸入口谓词位读法（path_end 吞下一原子当终跳宾语）
-// 语料零出现，入口行改道。desugar（F = 操作符 token span fresh，ADR-006
-// 同教义；链账全字段化 path_src/path_pend/path_tail，statement 槽位不中途
-// 占用——发射快照与回装分行动作过单效果墙）：
+// —— 尾随路径区：主位/元素位/宾位路径贴前置节点——语料 16/16 全此形态；
+// 裸入口谓词位读法（path_end 吞下一原子当终跳宾语）语料零出现，入口行改道。
+// desugar（F = 操作符 token span fresh，ADR-006 同教义；链账全字段化
+// path_src/path_pend/path_tail，statement 槽位不中途占用——发射快照与回装
+// 分行动作过单效果墙）（口径：`spec.md` §6 役14 + 役3）：
 //   S !P verb O ≡ (S,P,F) . (F,verb,O)     S ^P verb O ≡ (F,P,S) . (F,verb,O)
 //   (…, N!P, …) ≡ 边 (N,P,F)，元素 := F     obj 位 N!P ≡ (S,P,F) . (N,P,F)
 
@@ -738,13 +738,13 @@ impl N3Actions for N3ActionsImpl with fn path_subj_end(
 ) -> Result[N3Effect, N3ActionError] {
   let src = match ctx.path_src {
     Some(src) => src
-    // 役16 C 桶（path2）：动词位链（`q!Q O`——path_verb_hop 后源位恒 None）
-    // 终原子非终跳而是真宾语——落位 (尾, 押步动词, 原子)；state 拨回
-    // ExpectDotOrGraph（行 to 态 SubjTrailVerbDone 供主位链流，动词位链流
-    // 到宾即语句完形——state 随链形改写，pop 例外同款）。
-    // 役23 R-03 归位清单 [R-03-3]：两链形在 SubjTrailAfterStep 汇合
-    // （谓词链 path_step 每步同入），同 (from,on) 行内按链形（path_src）
-    // 分派，静态表行表达不了（spec §5）。
+    // 动词位链（`q!Q O`——path_verb_hop 后源位恒 None）：终原子非终跳而是真
+    // 宾语——落位 (尾, 押步动词, 原子)；state 拨回 ExpectDotOrGraph（行 to 态
+    // SubjTrailVerbDone 供主位链流，动词位链流到宾即语句完形——state 随链形
+    // 改写，pop 例外同款）（口径：`spec.md` §6 役16）。
+    // 归位清单 [R-03-3]：两链形在 SubjTrailAfterStep 汇合（谓词链 path_step
+    // 每步同入），同 (from,on) 行内按链形（path_src）分派，静态表行表达不了
+    //——"为何"入册 `spec.md` §5.1-A（`adr.md` ADR-24）。
     None => {
       let r = N3Actions::path_subj_object(_self, ctx, verb)
       ctx.state = N3ExpectDotOrGraph
@@ -800,10 +800,10 @@ impl N3Actions for N3ActionsImpl with fn path_subj_object(
 }
 
 ///|
-/// 役16 C 桶（path2）：真谓词后继跳 `q!Q O` / `q^Q O`——押步动词先被
-/// path_subj_end 押回账当谓词，此处急发跳边 (尾, 押步, 新 fresh)（反跳
-/// (新 fresh, 押步, 尾)），尾接棒新 op span、押步清、源位不动（主位链账
-/// 不回头）；后随原子经 path_verb_hop 后源位恒 None，终原子由
+/// 真谓词后继跳 `q!Q O` / `q^Q O`（动词位链；口径：`spec.md` §6 役16）——
+/// 押步动词先被 path_subj_end 押回账当谓词，此处急发跳边 (尾, 押步, 新
+/// fresh)（反跳 (新 fresh, 押步, 尾)），尾接棒新 op span、押步清、源位不动
+///（主位链账不回头）；后随原子经 path_verb_hop 后源位恒 None，终原子由
 /// path_subj_end 源缺回退 path_subj_object 落位。
 impl N3Actions for N3ActionsImpl with fn path_verb_hop(
   _self : N3ActionsImpl,
@@ -960,12 +960,12 @@ impl N3Actions for N3ActionsImpl with fn path_elem_close(
 
 ///|
 /// 宾位尾跳收口（Dot/Comma/Semicolon 到位）：终跳边急发 + 外层语句双发，
-/// 帧 ret_state 按收口事件改写。役18 纠偏：旧径只发跳边，Dot 已随本行消费，
-/// pop 落位的外层语句 (帧 s, 帧 p, 终尾) 再无收口行可发——隔离语料槽位脏
-/// 报 "Incomplete triple"，整文件被后续语句覆写静默丢失（path2 14 =
-/// 纯跳边计数）。今帧身份改指终尾（多跳链末节点），序列追加第二条
-/// EmitQuad 于 pop 落位后出账：`, ` 续位各路径各得一语句，`;`/`.` 收口
-/// 各得其所，语义 = S P (O!Q) ≡ S P _:1 . _:1 Q O 全展开。
+/// 帧 ret_state 按收口事件改写。旧径只发跳边（Dot 已随本行消费，pop 落位的
+/// 外层语句 (帧 s, 帧 p, 终尾) 再无收口行可发）⇒ 槽位脏报 "Incomplete
+/// triple"、整文件被后续语句覆写静默丢失（path2 14 = 纯跳边计数）。今帧
+/// 身份改指终尾（多跳链末节点），序列追加第二条 EmitQuad 于 pop 落位后
+/// 出账：`,` 续位各路径各得一语句，`;`/`.` 收口各得其所，语义 =
+/// S P (O!Q) ≡ S P _:1 . _:1 Q O 全展开。（口径：`adr.md` ADR-18）
 impl N3Actions for N3ActionsImpl with fn path_obj_close(
   _self : N3ActionsImpl,
   ctx : N3Context,
@@ -1110,8 +1110,8 @@ impl N3Actions for N3ActionsImpl with fn list_nil(
   Ok(N3Effect::PopBnp)
 }
 
-// —— @keywords 关键词声明（役5）：cwm 口径全量重置——台账跨语句存续
-//（ResetScope 只触 s/p/o/g，不触台账；新 @keywords 入口即清账重声明）——
+// —— @keywords 关键词声明：cwm 口径全量重置——台账跨语句存续（ResetScope
+// 只触 s/p/o/g，不触台账；新 @keywords 入口即清账重声明；口径 `spec.md` §6 役5）——
 
 ///|
 /// @keywords 入口：清台账 + seen 置位（旧 listed 词即刻失格，含 `a`）
@@ -1136,7 +1136,7 @@ impl N3Actions for N3ActionsImpl with fn declare_keyword(
   Ok(N3Effect::Continue)
 }
 
-// —— is/of 集合等价倒装（役6：`X is P of Y ≡ Y P X`）——
+// —— is/of 集合等价倒装（`X is P of Y ≡ Y P X`；口径：`spec.md` §6 役6）——
 // grammar 序槽位（X 主 / P 谓 / Y 宾）不动，语义序出账全在引擎发射点互换
 //（take_pending_quad）：is_src = 交换键（主语 token span，全局唯一），
 
@@ -1153,9 +1153,9 @@ impl N3Actions for N3ActionsImpl with fn is_of(
 }
 
 ///|
-/// `<-` 倒装引导符（役16 A 桶）：`S <- P O` ≡ `O P S`——复用 is/of 倒装键
-///（is_src/is_depth；take_pending_quad 出账互换，span 身份键嵌套天然错键不换）。
-/// is/of 在 Of 处落键，`<-` 引导符即落键点；P/O 随后走标准谓词/宾位行。
+/// `<-` 倒装引导符：`S <- P O` ≡ `O P S`——复用 is/of 倒装键（is_src/is_depth；
+/// take_pending_quad 出账互换，span 身份键嵌套天然错键不换）。is/of 在 Of 处
+/// 落键，`<-` 引导符即落键点；P/O 随后走标准谓词/宾位行（口径：`spec.md` §6 役16）。
 impl N3Actions for N3ActionsImpl with fn set_inversion(
   _self : N3ActionsImpl,
   ctx : N3Context,
@@ -1165,8 +1165,8 @@ impl N3Actions for N3ActionsImpl with fn set_inversion(
   Ok(N3Effect::Continue)
 }
 
-// —— `=` 等同谓词（役7，ADR-005）：owl:sameAs 语法糖——役4 同构，操作符
-// token 占谓词槽，语义身份在 pk；Comma 连发同谓词不过 action（pk 直引保真）——
+// —— `=` 等同谓词（ADR-005：owl:sameAs 语法糖，操作符 token 占谓词槽，语义
+// 身份在 pk；Comma 连发同谓词不过 action，pk 直引保真；口径 `spec.md` §6 役7 + 役4）——
 
 ///|
 /// `=` 谓词：= token span 占谓词槽 + pk=SameAs（物化层展开 owl:sameAs）
@@ -1181,8 +1181,8 @@ impl N3Actions for N3ActionsImpl with fn set_sameas(
 }
 
 ///|
-/// 注解开壳（役8）：抄录锚 s/o 入壳账（槽位不动、不发射不收拾——发射意图
-/// 由动作返回值承载：主 quad 仍锚主语预发射，快照发生时壳账尚无旗 = 锚身出账）
+/// 注解开壳：抄录锚 s/o 入壳账（槽位不动、不发射不收拾——发射意图由动作
+/// 返回值承载：主 quad 仍锚主语预发射，壳账尚无旗 = 锚身出账；口径 §6 役8）
 impl N3Actions for N3ActionsImpl with fn annot_open(
   _self : N3ActionsImpl,
   ctx : N3Context,
@@ -1197,8 +1197,8 @@ impl N3Actions for N3ActionsImpl with fn annot_open(
 }
 
 ///|
-/// 注解体动词（役8）：首动词开体区旗（交换在引擎发射点 take：键 = subj ==
-/// annot_s），谓词槽位照 set_predicate 口径（kw_a_live 兑现落 pk）
+/// 注解体动词：首动词开体区旗（交换在引擎发射点 take：键 = subj == annot_s），
+/// 谓词槽位照 set_predicate 口径（kw_a_live 兑现落 pk；口径 §6 役8）
 impl N3Actions for N3ActionsImpl with fn annot_body_verb(
   _self : N3ActionsImpl,
   ctx : N3Context,
@@ -1212,8 +1212,8 @@ impl N3Actions for N3ActionsImpl with fn annot_body_verb(
 }
 
 ///|
-/// 注解收口（役8）：置收口旗 + 返回末体 quad 发射——take 消费旗（壳交换先
-/// 兑现在本 quad 上）后还原清账；槽位经 PredObj 粒度保锚主语，`;` 续锚直落
+/// 注解收口：置收口旗 + 返回末体 quad 发射——take 消费旗（壳交换先兑现在
+/// 本 quad 上）后还原清账；槽位经 PredObj 粒度保锚主语，`;` 续锚直落（§6 役8）
 impl N3Actions for N3ActionsImpl with fn annot_end(
   _self : N3ActionsImpl,
   ctx : N3Context,
@@ -1223,8 +1223,8 @@ impl N3Actions for N3ActionsImpl with fn annot_end(
 }
 
 ///|
-/// 注解静默收口（役8）：体尾分号后 |}——末体 quad 已随分号行出账（壳交换
-/// 已兑现），直清壳账零发射
+/// 注解静默收口：体尾分号后 |}——末体 quad 已随分号行出账（壳交换已兑现），
+/// 直清壳账零发射（口径 §6 役8）
 impl N3Actions for N3ActionsImpl with fn annot_close_silent(
   _self : N3ActionsImpl,
   ctx : N3Context,

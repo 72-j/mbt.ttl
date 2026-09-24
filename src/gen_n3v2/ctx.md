@@ -136,7 +136,7 @@
 
 | R | 役 | ADR | 现口径（一句） | 现行锚点 |
 |---|---|---|---|---|
-| R-01 | 役23 | ADR-24 | 状态权威 = 表边为主 + 3 处破例入册（id 特例刻帧 + pop 无条件读帧） | `gen_n3v2/actions.mbt:172/529/719`；`spec.md` §5.1 |
+| R-01 | 役23 | ADR-24 | 状态权威 = 表边为主 + 3 处破例入册（id 特例刻帧 + pop 无条件读帧） | `gen_n3v2/actions.mbt:172/560/750`；`spec.md` §5.1 |
 | R-02 | 役22 | ADR-22 | `interpret` 唯一解释器；engine 只做控制流；`take_pending` 下沉 ctx | `n3.mbt:2044/2128`；`gen_n3v2/engine.mbt:517/577` |
 | R-03 | 役23 | ADR-24 | 归位点分类清单（A 直写 / B 引擎归位 / C 关键词真相）；事件重分类出表模型 | `spec.md` §5.1；`gen_n3v2/engine.mbt:136/171/192` |
 | R-04 | 役29 | ADR-29 | 短期 = 补偿点单点台账（六点地图 + 钉面清单）；长期见 §4.2 | `lexer_adapter.mbt` 头注；`gen_n3v2/engine.mbt:84` |
@@ -256,10 +256,10 @@
 | 主循环 | `gen_n3v2/engine.mbt:577`（`next`）、`:336`（under_formula）、`:388`（consume_to_recover_point） |
 | Supervisor 四钩子 | `gen_n3v2/engine.mbt:350` / `:366` / `:423` / `:454`；模板 `emit.mbt:660` |
 | 归位点 | `gen_n3v2/engine.mbt:84`（trim_trailing_punct）、`:136`（kw_ledger_hits）、`:171`（is_deprecated_this）、`:192`（normalize_term_span） |
-| 状态直写三处 | `gen_n3v2/actions.mbt:172`、`:529`、`:719`（全入册 `spec.md` §5.1-A） |
-| 路径机器 | `gen_n3v2/actions.mbt:370`（path_hop_resolve）、`:563`（path_tail_hop_resolve）、`:938`（path_obj_close） |
-| 集合 / 帧 | `gen_n3v2/actions.mbt:137`（pop_bnode_prop）、`:990`（list_top）、`:1002`（list_first） |
-| 倒装 / 等同 / 注解 | `gen_n3v2/actions.mbt:1115`（is_of）、`:1128`（set_inversion）、`:1142`（set_sameas）、`:1155` 起（annot_*） |
+| 状态直写三处 | `gen_n3v2/actions.mbt:172`、`:560`、`:750`（全入册 `spec.md` §5.1-A） |
+| 路径机器 | `gen_n3v2/actions.mbt:401`（path_hop_resolve）、`:594`（path_tail_hop_resolve）、`:969`（path_obj_close） |
+| 集合 / 帧 | `gen_n3v2/actions.mbt:137`（pop_bnode_prop）、`:1021`（list_top）、`:1033`（list_first） |
+| 倒装 / 等同 / 注解 | `gen_n3v2/actions.mbt:1146`（is_of）、`:1159`（set_inversion）、`:1173`（set_sameas）、`:1186` 起（annot_*） |
 | 组装 / 校验 | `gen_n3v2/parser_slice.mbt:431`（assemble）、`:263`（validate_term）、`:364`（validate_prefname）、`:63`（prefix_declared）、`:52`（drain_engine_errors） |
 | 物化门 | `materialize_n3.mbt:683`（materialize_quad）、`:1008`（materialize_all）、`:1107` 起（gate_iri 等四门） |
 | 生成链 | `compose.mbt:161`（n3gen_compose）、`emit.mbt:1273`（n3gen_build）、`validate.mbt:687`（G10 装配门）、`:567`（G11 可达性）、`:489`（可达性报告纯函数）、`:558`（`n3_g11_strict`） |

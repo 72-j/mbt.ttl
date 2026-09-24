@@ -147,8 +147,8 @@ cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 | 编号 | 位置 | 触发 | 为何表内表达不了 |
 |---|---|---|---|
 | [R-03-1] | `gen_n3v2/actions.mbt:172`（pop_bnode_prop） | 区域弹栈兑现 | **机制位**：state 兑现统一读 `fr.ret_state`（帧携带，OpenSlot ret 同机制）；id 形特例已前移 set_id_subject 刻帧（役23 R-01）。帧值运行时才定，表行 `to=` 是常量——帧携带是表能表达"动态返回态"的唯一通道 |
-| [R-03-2] | `gen_n3v2/actions.mbt:529`（path_end_nested 拒绝臂） | 反向链 `^` 终于复合节点 | 同 (from,on) 行内按链形（`ctx.path_fwd`）异判；表行 guard 的 else 臂 = UnexpectedEvent（不 fallback 下一行），行分裂不可行——两链形同 from 态 |
-| [R-03-3] | `gen_n3v2/actions.mbt:719`（path_subj_end None 臂） | 动词位链终原子 | 同 [R-03-2]：主位/谓词两链形在 SubjTrailAfterStep 汇合（谓词链 path_step 每步同入，表行实证），按 `ctx.path_src` 分派 |
+| [R-03-2] | `gen_n3v2/actions.mbt:560`（path_end_nested 拒绝臂） | 反向链 `^` 终于复合节点 | 同 (from,on) 行内按链形（`ctx.path_fwd`）异判；表行 guard 的 else 臂 = UnexpectedEvent（不 fallback 下一行），行分裂不可行——两链形同 from 态 |
+| [R-03-3] | `gen_n3v2/actions.mbt:750`（path_subj_end None 臂） | 动词位链终原子 | 同 [R-03-2]：主位/谓词两链形在 SubjTrailAfterStep 汇合（谓词链 path_step 每步同入，表行实证），按 `ctx.path_src` 分派 |
 
 **B. 引擎归位点（normalize_term_span 家族）**
 
@@ -210,7 +210,7 @@ validate_pred 白名单）/ **役34 集合谓位**（CG 定案 collections any p
 
 | 编号 | 事实（写实） | 证据锚点 | 后果 | 性质 |
 |---|---|---|---|---|
-| C-01 | 状态双权威：action 直写 `ctx.state`，与表 `to=` 并存。**役23 R-01 收敛**：3 处条件分叉 → 1 处无条件机制位（pop 读 `fr.ret_state`，id 特例前移刻帧）+ 2 处破例（链形异判，表静态行表达不了）；全部入册 §5.1 清单 | `gen_n3v2/actions.mbt:172/529/719`；清单 §5.1-A | 运行时数据依赖出表模型是 FSM 边界本质——破例恒可数、每条有"为何"，可达性分析按清单扣除 | [债]→**[设计]（役23 收敛后）** |
+| C-01 | 状态双权威：action 直写 `ctx.state`，与表 `to=` 并存。**役23 R-01 收敛**：3 处条件分叉 → 1 处无条件机制位（pop 读 `fr.ret_state`，id 特例前移刻帧）+ 2 处破例（链形异判，表静态行表达不了）；全部入册 §5.1 清单 | `gen_n3v2/actions.mbt:172/560/750`；清单 §5.1-A | 运行时数据依赖出表模型是 FSM 边界本质——破例恒可数、每条有"为何"，可达性分析按清单扣除 | [债]→**[设计]（役23 收敛后）** |
 | C-02 | 效果语义双实现：~~`engine.next` 手写解释器 vs 生成面 `interpret/handle_*`；`apply_scope` 与 `ctx.reset` 两写~~ **役22 接活**：`interpret` = 唯一解释器，`engine.next` 只做控制流，`apply_scope` 调用 `N3Context::reset`（`dispatch` 已删除） | `gen_n3v2/engine.mbt:577`↔`n3.mbt:2128`；`n3.mbt:2108`↔`n3.mbt:216` | ~~两处语义可漂移；② 面切点形同虚设~~ ② 面成真实挂点（观测/降级可挂） | [债]→**已收口（役22，ADR-22）** |
 | C-03 | 引擎归位点做词法/语法重分类：`KeywordA→PrefName` 依 `ctx.state`/台账改判；`this` 4 字节常量硬编码 | `gen_n3v2/engine.mbt:225/241`；清单 §5.1-B | **役23 写实修正**：原"关键词真相散在三处（含物化 bool_at）"系误诊——bool_at 是布尔字面量（C-15），三处实为正交分层（保留词/文档台账/消费行），各自单一数据源（§5.1-C） | [制度]（guard 只通 ctx 的下游；事件重分类出表模型） |
 | C-04 | 词法边界欠账：adapter 五处手术（`[]` 合并 / `?x` peek / `@kw:` 拆字 / `<-` 拆字 / langtag 拆）+ 引擎尾标点合成 `Dot/Comma/Semicolon` | `lexer_adapter.mbt` 头注台账（役29 单点化，六点地图 + 钉面清单）；`gen_n3v2/engine.mbt:84` | ~~一次词法口径变动须四处同步、补偿点散装无单~~ 台账单点 + 识别件 R-15 单点（役29）；长期方言感知词法器仍立案 | [债]→**短期已收口（役29）** |
@@ -494,15 +494,15 @@ note   = "set_id_subject 改写 frame.ret_state；pop_bnode_prop(:172) 兑现"
 | state（**表侧名**） | anchor | 性质 |
 |---|---|---|
 | `BnpIdAfterClose` | `gen_n3v2/actions.mbt:200` | 唯一表外入口（`frame.ret_state` 写状态字面量） |
-| `ExpectDotOrGraph` | `gen_n3v2/actions.mbt:529` | 直写既有态（表边亦可达；登记用于防写点漂移） |
-| `ExpectDotOrGraph` | `gen_n3v2/actions.mbt:719` | 同上 |
+| `ExpectDotOrGraph` | `gen_n3v2/actions.mbt:560` | 直写既有态（表边亦可达；登记用于防写点漂移） |
+| `ExpectDotOrGraph` | `gen_n3v2/actions.mbt:750` | 同上 |
 
 ⚠ **命名口径**：登记册用**表侧名**（无 `N3` 前缀，如 `ExpectDotOrGraph`），
 而代码里是生成名（`N3ExpectDotOrGraph`）——首版误填生成名时 G11 当场以
 "登记了未声明态"咬住（2026-09-12 实证）。
 
 另有两点**不是种子**，但属同一机制位，登记册 note 中说明即可：
-`gen_n3v2/actions.mbt:172`（`ctx.state = frame.ret_state` 帧兑现）、`gen_n3v2/actions.mbt:976`（`frame.ret_state = ret_state` 参数透传）。
+`gen_n3v2/actions.mbt:172`（`ctx.state = frame.ret_state` 帧兑现）、`gen_n3v2/actions.mbt:1007`（`frame.ret_state = ret_state` 参数透传）。
 
 **`terminal_states`（可选 meta 键；ADR-31 前置 B）**：
 

@@ -1,6 +1,6 @@
 # 锚点期望快照（生成物：首次由 ci/anchor-check.sh bootstrap；改锚点须同笔重生成）
 # 列：referrer<TAB>anchor<TAB>target<TAB>line<TAB>expected_prefix(60)
-src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:929	src/gen_n3v2/actions.mbt	929	Some(src) => src
+src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:1011	src/gen_n3v2/actions.mbt	1011	N3Effect::Sequence([
 src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
 src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:200	src/gen_n3v2/actions.mbt	200	frame.ret_state = N3BnpIdAfterClose
 src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
@@ -45,9 +45,9 @@ src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:577	src/gen_n3v2/engine.mbt	577	/// 帧�
 src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:350	src/gen_n3v2/engine.mbt	350	impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn b
 src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
 src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
-src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:370	src/gen_n3v2/actions.mbt	370	as_subject: false,
+src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:401	src/gen_n3v2/actions.mbt	401	fn path_hop_resolve(
 src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:137	src/gen_n3v2/actions.mbt	137	impl N3Actions for N3ActionsImpl with fn pop_bnode_prop(
-src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:1115	src/gen_n3v2/actions.mbt	1115	
+src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:1146	src/gen_n3v2/actions.mbt	1146	impl N3Actions for N3ActionsImpl with fn is_of(
 src/gen_n3v2/ctx.md	gen_n3v2/parser_slice.mbt:431	src/gen_n3v2/parser_slice.mbt	431	None => {
 src/gen_n3v2/ctx.md	materialize_n3.mbt:683	src/gen_n3v2/materialize_n3.mbt	683	}
 src/gen_n3v2/ctx.md	gen_n3v2/rdf_suite_wbtest.mbt:116	src/gen_n3v2/rdf_suite_wbtest.mbt	116	// R-16 升格（2026-09-13）：主判定链改走**严格**组装校验（影子缺口已清零）
@@ -60,8 +60,8 @@ src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:346	src/gen_n3v2/engine.mbt	346	/// N3S
 src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:381	src/gen_n3v2/engine.mbt	381	}
 src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
 src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
-src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:529	src/gen_n3v2/actions.mbt	529	ctx.object = Some(obj)
-src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:719	src/gen_n3v2/actions.mbt	719	op : Span,
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:560	src/gen_n3v2/actions.mbt	560	ctx.state = N3ExpectDotOrGraph
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:750	src/gen_n3v2/actions.mbt	750	ctx.state = N3ExpectDotOrGraph
 src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
 src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:105	src/gen_n3v2/engine.mbt	105	fn[L : LexerSource] is_version_lit_form(
 src/gen_n3v2/spec.md	gen_n3v2/engine.mbt:225	src/gen_n3v2/engine.mbt	225	N3KeywordA(span) => {
@@ -81,10 +81,10 @@ src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:14	src/gen_n3v2/actions.mbt	14	struct 
 src/gen_n3v2/spec.md	n3.mbt:140	src/gen_n3v2/n3.mbt	140	Done
 src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
 src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:200	src/gen_n3v2/actions.mbt	200	frame.ret_state = N3BnpIdAfterClose
-src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:529	src/gen_n3v2/actions.mbt	529	ctx.object = Some(obj)
-src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:719	src/gen_n3v2/actions.mbt	719	op : Span,
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:560	src/gen_n3v2/actions.mbt	560	ctx.state = N3ExpectDotOrGraph
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:750	src/gen_n3v2/actions.mbt	750	ctx.state = N3ExpectDotOrGraph
 src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
-src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:976	src/gen_n3v2/actions.mbt	976	None => return Err(N3ActionError::BusinessFailed("Path sourc
+src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:1007	src/gen_n3v2/actions.mbt	1007	frame.ret_state = ret_state
 src/gen_n3v2/todo.md	materialize_n3.mbt:1107	src/gen_n3v2/materialize_n3.mbt	1107	/// 变量门（ADR-004：只记身份——语法面收紧在此）：`?` + varname，varname
 src/gen_nquads/ctx.md	nquads.mbt:146	src/gen_nquads/nquads.mbt	146	BusinessFailed(String) // 装配层业务逻辑抛出：Action 执行失败（如解析格式错误）
 src/gen_nquads/ctx.md	gen_nquads/engine.mbt:290	src/gen_nquads/engine.mbt	290	synth_dot = false // 恢复消费整行，待发 Dot 一并作废

@@ -163,7 +163,7 @@ trig 80、外层 n3gen 9/9（零再生实证）；turtle 316/316、rdf12 75/75
 
 **翻案（ADR-003a 单发认知）**：表内 Sequence 构造唯一（BnpAfterObject+Rbracket
 = 单发 [EmitQuad(PredObj), PopBnp]）不等于全系统单发——役18 `path_obj_close`
-（gen_n3v2/actions.mbt:929，用户层）动态构造**三发**
+（gen_n3v2/actions.mbt:1011，用户层）动态构造**三发**
 `[EmitQuad(SPO), PopBnp, EmitQuad(scope)]`。首版 interpret 单缓冲
 （pending 覆盖式）丢首跳，役18 钉红实证（`1 != 2`）。裁定：`emit_queue`
 下沉 `N3Context`（引擎字段退役），interpret Sequence 臂罩外 EmitQuad 逐条
@@ -512,8 +512,8 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 1. **可达源三源**（缺一即假红）：
    ① `to =` 表边（**含模板 `$param` 展开后的真名**）；
    ② 表行 **`state:X` 参数**（`action_args` → `OpenSlot` / `open_collection` → 帧 → `gen_n3v2/actions.mbt:172` 兑现）；
-   ③ **手写锚点登记**：`ctx.state = …` 直写与 `frame.ret_state = …` 改写共 **4 点**
-      （`gen_n3v2/actions.mbt:172` / `:200` / `:529` / `:719` / `:976`），逐条登记 `state ← 写入点 file:line + 一句语义`
+   ③ **手写锚点登记**：`ctx.state = …` 直写与 `frame.ret_state = …` 改写共 **5 点**
+      （`gen_n3v2/actions.mbt:172` / `:200` / `:560` / `:750` / `:1007`），逐条登记 `state ← 写入点 file:line + 一句语义`
       （与役23 R-01 的 `[R-03-N]` 锚同源，**禁止锚点只活在代码注释里**）。
 2. **两前置**：A 模板 `$param` **先展开再建边**；B `terminal_states` **可选声明**（否则"无出边"误判 dead）。
 3. **分级**：三源之外才报"真不可达"；G11 首版落 **警告级**（不 pin 失败），
