@@ -1,9 +1,8 @@
-// ===== 纯 MoonBit 词法器（直产 NQuadsEvent —— P2 刀 a)，2026-09-23） =====
+// ===== 纯 MoonBit 词法器（直产 NQuadsEvent）=====
 // 出词点直接构造事件枚举：消 Token→Event 双箱往返（每 token −1 分配）。
-// span 口径不变：全词含定界符，与 C 版 Token 逐字对齐（token_to_event 纯透传
-// 的历史对齐由 nquads_wbtest 双词法器同口径钉继续看护）。Token 字母表现为
-// Lexerc FFI 专用（token.mbt/lexerc.mbt 不动）。
-// 词法语义以 C 版（lexerc_ffi.c）为标准对齐：
+// span 口径：**全词含定界符**，与 C 版 Token 逐字对齐（双词法器同口径钉看护）；
+// Token 字母表为 Lexerc FFI 专用（token.mbt/lexerc.mbt）。
+// 词法语义（层 1）——以 C 版（lexerc_ffi.c）为标准对齐源：
 //   - 字面量分三引号/普通两种；含转义；后缀 ^^datatype / @lang 并入 Literal
 //   - _:name → BlankNode；字母/:起头 → PrefName；数字（可带±符号）→ Unknown
 //   - 未闭合 IRI/字面量宽容出词（不再 None 硬错）；其余单字符一律 Unknown(1)
@@ -11,6 +10,8 @@
 //     尾部裸 '.' 回退；语法对错归验证层（词法加宽口径，双引擎同机械）
 // EOF 协议：结尾返回 Some(NQuadsEOF)（pos 冻结，由 current_pos() 钉）；
 // None 仅保留给异常分支，正常流不会出现。
+// **四类词法决策的起因与完整口径**（加宽口径 / 单 `^` 门 / 右括族停扫 / 数值·布尔判定件）
+// 见 **ADR-NQ-011**；词法段性能沿革见 `perf-review.txt`。
 // Unknown/结构事件 span 不在生成契约（NQuadsUnknown 为常量构造子）——出词点
 // 把 span 写入 last_unknown 单槽旁路（消费方 Unknown 事件后即读；trig/n3v2
 // 适配层结构分类与 ANON 校验依赖此面）。
@@ -31,7 +32,7 @@ pub fn Lexermoon::new(view : ArrayView[Byte]) -> Lexermoon {
 }
 
 ///|
-/// Unknown span 单槽旁路（P2 刀 a)：NQuadsUnknown 为常量构造子（生成契约无
+/// Unknown span 单槽旁路：NQuadsUnknown 为常量构造子（生成契约无
 /// span 载荷），出词点把 span 写入 last_unknown 槽；消费方（trig/n3v2 适配层
 /// 分类结构字符、ANON 吞槽校验）收到 Unknown 事件后**立即**读取本槽——两次
 /// next() 之间读才不失真（后一次 Unknown 会覆盖）。
@@ -46,8 +47,8 @@ pub fn Lexermoon::current_pos(self : Lexermoon) -> Int {
 }
 
 ///|
-/// 字节类表（**P4 词法役**，2026-09-23）：把 `is_name_char` 的**逐字节 5 次比较**收成
-/// **1 次查表**（与 P1 `iri_cls` 同法：`FixedArray` + `unsafe_get`，热循环零边界检查）。
+/// 字节类表：把 `is_name_char` 的**逐字节 5 次比较**收成 **1 次查表**
+/// （`FixedArray` + `unsafe_get`，热循环零边界检查；与 `validate_helper.mbt` 的 `iri_cls` 同法）。
 /// 位义：`1` = alpha；`2` = 非字母的 name 追加（`0-9` / `_` / `-` / `.`）；`4` = hex 位。
 /// ⇒ `is_name_char = (cls & 3) != 0`、`is_alpha = (cls & 1) != 0`、`is_hex = (cls & 4) != 0`
 /// （**逐字节同义**：本表只是同一判据的查表实现，不改任何接受面）。
@@ -204,17 +205,14 @@ fn utf8_name_advance(v : ArrayView[Byte], pos : Int, l : Int) -> Int {
 ///|
 /// 字面量后缀（无脑扫）：^^datatype / @lang 一并扫入，只认空白收束。
 /// 尾部被吞的语句点等结构问题交引擎/校验层判定，词法器不做语法判断。
-/// 后缀门（lists-05 口径）：紧邻字节须 ^^(datatype) 或 @lang 才进后缀扫描；
-/// 其余字节（`)`/`]`/`,`/`;` 等结构符紧贴闭引号）不是后缀，立即收束留给引擎——
-/// 旧"只认空白收束"把 `"a")` 的闭括号吞进词项，集合元素位直接失配。
-/// 役18（moonttl N3）：单 `^` 须后随第二 `^` 才是 datatype 门——`"lit"^:prop`
-/// 的路径操作符 `^` 旧门误当 `^^` 入扫，连 `:prop` 整段胶进词尾，引擎收不到
-/// Caret 事件路径机器全盲（N3Tests path2/caret_pos 双残差根因）。解胶后
-/// `^` 独立成 token 走引擎路径 desugar（役3 ADR-006 行已在表）
+/// 后缀门（**层 1：只在这里说语义**）：紧邻字节须 `^^`(datatype) 或 `@lang` 才是后缀；
+/// 其余结构符紧贴闭引号（`)` `]` `}` 等）**立即收束**留给引擎；**单个 `^` 不收**
+/// （须成对才是 datatype）——`"lit"^:prop` 的 `^` 独立成 token，走引擎路径 desugar。
+/// 三条起因（集合元素位失配 / N3Tests `path2`·`caret_pos` 残差）与完整口径见 **ADR-NQ-011**。
 fn Lexermoon::scan_literal_suffix(self : Lexermoon) -> Unit {
   let v = self.view
   let l = self.len
-  // P4 第三刀：`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
+  // `self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
   let mut p = self.pos
   if p >= l {
     return
@@ -236,10 +234,9 @@ fn Lexermoon::scan_literal_suffix(self : Lexermoon) -> Unit {
     p = p + 1
   }
   self.pos = p
-  // 役16（moonttl N3）C 桶 xsd：右括族 ) ] } 停扫——后缀合法域 = IRIREF/
-  // PrefName/langtag，闭括号终结它；`"a"^^xsd:int)` 旧扫描连闭括号带后随
-  // 路径符整段吞进词尾。`.`/`,`/`;` 仍吞——引擎 trim_trailing_punct 三瓣
-  // 补偿口径，词法自测 747 故意钉（零空格直连该字节入 span 且标点事件丢失）。
+  // 右括族 `) ] }` 停扫（后缀合法域 = IRIREF / PrefName / langtag）；`.` `,` `;` 仍并入词尾，
+  // 由引擎侧尾标点补偿 + 合成 Dot 承接（同族实现见 `src/gen_n3v2/engine.mbt` 的 `trim_trailing_punct`）。
+  // 起因与完整口径见 **ADR-NQ-011**。
 }
 
 ///|
@@ -270,17 +267,17 @@ pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
     self.pos + 2 < l &&
     v[self.pos + 1] == c &&
     v[self.pos + 2] == c {
-    // P4 第三刀：`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
+    // `self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
     let mut p = self.pos + 3
     while p + 2 < l {
       let ch = v.unsafe_get(p)
       if ch == b'\\' && p + 1 < l {
         // 转义对整对消费（ECHAR/UCHAR）：`\\` 是字面反斜杠，其后闭 `"""`
-        // 照常闭壳（pos-1 单字节嗅探会把 `\\"""` 误判成转义引号——LITERAL_LONG2 坑）
+        // 转义对以**整对**消费：`\\` 是字面反斜杠，其后闭 `"""` 照常闭壳
+        //（若只看 pos-1 单字节会把它误判成被转义的引号）
         p = p + 2
       } else if ch == c && v.unsafe_get(p + 1) == c && v.unsafe_get(p + 2) == c {
-        // 闭壳 = 引号连跑的末尾 quote_run 个：`""""` = 内容引号 + 闭三连
-        //（Turtle '"""' (...)* '"'? '"""' 口径）；连跑被转义对跳过自然打断
+        // 闭壳 = 引号连跑的**末尾**三连：`""""` = 内容引号 + 闭三连（连跑被转义对跳过后自然打断）
         while p < l && v.unsafe_get(p) == c {
           p = p + 1
         }
@@ -295,7 +292,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
   }
   // 普通字符串（含转义；后缀 ^^ / @ 一并切出）
   if c == b'"' || c == b'\'' {
-    // P4 第三刀：`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
+    // `self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
     let mut p = self.pos + 1
     while p < l && v.unsafe_get(p) != c {
       if v.unsafe_get(p) == b'\\' && p + 1 < l {
@@ -314,7 +311,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
   // _:name → BlankNode（名字含 .，与 C 版一致；多字节标签字符加宽同 PrefName 口径）
   if c == b'_' && self.pos + 1 < l && v[self.pos + 1] == b':' {
     self.pos = self.pos + 2
-    // P4 第三刀：ASCII 门后 utf8_name_advance（多字节标签才走），收束字节省空转调用
+    // ASCII 门后 utf8_name_advance（多字节标签才走），收束字节省空转调用
     while self.pos < l {
       let ch = v[self.pos]
       if is_name_char(ch) {
@@ -406,7 +403,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
       self.last_unknown = (start, self.pos - start)
       return Some(NQuadsUnknown)
     }
-    // P4 第二刀：`self.pos` 局部化为 `p` + `unsafe_get` + 类表终止位（同一判据的查表实现，
+    // `self.pos` 局部化为 `p` + `unsafe_get` + 类表终止位（同一判据的查表实现，
     // 逐字节同义）⇒ 每字节省一次边界检查与一次字段 load/store。
     let mut p = self.pos + 1
     while p < l {
@@ -431,7 +428,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
   // 名字内允许 : 与名字字符（含内部 '.'、\X 转义对、%HH 百分号对、多字节 UTF-8）；
   // 语法对错（转义字符集/首字符限制）归验证层。尾部裸 '.' 回退留给语句终结符
   //（\X 转义的 '.' 是字面点，不回退）
-  // P4 第三刀：ASCII 首字节直判——utf8_name_advance 收录码点全 ≥ 0xB7，ASCII
+  // ASCII 首字节直判——utf8_name_advance 收录码点全 ≥ 0xB7，ASCII
   // 字节必然 0；门后调用只留多字节前导（每个 PrefName 省一次调用 + 码点解码
   // + 14 段区间级联）
   let lead = if c.to_int() >= 0x80 {
@@ -441,7 +438,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
   }
   if lead > 0 || is_alpha(c) || c == b':' {
     self.pos = self.pos + (if lead > 0 { lead } else { 1 })
-    // P4 第二刀：同一循环体，`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
+    // 同一循环体，`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
     let mut p = self.pos
     while p < l {
       let ch = v.unsafe_get(p)
@@ -457,7 +454,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
       } else if ch == b':' || is_name_char(ch) {
         p = p + 1
       } else if ch.to_int() >= 0x80 {
-        // P4 第三刀：ASCII 字节必然 0（同首字节门），门后只留多字节——
+        // ASCII 字节必然 0（同首字节门），门后只留多字节——
         // 每个 PrefName 的收束字节（空白/结构符）省一次空转调用
         let adv = utf8_name_advance(v, p, l)
         if adv == 0 {
@@ -502,7 +499,7 @@ pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
       v[self.pos + 1] <= b'9'
     )
   if is_number {
-    // P4 第三刀：`self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
+    // `self.pos` 局部化为 `p` + `unsafe_get`（守卫/判据/分支序逐一照抄）
     let mut p = self.pos
     if v.unsafe_get(p) == b'.' {
       // 前导点形态 '.5'：吞点 + 整数部

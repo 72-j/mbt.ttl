@@ -29,8 +29,8 @@ src/gen_n3v2/spec.md	n3.mbt:140	src/gen_n3v2/n3.mbt	140	Done
 src/gen_n3v2/todo.md	materialize_n3.mbt:1107	src/gen_n3v2/materialize_n3.mbt	1107	/// 变量门（ADR-004：只记身份——语法面收紧在此）：`?` + varname，varname
 src/gen_nquads/ctx.md	nquads.mbt:146	src/gen_nquads/nquads.mbt	146	BusinessFailed(String) // 装配层业务逻辑抛出：Action 执行失败（如解析格式错误）
 src/gen_nquads/ctx.md	validate_helper.mbt:427	src/gen_nquads/validate_helper.mbt	427	ParseError::SyntaxErr("Bad string escape", (base + i, len - 
-src/gen_nquads/ctx.md	lexer_mbt.mbt:247	src/gen_nquads/lexer_mbt.mbt	247	pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
-src/gen_nquads/ctx.md	lexer_mbt.mbt:175	src/gen_nquads/lexer_mbt.mbt	175	fn utf8_name_advance(v : ArrayView[Byte], pos : Int, l : Int
+src/gen_nquads/ctx.md	lexer_mbt.mbt:244	src/gen_nquads/lexer_mbt.mbt	244	pub fn Lexermoon::next(self : Lexermoon) -> NQuadsEvent? {
+src/gen_nquads/ctx.md	lexer_mbt.mbt:176	src/gen_nquads/lexer_mbt.mbt	176	fn utf8_name_advance(v : ArrayView[Byte], pos : Int, l : Int
 src/gen_nquads/ctx.md	lexerc.mbt:124	src/gen_nquads/lexerc.mbt	124	pub fn Lexerc::next(self : Lexerc) -> Token? {
 src/gen_nquads/spec.md	nquads.mbt:13	src/gen_nquads/nquads.mbt	13	NQuadsPrefName(Span)
 src/gen_nquads/todo.md	validate_helper.mbt:530	src/gen_nquads/validate_helper.mbt	530	)
