@@ -33,6 +33,8 @@ rdf12-nt: 29/29 (failed 0)
 循环读文件: 72/72 (failed 0)
 性能数据
 [trig]
+gen_trig 复杂语料（指令/图块/链式/字面量族/三元组词项/注解）
+gen_trig 简单语料（全 IRI 扁平三元组 + 具名图块）
 rdf-trig: 357/357 (failed 0)
 rdf-turtle: 316/316 (failed 0)
 rdf12-trig: 36/36 (failed 0)
