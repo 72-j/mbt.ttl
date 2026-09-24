@@ -6,10 +6,13 @@ test "序列化: 基本语句回写" {
   let p = @utf8.encode("<http://e.org/p>").to_array()
   let o = @utf8.encode("<http://e.org/o>").to_array()
   let quad : @nquads.QuadEmit = {
-    subject: Iri(s[:]),
+    s_kind: @nquads.TermKind::Iri,
+    s_view: s[:],
     predicate: p[:],
-    object: Iri(o[:]),
-    graph: None,
+    o_kind: @nquads.TermKind::Iri,
+    o_view: o[:],
+    g_kind: @nquads.TermKind::DefaultGraph,
+    g_view: p[0:0],
   }
   match N3Serializer::new().serialize([quad]) {
     Ok(out) =>
@@ -24,10 +27,13 @@ test "序列化: PrefName 残留报错钉住" {
   let p = @utf8.encode("<http://e.org/p>").to_array()
   let o = @utf8.encode("<http://e.org/o>").to_array()
   let bad : @nquads.QuadEmit = {
-    subject: PrefName(s[:]),
+    s_kind: @nquads.TermKind::PrefName,
+    s_view: s[:],
     predicate: p[:],
-    object: Iri(o[:]),
-    graph: None,
+    o_kind: @nquads.TermKind::Iri,
+    o_view: o[:],
+    g_kind: @nquads.TermKind::DefaultGraph,
+    g_view: p[0:0],
   }
   assert_true(N3Serializer::new().serialize([bad]) is Err(_))
 }
@@ -39,10 +45,13 @@ test "序列化: 图名残留报错钉住（N3 无图语法）" {
   let o = @utf8.encode("<http://e.org/o>").to_array()
   let g = @utf8.encode("<http://e.org/g>").to_array()
   let bad : @nquads.QuadEmit = {
-    subject: Iri(s[:]),
+    s_kind: @nquads.TermKind::Iri,
+    s_view: s[:],
     predicate: p[:],
-    object: Iri(o[:]),
-    graph: Iri(g[:]),
+    o_kind: @nquads.TermKind::Iri,
+    o_view: o[:],
+    g_kind: @nquads.TermKind::Iri,
+    g_view: g[:],
   }
   assert_true(N3Serializer::new().serialize([bad]) is Err(_))
 }

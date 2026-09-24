@@ -15,24 +15,41 @@ test "序列化: TriG 默认图先输出 + 命名图按内容归并（首次出�
     @utf8.encode("g>").to_array()
   let g2 = @utf8.encode("<http://e.org/h>").to_array()
   let quads : Array[@nquads.QuadEmit] = [
-    { subject: Iri(s1[:]), predicate: p1[:], object: Iri(o1[:]), graph: None, },
     {
-      subject: Iri(s2[:]),
-      predicate: p2[:],
-      object: Iri(o2[:]),
-      graph: Iri(g1a[:]),
-    },
-    {
-      subject: Iri(s3[:]),
-      predicate: p2[:],
-      object: Iri(o2[:]),
-      graph: Iri(g1b[:]),
-    },
-    {
-      subject: Iri(s1[:]),
+      s_kind: @nquads.TermKind::Iri,
+      s_view: s1[:],
       predicate: p1[:],
-      object: Iri(o1[:]),
-      graph: Iri(g2[:]),
+      o_kind: @nquads.TermKind::Iri,
+      o_view: o1[:],
+      g_kind: @nquads.TermKind::DefaultGraph,
+      g_view: p1[0:0],
+    },
+    {
+      s_kind: @nquads.TermKind::Iri,
+      s_view: s2[:],
+      predicate: p2[:],
+      o_kind: @nquads.TermKind::Iri,
+      o_view: o2[:],
+      g_kind: @nquads.TermKind::Iri,
+      g_view: g1a[:],
+    },
+    {
+      s_kind: @nquads.TermKind::Iri,
+      s_view: s3[:],
+      predicate: p2[:],
+      o_kind: @nquads.TermKind::Iri,
+      o_view: o2[:],
+      g_kind: @nquads.TermKind::Iri,
+      g_view: g1b[:],
+    },
+    {
+      s_kind: @nquads.TermKind::Iri,
+      s_view: s1[:],
+      predicate: p1[:],
+      o_kind: @nquads.TermKind::Iri,
+      o_view: o1[:],
+      g_kind: @nquads.TermKind::Iri,
+      g_view: g2[:],
     },
   ]
   let ser = TrigSerializer::new() // 默认 TriG + Strict
@@ -55,16 +72,22 @@ test "序列化: Turtle 开关——Strict 阻断图名 / Drop 有损丢弃（�
   let o = @utf8.encode("<http://e.org/o>").to_array()
   let g = @utf8.encode("<http://e.org/g>").to_array()
   let named : @nquads.QuadEmit = {
-    subject: Iri(s[:]),
+    s_kind: @nquads.TermKind::Iri,
+    s_view: s[:],
     predicate: p[:],
-    object: Iri(o[:]),
-    graph: Iri(g[:]),
+    o_kind: @nquads.TermKind::Iri,
+    o_view: o[:],
+    g_kind: @nquads.TermKind::Iri,
+    g_view: g[:],
   }
   let plain : @nquads.QuadEmit = {
-    subject: Iri(s[:]),
+    s_kind: @nquads.TermKind::Iri,
+    s_view: s[:],
     predicate: p[:],
-    object: Iri(o[:]),
-    graph: None,
+    o_kind: @nquads.TermKind::Iri,
+    o_view: o[:],
+    g_kind: @nquads.TermKind::DefaultGraph,
+    g_view: p[0:0],
   }
   // Turtle + Strict（默认）：图名阻断
   let strict = TrigSerializer::new(format=Turtle)
@@ -86,16 +109,22 @@ test "序列化: PrefName 残留报错钉住（主语/宾语位）" {
   let p = @utf8.encode("<http://e.org/p>").to_array()
   let o = @utf8.encode("<http://e.org/o>").to_array()
   let bad_subj : @nquads.QuadEmit = {
-    subject: PrefName(s[:]),
+    s_kind: @nquads.TermKind::PrefName,
+    s_view: s[:],
     predicate: p[:],
-    object: Iri(o[:]),
-    graph: None,
+    o_kind: @nquads.TermKind::Iri,
+    o_view: o[:],
+    g_kind: @nquads.TermKind::DefaultGraph,
+    g_view: p[0:0],
   }
   let bad_obj : @nquads.QuadEmit = {
-    subject: Iri(o[:]),
+    s_kind: @nquads.TermKind::Iri,
+    s_view: o[:],
     predicate: p[:],
-    object: PrefName(s[:]),
-    graph: None,
+    o_kind: @nquads.TermKind::PrefName,
+    o_view: s[:],
+    g_kind: @nquads.TermKind::DefaultGraph,
+    g_view: p[0:0],
   }
   let ser = TrigSerializer::new()
   assert_true(ser.serialize([bad_subj]) is Err(_))
@@ -108,10 +137,13 @@ test "序列化: 引用三元组壳整段回写" {
   let p = @utf8.encode("<http://e.org/p>").to_array()
   let tt = @utf8.encode("<< <http://a> <http://b> <http://c> >>").to_array()
   let quad : @nquads.QuadEmit = {
-    subject: Iri(s[:]),
+    s_kind: @nquads.TermKind::Iri,
+    s_view: s[:],
     predicate: p[:],
-    object: TripleTerm(tt[:]),
-    graph: None,
+    o_kind: @nquads.TermKind::TripleTerm,
+    o_view: tt[:],
+    g_kind: @nquads.TermKind::DefaultGraph,
+    g_view: p[0:0],
   }
   let ser = TrigSerializer::new()
   match ser.serialize([quad]) {

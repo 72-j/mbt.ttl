@@ -1259,10 +1259,10 @@ test "R-06: empty collection still yields rdf:nil through the gate" {
   assert_eq(merrs.length(), 0)
   let mut nil_seen = false
   for q in emits {
-    match q.object {
+    match q.o_kind {
       // nil 臂产物 = 词表 IRI（原文含尖括号 <>）——view 转字符串后比对
-      @nquads.Object::Iri(v) => {
-        let s = view_str(v, (0, v.length()))
+      @nquads.TermKind::Iri => {
+        let s = view_str(q.o_view, (0, q.o_view.length()))
         if s.has_suffix("rdf-syntax-ns#nil>") {
           nil_seen = true
         }

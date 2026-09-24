@@ -946,8 +946,9 @@ test "★3 回收: 指令后 TT 壳主位（turtle12-bnode-03 口径）" {
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 1)
   // 壳主语：TripleTerm 变体整段保真（mat_subj 不覆盖该变体，直接 match）
-  match emits[0].subject {
-    @nquads.Subject::TripleTerm(v) => assert_eq(mat_vs(v), "<<:s :p :o >>")
+  match emits[0].s_kind {
+    @nquads.TermKind::TripleTerm =>
+      assert_eq(mat_vs(emits[0].s_view), "<<:s :p :o >>")
     _ => assert_true(false)
   }
   // 括号壳主位：无行 → 恢复报错
@@ -1074,9 +1075,9 @@ test "壳内 ~ reifier：分写 / 连写 / 全连写 / 裸 ~ / IRI 形（syntax-
   )
   assert_eq(errors6.length(), 0)
   assert_eq(emits6.length(), 1)
-  match emits6[0].subject {
-    @nquads.Subject::TripleTerm(v) =>
-      assert_eq(mat_vs(v), "<< :s :p :o ~ :id >>")
+  match emits6[0].s_kind {
+    @nquads.TermKind::TripleTerm =>
+      assert_eq(mat_vs(emits6[0].s_view), "<< :s :p :o ~ :id >>")
     _ => assert_true(false)
   }
 }
@@ -1108,8 +1109,8 @@ test "[] 图标签/主位/宾位/集合元素（kw-graph-07 + anonymous_blank_no
   )
   assert_eq(errors1.length(), 0)
   assert_eq(emits1.length(), 1)
-  match emits1[0].graph {
-    @nquads.GraphName::BNode(v) => assert_eq(mat_vs(v), "_:genid0")
+  match emits1[0].g_kind {
+    @nquads.TermKind::BNode => assert_eq(mat_vs(emits1[0].g_view), "_:genid0")
     _ => assert_true(false)
   }
   // `GRAPH [] { … }`：关键字路径同达（`[` 在 7 号偏移）
@@ -1118,8 +1119,8 @@ test "[] 图标签/主位/宾位/集合元素（kw-graph-07 + anonymous_blank_no
   )
   assert_eq(errors2.length(), 0)
   assert_eq(emits2.length(), 1)
-  match emits2[0].graph {
-    @nquads.GraphName::BNode(v) => assert_eq(mat_vs(v), "_:genid6")
+  match emits2[0].g_kind {
+    @nquads.TermKind::BNode => assert_eq(mat_vs(emits2[0].g_view), "_:genid6")
     _ => assert_true(false)
   }
   // `[]` 主位：fresh 占 s 槽（graph-kw-06 家族回归口径）

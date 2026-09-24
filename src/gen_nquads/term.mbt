@@ -46,77 +46,48 @@ pub impl Show for TermType with fn output(self : TermType, logger : &Logger) -> 
 pub extend TermType with Show::{output, to_string}
 
 ///|
-/// 主语类型
-pub(all) enum Subject {
-  Iri(ArrayView[Byte]) // <http://...>
-  BNode(ArrayView[Byte]) // _:label（blank node：label 作用域限本文档）
-  PrefName(ArrayView[Byte]) // ex:name 或 :name
-  TripleTerm(ArrayView[Byte]) // << s p o >>（RDF 1.2 引用三元组壳，整段保真）
-  Variable(ArrayView[Byte]) // ?x（N3 ADR-004：只记身份，名与位置即全部语义；
+/// 词项种类（P3 平化产物模型：Subject/Object/GraphName 三枚举并入单 kind 轴）。
+/// 8 臂全常量构造子 = 立即 tag 零箱（同械先例 QuadSpan.subj_type : TermType）；
+/// DefaultGraph 单例常量 = 原 GraphName::None（图名位缺省，非箱）
+pub(all) enum TermKind {
+  Iri // <http://...>
+  BNode // _:label（blank node：label 作用域限本文档）
+  PrefName // ex:name 或 :name（三物化器零构造：N3 侧展开落 arena IRI；
+  // 序列化侧防御拒臂钉住不变量）
+  TripleTerm // << s p o >>（RDF 1.2 引用三元组壳，整段原文持有，字节保真）
+  Variable // ?x（N3 ADR-004：只记身份，名与位置即全部语义；
   // nquads/trig 方言不产出，序列化侧防御拒臂钉住）
-  Literal(ArrayView[Byte]) // "x"@en/数值/布尔（N3 役10：verb ::= expression
-  // 主语位字面量；nquads/trig 方言不产出，序列化侧防御拒臂钉住）
-  Formula(ArrayView[Byte]) // { ... }（N3 ADR-002：GraphTerm 不透明不断言为真，
-  // 整段原文持有；nquads/trig 方言不产出，序列化侧防御拒臂钉住）
+  Literal // "x"@en/数值/布尔（N3 役10：verb ::= expression 主语位字面量；
+  // nquads/trig 方言不产出，序列化侧防御拒臂钉住）
+  Formula // { ... }（N3 ADR-002：GraphTerm 不透明不断言为真，整段原文持有；
+  // nquads/trig 方言不产出，序列化侧防御拒臂钉住）
+  DefaultGraph // 图名位缺省（W3C N-Quads 默认图；单例常量非箱）
 } derive(Debug, Eq)
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
-pub extend Subject with Eq::{equal, not_equal}
+pub extend TermKind with Eq::{equal, not_equal}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
-pub extend Subject with @moonbitlang/core/debug.Debug::{to_repr}
-
-///|
-/// 宾语类型
-pub(all) enum Object {
-  Iri(ArrayView[Byte])
-  BNode(ArrayView[Byte]) // _:label（blank node：label 作用域限本文档）
-  Literal(ArrayView[Byte])
-  TripleTerm(ArrayView[Byte]) // << … >> 裸壳 / <<( … )>> 括号壳，整段原文持有（字节保真）
-  PrefName(ArrayView[Byte])
-  Variable(ArrayView[Byte]) // ?x（N3 专属，同 Subject 侧口径）
-  Formula(ArrayView[Byte]) // { ... }（N3 ADR-002：GraphTerm 不透明，整段原文持有；
-  // nquads/trig 方言不产出，序列化侧防御拒臂钉住）
-} derive(Debug, Eq)
-
-///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
-pub extend Object with Eq::{equal, not_equal}
-
-///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
-pub extend Object with @moonbitlang/core/debug.Debug::{to_repr}
+pub extend TermKind with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 /// Predicate = BytesView（只能是 IRI）
 pub type Predicate = ArrayView[Byte]
 
 ///|
-/// 图名（W3C N-Quads：IRI 或空白节点；None = 默认图）
-pub(all) enum GraphName {
-  None // DefaultGraph
-  Iri(ArrayView[Byte])
-  BNode(ArrayView[Byte]) // _:label，整段 span 原文持有（blank node：label 作用域限本文档）
-} derive(Debug, Eq)
-
-///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
-pub extend GraphName with Eq::{equal, not_equal}
-
-///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
-pub extend GraphName with @moonbitlang/core/debug.Debug::{to_repr}
-
-///|
-/// N-Quads Quad
+/// N-Quads Quad（P3 平化：kind+view 直挂，词项零箱——box 真值表见 todo.md §AP.19）。
+/// view 有效性由 kind 门控：DefaultGraph 的 g_view、以及"位-种类"非法组合下的
+/// view 值未定义，消费侧必须先判 kind 再读 view（DefaultGraph 臂不得触 view）
 pub(all) struct QuadEmit {
-  subject : Subject
+  s_kind : TermKind
+  s_view : ArrayView[Byte]
   predicate : Predicate
-  object : Object
-  graph : GraphName
-  // line : Int
+  o_kind : TermKind
+  o_view : ArrayView[Byte]
+  g_kind : TermKind
+  g_view : ArrayView[Byte]
 } derive(Debug, Eq)
 
 ///|
@@ -128,26 +99,56 @@ pub extend QuadEmit with Eq::{equal, not_equal}
 pub extend QuadEmit with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
+/// 词项展示（kind+view 对：与 QuadEmit Show 单词项臂同文本，金样迁移共用）
+fn show_term_view(
+  kind : TermKind,
+  view : ArrayView[Byte],
+  logger : &Logger,
+) -> Unit {
+  match kind {
+    TermKind::Iri => {
+      logger.write_char('<')
+      logger.write_string("(\{view.length()})")
+      logger.write_char('>')
+    }
+    TermKind::BNode => {
+      logger.write_string("_:")
+      logger.write_string("(\{view.length()})")
+    }
+    TermKind::PrefName => logger.write_string("(\{view.length()})")
+    TermKind::TripleTerm => logger.write_string("(\{view.length()})")
+    TermKind::Variable => logger.write_string("?\{view.length()}")
+    TermKind::Literal => logger.write_string("(\{view.length()})")
+    TermKind::Formula => logger.write_string("(\{view.length()})")
+    // 位-种类非法组合（DefaultGraph 只许图名位）：调试面显式点名，不静默
+    TermKind::DefaultGraph => logger.write_string("DefaultGraph")
+  }
+}
+
+///|
+pub impl Show for TermKind with fn output(self : TermKind, logger : &Logger) -> Unit {
+  match self {
+    Iri => logger.write("Iri")
+    BNode => logger.write("BNode")
+    PrefName => logger.write("PrefName")
+    TripleTerm => logger.write("TripleTerm")
+    Variable => logger.write("Variable")
+    Literal => logger.write("Literal")
+    Formula => logger.write("Formula")
+    DefaultGraph => logger.write("DefaultGraph")
+  }
+}
+
+///|
+// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
+pub extend TermKind with Show::{output, to_string}
+
+///|
 pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> Unit {
   logger.write_string("Quad(")
 
   // 主语
-  match self.subject {
-    Subject::Iri(span) => {
-      logger.write_char('<')
-      logger.write_string("(\{span.length()})")
-      logger.write_char('>')
-    }
-    Subject::BNode(span) => {
-      logger.write_string("_:")
-      logger.write_string("(\{span.length()})")
-    }
-    Subject::PrefName(span) => logger.write_string("(\{span.length()})")
-    Subject::TripleTerm(span) => logger.write_string("(\{span.length()})")
-    Subject::Variable(span) => logger.write_string("?\{span.length()}")
-    Subject::Literal(span) => logger.write_string("(\{span.length()})")
-    Subject::Formula(span) => logger.write_string("(\{span.length()})")
-  }
+  show_term_view(self.s_kind, self.s_view, logger)
 
   logger.write_string(", ")
 
@@ -157,34 +158,22 @@ pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> 
   logger.write_string(", ")
 
   // 宾语
-  match self.object {
-    Object::Iri(span) => {
-      logger.write_char('<')
-      logger.write_string("(\{span.length()})")
-      logger.write_char('>')
-    }
-    Object::BNode(span) => {
-      logger.write_string("_:")
-      logger.write_string("(\{span.length()})")
-    }
-    Object::Literal(span) | Object::TripleTerm(span) | Object::PrefName(span) =>
-      logger.write_string("(\{span.length()})")
-    Object::Variable(span) => logger.write_string("?\{span.length()}")
-    Object::Formula(span) => logger.write_string("(\{span.length()})")
-  }
+  show_term_view(self.o_kind, self.o_view, logger)
 
   // 图名 ← 这里可能没有输出
-  match self.graph {
-    GraphName::None => logger.write_string(", graph: None")
-    GraphName::Iri(span) => {
+  match self.g_kind {
+    TermKind::DefaultGraph => logger.write_string(", graph: None")
+    TermKind::Iri => {
       logger.write_string(", graph: <")
-      logger.write_string("(\{span.length()})")
+      logger.write_string("(\{self.g_view.length()})")
       logger.write_char('>')
     }
-    GraphName::BNode(span) => {
+    TermKind::BNode => {
       logger.write_string(", graph: _:")
-      logger.write_string("(\{span.length()})")
+      logger.write_string("(\{self.g_view.length()})")
     }
+    // 位-种类非法组合（图名位只许 Iri/BNode/DefaultGraph）：调试面显式点名
+    kind => logger.write_string(", graph: <invalid:\{Show::to_string(kind)}>")
   }
 
   logger.write_char(')')
@@ -193,51 +182,3 @@ pub impl Show for QuadEmit with fn output(self : QuadEmit, logger : &Logger) -> 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
 pub extend QuadEmit with Show::{output, to_string}
-
-///|
-pub impl Show for Subject with fn output(self : Subject, logger : &Logger) -> Unit {
-  match self {
-    Subject::Iri(span) => {
-      logger.write_char('<')
-      logger.write_string("(\{span.length()})")
-      logger.write_char('>')
-    }
-    Subject::BNode(span) => {
-      logger.write_string("_:")
-      logger.write_string("(\{span.length()})")
-    }
-    Subject::PrefName(span) => logger.write_string("(\{span.length()})")
-    Subject::TripleTerm(span) => logger.write_string("(\{span.length()})")
-    Subject::Variable(span) => logger.write_string("?\{span.length()}")
-    Subject::Literal(span) => logger.write_string("(\{span.length()})")
-    Subject::Formula(span) => logger.write_string("(\{span.length()})")
-  }
-}
-
-///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
-pub extend Subject with Show::{output, to_string}
-
-///|
-pub impl Show for Object with fn output(self : Object, logger : &Logger) -> Unit {
-  match self {
-    Object::Iri(span) => {
-      logger.write_char('<')
-      logger.write_string("(\{span.length()})")
-      logger.write_char('>')
-    }
-    Object::BNode(span) => {
-      logger.write_string("_:")
-      logger.write_string("(\{span.length()})")
-    }
-    Object::Literal(span) => logger.write_string("(\{span.length()})")
-    Object::TripleTerm(span) => logger.write_string("(\{span.length()})")
-    Object::PrefName(span) => logger.write_string("(\{span.length()})")
-    Object::Formula(span) => logger.write_string("(\{span.length()})")
-    Object::Variable(span) => logger.write_string("?\{span.length()}")
-  }
-}
-
-///|
-// W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
-pub extend Object with Show::{output, to_string}

@@ -262,15 +262,6 @@ pub struct ExtensionIter {
 }
 pub fn ExtensionIter::to_array(Self) -> Array[(StringView, Array[StringView])]
 
-pub(all) enum GraphName {
-  None
-  Iri(ArrayView[Byte])
-  BNode(ArrayView[Byte])
-} derive(Eq, @debug.Debug)
-pub fn GraphName::equal(Self, Self) -> Bool
-pub fn GraphName::not_equal(Self, Self) -> Bool
-pub fn GraphName::to_repr(Self) -> @debug.Repr
-
 pub(all) enum GraphPolicy {
   Strict
   Drop
@@ -461,22 +452,6 @@ pub fn NamedNodeRef::to_repr(Self) -> @debug.Repr
 pub fn NamedNodeRef::to_string(Self) -> String
 pub impl Show for NamedNodeRef
 
-pub(all) enum Object {
-  Iri(ArrayView[Byte])
-  BNode(ArrayView[Byte])
-  Literal(ArrayView[Byte])
-  TripleTerm(ArrayView[Byte])
-  PrefName(ArrayView[Byte])
-  Variable(ArrayView[Byte])
-  Formula(ArrayView[Byte])
-} derive(Eq, @debug.Debug)
-pub fn Object::equal(Self, Self) -> Bool
-pub fn Object::not_equal(Self, Self) -> Bool
-pub fn Object::output(Self, &Logger) -> Unit
-pub fn Object::to_repr(Self) -> @debug.Repr
-pub fn Object::to_string(Self) -> String
-pub impl Show for Object
-
 pub struct PrivateUse {
   prefix : (Int, Int)
   subtags : Array[(Int, Int)]
@@ -489,10 +464,13 @@ pub fn PrivateUse::to_string(Self) -> String
 pub impl Show for PrivateUse
 
 pub(all) struct QuadEmit {
-  subject : Subject
+  s_kind : TermKind
+  s_view : ArrayView[Byte]
   predicate : ArrayView[Byte]
-  object : Object
-  graph : GraphName
+  o_kind : TermKind
+  o_view : ArrayView[Byte]
+  g_kind : TermKind
+  g_view : ArrayView[Byte]
 } derive(Eq, @debug.Debug)
 pub fn QuadEmit::equal(Self, Self) -> Bool
 pub fn QuadEmit::not_equal(Self, Self) -> Bool
@@ -551,22 +529,6 @@ pub fn[L] SliceParser::new(NQuadsEngine[L], ArrayView[Byte], lenient? : Bool, rd
 pub fn[L : LexerSource] SliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[ParseError])
 pub fn[L : LexerSource] SliceParser::parse_next(Self[L]) -> Result[QuadSpan, ParseError]?
 
-pub(all) enum Subject {
-  Iri(ArrayView[Byte])
-  BNode(ArrayView[Byte])
-  PrefName(ArrayView[Byte])
-  TripleTerm(ArrayView[Byte])
-  Variable(ArrayView[Byte])
-  Literal(ArrayView[Byte])
-  Formula(ArrayView[Byte])
-} derive(Eq, @debug.Debug)
-pub fn Subject::equal(Self, Self) -> Bool
-pub fn Subject::not_equal(Self, Self) -> Bool
-pub fn Subject::output(Self, &Logger) -> Unit
-pub fn Subject::to_repr(Self) -> @debug.Repr
-pub fn Subject::to_string(Self) -> String
-pub impl Show for Subject
-
 pub struct TagState {
   language : (Int, Int)
   extlang : (Int, Int)?
@@ -583,6 +545,23 @@ pub fn TagState::output(Self, &Logger) -> Unit
 pub fn TagState::to_repr(Self) -> @debug.Repr
 pub fn TagState::to_string(Self) -> String
 pub impl Show for TagState
+
+pub(all) enum TermKind {
+  Iri
+  BNode
+  PrefName
+  TripleTerm
+  Variable
+  Literal
+  Formula
+  DefaultGraph
+} derive(Eq, @debug.Debug)
+pub fn TermKind::equal(Self, Self) -> Bool
+pub fn TermKind::not_equal(Self, Self) -> Bool
+pub fn TermKind::output(Self, &Logger) -> Unit
+pub fn TermKind::to_repr(Self) -> @debug.Repr
+pub fn TermKind::to_string(Self) -> String
+pub impl Show for TermKind
 
 pub(all) enum TermType {
   Iri

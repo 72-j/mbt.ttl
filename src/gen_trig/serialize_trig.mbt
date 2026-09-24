@@ -94,13 +94,13 @@ fn append_terms(
   quad : @nquads.QuadEmit,
   buf : StringBuilder,
 ) -> Result[Unit, ParseError] {
-  match quad.subject {
-    Iri(v) => trig_ser_span(v, buf)
-    BNode(v) => trig_ser_span(v, buf)
+  match quad.s_kind {
+    @nquads.TermKind::Iri | @nquads.TermKind::BNode =>
+      trig_ser_span(quad.s_view, buf)
     // RDF 1.2 引用三元组壳主语：整段原样写出（同宾语位 TT 保真口径）
-    TripleTerm(v) => trig_ser_span(v, buf)
+    @nquads.TermKind::TripleTerm => trig_ser_span(quad.s_view, buf)
     // Turtle/TriG 语法无前缀名：物化层已展开，残留即不变量破坏，报错钉住
-    PrefName(_) =>
+    @nquads.TermKind::PrefName =>
       return Err(
         ParseError::SyntaxErr(
           "Prefixed names are not valid in serialized output",
@@ -109,24 +109,32 @@ fn append_terms(
       )
     // Turtle/TriG 无变量/字面量主语/公式（N3 方言专属，方言不产出）：透传会
     // 写出上层语言语法，报错钉住不变量
-    Variable(_) =>
+    @nquads.TermKind::Variable =>
       return Err(
         ParseError::SyntaxErr(
           "Variables are not valid in serialized output",
           (0, 0),
         ),
       )
-    Literal(_) =>
+    @nquads.TermKind::Literal =>
       return Err(
         ParseError::SyntaxErr(
           "Literal subjects are not valid in serialized output",
           (0, 0),
         ),
       )
-    Formula(_) =>
+    @nquads.TermKind::Formula =>
       return Err(
         ParseError::SyntaxErr(
           "Formulas are not valid in serialized output",
+          (0, 0),
+        ),
+      )
+    // 位-种类非法组合：DefaultGraph 只许图名位，主语位出现即不变量破坏
+    @nquads.TermKind::DefaultGraph =>
+      return Err(
+        ParseError::SyntaxErr(
+          "DefaultGraph is not valid in subject position",
           (0, 0),
         ),
       )
@@ -134,20 +142,20 @@ fn append_terms(
   buf.write_char(' ')
   trig_ser_span(quad.predicate, buf)
   buf.write_char(' ')
-  match quad.object {
-    Iri(v) => trig_ser_span(v, buf)
-    BNode(v) => trig_ser_span(v, buf)
-    Literal(v) => trig_ser_span(v, buf)
+  match quad.o_kind {
+    @nquads.TermKind::Iri | @nquads.TermKind::BNode =>
+      trig_ser_span(quad.o_view, buf)
+    @nquads.TermKind::Literal => trig_ser_span(quad.o_view, buf)
     // 引用三元组壳整段原文回写（RDF 1.2；round-trip 不变量）
-    TripleTerm(v) => trig_ser_span(v, buf)
-    PrefName(_) =>
+    @nquads.TermKind::TripleTerm => trig_ser_span(quad.o_view, buf)
+    @nquads.TermKind::PrefName =>
       return Err(
         ParseError::SyntaxErr(
           "Prefixed names are not valid in serialized output",
           (0, 0),
         ),
       )
-    Variable(_) =>
+    @nquads.TermKind::Variable =>
       return Err(
         ParseError::SyntaxErr(
           "Variables are not valid in serialized output",
@@ -156,10 +164,18 @@ fn append_terms(
       )
     // Turtle/TriG 无公式词项（N3 方言专属，ADR-002）：透传会写出上层语言
     // 语法，报错钉住不变量
-    Formula(_) =>
+    @nquads.TermKind::Formula =>
       return Err(
         ParseError::SyntaxErr(
           "Formulas are not valid in serialized output",
+          (0, 0),
+        ),
+      )
+    // 位-种类非法组合：DefaultGraph 只许图名位，宾语位出现即不变量破坏
+    @nquads.TermKind::DefaultGraph =>
+      return Err(
+        ParseError::SyntaxErr(
+          "DefaultGraph is not valid in object position",
           (0, 0),
         ),
       )
@@ -178,23 +194,32 @@ pub fn TrigSerializer::serialize(
   let buf = StringBuilder()
   let default_graph : Array[@nquads.QuadEmit] = []
   let groups : Array[GraphGroup] = []
-  // 分组：默认图直收；命名图按内容归并（保持首次出现序）
+  // 分组：默认图直收；命名图按内容归并（保持首次出现序）。
+  // 图位封闭门（P3 运行时对应物，清点表第 2 条）：图名位只许 Iri/BNode/DefaultGraph
   for quad in quads {
-    match quad.graph {
-      None => default_graph.push(quad)
-      Iri(v) | BNode(v) => {
+    match quad.g_kind {
+      @nquads.TermKind::DefaultGraph => default_graph.push(quad)
+      @nquads.TermKind::Iri | @nquads.TermKind::BNode => {
         let mut hit : GraphGroup? = None
         for group in groups {
-          if trig_ser_view_eq(group.name, v) {
+          if trig_ser_view_eq(group.name, quad.g_view) {
             hit = Some(group)
             break
           }
         }
         match hit {
           Some(group) => group.triples.push(quad)
-          None => groups.push({ name: v, triples: [quad], })
+          None => groups.push({ name: quad.g_view, triples: [quad], })
         }
       }
+      // 图位封闭门：结构非法，Turtle/TriG 策略之外无处可落
+      _ =>
+        return Err(
+          ParseError::SyntaxErr(
+            "Graph term kind is not valid in graph position (only IRI/blank node/default graph)",
+            (0, 0),
+          ),
+        )
     }
   }
   // Turtle：图名存在按策略裁决（Strict 阻断 / Drop 丢弃）

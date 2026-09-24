@@ -42,14 +42,14 @@ fn first_offset_of(data : Array[Byte], b : Byte) -> Int {
 /// 三件套收编原 `mat_vs ∘ mat_subj/mat_obj` 组合与 `.predicate` 直取——返 String，
 /// 内部复用 view_str（decode_lossy 全幅，严禁逐字节 to_char 拼多字节）
 fn emit_subject(e : @nquads.QuadEmit) -> String {
-  match e.subject {
-    Iri(v) => view_str(v, (0, v.length()))
-    BNode(v) => view_str(v, (0, v.length()))
-    PrefName(v) => view_str(v, (0, v.length()))
+  match e.s_kind {
+    @nquads.TermKind::Iri => view_str(e.s_view, (0, e.s_view.length()))
+    @nquads.TermKind::BNode => view_str(e.s_view, (0, e.s_view.length()))
+    @nquads.TermKind::PrefName => view_str(e.s_view, (0, e.s_view.length()))
     // 役8 注解壳主语（<<s p o>> arena 合成）走 TT 臂
-    TripleTerm(v) => view_str(v, (0, v.length()))
+    @nquads.TermKind::TripleTerm => view_str(e.s_view, (0, e.s_view.length()))
     // 役17 字面量主语臂（span 干净后字面量可居主位）
-    Literal(v) => view_str(v, (0, v.length()))
+    @nquads.TermKind::Literal => view_str(e.s_view, (0, e.s_view.length()))
     _ => ""
   }
 }
@@ -62,14 +62,15 @@ fn emit_predicate(e : @nquads.QuadEmit) -> String {
 
 ///|
 fn emit_object(e : @nquads.QuadEmit) -> String {
-  match e.object {
-    Iri(v) => view_str(v, (0, v.length()))
-    BNode(v) => view_str(v, (0, v.length()))
-    Literal(v) => view_str(v, (0, v.length()))
-    TripleTerm(v) => view_str(v, (0, v.length()))
-    PrefName(v) => view_str(v, (0, v.length()))
-    Variable(v) => view_str(v, (0, v.length()))
-    Formula(v) => view_str(v, (0, v.length()))
+  match e.o_kind {
+    @nquads.TermKind::Iri => view_str(e.o_view, (0, e.o_view.length()))
+    @nquads.TermKind::BNode => view_str(e.o_view, (0, e.o_view.length()))
+    @nquads.TermKind::Literal => view_str(e.o_view, (0, e.o_view.length()))
+    @nquads.TermKind::TripleTerm => view_str(e.o_view, (0, e.o_view.length()))
+    @nquads.TermKind::PrefName => view_str(e.o_view, (0, e.o_view.length()))
+    @nquads.TermKind::Variable => view_str(e.o_view, (0, e.o_view.length()))
+    @nquads.TermKind::Formula => view_str(e.o_view, (0, e.o_view.length()))
+    _ => ""
   }
 }
 

@@ -36,47 +36,46 @@ fn mat_chain(input : String) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
 let mat_empty : Array[Byte] = []
 
 ///|
-/// 枚举载荷抽取（断言用）：变体不符返回空视图，断言自然爆
+/// 枚举载荷抽取（断言用）：变体不符返回空视图，断言自然爆。
+/// P3 平化：kind+view 直挂，按 kind 分派取 view
 fn mat_subj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
-  match e.subject {
-    Iri(v) => v
-    BNode(v) => v
-    PrefName(v) => v
+  match e.s_kind {
+    @nquads.TermKind::Iri => e.s_view
+    @nquads.TermKind::BNode => e.s_view
+    @nquads.TermKind::PrefName => e.s_view
     // 役9：TT 壳主语（注解体 quad）直通
-    TripleTerm(v) => v
+    @nquads.TermKind::TripleTerm => e.s_view
     _ => mat_empty[:]
   }
 }
 
 ///|
 fn mat_obj(e : @nquads.QuadEmit) -> ArrayView[Byte] {
-  match e.object {
-    Iri(v) => v
-    BNode(v) => v
-    Literal(v) => v
-    TripleTerm(v) => v
-    PrefName(v) => v
-    Variable(v) => v
-    Formula(v) => v
+  match e.o_kind {
+    @nquads.TermKind::Iri => e.o_view
+    @nquads.TermKind::BNode => e.o_view
+    @nquads.TermKind::Literal => e.o_view
+    @nquads.TermKind::TripleTerm => e.o_view
+    @nquads.TermKind::PrefName => e.o_view
+    @nquads.TermKind::Variable => e.o_view
+    @nquads.TermKind::Formula => e.o_view
+    _ => mat_empty[:]
   }
 }
 
 ///|
 fn mat_graph(e : @nquads.QuadEmit) -> ArrayView[Byte] {
-  match e.graph {
-    Iri(v) => v
-    BNode(v) => v
-    None => mat_empty[:]
+  match e.g_kind {
+    @nquads.TermKind::Iri => e.g_view
+    @nquads.TermKind::BNode => e.g_view
+    _ => mat_empty[:]
   }
 }
 
 ///|
-/// 判定图名位是否为默认图（None 变体）
+/// 判定图名位是否为默认图（DefaultGraph 变体）
 fn mat_has_graph(e : @nquads.QuadEmit) -> Bool {
-  match e.graph {
-    None => false
-    _ => true
-  }
+  !(e.g_kind is @nquads.TermKind::DefaultGraph)
 }
 
 ///|

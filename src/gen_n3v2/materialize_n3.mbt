@@ -633,7 +633,9 @@ pub fn N3Materializer::materialize_quad(
   }
   // 主语位：Iri / BNode / fresh 结构 / PrefName（TT 壳臂为防御位：N3 表无
   // 主语位壳行）。融合深验在词项构造点就地执行
-  let subject : @nquads.Subject = if quad.subj_shell {
+  let mut s_kind : @nquads.TermKind = @nquads.TermKind::Iri
+  let mut s_view : ArrayView[Byte] = self.data[0:0]
+  if quad.subj_shell {
     // 役8 注解壳主语：s = 锚三元组连续原文 span，物化层合成 <<原文>> TT 壳
     //（分量在主 quad 组装点各自过验；整段原样回写同 TT 黑盒口径）
     let start = self.arena.length()
@@ -644,17 +646,15 @@ pub fn N3Materializer::materialize_quad(
     }
     self.push_byte(b'>')
     self.push_byte(b'>')
-    @nquads.Subject::TripleTerm(
-      slice_span(self.arena[:], (start, self.arena.length() - start)),
-    )
+    s_kind = @nquads.TermKind::TripleTerm
+    s_view = slice_span(self.arena[:], (start, self.arena.length() - start))
   } else if quad.s.1 == 0 {
     // rdf:nil 标记（Span(open.0, 0)，长度 0 = 无字节词项）：合成词表 IRI，
     // 可信免深验（ADR-003a 空集合主位）
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_nil)
-    @nquads.Subject::Iri(
-      slice_span(self.arena[:], (start, self.arena.length() - start)),
-    )
+    s_kind = @nquads.TermKind::Iri
+    s_view = slice_span(self.arena[:], (start, self.arena.length() - start))
   } else {
     let c0 = self.data[quad.s.0]
     if c0 == b'<' {
@@ -662,14 +662,20 @@ pub fn N3Materializer::materialize_quad(
         // 防御位：N3 表无主语位壳行；Step 5 接表后承接
         let v = slice_span(self.data, quad.s)
         match self.gate_tt(v) {
-          Ok(v) => @nquads.Subject::TripleTerm(v)
+          Ok(v) => {
+            s_kind = @nquads.TermKind::TripleTerm
+            s_view = v
+          }
           Err(e) => return Err(e)
         }
       } else {
         match self.iri_term(quad.s, quad.base_version) {
           Ok(v) =>
             match self.gate_iri(v) {
-              Ok(v) => @nquads.Subject::Iri(v)
+              Ok(v) => {
+                s_kind = @nquads.TermKind::Iri
+                s_view = v
+              }
               Err(e) => return Err(e)
             }
           Err(e) => return Err(e)
@@ -678,7 +684,10 @@ pub fn N3Materializer::materialize_quad(
     } else if c0 == b'_' {
       let v = slice_span(self.data, quad.s)
       match self.gate_bnode(v) {
-        Ok(v) => @nquads.Subject::BNode(v)
+        Ok(v) => {
+          s_kind = @nquads.TermKind::BNode
+          s_view = v
+        }
         Err(e) => return Err(e)
       }
     } else if c0 == b'?' {
@@ -686,21 +695,28 @@ pub fn N3Materializer::materialize_quad(
       // 不展开、不前缀解析、不绑定，名与位置即全部语义
       let v = slice_span(self.data, quad.s)
       match self.gate_variable(v) {
-        Ok(v) => @nquads.Subject::Variable(v)
+        Ok(v) => {
+          s_kind = @nquads.TermKind::Variable
+          s_view = v
+        }
         Err(e) => return Err(e)
       }
     } else if c0 == b'[' || c0 == b'(' || c0 == b'!' || c0 == b'^' {
       // fresh 结构节点：`[]` fresh / 集合单一 BNode（ADR-003a：`(` 自身
       // span 即身份）；`!`/`^` 路径中间节点（役3：操作符 span 即身份）。
       // 开括号 offset memo `_:genid<N>`，可信构造免深验
-      @nquads.Subject::BNode(self.fresh_bnode(quad.s))
+      s_kind = @nquads.TermKind::BNode
+      s_view = self.fresh_bnode(quad.s)
     } else if c0 == b'"' || c0 == b'\'' {
       // N3 役10：verb ::= expression，主语位字面量合法——同宾语位口径
       //（物化 + 深验就地执行）
       match self.materialize_literal(quad.s, quad.prefix_version) {
         Ok(v) =>
           match self.gate_literal(v) {
-            Ok(v) => @nquads.Subject::Literal(v)
+            Ok(v) => {
+              s_kind = @nquads.TermKind::Literal
+              s_view = v
+            }
             Err(e) => return Err(e)
           }
         Err(e) => return Err(e)
@@ -709,7 +725,10 @@ pub fn N3Materializer::materialize_quad(
       // N3 ADR-002：GraphTerm 公式主语——不透明不断言为真，整段原文持有
       //（引擎只出 `{` token span，物化层扫描配对 `}` 补全整段；免深验）
       match formula_body_end(self.data, quad.s.0) {
-        Ok(end) => @nquads.Subject::Formula(self.data[quad.s.0:end])
+        Ok(end) => {
+          s_kind = @nquads.TermKind::Formula
+          s_view = self.data[quad.s.0:end]
+        }
         Err(e) => return Err(e)
       }
     } else if (
@@ -718,16 +737,21 @@ pub fn N3Materializer::materialize_quad(
       @nquads.is_numeric_span(self.data, quad.s.0, quad.s.1) {
       // 数值主语：词形全验后展开为可信构造，免深验（同宾语位口径）
       let nspan = self.expand_number(quad.s)
-      @nquads.Subject::Literal(slice_span(self.arena[:], nspan))
+      s_kind = @nquads.TermKind::Literal
+      s_view = slice_span(self.arena[:], nspan)
     } else if @nquads.is_boolean_word(self.data, quad.s.0, quad.s.1) {
       let bspan = self.expand_boolean(quad.s)
-      @nquads.Subject::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
+      s_kind = @nquads.TermKind::Literal
+      s_view = slice_span(self.arena[:], bspan) // 静态词可信，免深验
     } else {
       match
         self.expand_prefname(quad.s, quad.prefix_version, quad.base_version) {
         Ok(Some(expanded)) =>
           match self.gate_iri(slice_span(self.arena[:], expanded)) {
-            Ok(v) => @nquads.Subject::Iri(v)
+            Ok(v) => {
+              s_kind = @nquads.TermKind::Iri
+              s_view = v
+            }
             Err(e) => return Err(e)
           }
         Ok(None) =>
@@ -808,13 +832,18 @@ pub fn N3Materializer::materialize_quad(
   // 宾语位：Iri / BNode / Literal（保真或 ^^ 展开）/ 数值 / 布尔 / PrefName / TT。
   // 数值分支用 is_numeric_span 全词形裁决：lenient 放行的"数字开头非数值串"
   // 不得被 expand_number 静默吞成 typed literal，落 PrefName 臂报错
-  let object : @nquads.Object = if quad.o.1 == 0 {
+  // 宾语位：Iri / BNode / Literal（保真或 ^^ 展开）/ 数值 / 布尔 / PrefName / TT。
+  // 数值分支用 is_numeric_span 全词形裁决：lenient 放行的"数字开头非数值串"
+  // 不得被 expand_number 静默吞成 typed literal，落 PrefName 臂报错。
+  // P3 平化：kind+view 直挂，链臂就地赋值（mut + 虚初值，避免元组装箱）
+  let mut o_kind : @nquads.TermKind = @nquads.TermKind::Iri
+  let mut o_view : ArrayView[Byte] = self.data[0:0]
+  if quad.o.1 == 0 {
     // rdf:nil 标记（空集合宾位，ADR-003a）：合成词表 IRI，可信免深验
     let start = self.arena.length()
     self.push_vocab(@nquads.rdf_nil)
-    @nquads.Object::Iri(
-      slice_span(self.arena[:], (start, self.arena.length() - start)),
-    )
+    o_kind = @nquads.TermKind::Iri
+    o_view = slice_span(self.arena[:], (start, self.arena.length() - start))
   } else {
     let c0 = self.data[quad.o.0]
     let is_num = (
@@ -827,14 +856,20 @@ pub fn N3Materializer::materialize_quad(
         // 深验就地执行
         let v = slice_span(self.data, quad.o)
         match self.gate_tt(v) {
-          Ok(v) => @nquads.Object::TripleTerm(v)
+          Ok(v) => {
+            o_kind = @nquads.TermKind::TripleTerm
+            o_view = v
+          }
           Err(e) => return Err(e)
         }
       } else {
         match self.iri_term(quad.o, quad.base_version) {
           Ok(v) =>
             match self.gate_iri(v) {
-              Ok(v) => @nquads.Object::Iri(v)
+              Ok(v) => {
+                o_kind = @nquads.TermKind::Iri
+                o_view = v
+              }
               Err(e) => return Err(e)
             }
           Err(e) => return Err(e)
@@ -843,7 +878,10 @@ pub fn N3Materializer::materialize_quad(
     } else if c0 == b'_' {
       let v = slice_span(self.data, quad.o)
       match self.gate_bnode(v) {
-        Ok(v) => @nquads.Object::BNode(v)
+        Ok(v) => {
+          o_kind = @nquads.TermKind::BNode
+          o_view = v
+        }
         Err(e) => return Err(e)
       }
     } else if c0 == b'?' {
@@ -851,17 +889,24 @@ pub fn N3Materializer::materialize_quad(
       // 不展开、不前缀解析、不绑定，名与位置即全部语义
       let v = slice_span(self.data, quad.o)
       match self.gate_variable(v) {
-        Ok(v) => @nquads.Object::Variable(v)
+        Ok(v) => {
+          o_kind = @nquads.TermKind::Variable
+          o_view = v
+        }
         Err(e) => return Err(e)
       }
     } else if c0 == b'[' || c0 == b'(' || c0 == b'!' || c0 == b'^' {
       // fresh 结构节点：`[]` fresh / 集合单一 BNode / 路径中间节点（役3 同身份）
-      @nquads.Object::BNode(self.fresh_bnode(quad.o))
+      o_kind = @nquads.TermKind::BNode
+      o_view = self.fresh_bnode(quad.o)
     } else if c0 == b'"' || c0 == b'\'' {
       match self.materialize_literal(quad.o, quad.prefix_version) {
         Ok(v) =>
           match self.gate_literal(v) {
-            Ok(v) => @nquads.Object::Literal(v)
+            Ok(v) => {
+              o_kind = @nquads.TermKind::Literal
+              o_view = v
+            }
             Err(e) => return Err(e)
           }
         Err(e) => return Err(e)
@@ -871,15 +916,20 @@ pub fn N3Materializer::materialize_quad(
       // 注意：先展开、后取 arena 视图——内联写会因实参求值序先建旧视图，
       // 展开追加后越界被 slice_span 钳成空视图
       let nspan = self.expand_number(quad.o)
-      @nquads.Object::Literal(slice_span(self.arena[:], nspan))
+      o_kind = @nquads.TermKind::Literal
+      o_view = slice_span(self.arena[:], nspan)
     } else if @nquads.is_boolean_word(self.data, quad.o.0, quad.o.1) {
       let bspan = self.expand_boolean(quad.o)
-      @nquads.Object::Literal(slice_span(self.arena[:], bspan)) // 静态词可信，免深验
+      o_kind = @nquads.TermKind::Literal
+      o_view = slice_span(self.arena[:], bspan) // 静态词可信，免深验
     } else if c0 == b'{' {
       // N3 ADR-002：公式宾语——不透明 GraphTerm，整段原文持有（引擎只出
       // `{` token span，物化层扫描配对 `}` 补全；免深验）
       match formula_body_end(self.data, quad.o.0) {
-        Ok(end) => @nquads.Object::Formula(self.data[quad.o.0:end])
+        Ok(end) => {
+          o_kind = @nquads.TermKind::Formula
+          o_view = self.data[quad.o.0:end]
+        }
         Err(e) => return Err(e)
       }
     } else {
@@ -887,7 +937,10 @@ pub fn N3Materializer::materialize_quad(
         self.expand_prefname(quad.o, quad.prefix_version, quad.base_version) {
         Ok(Some(expanded)) =>
           match self.gate_iri(slice_span(self.arena[:], expanded)) {
-            Ok(v) => @nquads.Object::Iri(v)
+            Ok(v) => {
+              o_kind = @nquads.TermKind::Iri
+              o_view = v
+            }
             Err(e) => return Err(e)
           }
         Ok(None) =>
@@ -897,45 +950,54 @@ pub fn N3Materializer::materialize_quad(
     }
   }
   // 图名位：防御位（N3 无图块语法，quad.g 恒 None；表无图事件）
-  let graph : @nquads.GraphName = match quad.g {
-    None => @nquads.GraphName::None
-    Some(g) => {
-      let c0 = self.data[g.0]
-      if c0 == b'<' {
-        match self.iri_term(g, quad.base_version) {
-          Ok(v) =>
-            match self.gate_iri(v) {
-              Ok(v) => @nquads.GraphName::Iri(v)
-              Err(e) => return Err(e)
+  let mut g_kind : @nquads.TermKind = @nquads.TermKind::DefaultGraph
+  let mut g_view : ArrayView[Byte] = self.data[0:0]
+  if quad.g is Some(g) {
+    let c0 = self.data[g.0]
+    if c0 == b'<' {
+      match self.iri_term(g, quad.base_version) {
+        Ok(v) =>
+          match self.gate_iri(v) {
+            Ok(v) => {
+              g_kind = @nquads.TermKind::Iri
+              g_view = v
             }
-          Err(e) => return Err(e)
+            Err(e) => return Err(e)
+          }
+        Err(e) => return Err(e)
+      }
+    } else if c0 == b'_' {
+      let v = slice_span(self.data, g)
+      match self.gate_bnode(v) {
+        Ok(v) => {
+          g_kind = @nquads.TermKind::BNode
+          g_view = v
         }
-      } else if c0 == b'_' {
-        let v = slice_span(self.data, g)
-        match self.gate_bnode(v) {
-          Ok(v) => @nquads.GraphName::BNode(v)
-          Err(e) => return Err(e)
-        }
-      } else if c0 == b'[' || c0 == b'(' {
-        // 防御位照接（trig 同款：表保证图名位不产 fresh）
-        @nquads.GraphName::BNode(self.fresh_bnode(g))
-      } else {
-        match self.expand_prefname(g, quad.prefix_version, quad.base_version) {
-          Ok(Some(expanded)) =>
-            match self.gate_iri(slice_span(self.arena[:], expanded)) {
-              Ok(v) => @nquads.GraphName::Iri(v)
-              Err(e) => return Err(e)
+        Err(e) => return Err(e)
+      }
+    } else if c0 == b'[' || c0 == b'(' {
+      // 防御位照接（trig 同款：表保证图名位不产 fresh）
+      g_kind = @nquads.TermKind::BNode
+      g_view = self.fresh_bnode(g)
+    } else {
+      match self.expand_prefname(g, quad.prefix_version, quad.base_version) {
+        Ok(Some(expanded)) =>
+          match self.gate_iri(slice_span(self.arena[:], expanded)) {
+            Ok(v) => {
+              g_kind = @nquads.TermKind::Iri
+              g_view = v
             }
-          Ok(None) =>
-            return Err(
-              ParseError::ValidationErr("Graph name has undeclared prefix"),
-            )
-          Err(e) => return Err(e)
-        }
+            Err(e) => return Err(e)
+          }
+        Ok(None) =>
+          return Err(
+            ParseError::ValidationErr("Graph name has undeclared prefix"),
+          )
+        Err(e) => return Err(e)
       }
     }
   }
-  Ok({ subject, predicate, object, graph, })
+  Ok({ s_kind, s_view, predicate, o_kind, o_view, g_kind, g_view, })
 }
 
 ///|

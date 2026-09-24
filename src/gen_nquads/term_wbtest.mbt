@@ -1,7 +1,11 @@
 // 展示面（Show）逐变体测试。
-// 背景（覆盖率实测 2026-09-18）：term.mbt 五个 Show impl 此前是 0/128 行覆盖——
+// 背景（覆盖率实测 2026-09-18）：term.mbt 展示面此前是 0/128 行覆盖——
 // 产物侧只有 struct 定义被引用，展示面从没被跑过。本文件按变体逐个断言**输出串**，
 // 不只"跑过就算"：QuadSpan/QuadEmit 的格式是调试面契约，漂了要能被看见。
+//
+// P3 平化（2026-09-24）：Subject/Object 七变体金样随型迁——经 show_term_view
+// 直测（wbtest 白盒见私有件），**断言串逐字不变**；新增 TermKind 裸名展示金样；
+// QuadEmit 三档金样字节不变。
 //
 // 调用口径：方法隐式提升已 deprecated（`--deny-warn` 红）⇒ 一律显式 `Show::to_string(x)`。
 
@@ -20,25 +24,45 @@ test "term: TermType 四变体展示" {
 }
 
 ///|
-test "term: Subject 七变体展示（Iri/BNode/PrefName/TripleTerm/Variable/Literal/Formula）" {
-  assert_eq(Show::to_string(Subject::Iri(term_view("http://a"))), "<(8)>")
-  assert_eq(Show::to_string(Subject::BNode(term_view("_:b"))), "_:(3)")
-  assert_eq(Show::to_string(Subject::PrefName(term_view("ex:a"))), "(4)")
-  assert_eq(Show::to_string(Subject::TripleTerm(term_view("<<a>>"))), "(5)")
-  assert_eq(Show::to_string(Subject::Variable(term_view("?x"))), "?2")
-  assert_eq(Show::to_string(Subject::Literal(term_view("\"x\""))), "(3)")
-  assert_eq(Show::to_string(Subject::Formula(term_view("{ }"))), "(3)")
+test "term: 词项七变体展示（Iri/BNode/PrefName/TripleTerm/Variable/Literal/Formula）" {
+  // 与原 Subject/Object 七变体臂文本逐字同（金样迁移，断言串不变）
+  let buf = StringBuilder()
+  show_term_view(TermKind::Iri, term_view("http://a"), buf)
+  assert_eq(buf.to_string(), "<(8)>")
+  let buf = StringBuilder()
+  show_term_view(TermKind::BNode, term_view("_:b"), buf)
+  assert_eq(buf.to_string(), "_:(3)")
+  let buf = StringBuilder()
+  show_term_view(TermKind::PrefName, term_view("ex:a"), buf)
+  assert_eq(buf.to_string(), "(4)")
+  let buf = StringBuilder()
+  show_term_view(TermKind::TripleTerm, term_view("<<a>>"), buf)
+  assert_eq(buf.to_string(), "(5)")
+  let buf = StringBuilder()
+  show_term_view(TermKind::Variable, term_view("?x"), buf)
+  assert_eq(buf.to_string(), "?2")
+  let buf = StringBuilder()
+  show_term_view(TermKind::Literal, term_view("\"x\""), buf)
+  assert_eq(buf.to_string(), "(3)")
+  let buf = StringBuilder()
+  show_term_view(TermKind::Formula, term_view("{ }"), buf)
+  assert_eq(buf.to_string(), "(3)")
+  // 位-种类非法组合臂（调试面显式点名，无金样钉）
+  let buf = StringBuilder()
+  show_term_view(TermKind::DefaultGraph, term_view(""), buf)
+  assert_eq(buf.to_string(), "DefaultGraph")
 }
 
 ///|
-test "term: Object 七变体展示（Iri/BNode/Literal/TripleTerm/PrefName/Variable/Formula）" {
-  assert_eq(Show::to_string(Object::Iri(term_view("http://a"))), "<(8)>")
-  assert_eq(Show::to_string(Object::BNode(term_view("_:b"))), "_:(3)")
-  assert_eq(Show::to_string(Object::Literal(term_view("\"x\""))), "(3)")
-  assert_eq(Show::to_string(Object::TripleTerm(term_view("<<a>>"))), "(5)")
-  assert_eq(Show::to_string(Object::PrefName(term_view("ex:a"))), "(4)")
-  assert_eq(Show::to_string(Object::Variable(term_view("?x"))), "?2")
-  assert_eq(Show::to_string(Object::Formula(term_view("{ }"))), "(3)")
+test "term: TermKind 裸名展示（P3 单 kind 轴新增面）" {
+  assert_eq(Show::to_string(TermKind::Iri), "Iri")
+  assert_eq(Show::to_string(TermKind::BNode), "BNode")
+  assert_eq(Show::to_string(TermKind::PrefName), "PrefName")
+  assert_eq(Show::to_string(TermKind::TripleTerm), "TripleTerm")
+  assert_eq(Show::to_string(TermKind::Variable), "Variable")
+  assert_eq(Show::to_string(TermKind::Literal), "Literal")
+  assert_eq(Show::to_string(TermKind::Formula), "Formula")
+  assert_eq(Show::to_string(TermKind::DefaultGraph), "DefaultGraph")
 }
 
 ///|
@@ -63,14 +87,15 @@ test "term: QuadSpan 展示（graph 缺省 / 带图名两档）" {
 
 ///|
 test "term: QuadEmit 展示（主/谓/宾 + 图名三档）" {
-  let subject : Subject = Subject::Iri(term_view("http://a"))
   let predicate : Predicate = term_view("p")
-  let object_ : Object = Object::Literal(term_view("\"x\""))
   let default_graph : QuadEmit = {
-    subject,
+    s_kind: TermKind::Iri,
+    s_view: term_view("http://a"),
     predicate,
-    object: object_,
-    graph: GraphName::None,
+    o_kind: TermKind::Literal,
+    o_view: term_view("\"x\""),
+    g_kind: TermKind::DefaultGraph,
+    g_view: predicate[0:0],
   }
   assert_eq(
     Show::to_string(default_graph),
@@ -78,19 +103,23 @@ test "term: QuadEmit 展示（主/谓/宾 + 图名三档）" {
   )
   let iri_graph : QuadEmit = {
     ..default_graph,
-    graph: GraphName::Iri(term_view("http://g")),
+    g_kind: TermKind::Iri,
+    g_view: term_view("http://g"),
   }
   assert_eq(Show::to_string(iri_graph), "Quad(<(8)>, (1), (3), graph: <(8)>)")
   let bnode_graph : QuadEmit = {
     ..default_graph,
-    graph: GraphName::BNode(term_view("_:g")),
+    g_kind: TermKind::BNode,
+    g_view: term_view("_:g"),
   }
   assert_eq(Show::to_string(bnode_graph), "Quad(<(8)>, (1), (3), graph: _:(3))")
   // 主语/宾语侧的 Iri 与 BNode 分支
   let bnode_subject : QuadEmit = {
     ..default_graph,
-    subject: Subject::BNode(term_view("_:s")),
-    object: Object::Iri(term_view("http://o")),
+    s_kind: TermKind::BNode,
+    s_view: term_view("_:s"),
+    o_kind: TermKind::Iri,
+    o_view: term_view("http://o"),
   }
   assert_eq(
     Show::to_string(bnode_subject),
