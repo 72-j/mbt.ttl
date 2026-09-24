@@ -81,8 +81,21 @@ jobs:
       - name: Publish dry-run (server acceptance)
         run: |
           # 先让注册服务器验收元数据（包名/版本/readme 指针/依赖解析），
-          # 不落任何变更——202 Accepted 才进真发布。
-          moon publish --dry-run
+          # 不落任何变更——服务器返回 "Dry run completed successfully" 才进真发布。
+          #
+          # ⚠ CLI 怪癖（2026-09-24 探针定性，moon 0.1.20260920）：`moon publish --dry-run`
+          # 在服务器 202 验收成功后仍 exit 255（最小 scratch 包同判 ⇒ 与本包元数据无关，
+          # 系 CLI 把 202 尾步当失败）。故本步不认退出码、认输出文本：
+          # 出现 "Dry run completed successfully" = 服务器验收过；服务器真拒（4xx）时
+          # 无该行，grep 仍红——门牙保留。
+          set -e
+          out="$(moon publish --dry-run 2>&1 || true)"
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -q "Dry run completed successfully" || {
+            echo "::error::dry-run 未获得服务器验收（未见 Dry run completed successfully）"
+            exit 1
+          }
+          echo "服务器验收 ✓"
 
       - name: Restore mooncakes credentials
         env:
@@ -97,8 +110,29 @@ jobs:
 
       - name: Publish
         run: |
-          moon publish
-          echo "::notice::thy1016/moonttl 已发布——主仓 import 依赖号同笔跟跳（见 publish.yml 头注顺序）"
+          # 真发布。CLI 退出码可能受同款怪癖波及（dry-run 已证），故本步只留痕，
+          # 成功与否交下一步「注册表回查」裁决（注册表 = 唯一事实源）。
+          moon publish 2>&1 | tee /tmp/publish.log || true
+          echo "::notice::moon publish 已执行——成功判据见下一步注册表回查"
+
+      - name: Registry verification (source of truth)
+        run: |
+          # 发布唯一判据：注册表出现 moon.mod 的版本号。服务端异步建索引，回查最多 3 分钟。
+          ver="$(sed -nE 's/^version *= *"([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' moon.mod | head -n 1)"
+          kw="$(sed -nE 's|^name *= *"([^/]+)/.*|\1|p' moon.mod | head -n 1)"
+          for i in 1 2 3 4 5 6; do
+            body="$(curl -sS --http1.1 "https://mooncakes.io/api/v0/search?kw=${kw}" || true)"
+            if printf '%s' "$body" | grep -q "\"name\":\"${kw}/moonttl\",\"version\":\"${ver}\""; then
+              echo "注册表已见 ${ver} ✓"
+              echo "::notice::thy1016/moonttl 已发布——主仓 import 依赖号同笔跟跳（见 publish.yml 头注顺序）"
+              exit 0
+            fi
+            echo "第 ${i}/6 次回查未见 ${ver}，30s 后重试（服务端异步建索引）…"
+            sleep 30
+          done
+          echo "::error::发布后 3 分钟注册表仍未出现 ${ver}——判发布失败；publish.log 留痕："
+          cat /tmp/publish.log || true
+          exit 1
 
       - name: Cleanup credentials
         if: always()

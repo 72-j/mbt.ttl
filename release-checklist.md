@@ -1,6 +1,6 @@
 # 发版清单（release checklist）— thy1016/moonttl 0.3.0
 
-**状态（09-24）：发版候选达成——run #101 四 job 全绿；余项 = 用户手动 dispatch publish。**
+**状态（09-24）：发版候选达成——run #101 四 job 全绿；发布路径已裁 = 用户本机 `moon publish`（Claude 侧不执行发布）；发布前预检全绿（见 §发布前预检），余项 = 用户择时发布。**
 
 **发版判据不是"动作执行了"，是"第三方能按账复现出同一结论"。**
 红线 8 条（见 §红线）逐条对，缺一不发。清单本身可复核：每项带判据与取证位置。
@@ -29,7 +29,14 @@
 
 | # | 项 | 判据 | 状态 / 取证 |
 |---|---|---|---|
-| 11 | publish.yml manual dispatch | 触发后能跑通；**不自动触发**；注释写清"为什么不自动" | ☑ `.github/workflows/publish.yml`（`workflow_dispatch` Only） |
+| 11 | publish.yml manual dispatch | 触发后能跑通；**不自动触发**；注释写清"为什么不自动" | ☑ `.github/workflows/publish.yml`（`workflow_dispatch` Only）；【09-24 预检修正】dry-run 步改认验收文本不认退出码（CLI 怪癖，见 §发布前预检）+ 真发布步加注册表回查为成功判据 |
+
+## 发布前预检（09-24，HEAD = 发版候选笔）
+
+1. **四门 verbatim 本机全绿**：版本三处一致门（sed/grep 原样）✓ · `moon check --deny-warn` ✓ · `moon fmt --warn` 无违规 ✓ · `moon publish --dry-run` 服务器 **202 Accepted**（"Dry run completed successfully…for package thy1016/moonttl version 0.3.0"）✓
+2. **CLI 怪癖定性（探针法）**：`--dry-run` 在服务器验收成功后仍 **exit 255**；最小 scratch 包（thy1016/moonttl-dryrun-probe 0.0.1）同判 ⇒ 系 moon 0.1.20260920 CLI 把 202 尾步当失败，**与本包元数据无关**。推论：**发布成功与否不能拿退出码当判据**——判输出验收行（dry-run）/ 注册表回查（真发布）。
+3. **注册表槽位**：`https://mooncakes.io/api/v0/search?kw=moonttl` 现最新 = **0.2.2**（39 下载，yanked=false）⇒ 0.3.0 槽位空闲，无版本冲突。
+4. **网络**：mooncakes.io **直连通**（HTTP 200，1.2s，无需代理）——本机发布不用挂代理。
 | 12 | GH 三 OS 复跑实证 | Linux / macOS / Windows 全绿；**Windows 黄金门逐字节绿**（CI-2 治本为真；红则先分型：行尾/路径/大小写，不混治） | ☑ **run #101 三 OS 全绿**（ubuntu/macos/windows success）——Windows 黄金门逐字节绿 = CI-2 治本为真 |
 | 13 | 两仓成对提交推送 | 子仓 → 主仓指针，远端 gitlink 成对；主仓 import 号随 publish 跟跳（0.2.2 → 0.3.0，publish 成功后同笔） | ☑ 子仓推送 ✓（88f317d..d41e339）；主仓已推 74f8cc1（**此后缓推**，用户 09-24 令）；主仓 import 0.2.2→0.3.0 = publish 成功后跟跳 |
 
