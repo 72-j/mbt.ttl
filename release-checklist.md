@@ -61,3 +61,23 @@
 6. publish.yml manual dispatch——不自动触发，注释写清理由。
 7. GH 三 OS 全绿——**Windows 黄金门逐字节绿**。
 8. 两仓成对提交推送——远端 gitlink 成对。
+
+## 发版日序（本机发布路径；**用户择时**，Claude 侧不执行发布）
+
+> 2026-09-24 发版准备役补：新增**一条命令预检** `ci/release-check.sh`（12 项全 ✓ 实测），
+> 并**删除重复工作流** `.github/workflows/copilot-setup-steps copy.yml`（其 `persist-credentials: false`
+> 硬化已并回正式件）——发版日只剩下面五步。
+
+1. **预检（一条命令）**：`sh ci/release-check.sh` ⇒ 必须**全 ✓**（版本三处一致 / `check --deny-warn` /
+   `fmt --warn` 零 offender / `.mbti` 无漂移 / 面一 + 面三复现逐字节 / 覆盖率棘轮 909‰ /
+   三方言可达缺口全 0 / wasm 507 + native 521 / dry-run 服务器验收 / 注册表可达）。**任一 ✗ = 缺一不发**。
+2. **凭据在位**：`~/.moon/credentials.json`（`moon login` 产物）。本地发布**不依赖** CI secret。
+3. **真发布**：`moon publish`。**判据 = 注册表回查**（`curl -s 'https://mooncakes.io/api/v0/search?kw=moonttl'`
+   出现 **`0.3.0`**）；**不认退出码**（202-后-255 怪癖，见 §发布前预检 2）。
+4. **发后两件**：① 主仓 `import thy1016/moonttl` 跟跳 **0.2.2 → 0.3.0**（现缓推中，届时同笔推）；
+   ② 可选打标签：`git tag v0.3.0 && git push origin v0.3.0`。
+5. **发后复核**：`sh ci/netcheck.sh crlf`（净检出元门）+ 推送后看 GH **Test** run 复跑（推送即成 run）。
+
+**准备役勘定（同笔实证）**：清单数字与实况**逐项对齐**——wasm **507/507**、native **521/521**、
+冷口径覆盖率 **10176/11193 = 909‰**（= `coverage-baseline.txt` 字段）· 面一/面三复现**逐字节一致** ·
+版本三处一致（`moon.mod 0.3.0` / `CHANGELOG ## 0.3.0` / README 指向 CHANGELOG）· 红线 **8 条齐**。
