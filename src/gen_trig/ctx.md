@@ -51,11 +51,11 @@
 
 | 成员 | trait（声明锚点） | 实现锚点 | 现状 |
 |---|---|---|---|
-| ① 语义落点 | `TrigActions`（`trig.mbt:240`，`pub(open)` 风格由生成模板决定） | `gen_trig/actions.mbt:9`（`Hooks` 单载体） | 已接活 |
-| ② 效果面 Hook | `TrigEffectHandler`（`trig.mbt:1138`；默认 impl `:1172` 起；`interpret` `:1166`、`dispatch` `:1167`） | **无**（引擎自带效果语义） | **孤儿挂点（C-T1）** |
+| ① 语义落点 | `TrigActions`（`trig.mbt:254`，`pub(open)` 风格由生成模板决定） | `gen_trig/actions.mbt:9`（`Hooks` 单载体） | 已接活 |
+| ② 效果面 Hook | `TrigEffectHandler`（`trig.mbt:1201`；默认 impl `:1235` 起；`interpret` `:1358`、`dispatch` `:1424`） | **无**（引擎自带效果语义） | **孤儿挂点（C-T1）** |
 | ③ 控制流 Hook | **`TrigSupervisor`**（world 正名；T13 已落地，`trig.mbt` trait 头） | `engine.mbt`（begin_record/recover/finish_at_end/on_business_failed + `extend`） | 已接活；改名 ✅ T13 |
 
-**② 的成员清单**（`trig.mbt:1138–1168`）：`handle_continue / handle_emit_quad / handle_reset /
+**② 的成员清单**（`trig.mbt:1201–1233`）：`handle_continue / handle_emit_quad / handle_reset /
 handle_done / handle_enter_graph / handle_exit_graph / handle_sequence / handle_pop_bnp /
 handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_graph` + `on_pop_bnp` +
 `on_list_step` + `on_open_slot` + `interpret` + `dispatch`——共 18 个，其中恒定样板（`handle_continue`/
@@ -99,7 +99,7 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 |---|---|---|---|
 | R-T7 卷面补全 | T16 ✅ | 五卷 + 一页：`const` / `spec` / `adr`（ADR-TRIG-001…011）/ `todo` / 本卷 / `architecture.md` | `todo.md` 472 → 现版；拆卷留痕见 ADR-TRIG-011 |
 | R-T2 产物黄金门 | **T10 ✅ 2026-09-13** | 钉 ts 再生（`generate_with_ts` + CLI `--ts`）+ 工具链 `moon fmt` ≡ check-in `trig.mbt` 逐字节 + 强幂等；金样 ts `1788654011855`；形态口径 = 原始形 + `moon fmt` | 门：`src/rdf/trig_domain_toml_gen.mbt` `trig 产物黄金门`（`src/rdf` 21/21）；决策 `src/rdf/adr.md` ADR-6；禁令解除见 `const.md` §5 |
-| R-T1 效果面接活 | **T11 ✅ 2026-09-13** | `interpret` 唯一解释器（`gen_trig/engine.mbt:515` 调用点）；`emit_queue` 下沉 ctx；引擎实现 `snapshot`/`on_exit_graph`/`on_pop_bnp`/`on_list_step`/`on_open_slot`（`:476/489/496/504/513`）——观测/容灾切面可挂 | ADR-TRIG-013；生成器侧开关 `src/rdf` ADR-7；验收 `gen_trig` 80/80 + 模块 329/329 + `src/rdf` 21/21 |
+| R-T1 效果面接活 | **T11 ✅ 2026-09-13** | `interpret` 唯一解释器（`gen_trig/engine.mbt:515` 调用点）；`emit_queue` 下沉 ctx；引擎实现 `snapshot`/`on_exit_graph`/`on_pop_bnp`/`on_list_step`/`on_open_slot`（`:587/600/607/615/624`）——观测/容灾切面可挂 | ADR-TRIG-013；生成器侧开关 `src/rdf` ADR-7；验收 `gen_trig` 80/80 + 模块 329/329 + `src/rdf` 21/21 |
 | R-T3 公共面收窄 | **T12 ✅ 2026-09-13** | `[meta] internals_priv` ⇒ 内部 `priv` + 死面同收（handle_*/dispatch/EffectError/derive(Debug)）；`.mbti` 349→172 行 / 54→37 pub；新增 `TrigSliceParser::prefixes/bases` 窄入口 | ADR-TRIG-016；生成器侧 `src/rdf` ADR-11；nquads 产物门证明零波及 |
 | R-T4 命名回灌 | **T13 ✅ 2026-09-13** | `TrigLoopPolicy → TrigSupervisor`（数据键 `[meta] policy_trait_name`）＋ `Hooks → TrigActionsImpl`（44 处）＋ 字段 `hooks → actions`；生成注释**不动**（改它会连带 nquads 冻结产物） | ADR-TRIG-015；生成器侧 `src/rdf` ADR-10；`.mbti` diff = 预期 6 行 |
 | Turtle 翻 2.0（清障） | **T18 ✅ 2026-09-13** | `DomainDialectKind::Turtle` 与 Trig 同路 → `domain2/trig_*`；本包全方言**数据面单一**；数组匹配臂收缩为仅 N3 | 钉子「Turtle 路由 ≡ domain2 trig 双文件」（`src/rdf` 22/22）；`src/rdf/adr.md` ADR-8；ADR-5 的"Turtle 例外"关闭 |
@@ -114,8 +114,8 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 
 - 目标：`TrigEffectHandler` 成为真实切点（观测/容灾可挂）；效果语义只有一份。
 - 锚点：`trig.mbt:1138–1168`（trait）、`:1172` 起（默认 impl）、`:1166`（`interpret` 零调用）；
-  `gen_trig/engine.mbt:364`（`next`，自带效果解释）、`:175`（`emit_queue`，引擎私有）、`:504`（`settle_shell`）、
-  `:524`（`settle_annotation`）。
+  `gen_trig/engine.mbt:447`（`next`，自带效果解释）、`:453`（`emit_queue` 排水）、`:552`（`settle_shell`）、
+  `:572`（`settle_annotation`）。
 - 现状证据：`grep -rn "impl TrigEffectHandler" *.mbt` 只命中生成默认 impl；`interpret` 无任何调用点。
 - 动作：① 探针出切点表（§2，现已就位）；② 套装收形（删恒定 `handle_continue`/`handle_done` 等样板，
   保留真实挂点）；③ `interpret` 成唯一解释器、`engine.next` 调它；④ `emit_queue` 下沉 ctx 模板；
@@ -147,7 +147,7 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 #### R-T6 测试归位 `[建议]`（对齐 n3v2 役27a）
 
 - 目标：生产文件只剩实现。
-- 锚点：`materialize_trig.mbt:1132`（辅助段起）+ 16 个 `test`；`serialize_trig.mbt:236` 起 5 个 `test`。
+- 锚点：实现区见 `materialize_trig.mbt`（923 行）；**测试件已归位独立件**（役27a 同款）⇒ 本卷不再钉测试行号。
 - 动作：新建 `materialize_trig_wbtest.mbt` / `serialize_trig_wbtest.mbt`；辅助**去前缀并与 `trig_wbtest.mbt`
   既有 helper 去重**（同包 `_wbtest` 共命名空间，重名即编译错）。
 - 验收：`moon info` **零 diff**；测试计数不减（80）。
@@ -274,12 +274,12 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 |---|---|
 | 契约成员声明 | `trig.mbt:223`（Supervisor，trait 名 `TrigSupervisor`）、`:240`（Actions）、`:1138`（EffectHandler） |
 | 效果面默认 impl / 解释器 | `trig.mbt:1172` 起（impl）、`:1166`（interpret）、`:1167`（dispatch） |
-| 主循环 | `gen_trig/engine.mbt:364`（`next`）、`:175`（`emit_queue`）、`:504`（`settle_shell`）、`:524`（`settle_annotation`） |
-| Supervisor 四钩子 | `gen_trig/engine.mbt:227` / `:240` / `:314` / `:344`、`extend:353` |
-| 归位点 / 裁剪 | `gen_trig/engine.mbt:78`（`trim_trailing_dot`）、`:88`（`normalize_term_span`）、`:126`（`directive_ok`） |
-| 组装 / 轻验 | `gen_trig/parser_slice.mbt:257`（`validate_term`）、`:342`（`validate_prefname`）、`:539`（`parse_next`）、`:586`（`parse_all`） |
-| 物化 | `materialize_trig.mbt:36`（struct）、`:55`（new）、`:392`（`base_at`）、`:1132`（测试辅助段） |
-| 序列化 | `serialize_trig.mbt:236`（首个 test）；round-trip 钉在 `trig_wbtest.mbt` |
+| 主循环 | `gen_trig/engine.mbt:447`（`next`）、`:453`（`emit_queue` 排水）、`:552`（`settle_shell`）、`:572`（`settle_annotation`） |
+| Supervisor 四钩子 | `gen_trig/engine.mbt:310` / `:323` / `:397` / `:427`（`begin_record`/`recover`/`finish_at_end`/`on_business_failed`） |
+| 归位点 / 裁剪 | `gen_trig/engine.mbt:79`（`trim_trailing_dot`）、`:89`（`normalize_term_span`）、`:186`（`directive_ok`） |
+| 组装 / 轻验 | `gen_trig/parser_slice.mbt:114`（`validate_term`）、`:199`（`validate_prefname`）、`:400`（`parse_next`）、`:447`（`parse_all`） |
+| 物化 | `materialize_trig.mbt:36`（struct）、`:55`（new）、`:351`（`base_at`）；测试件已随役27a 归位独立件 |
+| 序列化 | `serialize_trig.mbt`（实现区）；round-trip 钉在 `trig_wbtest.mbt`（测试件独立，不钉行号） |
 | 生成链（IR 侧门） | `src/rdf/trig_domain_toml_gen.mbt:215/222`；人工对齐注释 `src/rdf/domain_to_ir.mbt:15/52/257/407/2717` |
 | 套件 runner | `gen_trig/rdf_suite_wbtest.mbt:47`（入口）、`:108/115/123/131`（四套） |
 | 双词法 bench | `trig_bench_wbtest.mbt` |

@@ -92,9 +92,9 @@
 
 | 主题 | 锚点 |
 |---|---|
-| 契约三成员 | `nquads.mbt:146`（Actions，`pub(open)`）、`:245`（EffectHandler）、`:129`（LoopPolicy） |
-| 主循环 | `gen_nquads/engine.mbt:290`（`step` 调用）、`:320`（便捷入口 `rdf12?`）、`:157`（`from_bytes`） |
-| 校验层开关 | `gen_nquads/parser_slice.mbt:8/17`（`rdf12`）、`validate_helper.mbt:427/491`（langdir）、`:530`（`scalar_only`） |
+| 契约三成员 | `nquads.mbt:152`（Actions，`pub(open)`）、`:251`（EffectHandler）、`:135`（LoopPolicy） |
+| 主循环 | `gen_nquads/engine.mbt:290`（`step` 调用）、`:320`（便捷入口 `rdf12?`）、`:140`（`from_bytes`） |
+| 校验层开关 | `gen_nquads/parser_slice.mbt:8/17`（`rdf12`）、`validate_helper.mbt:427/491`（langdir）、`:564`（`scalar_only`） |
 | 物化 / 序列化 | `materialize_quad.mbt`（构造与槽位路由）、`serialize_nquads.mbt`（旋钮 + round-trip） |
 | 跨包扩展点 | `quicktest/system.mbt:59-92`（`impl NQuadsActions for EngineActions`） |
 | 门 | `src/rdf/nquads_domain_toml_gen.mbt`（三腿 + **产物黄金门**）、`src/rdf/adr.md` ADR-9 |
@@ -108,7 +108,7 @@
 | 主题 | 锚点 |
 |---|---|
 | 测量仪（本役新立） | `lexer_bench_wbtest.mbt`（1k/10k 纯词法双词法器对照，native-only） |
-| 被测对象 | `lexer_mbt.mbt:244`（`Lexermoon::next`，**终态零改动**）、`lexer_mbt.mbt:176`（`utf8_name_advance`）——**2026-09-24 两次重钉**：① P2 刀 a 重排后原 `:198`/`:129` 已漂（锚点门首跑抓到；并改**全形**写法，弃 `:NNN` 缩写）；② **B 案注释分层**后由 `:247`/`:175` 再钉到 `:244`/`:176`（同笔重生 `.anchors/expected.tsv`） |
+| 被测对象 | `lexer_mbt.mbt:244`（`Lexermoon::next`，**终态零改动**）、`lexer_mbt.mbt:176`（`utf8_name_advance`）——**2026-09-24 两次重钉**：① P2 刀 a 重排后**原两处缩写锚已漂**（锚点门首跑抓到；并改**全形**写法）；② **B 案注释分层**后再钉到现两处全形锚（同笔重生 `.anchors/expected.tsv`；旧行号属沿革，不留在卷面） |
 | 对照 | `lexerc.mbt:124`（`Lexerc::next`：清零 12B + FFI + `read_int32`×3） |
 | 管线口径 | `src/bench/nquads-benchmark/main.mbt`（native + release 正式口径） |
 

@@ -37,7 +37,7 @@ ADR 用 `ADR-TRIG-nnn`（世界卷前缀制）。原始底稿：旧 `todo.md` §
 | A-T3 | 双词法器同 Token 字母表，C 版为标准对齐源，逐 token pin | ADR-TRIG-002；`trig_bench_wbtest.mbt` |
 | A-T4 | 图块区域封闭（表即合法性裁决者）；`EnterGraph`/`ExitGraph` 双路由 | ADR-TRIG-008；`spec.md` §5.3 |
 | A-T5 | `[]` / `()` / 注解体 / 引用三元组全部落地，四套件 deferred **全零** | ADR-TRIG-003/004/007/009 |
-| A-T6 | `@base` per-quad 快照（`bases` 链 + `base_version`/`prefix_version` 钳） | ADR-TRIG-005；`materialize_trig.mbt:392` |
+| A-T6 | `@base` per-quad 快照（`bases` 链 + `base_version`/`prefix_version` 钳） | ADR-TRIG-005；`materialize_trig.mbt:351` |
 | A-T7 | 单遍深验（四门融合在物化构词点；`lenient` 只跳轻验） | `const.md` §3；`spec.md` §5.5 |
 | A-T8 | 生成面已回灌：`trig.mbt` 归生成器所有（手改面回灌 + 旧 `trig.toml` 退役） | ADR-TRIG-006 |
 
@@ -138,7 +138,7 @@ moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 |---|---|
 | 范围 | `src/fsm/codegen_effects.mbt`（队列模式 interpret 发射，数据驱动开关）+ `domain2/trig_base.toml`（`emit_queue` ctx 字段）+ `gen_trig/engine.mbt`（loop 纯化 + handler 接活） |
 | 交付 | `interpret` 唯一解释器；观测/容灾切面可挂；`emit_queue` 下沉 ctx（Sequence 多发不丢） |
-| 验收 | `moon test src/gen_trig` **80/80**（四套件 357/316/36/75 不变）；`moon test src/rdf` **21/21**（产物黄金门对新产物仍逐字节绿）；模块 329/329；锚点 `gen_trig/engine.mbt:404` + `:476/489/496/504/513` |
+| 验收 | `moon test src/gen_trig` **80/80**（四套件 357/316/36/75 不变）；`moon test src/rdf` **21/21**（产物黄金门对新产物仍逐字节绿）；模块 329/329；锚点 `gen_trig/engine.mbt:404` + `:587/600/607/615/624` |
 | 风险 | 图块双路由语义未动（ADR-TRIG-008）；Turtle 路径仍走数组旧口径（ADR-5） |
 | 待裁 | 题T1 = **A 落地** |
 

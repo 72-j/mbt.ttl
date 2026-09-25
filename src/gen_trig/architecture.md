@@ -49,8 +49,8 @@ src/rdf/domain/trig_domain.toml
 | 成员 | 声明 | 实现 | 现状 |
 |---|---|---|---|
 | `TrigActions`（语义落点） | `trig.mbt:240` | `actions.mbt`（`Hooks`） | 已接活 |
-| `TrigEffectHandler`（效果面 Hook） | `trig.mbt:1138` + 默认 impl `:1172` 起 | **无**（引擎自带效果语义） | **孤儿挂点**（T11） |
-| `TrigSupervisor`（控制流 Hook，正名 `Supervisor`；T13 已落地） | `trig.mbt:223` | `gen_trig/engine.mbt:227/240/314/344` + `extend:353` | 已接活 |
+| `TrigEffectHandler`（效果面 Hook） | `trig.mbt:1201` + 默认 impl `:1235` 起 | **无**（引擎自带效果语义） | **孤儿挂点**（T11） |
+| `TrigSupervisor`（控制流 Hook，正名 `Supervisor`；T13 已落地） | `trig.mbt:237` | `gen_trig/engine.mbt:310/323/397/427`（四钩子 impl） | 已接活 |
 
 ## 不变量（速查，详 `spec.md` §3）
 

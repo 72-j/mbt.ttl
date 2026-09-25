@@ -93,7 +93,7 @@ src/rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
 | I-2 | arena append-only；早先取出的 view 永久有效 | 成立 |
 | I-3 | 正例 `emits.length == quads.length`（物化不丢项） | 成立（套件判据） |
 | I-4 | EOF 合法送达一次，其后 `None` = 枯竭 | 成立（`n3_wbtest` 钉） |
-| I-5 | 错误恢复只停 Dot → 归位 `ExpectSubject`，并清栈/清注解账 | 成立（`gen_n3v2/engine.mbt:381`） |
+| I-5 | 错误恢复只停 Dot → 归位 `ExpectSubject`，并清栈/清注解账 | 成立（`gen_n3v2/engine.mbt:366`） |
 | I-6 | **状态转移由转移表唯一管理** | **成立 + 2 登记破例**（役23 机制收敛：id 特例前移刻帧，pop 无条件读帧；path_end_nested/path_subj_end 链形异判以 [R-03-2/3] 锚登记，C-01 转设计） |
 | I-7 | 生成物禁手编；表变 → 再生 | 成立（G9 字节对拍 + 强幂等） |
 | I-8 | TOML 契约兼容演进（新键可选、未知键忽略、删键需同改手写文件） | 成立（AGENTS.md 宪法） |

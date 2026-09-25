@@ -251,7 +251,7 @@ test "probe: 事件驱动一条三元组" {
 
 ///|
 /// P4.2h 前提钉子：**多发射回吐顺序确定性**（③ 改 harness 返 `Array[Response]` 的生死前提）。
-/// 引擎事实（`trig.mbt:1334` 的 `Sequence` 分支 + `engine.mbt:368` 的 loop 顶部排空）：
+/// 引擎事实（`trig.mbt:1394` 的 `Sequence` 分支 + `engine.mbt:368` 的 loop 顶部排空）：
 ///   ① `Sequence` 逐条 `ctx.emit_queue.push(ctx.snapshot())` ⇒ **入队即快照**（后续 ctx 变更不回头改写）；
 ///   ② 排空用 `remove(0)` ⇒ **FIFO**，回吐顺序 = Sequence 书写顺序；
 ///   ③ 队首与本步 `YieldQuad` 同源 ⇒ "本步即时响应 + 队列余量"拼起来仍是书写顺序，**无重排**。

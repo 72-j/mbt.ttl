@@ -20,7 +20,7 @@
 |---|---|---|
 | A1 | 五层管线：Lexermoon/Lexerc → token_to_event → `step`（生成表）→ SliceParser（组装+轻验）→ 物化 → 序列化 | `spec.md` §2；`engine.mbt` |
 | A2 | 双词法器同 Token 字母表（Moon/C 逐 token pin、span 全词含定界符） | `lexerc_parity_wbtest.mbt` |
-| A3 | 单一实现面：RDF 1.2 逃逸检查与 n3v2/trig 共用 `@nquads.validate_escapes_unicode`（`scalar_only` 参数） | `validate_helper.mbt:530` |
+| A3 | 单一实现面：RDF 1.2 逃逸检查与 n3v2/trig 共用 `@nquads.validate_escapes_unicode`（`scalar_only` 参数） | `validate_helper.mbt:564` |
 | A4 | 2.0 数据面：`src/rdf/domain2/nquads_{base,domain}.toml` → `fsm_out/nquads_fsm.toml` → 产物 | `src/rdf/spec.md` §1/§2 |
 | A5 | 门：IR **三腿对拍** + 反门 12 条 + **产物黄金门**（`nquads 产物黄金门`，ts `1788844502518`） | `src/rdf/adr.md` ADR-9 |
 | A6 | 跨包扩展点真实存在：`pub(open) trait NQuadsActions`，quicktest 包以自有实现接 `step` | `quicktest/system.mbt:59-92`；生成器侧数据键 `[parser] actions_trait_open` |
