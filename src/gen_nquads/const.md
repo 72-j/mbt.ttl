@@ -66,3 +66,28 @@
   词法语义以 C 版（lexerc_ffi.c）为标准对齐源。
 - **单泛型轴**：泛型只落在词法器 L 上（`LexerSource`），
   Hooks 单载体双 trait 避免第二泛型轴；C 侧复用同一 loop（engine_c.mbt 薄适配）。
+
+## X. 档位口径表（B1，2026-09-25 立；B1 只量口径、**不动 API**）
+
+1. **⚠ `lenient ≠ 轻验档`（跨方言同名不同义，最容易踩的一坑）**：
+   - **nquads 侧**：`SliceParser::new(..., lenient=true)` **就是轻验档**——它直接跳四面深验
+     （`validate_iri` / `validate_bnode` / `validate_literal` / `validate_triple_term`，见 `validate_helper.mbt`）。
+   - **n3v2 / trig 侧**：`lenient` **只跳轻验**，**深验仍在**；轻验档还须 `deep_validate=false`
+     （物化层四门 `gate_iri`/`gate_bnode`/`gate_tt`/`gate_literal` 总开关，默认 `true`；见 `gen_trig/const.md` §3 单遍口径）。
+   ⇒ **口径表读到这，先把两个名字分家**：`lenient` = 轻验开关；"档位" = 轻验 + 深验 **两把开关的合称**。
+2. **实测判据（交错 A/B，沿用 `perf-review.txt` 读数纪律）**：A=deep / B=light **交替跑 ≥3 轮**，
+   **带不交叠才下结论**；带交叠 = 机噪 > 效应 ⇒ **记"无结论"**（禁硬编差距）。
+   **B1 实测（本机 Ryzen 7 5700G · 10k · `--target native --release` · `--validate=light|deep`）**：
+   deep **5.948647 / 5.680446 / 5.603535 ms** vs light **4.968277 / 4.673587 / 5.170636 ms**
+   ⇒ 带**不交叠**（deep 最低 5.60 > light 最高 5.17）⇒ **轻验档 −12.5%（≈1.14×）**。
+   ⚠ **与初估差很大**（原按"验证段占 84%"估 4–5×）：该语料**全合法**，深验走**接受快路**，故省幅有限；
+   **n3v2/trig 侧（四门融合在物化构词点）的省幅另量**（B2 需同法在 n3v2/trig 加档位开关再测）。
+3. **红线（B2 前置，须按档、显式、入册）**：轻验档下深验面**不可达** ⇒ 可达账/G11/覆盖率棘轮必须
+   **按档声明不可达**（**不是把数字藏起来**）。**B1 预研清单**（B2 按档声明用）：
+   nquads = `validate_helper.mbt` 的 `validate_iri:192` / `validate_iri_body:245` / `validate_bnode:338` /
+   `validate_lang_suffix:462` / `validate_escapes_unicode:559` / `validate_literal:652` / `validate_triple_term:907`
+   ＋ 各处 `if !self.lenient` 臂（`:66` / `:121` 等）；n3v2/trig = `gate_iri:1077` / `gate_bnode:1092` /
+   `gate_tt:1126` / `gate_literal:1141` ＋组装层 `validate_term` / `validate_prefname`。
+4. **B1 边界（别误读）**：bench 开关**只改 bench 自己的调用**（`src/bench/nquads-benchmark/main.mbt`
+   `--validate=light|deep`，缺省 deep）；**套件/测试调用面一律未动** ⇒ **覆盖率/可达账在 B1 不会下降**；
+   下降只会在 B2 把 Light 作为正式档跑套件时出现——那时按第 3 条声明。
