@@ -107,7 +107,20 @@
 
 - **手维护（可手改）实证**：`src/gen_trig/quicktest/`、`src/gen_nquads/quicktest/` 两处有 `.hand-maintained` 标记
   （语义：物化/再生**不得覆盖**；缺标记但有实例 ⇒ 生成通道 fail）。
-- **再生件（禁手改）——清单已定位（2026-09-25 取证）**：口径在 `todo.md` **§Q.3-F1** + **§W.2**
+- **再生件（禁手改）——勘定结论（2026-09-25 二轮取证，更正上一条）**：**子仓 CI 的格式门已"全路径、无豁免"**
+  （`.github/workflows/test.yaml:64-72` 原文："2026-09-19 起；N5 治本…**豁免清零**；旧版按路径豁免 `src/gen_n3v2/quicktest/`
+  已**实测证伪**〔trig 实例 scratch 上 fmt 零变化〕"）——报错文案里"再生件路径已按 §Q.3-F1 裁定豁免"属**陈旧字样**。
+  ⇒ **权威标记只剩 `.hand-maintained`**（生成通道**跳过**；缺标记但有实例 ⇒ 通道 **fail**，语义出处
+  `src/quick_machine/codegen_test.mbt:1004/1203`）。**步① 可手改/禁手改对照表**：
+
+  | 面 | 判据 | 可手改？ |
+  |---|---|---|
+  | `src/gen_*/quicktest/`（三方言，带 `.hand-maintained`） | 标记实证 | ✅ 是（手维护层） |
+  | `src/gen_*/{trig.mbt,nquads.mbt,n3.mbt}` + `quicktest/{model_exec,valid,state_machine,types,business,runner,system}.mbt` | 排除面清单（改走模板） | ❌ 禁 |
+  | `parser_slice.mbt` / `materialize_*.mbt`（实现面） | 非生成通道产物 | ✅ 是（但**必须 fmt-clean**，全路径门） |
+  | `validate_helper.mbt`（nquads） | 旧 CI 报红名单内有它，但 §AL 已把豁免清零、现行判据只是"必须 fmt-clean" | ⚠️ **归属待证**（查生成通道映射后再定） |
+
+- **旧口径（保留作沿革）**：`todo.md` **§Q.3-F1** + **§W.2**
   （"再生件与手写件**分口径**：再生件走生成通道口径，手写件走仓库 fmt 口径；冲突按路径显式豁免并写理由"），
   **权威清单 = `.github/workflows/test.yaml` 的豁免路径表**（子仓 CI 内，非主仓；主仓那份已于 2026-09-19 N5 治本**清零**）。
   实证规模：**n3v2 6 件**（§Q.3-F1 红名单）+ **nquads 5 件**（CI 报红名单：`engine.mbt` / `materialize_quad.mbt` /
