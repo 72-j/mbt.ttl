@@ -196,3 +196,21 @@ ImpliedBy, ForAllKw, ForSomeKw, EOF`。
 ⇒ ②a 的落点**由"可达账"改判为"覆盖率面 + 结构钉子"**；`coverage-review.txt` 若按档标注，**其表头正则同笔约束见 §X.3.1**。
 
 **红线（不变）**：两档不可达**都显式出账**；禁用"分母缩水/藏数"让数字好看。**基准档 = Deep**（对外与棘轮按 Deep）。
+#### X.4 步①c（组装层收口）配方 + **预期漂移面**（2026-09-25 勘定，落刀前先备好重钉清单）
+
+**动作**：`gen_n3v2/parser_slice.mbt` / `gen_trig/parser_slice.mbt` 的 `…SliceParser::new` 各收
+`mode? : @nquads.ValidateMode = @nquads.ValidateMode::Deep`，体内 `lenient: lenient || mode.is_light()`
+（与 nquads 侧 步①A 同形；`lenient` 形参保留作**内部语义**）。
+
+**已知代价（两次实测教出来的）**：加形参会被 `moon fmt` 折行 ⇒ **行数 +2** ⇒ 该文件**其后所有锚点漂 +2**。
+故落刀**必须同笔**带重钉：
+
+| 文件 | 预期漂移锚点（现号 → +2） |
+|---|---|
+| `gen_n3v2/parser_slice.mbt` | `:66`→`:68`（drain_engine_errors）、`:77`→`:79`（prefix_declared）、`:127`→`:129`（validate_term）、`:245`→`:247`（validate_prefname）、`:312`→`:314`（assemble） |
+| `gen_trig/parser_slice.mbt` | `:114`→`:116`（validate_term）、`:199`→`:201`（validate_prefname）、`:400`→`:402`（parse_next）、`:447`→`:449`（parse_all） |
+
+（引用处集中在 `gen_n3v2/ctx.md`、`gen_trig/ctx.md`、两方言 `todo.md`；相对锚 `:NNN` 须逐条按行定位后改，**禁全局替换**。）
+
+**同笔五件**：落刀 → 上述重钉 → `mv .anchors/expected.tsv /tmp/ && sh ci/anchor-check.sh`（重生快照）→ 复核表重生 →
+预检 9 段全绿 → 提交。**红线**：**不许**只重生快照来"让门变绿"（那是把漂移冻成期望的假绿路，B0 门头已写明）。
