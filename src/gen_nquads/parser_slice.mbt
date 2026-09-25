@@ -15,8 +15,11 @@ pub fn[L] SliceParser::new(
   data : ArrayView[Byte],
   lenient? : Bool = false,
   rdf12? : Bool = true,
+  mode? : ValidateMode = ValidateMode::Deep,
 ) -> SliceParser[L] {
-  { engine, data, lenient, rdf12, errors: [], }
+  // 档位入口（B2 步① A）：`Light` 映射为 `lenient=true`（口径表 §X 第 1 条：nquads 侧 `lenient`
+  // 即轻验档）；`lenient` 形参保留作内部语义；**缺省档 = `Deep`**（性能不换深验）。
+  { engine, data, lenient: lenient || mode.is_light(), rdf12, errors: [], }
 }
 
 ///|

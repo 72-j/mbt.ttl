@@ -525,7 +525,7 @@ pub struct SliceParser[L] {
   errors : Array[ParseError]
 }
 pub fn[L] SliceParser::lenient(Self[L]) -> Self[L]
-pub fn[L] SliceParser::new(NQuadsEngine[L], ArrayView[Byte], lenient? : Bool, rdf12? : Bool) -> Self[L]
+pub fn[L] SliceParser::new(NQuadsEngine[L], ArrayView[Byte], lenient? : Bool, rdf12? : Bool, mode? : ValidateMode) -> Self[L]
 pub fn[L : LexerSource] SliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[ParseError])
 pub fn[L : LexerSource] SliceParser::parse_next(Self[L]) -> Result[QuadSpan, ParseError]?
 
