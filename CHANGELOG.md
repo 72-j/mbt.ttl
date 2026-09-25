@@ -23,6 +23,12 @@
 - 物化/序列化 API 随 `QuadEmit` 形态联动更新（三方言 `materialize_*` /
   `serialize_*` 签名不变，构造/匹配面按 kind 重排）。
 
+### 新增 API
+
+- **`ValidateMode`（`src/gen_nquads`）**：校验档位枚举 **`Light | Deep`**，**默认 `Deep`**——RDF 1.2 深验不因性能让步；
+  `Light` 只跳深验面（nquads 侧语义 = 既有 `lenient=true`，`lenient` 自此只作**内部形参**，不外泄第二开关）。
+  本版为**新件可用**（枚举 + `is_light` 映射）；入口参数与按档不可达声明按步序落地（口径见 `src/gen_nquads/const.md` §X）。
+
 ### 性能
 
 （口径 = `--target native --release` · 10k 语料；复现条件与沿革见 `perf-review.txt`）
