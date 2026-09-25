@@ -70,3 +70,37 @@ test "B2 Light 档探针（n3v2）：交错 A/B" {
     "  判据：带不交叠才下结论（deep 最低 vs light 最高）",
   )
 }
+
+///|
+/// 分段拆解（B2 ②）：一次 Deep + 一次 Light，把端到端拆成 **解析（含轻验）** 与 **物化（含四门深验）**，
+/// 用以解释三方言 Light 省幅差异（收益差异 ⟸ 深验所在段占比差异）。
+fn split_once(
+  data : Array[Byte],
+  mode : @nquads.ValidateMode,
+) -> (Double, Double, Int) {
+  let t1 = @bench.monotonic_clock_start()
+  let slice = N3SliceParser::new(N3Engine::from_bytes(data), data[:], mode~)
+  let (quads, _) = slice.parse_all()
+  let us1 = @bench.monotonic_clock_end(t1)
+  let t2 = @bench.monotonic_clock_start()
+  let mat = N3Materializer::new(
+    data[:],
+    slice.engine.ctx.prefixes,
+    bases=slice.engine.ctx.bases,
+    rdf12=true,
+  )
+  let (emits, _) = mat.materialize_all(quads, mode~)
+  let us2 = @bench.monotonic_clock_end(t2)
+  (us1 / 1000.0, us2 / 1000.0, emits.length())
+}
+
+///|
+test "B2 分段拆解（n3v2）" {
+  let n = 10000
+  let data = synth_turtle(n)
+  let (dp, dm, q) = split_once(data, @nquads.ValidateMode::Deep)
+  let (lp, lm, _) = split_once(data, @nquads.ValidateMode::Light)
+  println("=== B2 分段拆解 n3v2（n=\{n} quads=\{q}）===")
+  println("  deep  解析=\{dp} ms  物化=\{dm} ms")
+  println("  light 解析=\{lp} ms  物化=\{lm} ms")
+}

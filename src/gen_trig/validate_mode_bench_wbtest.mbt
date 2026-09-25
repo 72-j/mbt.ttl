@@ -69,3 +69,35 @@ test "B2 Light 档探针（trig）：交错 A/B" {
     "  判据：带不交叠才下结论（deep 最低 vs light 最高）",
   )
 }
+
+///|
+/// 分段拆解（B2 ②，trig）：同 n3v2 形；trig 物化构造无 `rdf12` 形参。
+fn split_once(
+  data : Array[Byte],
+  mode : @nquads.ValidateMode,
+) -> (Double, Double, Int) {
+  let t1 = @bench.monotonic_clock_start()
+  let slice = TrigSliceParser::new(TrigEngine::from_bytes(data), data[:], mode~)
+  let (quads, _) = slice.parse_all()
+  let us1 = @bench.monotonic_clock_end(t1)
+  let t2 = @bench.monotonic_clock_start()
+  let mat = TrigMaterializer::new(
+    data[:],
+    slice.engine.ctx.prefixes,
+    bases=slice.engine.ctx.bases,
+  )
+  let (emits, _) = mat.materialize_all(quads, mode~)
+  let us2 = @bench.monotonic_clock_end(t2)
+  (us1 / 1000.0, us2 / 1000.0, emits.length())
+}
+
+///|
+test "B2 分段拆解（trig）" {
+  let n = 10000
+  let data = synth_turtle(n)
+  let (dp, dm, q) = split_once(data, @nquads.ValidateMode::Deep)
+  let (lp, lm, _) = split_once(data, @nquads.ValidateMode::Light)
+  println("=== B2 分段拆解 trig（n=\{n} quads=\{q}）===")
+  println("  deep  解析=\{dp} ms  物化=\{dm} ms")
+  println("  light 解析=\{lp} ms  物化=\{lm} ms")
+}
