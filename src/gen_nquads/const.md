@@ -129,3 +129,27 @@
 - **bench 开关回卷记录**：B1 的 `--validate=light|deep` 原型因触发 1 例测试红 + 面三分母 +1 而**回卷**；
   步③ 落开关时须**同笔重生 `coverage-review.txt`**（复核表口径：改代码必须同笔重生成）+ 定位那 1 例红（有牙提示：
   该例对 bench 输出/调用面敏感，加开关时同步改它）。
+### X.2 步① API 形态定稿（2026-09-25；下刀前定形，避免中途改口）
+
+**新增件（落点 = 实现面新文件，避开生成物 5 类）**：`src/gen_nquads/validate_mode.mbt`
+
+```moonbit
+/// 校验档位：**默认 Deep**——RDF 1.2 深验是差异化面（见 `const.md` §X 档位口径表）；
+/// `Light` 只跳深验面（nquads 侧 = `lenient=true` 语义），供"只要速度"的调用方**显式**选择。
+pub(all) enum ValidateMode { Light; Deep }
+
+/// 档位 → 内部形参映射（口径表第 1 条：`lenient` 只作内部语义，不外泄第二开关）
+pub fn ValidateMode::is_light(self : ValidateMode) -> Bool { ... }
+```
+
+**三条定形理由**：① 落**新文件**而非改 `parser_slice.mbt` —— 新文件天然不在任何模板产出面，零"手改被覆盖"风险；
+② **加性**（不动既有调用点）⇒ 行为零变化、全部现有门与测试不动；③ 同文件带一条 `test`（映射真值）⇒ 新增行同时进分子，
+**覆盖率棘轮 909‰ 不受影响**。
+
+**下刀同笔清单（缺一不发）**：`moon info`（`.mbti` 新增两项）→ `moon fmt` → `moon test`（期望 507+1 = **508**、
+native 521+1 = **522**）→ **重生受影响复核表**（`coverage-review.txt` 行覆盖数 = +N/+N；`suite-review.txt` 若含该件自报行同笔刷）
+→ `CHANGELOG.md`（**API 变更节**：新增 `ValidateMode`，默认 Deep）→ `sh ci/release-check.sh` 9 段全绿。
+
+**接线序（步① 只到"可用"，不铺开）**：先只让 **nquads** 侧入口接受 `mode? : ValidateMode = Deep`（映射 `lenient`）；
+n3v2/trig 侧（`lenient` + `deep_validate` 两开关合一）留**步①b**，因为那两侧要动"组装层 + 物化层"两处调用面，
+且必须与步② 的按档不可达声明**同笔**落地（否则可达账会先红）。
