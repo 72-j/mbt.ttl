@@ -207,7 +207,7 @@ test "nquads quick machine 覆盖率门（路径驱动·缺口清零）" {
   let (denominator, covered, missing) = reachable_coverage_account()
   let unreachable_names = unreachable_command_names()
   debug(
-    "可达覆盖账 nquads：分母 \{denominator.length()} / 分子 \{covered.length()} / 缺口 \{missing.length()} / 不可达 \{unreachable_names.length()}",
+    "可达覆盖账 nquads[Deep]：分母 \{denominator.length()} / 分子 \{covered.length()} / 缺口 \{missing.length()} / 不可达 \{unreachable_names.length()}",
   )
   if missing.length() > 0 {
     debug("缺口清单：\{missing.join(",")}")

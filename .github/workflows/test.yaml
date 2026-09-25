@@ -189,7 +189,7 @@ jobs:
             echo "[行覆盖]"
             moon coverage report -f summary | tail -n 1
             echo "[可达命令名覆盖]"
-            moon test 2>&1 | grep -o '可达覆盖账 [a-z0-9]*：分母 [0-9]* / 分子 [0-9]* / 缺口 [0-9]* / 不可达 [0-9]*' | sort -u
+            moon test 2>&1 | grep -o '可达覆盖账 [a-z0-9]*[^：]*：分母 [0-9]* / 分子 [0-9]* / 缺口 [0-9]* / 不可达 [0-9]*' | sort -u
           } > "$gen"
           if ! diff -u <(grep -v '^#' coverage-review.txt | sed '/^$/d') "$gen"; then
             echo "::error::覆盖率复核表不可复现：同命令重生成与入库 coverage-review.txt 不一致——请同笔重生成并刷新 review.md §1.2"

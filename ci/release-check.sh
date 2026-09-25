@@ -46,7 +46,7 @@ chk $? "面一 suite-review.txt 可复现"
 
 moon clean >/dev/null 2>&1; moon coverage clean >/dev/null 2>&1; moon test --enable-coverage >/dev/null 2>&1
 sum="$(moon coverage report -f summary | tail -n 1)"
-g3="$(mktemp)"; { echo "[行覆盖]"; printf '%s\n' "$sum"; echo "[可达命令名覆盖]"; moon test 2>&1 | grep -o '可达覆盖账 [a-z0-9]*：分母 [0-9]* / 分子 [0-9]* / 缺口 [0-9]* / 不可达 [0-9]*' | sort -u; } > "$g3"
+g3="$(mktemp)"; { echo "[行覆盖]"; printf '%s\n' "$sum"; echo "[可达命令名覆盖]"; moon test 2>&1 | grep -o '可达覆盖账 [a-z0-9]*[^：]*：分母 [0-9]* / 分子 [0-9]* / 缺口 [0-9]* / 不可达 [0-9]*' | sort -u; } > "$g3"
 ref3="$(mktemp)"; grep -v '^#' coverage-review.txt | sed '/^$/d' > "$ref3"
 diff -q "$ref3" "$g3" >/dev/null
 chk $? "面三 coverage-review.txt 可复现（$sum）"
