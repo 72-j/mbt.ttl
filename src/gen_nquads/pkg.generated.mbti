@@ -593,6 +593,12 @@ pub fn Token::to_repr(Self) -> @debug.Repr
 pub fn Token::to_string(Self) -> String
 pub impl Show for Token
 
+pub(all) enum ValidateMode {
+  Light
+  Deep
+}
+pub fn ValidateMode::is_light(Self) -> Bool
+
 // Type aliases
 pub type Predicate = ArrayView[Byte]
 
