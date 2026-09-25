@@ -229,3 +229,29 @@ ImpliedBy, ForAllKw, ForSomeKw, EOF`。
 **同笔纪律**：新探针会**新增文件**（不改既有行号 ⇒ 零锚点漂移）；但若同笔改动既有文件，仍走
 "落刀 + 重钉 + 快照重生 + 逐行 diff 复核"四步（§X.4 教训）。**读数入账**：结果进 `perf-review.txt`（`#` 沿革段，
 不进 CI 比对）+ README 分档数字（**基准档 = Deep**，Light 同行另列）。
+
+#### X.5.1 探针骨架与依赖清单（落刀即用，2026-09-25）
+
+**文件**：`src/gen_n3v2/validate_mode_bench_wbtest.mbt`（同法 trig 一份）。**依赖**：`moon.pkg` 需 `core/bench`（
+计时形 `@bench.monotonic_clock_start/end`，与 `src/bench/nquads-benchmark/main.mbt` 同源）；**不做文件 IO**——
+语料在测试内**合成**（避免 `@fs` 依赖与净检出风险）。
+
+**骨架（照抄形状，参数化 N）**：
+
+```moonbit
+///|
+/// B2 Light 档探针（白盒）：合成 N 行 turtle → 交替 A/B（Deep/Light）≥3 轮，
+/// 只量 parse_all + materialize_all；**带不交叠才下结论**（B1 协议）。
+test "B2 Light 档探针（n3v2）：交错 A/B" {
+  let n = 2000
+  // ① 合成：`<http://e/s{i}> <http://e/p{i}> "o{i}" .`（每行一条，避免转义/前缀干扰）
+  // ② A/B 交替：for r in 0..<3 { deep(r); light(r) }，各轮记 ms
+  // ③ 输出：三轮两组读数 + 带是否交叠（交叠 ⇒ 打印"无结论"）
+}
+```
+
+**为什么这样设计**（三条，都是前面踩出来的）：① **合成语料** ⇒ 无 IO、无净检出洞、可复算；
+② **同进程交替 A/B** ⇒ 与 B1 同协议、避开进程启动（CLI 那次的教训）；③ **wbtest** ⇒ 白盒可直调
+`SliceParser::new(..., mode=…)` 与 `materialize_all(..., mode=…)`，无需新公开面。
+
+**同笔**：新文件 ⇒ 零锚点漂移；跑完把两组中位/带 + 交叠判定写 `perf-review.txt`（`#` 沿革）+ 世界卷。
