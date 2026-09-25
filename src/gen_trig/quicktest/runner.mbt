@@ -339,7 +339,8 @@ test "trig quick machine: random check（模型 ≡ 引擎）" {
 }
 
 ///|
-/// **多种子随机门**（役 3，2026-09-18）：照 nquads 模板（`gen_nquads/quicktest/runner.mbt:248-265`）
+/// **多种子随机门**（役 3，2026-09-18）：照 nquads 模板（`run_random_check`，`gen_nquads/quicktest/runner.mbt`）——
+/// 生成物内**不钉行号**（随再生漂），改钉符号名
 /// ——主门只跑默认 `seed = 12345`，给的是"这一条轨迹上的等价"；本门补"探索面上的等价"。
 /// 判据与主门同规（不放宽）：种子只改探索路径，不改判定。
 test "trig quick machine random check: 多种子稳定（1 / 2026）" {

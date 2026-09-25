@@ -196,7 +196,6 @@ src/gen_trig/ctx.md	gen_trig/rdf_suite_wbtest.mbt:47	src/gen_trig/rdf_suite_wbte
 src/gen_trig/ctx.md	:108	src/gen_trig/rdf_suite_wbtest.mbt	108	async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底）" {
 src/gen_trig/probe.mbt	gen_n3v2/probe.mbt:8	src/gen_n3v2/probe.mbt	8	//   ③ 面最小化：只开 `new`/`step_all`——trig 的 `step`（吞事件旧口径）与 `sta
 src/gen_trig/probe.mbt	trig.mbt:1394	src/gen_trig/trig.mbt	1394	TrigEffect::Sequence(effects) => {
-src/gen_trig/quicktest/runner.mbt	gen_nquads/quicktest/runner.mbt:248	src/gen_nquads/quicktest/runner.mbt	248	}
 src/gen_trig/spec.md	gen_trig/rdf_suite_wbtest.mbt:108	src/gen_trig/rdf_suite_wbtest.mbt	108	async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底）" {
 src/gen_trig/spec.md	gen_trig/rdf_suite_wbtest.mbt:115	src/gen_trig/rdf_suite_wbtest.mbt	115	rdf12=false,
 src/gen_trig/spec.md	gen_trig/rdf_suite_wbtest.mbt:123	src/gen_trig/rdf_suite_wbtest.mbt	123	rdf12=false,
