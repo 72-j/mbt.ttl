@@ -378,7 +378,7 @@ let (emits, merrs) = mat.materialize_all(quads)          // 默认 Deep
 // 轻验（显式；只要速度时用）
 let slice = @nquads.SliceParser::new(engine, data, mode=@nquads.ValidateMode::Light)
 let (quads, errs) = slice.parse_all()
-let (emits, merrs) = mat.materialize_all(quads, mode=@nquads.ValidateMode::Light)
+let (emits, merrs) = @nquads.materialize_all(quads)   // nquads 物化 = 自由函数；n3v2/trig 走方法并接 `mode=`
 // n3v2 / trig 同形：`N3SliceParser::new(...)` / `TrigSliceParser::new(...)` 亦接 `mode=`
 ```
 
