@@ -272,7 +272,7 @@ pub struct TrigSliceParser[L] {
   errors : Array[@gen_nquads.ParseError]
 }
 pub fn[L] TrigSliceParser::bases(Self[L]) -> Array[(Int, Int)]
-pub fn[L] TrigSliceParser::new(TrigEngine[L], ArrayView[Byte], lenient? : Bool) -> Self[L]
+pub fn[L] TrigSliceParser::new(TrigEngine[L], ArrayView[Byte], lenient? : Bool, mode? : @gen_nquads.ValidateMode) -> Self[L]
 pub fn[L : LexerSource] TrigSliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
 pub fn[L : LexerSource] TrigSliceParser::parse_next(Self[L]) -> Result[QuadSpan, @gen_nquads.ParseError]?
 pub fn[L] TrigSliceParser::prefixes(Self[L]) -> Array[((Int, Int), (Int, Int))]

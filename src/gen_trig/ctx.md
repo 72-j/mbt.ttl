@@ -277,7 +277,7 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 | 主循环 | `gen_trig/engine.mbt:447`（`next`）、`:453`（`emit_queue` 排水）、`:552`（`settle_shell`）、`:572`（`settle_annotation`） |
 | Supervisor 四钩子 | `gen_trig/engine.mbt:310` / `:323` / `:397` / `:427`（`begin_record`/`recover`/`finish_at_end`/`on_business_failed`） |
 | 归位点 / 裁剪 | `gen_trig/engine.mbt:79`（`trim_trailing_dot`）、`:89`（`normalize_term_span`）、`:186`（`directive_ok`） |
-| 组装 / 轻验 | `gen_trig/parser_slice.mbt:114`（`validate_term`）、`:199`（`validate_prefname`）、`:400`（`parse_next`）、`:447`（`parse_all`） |
+| 组装 / 轻验 | `gen_trig/parser_slice.mbt:115`（`validate_term`）、`:200`（`validate_prefname`）、`:401`（`parse_next`）、`:448`（`parse_all`） |
 | 物化 | `materialize_trig.mbt:36`（struct）、`:55`（new）、`:351`（`base_at`）；测试件已随役27a 归位独立件 |
 | 序列化 | `serialize_trig.mbt`（实现区）；round-trip 钉在 `trig_wbtest.mbt`（测试件独立，不钉行号） |
 | 生成链（IR 侧门） | `src/rdf/trig_domain_toml_gen.mbt:215/222`；人工对齐注释 `src/rdf/domain_to_ir.mbt:15/52/257/407/2717` |

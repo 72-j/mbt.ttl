@@ -38,8 +38,9 @@ pub fn[L] N3SliceParser::new(
   engine : N3Engine[L],
   data : ArrayView[Byte],
   lenient? : Bool = false,
+  mode? : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
 ) -> N3SliceParser[L] {
-  { engine, data, lenient, errors: [], }
+  { engine, data, lenient: lenient || mode.is_light(), errors: [], }
 }
 
 ///|

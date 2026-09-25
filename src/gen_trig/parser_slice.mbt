@@ -34,8 +34,9 @@ pub fn[L] TrigSliceParser::new(
   engine : TrigEngine[L],
   data : ArrayView[Byte],
   lenient? : Bool = false,
+  mode? : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
 ) -> TrigSliceParser[L] {
-  { engine, data, lenient, errors: [], }
+  { engine, data, lenient: lenient || mode.is_light(), errors: [], }
 }
 
 ///|

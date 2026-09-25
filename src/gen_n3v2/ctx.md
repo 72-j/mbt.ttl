@@ -140,7 +140,7 @@
 | R-02 | 役22 | ADR-22 | `interpret` 唯一解释器；engine 只做控制流；`take_pending` 下沉 ctx | `n3.mbt:2069/2153`；`gen_n3v2/engine.mbt:517/577` |
 | R-03 | 役23 | ADR-24 | 归位点分类清单（A 直写 / B 引擎归位 / C 关键词真相）；事件重分类出表模型 | `spec.md` §5.1；`gen_n3v2/engine.mbt:136/171/192` |
 | R-04 | 役29 | ADR-29 | 短期 = 补偿点单点台账（六点地图 + 钉面清单）；长期见 §4.2 | `lexer_adapter.mbt` 头注；`gen_n3v2/engine.mbt:84` |
-| R-05 | 役24 | ADR-25 | `error_spans` 累积 + recover 拆层 + drain 三点保文件序 | `gen_n3v2/parser_slice.mbt:66`；`gen_n3v2/engine.mbt:366` |
+| R-05 | 役24 | ADR-25 | `error_spans` 累积 + recover 拆层 + drain 三点保文件序 | `gen_n3v2/parser_slice.mbt:67`；`gen_n3v2/engine.mbt:366` |
 | R-06 | 役24 | ADR-25 | 零长 span 带内通道保留 + 物化验形双门（唯一构造点 `pop_bnode_prop`） | `materialize_n3.mbt:601`；`gen_n3v2/actions.mbt:137` |
 | R-07 | 役25 | ADR-23 | 三 runner 双判 + 绝对计数钉 + 桶闭合钉 | `gen_n3v2/rdf_suite_wbtest.mbt:116/118`；`n3tests_suite_wbtest.mbt:50` |
 | R-08 | 役28 | ADR-28 | 生成件与装配层机械降 `priv`；`.mbti` 只留入口 + 数据面（pub 55→29 行） | `emit.mbt`（模板 priv 化）；`pkg.generated.mbti` |
@@ -174,7 +174,7 @@
 #### R-16 影子缺口修口 `[立案]`（C-16 + C-17）
 
 - 目标：把影子扫描暴露的**真校验缺口**修掉，使校验层能进主判定链（`lenient=true` 旁路可撤）。
-- 锚点：`gen_n3v2/parser_slice.mbt:77`（`prefix_declared`）、`:127`（`validate_term`）、`:245`（`validate_prefname`）；
+- 锚点：`gen_n3v2/parser_slice.mbt:78`（`prefix_declared`）、`:128`（`validate_term`）、`:246`（`validate_prefname`）；
   影子面 `gen_n3v2/rdf_suite_wbtest.mbt:118`、`n3tests_suite_wbtest.mbt`（skip 名单）、`examples_wbtest.mbt`。
 - 现状证据（strict-gap 基线 **5 / 0 / 123 / 13**，役25 冻结）：
   ① C-16 主因 **486 处**——N3/cwm 内建前缀（`log:` / `string:` + 隐式空前缀）不声明即用，
@@ -260,7 +260,7 @@
 | 路径机器 | `gen_n3v2/actions.mbt:401`（path_hop_resolve）、`:594`（path_tail_hop_resolve）、`:969`（path_obj_close） |
 | 集合 / 帧 | `gen_n3v2/actions.mbt:137`（pop_bnode_prop）、`:1021`（list_top）、`:1033`（list_first） |
 | 倒装 / 等同 / 注解 | `gen_n3v2/actions.mbt:1146`（is_of）、`:1159`（set_inversion）、`:1173`（set_sameas）、`:1186` 起（annot_*） |
-| 组装 / 校验 | `gen_n3v2/parser_slice.mbt:312`（assemble）、`:127`（validate_term）、`:245`（validate_prefname）、`:77`（prefix_declared）、`:66`（drain_engine_errors） |
+| 组装 / 校验 | `gen_n3v2/parser_slice.mbt:313`（assemble）、`:128`（validate_term）、`:246`（validate_prefname）、`:78`（prefix_declared）、`:67`（drain_engine_errors） |
 | 物化门 | `materialize_n3.mbt:601`（materialize_quad）、`:1007`（materialize_all）、`:1079` 起（gate_iri 等四门） |
 | 生成链 | `compose.mbt:161`（n3gen_compose）、`emit.mbt:1273`（n3gen_build）、`validate.mbt:687`（G10 装配门）、`:567`（G11 可达性）、`:489`（可达性报告纯函数）、`:558`（`n3_g11_strict`） |
 | 生成门测试 | `src/rdf/n3gen/n3gen_test.mbt:31`（G1）→ `:209`（G9）→ `:234`（G12）→ `:284`（G13） |

@@ -32,7 +32,7 @@ src/gen_n3v2/ctx.md	n3.mbt:2069	src/gen_n3v2/n3.mbt	2069	priv trait N3EffectHand
 src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:517	src/gen_n3v2/engine.mbt	517	/// 组清·路径账（役28 R-13）：路径三槽一组回收（src/tail/pend）。方向位
 src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:136	src/gen_n3v2/engine.mbt	136	fn[L : LexerSource] N3Engine::kw_ledger_hits(
 src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
-src/gen_n3v2/ctx.md	gen_n3v2/parser_slice.mbt:66	src/gen_n3v2/parser_slice.mbt	66	fn[L] N3SliceParser::drain_engine_errors(self : N3SliceParse
+src/gen_n3v2/ctx.md	gen_n3v2/parser_slice.mbt:67	src/gen_n3v2/parser_slice.mbt	67	fn[L] N3SliceParser::drain_engine_errors(self : N3SliceParse
 src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:366	src/gen_n3v2/engine.mbt	366	impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn r
 src/gen_n3v2/ctx.md	materialize_n3.mbt:601	src/gen_n3v2/materialize_n3.mbt	601	pub fn N3Materializer::materialize_quad(
 src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:137	src/gen_n3v2/actions.mbt	137	impl N3Actions for N3ActionsImpl with fn pop_bnode_prop(
@@ -41,9 +41,9 @@ src/gen_n3v2/ctx.md	n3tests_suite_wbtest.mbt:50	src/gen_n3v2/n3tests_suite_wbtes
 src/gen_n3v2/ctx.md	materialize_n3.mbt:30	src/gen_n3v2/materialize_n3.mbt	30	prefixes : Array[(Span, Span)] // (name, iri) 声明账本（与 ctx.pre
 src/gen_n3v2/ctx.md	gen_nquads/rdf_suite_wbtest.mbt:101	src/gen_nquads/rdf_suite_wbtest.mbt	101	let content_start = e + 1
 src/gen_n3v2/ctx.md	gen_n3v2/engine.mbt:84	src/gen_n3v2/engine.mbt	84	fn[L : LexerSource] trim_trailing_punct(
-src/gen_n3v2/ctx.md	gen_n3v2/parser_slice.mbt:77	src/gen_n3v2/parser_slice.mbt	77	fn prefix_declared(
-src/gen_n3v2/ctx.md	:127	src/gen_n3v2/parser_slice.mbt	127	fn validate_term(
-src/gen_n3v2/ctx.md	:245	src/gen_n3v2/parser_slice.mbt	245	fn validate_prefname(data : ArrayView[Byte], span : Span) ->
+src/gen_n3v2/ctx.md	gen_n3v2/parser_slice.mbt:78	src/gen_n3v2/parser_slice.mbt	78	fn prefix_declared(
+src/gen_n3v2/ctx.md	:128	src/gen_n3v2/parser_slice.mbt	128	fn validate_term(
+src/gen_n3v2/ctx.md	:246	src/gen_n3v2/parser_slice.mbt	246	fn validate_prefname(data : ArrayView[Byte], span : Span) ->
 src/gen_n3v2/ctx.md	gen_n3v2/rdf_suite_wbtest.mbt:118	src/gen_n3v2/rdf_suite_wbtest.mbt	118	let (quads, perrs) = slice.parse_all()
 src/gen_n3v2/ctx.md	n3.mbt:282	src/gen_n3v2/n3.mbt	282	priv trait N3Supervisor {
 src/gen_n3v2/ctx.md	:299	src/gen_n3v2/n3.mbt	299	/// 每个方法：(ctx, 事件载荷) → 副作用意图或错误（ctx 为原地写，state 由 step 管理）
@@ -72,11 +72,11 @@ src/gen_n3v2/ctx.md	gen_n3v2/actions.mbt:1146	src/gen_n3v2/actions.mbt	1146	impl
 src/gen_n3v2/ctx.md	:1159	src/gen_n3v2/actions.mbt	1159	impl N3Actions for N3ActionsImpl with fn set_inversion(
 src/gen_n3v2/ctx.md	:1173	src/gen_n3v2/actions.mbt	1173	impl N3Actions for N3ActionsImpl with fn set_sameas(
 src/gen_n3v2/ctx.md	:1186	src/gen_n3v2/actions.mbt	1186	impl N3Actions for N3ActionsImpl with fn annot_open(
-src/gen_n3v2/ctx.md	gen_n3v2/parser_slice.mbt:312	src/gen_n3v2/parser_slice.mbt	312	fn[L] N3SliceParser::assemble(
-src/gen_n3v2/ctx.md	:127	src/gen_n3v2/parser_slice.mbt	127	fn validate_term(
-src/gen_n3v2/ctx.md	:245	src/gen_n3v2/parser_slice.mbt	245	fn validate_prefname(data : ArrayView[Byte], span : Span) ->
-src/gen_n3v2/ctx.md	:77	src/gen_n3v2/parser_slice.mbt	77	fn prefix_declared(
-src/gen_n3v2/ctx.md	:66	src/gen_n3v2/parser_slice.mbt	66	fn[L] N3SliceParser::drain_engine_errors(self : N3SliceParse
+src/gen_n3v2/ctx.md	gen_n3v2/parser_slice.mbt:313	src/gen_n3v2/parser_slice.mbt	313	fn[L] N3SliceParser::assemble(
+src/gen_n3v2/ctx.md	:128	src/gen_n3v2/parser_slice.mbt	128	fn validate_term(
+src/gen_n3v2/ctx.md	:246	src/gen_n3v2/parser_slice.mbt	246	fn validate_prefname(data : ArrayView[Byte], span : Span) ->
+src/gen_n3v2/ctx.md	:78	src/gen_n3v2/parser_slice.mbt	78	fn prefix_declared(
+src/gen_n3v2/ctx.md	:67	src/gen_n3v2/parser_slice.mbt	67	fn[L] N3SliceParser::drain_engine_errors(self : N3SliceParse
 src/gen_n3v2/ctx.md	materialize_n3.mbt:601	src/gen_n3v2/materialize_n3.mbt	601	pub fn N3Materializer::materialize_quad(
 src/gen_n3v2/ctx.md	:1007	src/gen_n3v2/materialize_n3.mbt	1007	pub fn N3Materializer::materialize_all(
 src/gen_n3v2/ctx.md	:1079	src/gen_n3v2/materialize_n3.mbt	1079	self : N3Materializer,
@@ -187,10 +187,10 @@ src/gen_trig/ctx.md	:427	src/gen_trig/engine.mbt	427	impl[L : LexerSource] TrigS
 src/gen_trig/ctx.md	gen_trig/engine.mbt:79	src/gen_trig/engine.mbt	79	fn[L : LexerSource] trim_trailing_dot(lexer : L, span : Span
 src/gen_trig/ctx.md	:89	src/gen_trig/engine.mbt	89	fn[L : LexerSource] TrigEngine::normalize_term_span(
 src/gen_trig/ctx.md	:186	src/gen_trig/engine.mbt	186	fn[L : LexerSource] TrigEngine::directive_ok(
-src/gen_trig/ctx.md	gen_trig/parser_slice.mbt:114	src/gen_trig/parser_slice.mbt	114	fn validate_term(
-src/gen_trig/ctx.md	:199	src/gen_trig/parser_slice.mbt	199	fn validate_prefname(data : ArrayView[Byte], span : Span) ->
-src/gen_trig/ctx.md	:400	src/gen_trig/parser_slice.mbt	400	pub fn[L : LexerSource] TrigSliceParser::parse_next(
-src/gen_trig/ctx.md	:447	src/gen_trig/parser_slice.mbt	447	pub fn[L : LexerSource] TrigSliceParser::parse_all(
+src/gen_trig/ctx.md	gen_trig/parser_slice.mbt:115	src/gen_trig/parser_slice.mbt	115	fn validate_term(
+src/gen_trig/ctx.md	:200	src/gen_trig/parser_slice.mbt	200	fn validate_prefname(data : ArrayView[Byte], span : Span) ->
+src/gen_trig/ctx.md	:401	src/gen_trig/parser_slice.mbt	401	pub fn[L : LexerSource] TrigSliceParser::parse_next(
+src/gen_trig/ctx.md	:448	src/gen_trig/parser_slice.mbt	448	pub fn[L : LexerSource] TrigSliceParser::parse_all(
 src/gen_trig/ctx.md	materialize_trig.mbt:36	src/gen_trig/materialize_trig.mbt	36	pub struct TrigMaterializer {
 src/gen_trig/ctx.md	:55	src/gen_trig/materialize_trig.mbt	55	pub fn TrigMaterializer::new(
 src/gen_trig/ctx.md	:351	src/gen_trig/materialize_trig.mbt	351	fn TrigMaterializer::base_at(
