@@ -79,7 +79,7 @@ src/gen_n3v2/ctx.md	:77	src/gen_n3v2/parser_slice.mbt	77	fn prefix_declared(
 src/gen_n3v2/ctx.md	:66	src/gen_n3v2/parser_slice.mbt	66	fn[L] N3SliceParser::drain_engine_errors(self : N3SliceParse
 src/gen_n3v2/ctx.md	materialize_n3.mbt:601	src/gen_n3v2/materialize_n3.mbt	601	pub fn N3Materializer::materialize_quad(
 src/gen_n3v2/ctx.md	:1007	src/gen_n3v2/materialize_n3.mbt	1007	pub fn N3Materializer::materialize_all(
-src/gen_n3v2/ctx.md	:1077	src/gen_n3v2/materialize_n3.mbt	1077	fn N3Materializer::gate_iri(
+src/gen_n3v2/ctx.md	:1079	src/gen_n3v2/materialize_n3.mbt	1079	self : N3Materializer,
 src/gen_n3v2/ctx.md	gen_n3v2/rdf_suite_wbtest.mbt:116	src/gen_n3v2/rdf_suite_wbtest.mbt	116	// R-16 升格（2026-09-13）：主判定链改走**严格**组装校验（影子缺口已清零）
 src/gen_n3v2/ctx.md	n3tests_suite_wbtest.mbt:50	src/gen_n3v2/n3tests_suite_wbtest.mbt	50	debug("UNKNOWN-KIND \{path} kind=\{kind}")
 src/gen_n3v2/ctx.md	examples_wbtest.mbt:9	src/gen_n3v2/examples_wbtest.mbt	9	async test "examples sweep: bucket N3 sample files (pinned)"
@@ -119,7 +119,9 @@ src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:560	src/gen_n3v2/actions.mbt	560	ctx.s
 src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:750	src/gen_n3v2/actions.mbt	750	ctx.state = N3ExpectDotOrGraph
 src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
 src/gen_n3v2/spec.md	gen_n3v2/actions.mbt:1007	src/gen_n3v2/actions.mbt	1007	frame.ret_state = ret_state
-src/gen_n3v2/todo.md	materialize_n3.mbt:1107	src/gen_n3v2/materialize_n3.mbt	1107	/// 变量门（ADR-004：只记身份——语法面收紧在此）：`?` + varname，varname
+src/gen_n3v2/todo.md	materialize_n3.mbt:1109	src/gen_n3v2/materialize_n3.mbt	1109	/// 字符集 [A-Za-z0-9_]、首字符不许数字（N3 VARNAME 口径；词法 PrefName
+src/gen_nquads/const.md	src/gen_nquads/quicktest/runner.mbt:137	src/gen_nquads/quicktest/runner.mbt	137	///   分母 = `reachable_witness_paths()` 派生（起点初始态、边 = `valid`，
+src/gen_nquads/const.md	src/gen_n3v2/quicktest/metrics.mbt:417	src/gen_n3v2/quicktest/metrics.mbt	417	///   分母 = `reachable_witness_paths()` 派生（起点初始态、边 = `valid`，
 src/gen_nquads/ctx.md	nquads.mbt:152	src/gen_nquads/nquads.mbt	152	pub(open) trait NQuadsActions {
 src/gen_nquads/ctx.md	:251	src/gen_nquads/nquads.mbt	251	pub trait NQuadsEffectHandler {
 src/gen_nquads/ctx.md	:135	src/gen_nquads/nquads.mbt	135	pub trait NQuadsLoopPolicy {

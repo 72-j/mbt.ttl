@@ -225,7 +225,7 @@ pub struct TrigMaterializer {
   fresh_ids : Map[(Int, Int), (Int, Int)]
   arena : Array[Byte]
 }
-pub fn TrigMaterializer::materialize_all(Self, Array[QuadSpan], deep_validate? : Bool) -> (Array[@gen_nquads.QuadEmit], Array[@gen_nquads.ParseError])
+pub fn TrigMaterializer::materialize_all(Self, Array[QuadSpan], deep_validate? : Bool, mode? : @gen_nquads.ValidateMode) -> (Array[@gen_nquads.QuadEmit], Array[@gen_nquads.ParseError])
 pub fn TrigMaterializer::materialize_quad(Self, QuadSpan) -> Result[@gen_nquads.QuadEmit, @gen_nquads.ParseError]
 pub fn TrigMaterializer::new(ArrayView[Byte], Array[((Int, Int), (Int, Int))], bases? : Array[(Int, Int)], base_fallback? : String?, rdf12? : Bool) -> Self
 

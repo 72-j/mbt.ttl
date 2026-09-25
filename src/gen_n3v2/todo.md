@@ -35,7 +35,7 @@ ADR 随役次（详见 `adr.md` 卷首）。原始底稿：2026-09-11 评审全�
 | A4 | 三成员契约面：`Actions` / `EffectHandler` / `Supervisor`（声明属 `Contract`，实现属 `Assembly`） | `spec.md` §2；`ctx.md` §2 |
 | A5 | 外部 oracle 齐备：turtle 316、rdf12-turtle 75、trig 357、rdf12-trig 36、nquads 124、N3Tests neg 23ok/0miss + pos+eval 205 clean、Moon/C 词法 parity | `spec.md` §9 |
 | A6 | 语义口径有钉：ADR-002 / 003a / 003b / 004 / 005 / 006 逐条有测试兜底 | `spec.md` §6；`adr.md` |
-| A7 | 深验单遍：四门（iri / bnode / tt / literal）在物化构词点就地执行，不做第二遍扫描 | `materialize_n3.mbt:1107` 起 |
+| A7 | 深验单遍：四门（iri / bnode / tt / literal）在物化构词点就地执行，不做第二遍扫描 | `materialize_n3.mbt:1109` 起 |
 | A8 | 记录纪律：ADR 留账、skip 留账、套件桶闭合钉、表外入口锚点登记册（G13 防漂移） | `adr.md`；`n3v2_base.toml` `[[state_entries]]` |
 
 ---

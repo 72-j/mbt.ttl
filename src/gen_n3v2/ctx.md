@@ -261,7 +261,7 @@
 | 集合 / 帧 | `gen_n3v2/actions.mbt:137`（pop_bnode_prop）、`:1021`（list_top）、`:1033`（list_first） |
 | 倒装 / 等同 / 注解 | `gen_n3v2/actions.mbt:1146`（is_of）、`:1159`（set_inversion）、`:1173`（set_sameas）、`:1186` 起（annot_*） |
 | 组装 / 校验 | `gen_n3v2/parser_slice.mbt:312`（assemble）、`:127`（validate_term）、`:245`（validate_prefname）、`:77`（prefix_declared）、`:66`（drain_engine_errors） |
-| 物化门 | `materialize_n3.mbt:601`（materialize_quad）、`:1007`（materialize_all）、`:1077` 起（gate_iri 等四门） |
+| 物化门 | `materialize_n3.mbt:601`（materialize_quad）、`:1007`（materialize_all）、`:1079` 起（gate_iri 等四门） |
 | 生成链 | `compose.mbt:161`（n3gen_compose）、`emit.mbt:1273`（n3gen_build）、`validate.mbt:687`（G10 装配门）、`:567`（G11 可达性）、`:489`（可达性报告纯函数）、`:558`（`n3_g11_strict`） |
 | 生成门测试 | `src/rdf/n3gen/n3gen_test.mbt:31`（G1）→ `:209`（G9）→ `:234`（G12）→ `:284`（G13） |
 | 套件 runner | `gen_n3v2/rdf_suite_wbtest.mbt:116/118`、`n3tests_suite_wbtest.mbt:50`、`examples_wbtest.mbt:9` |

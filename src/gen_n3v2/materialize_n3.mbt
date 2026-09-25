@@ -1008,8 +1008,9 @@ pub fn N3Materializer::materialize_all(
   self : N3Materializer,
   quads : Array[QuadSpan],
   deep_validate? : Bool = true,
+  mode? : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
 ) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
-  self.deep_validate = deep_validate
+  self.deep_validate = deep_validate && !mode.is_light() // B2 档位：Light 关深验面
   let results : Array[@nquads.QuadEmit] = []
   let errors : Array[ParseError] = []
   // 役20 声明名验形门（组装后账本 validate，nquads validate_helper 同层）：
