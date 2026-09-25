@@ -118,7 +118,7 @@
   | `src/gen_*/quicktest/`（三方言，带 `.hand-maintained`） | 标记实证 | ✅ 是（手维护层） |
   | `src/gen_*/{trig.mbt,nquads.mbt,n3.mbt}` + `quicktest/{model_exec,valid,state_machine,types,business,runner,system}.mbt` | 排除面清单（改走模板） | ❌ 禁 |
   | `parser_slice.mbt` / `materialize_*.mbt`（实现面） | 非生成通道产物 | ✅ 是（但**必须 fmt-clean**，全路径门） |
-  | `validate_helper.mbt`（nquads） | 旧 CI 报红名单内有它，但 §AL 已把豁免清零、现行判据只是"必须 fmt-clean" | ⚠️ **归属待证**（查生成通道映射后再定） |
+  | `validate_helper.mbt` / `materialize_quad.mbt`（nquads） | **归属已定（2026-09-25 三轮取证）**：全仓检索（主仓 `src/**` 除 `_build` 外、含 `quick_machine/*.{mbt,toml}`）对这两个文件名**零命中**（仅账本提到）⇒ **无生成通道按名写盘证据** | ✅ **按可手改面对待**（须 fmt-clean；若某次再生真覆盖它，CI 的 fmt / `.mbti` 漂移 / 黄金门会抓到） |
 
 - **旧口径（保留作沿革）**：`todo.md` **§Q.3-F1** + **§W.2**
   （"再生件与手写件**分口径**：再生件走生成通道口径，手写件走仓库 fmt 口径；冲突按路径显式豁免并写理由"），
