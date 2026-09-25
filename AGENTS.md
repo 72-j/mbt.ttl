@@ -37,6 +37,10 @@
 - **模式位不收单元字面量**：`Ok(())` 是解析错误（`unexpected token ')'`）；不关心载荷写 `Ok(_)`。
 - **`String` 不自动升 `String?`**：形参是 `String?` 时须显式传 `Some(s)`，否则 [4014]
   （`has type String, wanted String?`）。
+- **保留字族再证实（[0035]/[3002]）**：`local` 作参数名、`method` 作模式变量即
+  [0035]；`type` 作字段名解析红——替代名 `local_context` / `handler_method` / `datatype`
+- **模式位与 `is` 表达式位不收 struct 更新字面量**：`is Ok(T::{...})` 与 match 臂
+  `T::{...} =>` 均解析红（[3002]/[4029]）——先绑定值再逐字段断言
 - **`Array::make(n, init)` 对可变元素是同一引用填满所有槽**（运行期坑，编译器不报）：
   `Array::make(n, [])` 的 n 个槽共享同一个数组，push 一处全处可见；要独立槽用
   `for _ in 0..<n { arr.push([]) }` 逐个建。
