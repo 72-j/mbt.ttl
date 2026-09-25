@@ -23,6 +23,24 @@
   ④ **历史**（沿革细节/旧役号）——删除或压进 ②。
   现行形态常见"② 太厚、① 偏薄" ⇒ 收窄方向 = **② 压一行，空间让给 ①**。
 
+## 语言陷阱（2026-09-25 实测收录，jsonld_gen TOML 绑定器役；除标注外均编译器/运行期当场可复现）
+
+- **无 `?` 错误传播**：Rust 式 `expr?` 后缀是解析错误（旧语法已弃）。`Result` 提前返回写显式
+  `match ... { Ok(v) => v; Err(msg) => return Err(msg) }`。
+- **`guard` 无 else 失败即 abort**：`guard cond`（不带 else）条件不成立时直接 panic（SIGABRT），
+  是断言语义，**不是**循环过滤器。循环内"不满足就跳过"写 `if !cond { continue }`；
+  要显式出路用 `guard cond else { ... }`（else 分支必须 return/raise/continue）。
+- **泛型函数定义是 `fn[T] name(...)`**，不是 `fn name[T](...)`——后者解析错误
+  （`unexpected 'fn f[T]', you may expect 'fn[T] f'`）。
+- **`String::replace` 需标签参数**：`s.replace(old="a", new="b")`；位置传参报
+  [4080]/[4086]（`old~`/`new~` 未提供）。
+- **模式位不收单元字面量**：`Ok(())` 是解析错误（`unexpected token ')'`）；不关心载荷写 `Ok(_)`。
+- **`String` 不自动升 `String?`**：形参是 `String?` 时须显式传 `Some(s)`，否则 [4014]
+  （`has type String, wanted String?`）。
+- **`Array::make(n, init)` 对可变元素是同一引用填满所有槽**（运行期坑，编译器不报）：
+  `Array::make(n, [])` 的 n 个槽共享同一个数组，push 一处全处可见；要独立槽用
+  `for _ in 0..<n { arr.push([]) }` 逐个建。
+
 ## 工具使用指南
 
 - 使用 `moon fmt` 格式化代码。

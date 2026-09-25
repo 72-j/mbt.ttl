@@ -1,5 +1,6 @@
 # 锚点期望快照（生成物：首次由 ci/anchor-check.sh bootstrap；改锚点须同笔重生成）
 # 列：referrer<TAB>anchor<TAB>target<TAB>line<TAB>expected_prefix(60)
+review.md	gen_n3v2/actions.mbt:1159	src/gen_n3v2/actions.mbt	1159	impl N3Actions for N3ActionsImpl with fn set_inversion(
 src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:1011	src/gen_n3v2/actions.mbt	1011	N3Effect::Sequence([
 src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:172	src/gen_n3v2/actions.mbt	172	ctx.state = frame.ret_state
 src/gen_n3v2/adr.md	gen_n3v2/actions.mbt:200	src/gen_n3v2/actions.mbt	200	frame.ret_state = N3BnpIdAfterClose
