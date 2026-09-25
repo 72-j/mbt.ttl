@@ -214,3 +214,18 @@ ImpliedBy, ForAllKw, ForSomeKw, EOF`。
 
 **同笔五件**：落刀 → 上述重钉 → `mv .anchors/expected.tsv /tmp/ && sh ci/anchor-check.sh`（重生快照）→ 复核表重生 →
 预检 9 段全绿 → 提交。**红线**：**不许**只重生快照来"让门变绿"（那是把漂移冻成期望的假绿路，B0 门头已写明）。
+
+#### X.5 Light 档实测（n3v2/trig）落点勘定（2026-09-25）
+
+**勘定结论：现无可用 bench 入口**——`src/bench/` 只有 `nquads-benchmark`（nquads 面，B1 曾加 `--validate` 又回卷）与
+`jena-benchmark` / `oxigraph-benchmark`（对端件）；**n3v2 / trig 侧没有任何 bench main**。⇒ 实测须**新建探针**，两条路：
+
+1. **wbtest 探针（推荐，最小）**：在方言包内新增 `*_wbtest.mbt`（白盒可直调私有面），
+   以**已 tracked 的夹具**为输入（例：`src/gen_n3v2/` 套件用的 turtle 语料 / `.rdf-tests`），
+   按 **B1 协议**交替 A/B（A=Deep、B=Light）**≥3 轮**，只量 `parse_all + materialize_all`（不含建库/进程启动），
+   **带不交叠才下结论**，交叠记"无结论"。落点属**手维护实现面**（`*_wbtest.mbt` 非生成物 5 类）。
+2. **bench main 扩件**：给 `src/bench/` 增一个 n3v2/trig main（与 nquads-benchmark 同形）——重、但对外可复现形态更好。
+
+**同笔纪律**：新探针会**新增文件**（不改既有行号 ⇒ 零锚点漂移）；但若同笔改动既有文件，仍走
+"落刀 + 重钉 + 快照重生 + 逐行 diff 复核"四步（§X.4 教训）。**读数入账**：结果进 `perf-review.txt`（`#` 沿革段，
+不进 CI 比对）+ README 分档数字（**基准档 = Deep**，Light 同行另列）。
