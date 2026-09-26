@@ -126,7 +126,7 @@ jobs:
           }
           for d in trig nquads n3v2; do
             out="$(moon test "src/gen_$d/quicktest" 2>&1)"
-            line="$(printf '%s\n' "$out" | grep -o "可达覆盖账 $d：分母 [0-9]* / 分子 [0-9]* / 缺口 [0-9]* / 不可达 [0-9]*" | head -n 1)"
+            line="$(printf '%s\n' "$out" | grep -o "可达覆盖账 $d[^：]*：分母 [0-9]* / 分子 [0-9]* / 缺口 [0-9]* / 不可达 [0-9]*" | head -n 1)"
             if [ -z "$line" ]; then
               echo "::error::[$d] 没有找到可达覆盖账输出行——门没跑起来？"
               printf '%s\n' "$out" | tail -n 20
