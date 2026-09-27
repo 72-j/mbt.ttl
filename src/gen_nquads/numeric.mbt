@@ -12,6 +12,11 @@
 /// 数值形态复核（词法整段扫描口径：[+-]?([0-9]+('.'[0-9]*)? | '.'[0-9]+)([eE][+-]?[0-9]+)?）：
 /// 首字节 数字/+/−/.，至少一个数字，其余仅 . e E + -
 pub fn is_numeric_span(data : ArrayView[Byte], off : Int, len : Int) -> Bool {
+  // A 笔（2026-09-27）：**零长防御**——`len == 0` 时原实现 `data[off]` 越界 panic（未定义行为）；
+  // 词法消费面传的是已切分词项（≥2B），生产路径不受影响；此处把未定义行为改为**明确 false**。
+  if len == 0 {
+    return false
+  }
   let c0 = data[off]
   if !(c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')) {
     return false

@@ -9,13 +9,18 @@ fn mat_bytes(input : String) -> Array[Byte] {
 
 ///|
 /// view → String（与序列化器同口径：decode_lossy，严禁逐字节 to_char 拼多字节）
+// 【共享壳说明 2026-09-27】本件三件辅助 `mat_bytes / mat_chain / mat_obj / mat_vs` 是 **trig conformance 测试壳**，
+// 被 `literal_conformance_wbtest.mbt` 等同包 conformance 件**跨件复用**——**不是死码**，清理时勿删。
 fn mat_vs(v : ArrayView[Byte]) -> String {
   @utf8.decode_lossy(Bytes::from_array(v))
 }
 
 ///|
 /// 全链路：解析 → 物化。data 由本函数持有（view 生命周期 = 调用方作用域）
-fn mat_chain(input : String) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
+fn mat_chain(
+  input : String,
+  base_fallback? : String? = None,
+) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
   let data = mat_bytes(input)
   let engine = TrigEngine::from_bytes(data)
   let sec = data[:]
@@ -28,6 +33,7 @@ fn mat_chain(input : String) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
     sec,
     slice.engine.ctx.prefixes,
     bases=slice.engine.ctx.bases,
+    base_fallback~,
   )
   mat.materialize_all(quads)
 }

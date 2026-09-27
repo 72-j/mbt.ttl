@@ -376,3 +376,46 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 **余项（明确划界，不顺手扩张）**：**"更宽裸词语义"未开**——当前只放行 **listed 词到组装层的裸名**，
 **不是所有裸词**（无声明裸词 N3 档仍表外拒、TriG/Turtle 档仍适配层降 `Unknown` 后拒）。
 要一般化裸词语义须**另立案**（动 `validate_term` / 物化默认前缀 / W3C 负例面）。
+
+---
+
+## ADR-TRIG-019：literal 役——datatype 评估成文 + **对拍口径两分**（源词形保真 / 裸词合成）——✅ 2026-09-27
+
+**背景**：用户令「同样抽取字面量的测试 完善测试 评估 datatype 的实现是否支持」。trig 套件判据 =
+「零错 + 存活数」（`run_trig_suite`，目录枚举 + pin），**不比 .nq 字节** ⇒ 转义解码/裸词合成的
+正确性从未被实测。本役从 `.rdf-tests/trig/rdf-trig/`（SHA256SUMS 锁版）字面量族抽取
+28 行 eval（.trig 全文 → 物化宾语 vs .nq 期望对象逐字节）+ 18 行 syntax-only verdict ⇒
+`literal_conformance_wbtest.mbt`（生成器 `/tmp/extract_literal_trig.py`）。
+
+**决策（四条）**
+
+1. **对拍口径两分（架构定案：emit 不做词形归一、也不丢合成语义）**：
+   - **带引号字面量**：emit = arena view 零拷贝**源词形保真**（`LITERAL1` 源 `'x'` 原样出单引号；
+     LONG 族 `"""x"y"""` 原样出含内嵌引号）——W3C `.nq` 期望是规范双引形（`"x"` / `"x\"y"`），
+     两者不同的行**钉源词形**并注记规范形；相同的行（转义族 `literal_with_escaped_*` 等）**逐字节对拍 .nq**。
+   - **裸词**（integer/decimal/double/boolean）：emit = **合成 typed literal**（`"1.0"^^xsd:decimal`），
+     恰 = `.nq` 规范形 ⇒ **钉 .nq** 并注记源词形。
+   - **被否**：改物化器归一引号风格（违零拷贝架构）；MoonBit 驱动里做值级 unescape 比较
+     （重造引擎逻辑，循环论证）。
+2. **base_fallback 口径镜像官方 harness**：manifest `BASE = http://www.w3.org/2013/TriGTests/ + 文件名`，
+   相对 IRI（`trig-syntax-datatypes-01` 的 `<s>`/`<p>`）由 fallback 落地 ⇒ conformance 驱动传
+   `base_fallback=Some(...)`，与 `run_trig_suite`（`base_fallback=Some("\{suite_base}\{file}")`）同口径；
+   `mat_chain` 加可选参数 `base_fallback? : String? = None`（向后兼容，其余调用点零改动）。
+   **门不弱化**：引擎的相对 IRI 无 base 报错路径原样保留。
+3. **datatype 实现评估结论（六点，全支持）**：① 裸词合成：`is_numeric_span` 全词形裁决 +
+   `expand_number` 可信构造，**lexical 保真**（`1E0`/`1e0` 大小写 e 不归一）；② 布尔：`is_boolean_word`
+   小写精确 + `expand_boolean`；③ 显式 datatype（IRIREF/前缀名）：展开 + `gate_literal` 深验；
+   未知型透传合法（`xsd:byte` 套件绿），**类型域校验（byte≤127 等）不做——归应用层**；
+   ④ `xsd:string` 塌缩 simple literal；显式 `rdf:langString`/`rdf:dirLangString` 禁用（`is_banned_langstring_iri`），
+   langtag 形由 `@lang` 合成；⑤ RDF 1.2 方向构造齐（BaseDirection + 契约门，rdf12 套件绿）；
+   ⑥ 本役补上 .nq 字节对拍覆盖（原套件口径缺口）。
+4. **抽取器工程事实（防复踩）**：语料字面量内容可含**裸 `\r` `\n`（LONG 跨行）`\v` `\f` 控制字节**、
+   `#`（IRIREF 内合法，非注释）、行尾 `\r\n` ⇒ 抽取须：引号感知扫描（字面量内逐字保真+转义跳扫）、
+   字面量内 `\n` 换多字节哨兵（避开 all_controls 的 `\x00`–`\x1f`）、`open(newline='')` 禁
+   universal-newlines 翻译、花括号转行后逐行「主 谓 宾.」切分；**计数门**（trig 语句数 == .nq 行数）
+   配 `sys.exit` 响亮失败，配对错误不可静默。
+
+**后果**：gen_trig **109/109**（28 eval + 18 verdict 全绿；四套件 357+316+36+75 不变）；
+datatype 支持面首次成文；.nq 字节对拍覆盖缺口闭合。改 datatype 语义时本电池即回归面
+（引号风格/转义/合成三族各有钉）。**再生纪律**：生成器直写不格式化 ⇒ 再生后须同笔
+`moon fmt`（首轮预检 ✗ 即此；`release-check` 面 2 的 `fmt --warn` 门咬住）。
