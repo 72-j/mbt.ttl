@@ -97,6 +97,12 @@ sh ci/anchor-check.sh >/dev/null 2>&1
 chk $? "sh ci/anchor-check.sh（改锚点须同笔重生成本表）"
 
 echo
+echo "== 10. 合规形体门（三件源件头注含 来源 + SPDX；只验形）=="
+for f in src/gen_nquads/iri_conformance_wbtest.mbt src/gen_nquads/langtag_conformance_wbtest.mbt src/gen_trig/literal_conformance_wbtest.mbt; do
+  if grep -q 'SPDX' "$f" && grep -qE 'THIRD_PARTY_NOTICES|授权与来源|来源与许可' "$f"; then ok "$f 头注形体"; else bad "$f 缺 来源/SPDX 头注"; fi
+done
+[ -f THIRD_PARTY_NOTICES.md ] && ok "THIRD_PARTY_NOTICES.md 在位" || bad "缺 THIRD_PARTY_NOTICES.md"
+
 if [ "$fail" = "0" ]; then
   echo "== 发版预检全绿 ✓ 按 release-checklist.md §发版日序 执行 =="
 else

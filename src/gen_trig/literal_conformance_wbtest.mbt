@@ -1,7 +1,7 @@
 // 来源与许可（统一形；详见 `THIRD_PARTY_NOTICES.md`）：
 //   ① W3C rdf-tests 双许可（W3C Test Suite License + 3-clause BSD）；
 //   ② Apache Jena（SPDX: Apache-2.0；仅 langtag 电池）；
-//   ③ Oxigraph（SPDX: 待核；仅 literal/datatype 形态参考）。
+//   ③ Oxigraph（SPDX: MIT OR Apache-2.0；仅 literal/datatype 形态参考）。
 // 授权与来源（W3C 测试套件双许可：W3C Test Suite License + 3-clause BSD，
 // 见 https://www.w3.org/Consortium/Legal/2008/04-testsuite-copyright.html）：
 // 本文件测试数据抽取自 w3c/rdf-tests（rdf/rdf11/rdf-trig 字面量族），本地副本
