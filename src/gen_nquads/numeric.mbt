@@ -12,25 +12,50 @@
 /// 数值形态复核（词法整段扫描口径：[+-]?([0-9]+('.'[0-9]*)? | '.'[0-9]+)([eE][+-]?[0-9]+)?）：
 /// 首字节 数字/+/−/.，至少一个数字，其余仅 . e E + -
 pub fn is_numeric_span(data : ArrayView[Byte], off : Int, len : Int) -> Bool {
-  // A 笔（2026-09-27）：**零长防御**——`len == 0` 时原实现 `data[off]` 越界 panic（未定义行为）；
-  // 词法消费面传的是已切分词项（≥2B），生产路径不受影响；此处把未定义行为改为**明确 false**。
+  // A 笔（2026-09-27）：**零长防御**——`len == 0` 时原实现 `data[off]` 越界 panic（未定义行为）。
   if len == 0 {
     return false
   }
-  let c0 = data[off]
-  if !(c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')) {
+  // B 笔（2026-09-27）：**结构校验**——按本函数头注自述口径
+  //   `[+-]?([0-9]+('.'[0-9]*)? | '.'[0-9]+)([eE][+-]?[0-9]+)?`
+  // 逐段判定（旧实现只做"首字节 + 字符集 + 至少一数字"，故 `1e`/`1e+`/`++1`/`--1`/`1.2.3` 被误收）。
+  let digit = fn(c : Byte) -> Bool { c >= b'0' && c <= b'9' }
+  let mut i = 0
+  if data[off] == b'+' || data[off] == b'-' {
+    i = 1
+  }
+  let mut int_digits = false
+  while i < len && digit(data[off + i]) {
+    int_digits = true
+    i += 1
+  }
+  let mut frac_digits = false
+  if i < len && data[off + i] == b'.' {
+    i += 1
+    while i < len && digit(data[off + i]) {
+      frac_digits = true
+      i += 1
+    }
+  }
+  // 整数位与小数位至少一者有数字（覆盖 `1.` / `.5` / `1`；排除 `.` / `+` / `1.2.3` 结构残缺）
+  if !int_digits && !frac_digits {
     return false
   }
-  let mut has_digit = false
-  for i in 0..<len {
-    let c = data[off + i]
-    if c >= b'0' && c <= b'9' {
-      has_digit = true
-    } else if !(c == b'.' || c == b'e' || c == b'E' || c == b'+' || c == b'-') {
+  if i < len && (data[off + i] == b'e' || data[off + i] == b'E') {
+    i += 1
+    if i < len && (data[off + i] == b'+' || data[off + i] == b'-') {
+      i += 1
+    }
+    let mut exp_digits = false
+    while i < len && digit(data[off + i]) {
+      exp_digits = true
+      i += 1
+    }
+    if !exp_digits {
       return false
     }
   }
-  has_digit
+  i == len
 }
 
 ///|
