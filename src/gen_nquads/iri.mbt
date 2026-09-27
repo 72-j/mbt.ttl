@@ -5,7 +5,7 @@
 // IRI 结构: scheme://authority/path?query#fragment
 pub(all) struct Iri {
   scheme : StringView
-  authority : StringView
+  authority : StringView?
   path : StringView
   query : StringView? // None = 未出现；Some("") = 出现但为空
   fragment : StringView? // 同上
@@ -26,7 +26,7 @@ pub extend Iri with @moonbitlang/core/debug.Debug::{to_repr}
 ///|
 pub fn Iri::Iri(
   scheme : StringView,
-  authority : StringView,
+  authority : StringView?,
   path : StringView,
   query : StringView?,
   fragment : StringView?,
@@ -40,6 +40,7 @@ pub fn Iri::Iri(
 struct IriSpan {
   mut scheme : Span
   mut authority : Span
+  mut has_authority : Bool // 「//」出现过（含空 authority，如 file:///a）——空串≠无
   mut path : Span
   mut query : Span? // None = 未出现
   mut fragment : Span? // None = 未出现
@@ -97,10 +98,9 @@ pub fn Iri::resolve(
   }
 
   let scheme = self.scheme
-  let authority = if ref_parsed.authority.length() > 0 {
-    ref_parsed.authority
-  } else {
-    self.authority
+  let authority = match ref_parsed.authority {
+    Some(a) => Some(a)
+    None => self.authority
   }
 
   let path = if ref_parsed.path.length() > 0 && ref_parsed.path[0] == '/' {
@@ -117,6 +117,9 @@ pub fn Iri::resolve(
           "/" + ref_parsed.path.to_owned()
         }
     }
+  } else if ref_parsed.authority is Some(_) {
+    // RFC 3986 §5.2.2：**authority 出现** ⇒ T.path = R.path（此处为空）——**不继承 base path**
+    ref_parsed.path
   } else {
     self.path
   }
@@ -125,17 +128,20 @@ pub fn Iri::resolve(
   } else {
     path
   }
-  // 引用里出现 query/fragment（哪怕为空）就覆盖 base，否则继承
-  let query = if ref_parsed.query is Some(_) {
-    ref_parsed.query
+  // RFC 3986 §5.2.2：query 继承**只属"引用 path 为空"支**——
+  //   空 path ⇒ 引用有 query 则覆盖、否则继承 base；非空 path ⇒ 一律取引用（未定义即丢）。
+  // fragment 两档皆取引用（不继承）。
+  let query = if ref_parsed.path.length() == 0 && ref_parsed.authority is None {
+    // 空 path **且无 authority** ⇒ 才继承（R.query 有则覆盖）
+    if ref_parsed.query is Some(_) {
+      ref_parsed.query
+    } else {
+      self.query
+    }
   } else {
-    self.query
+    ref_parsed.query // authority 出现 或 path 非空 ⇒ 一律取引用（不继承）
   }
-  let fragment = if ref_parsed.fragment is Some(_) {
-    ref_parsed.fragment
-  } else {
-    self.fragment
-  }
+  let fragment = ref_parsed.fragment
 
   Ok(Iri::{ scheme, authority, path, query, fragment, })
 }
@@ -162,7 +168,7 @@ pub fn Iri::relativize(self : Iri, target : Iri) -> Result[Iri, ParseError] {
 
   Ok(Iri::{
     scheme: "",
-    authority: "",
+    authority: None,
     path,
     query: target.query,
     fragment: target.fragment,
@@ -183,10 +189,9 @@ pub fn Iri::resolve_unchecked(
   }
 
   let scheme = self.scheme
-  let authority = if ref_parsed.authority.length() > 0 {
-    ref_parsed.authority
-  } else {
-    self.authority
+  let authority = match ref_parsed.authority {
+    Some(a) => Some(a)
+    None => self.authority
   }
 
   let path = if ref_parsed.path.has_prefix("/") {
@@ -195,14 +200,13 @@ pub fn Iri::resolve_unchecked(
     let base_path = self.path
     let last_slash = base_path.rev_find("/")
     match last_slash {
-      Some(idx) =>
-        if idx == 0 {
-          base_path.to_owned() + "/" + ref_parsed.path.to_owned()
-        } else {
-          base_path[0:idx + 1].to_owned() + ref_parsed.path.to_owned()
-        }
+      // RFC 3986 §5.2.3：base 取**最右 "/"（含）**前缀 + R.path——**无 idx==0 特例**
+      Some(idx) => base_path[0:idx + 1].to_owned() + ref_parsed.path.to_owned()
       None => ref_parsed.path.to_owned()
     }
+  } else if ref_parsed.authority is Some(_) {
+    // RFC 3986 §5.2.2：**authority 出现** ⇒ T.path = R.path（此处为空）——**不继承 base path**
+    ref_parsed.path
   } else {
     self.path
   }
@@ -212,10 +216,16 @@ pub fn Iri::resolve_unchecked(
     path
   }
 
-  let query = if ref_parsed.query is Some(_) {
-    ref_parsed.query
+  // 同上：query 继承只属"引用 path 为空"支
+  let query = if ref_parsed.path.length() == 0 && ref_parsed.authority is None {
+    // 空 path **且无 authority** ⇒ 才继承（R.query 有则覆盖）
+    if ref_parsed.query is Some(_) {
+      ref_parsed.query
+    } else {
+      self.query
+    }
   } else {
-    self.query
+    ref_parsed.query // authority 出现 或 path 非空 ⇒ 一律取引用（不继承）
   }
 
   let fragment = ref_parsed.fragment
@@ -233,9 +243,12 @@ pub fn Iri::into_string(self : Iri) -> String {
     s.write_char(':')
   }
 
-  if self.authority.length() > 0 {
-    s.write_string("//")
-    s.write_view(self.authority)
+  match self.authority {
+    Some(a) => {
+      s.write_string("//")
+      s.write_view(a)
+    }
+    None => ()
   }
 
   s.write_view(self.path)
@@ -262,48 +275,62 @@ pub fn Iri::into_string(self : Iri) -> String {
 ///|
 /// 规范化路径: 处理 . 和 .. (RFC 3986 5.2.4)
 fn fn_remove_dot_segments(path : StringView) -> StringView {
-  if path.is_empty() {
-    return path
-  }
-
-  let starts_with_slash = path[0] == '/'
-
-  let parts = path.split("/")
-  let result : Array[StringView] = []
-
-  for part in parts {
-    match part {
-      "" | "." => ()
-      ".." =>
-        if starts_with_slash {
-          if result.length() > 0 && result[result.length() - 1] != ".." {
-            let _ = result.pop()
-          }
-        } else if result.length() > 0 && result[result.length() - 1] != ".." {
-          let _ = result.pop()
-        }
-      _ => result.push(part)
+  // RFC 3986 §5.2.4 **字符串算法 A–E 逐字实现**（不 split/join 近似；空段不折叠）：
+  //   A 剥前导 "../" / "./"；B "/./"或"/." ⇒ 前缀替换为 "/"；C "/../"或"/.." ⇒ 替换为 "/"
+  //   **并弹出输出末段（含其前导 "/"，空段也可能被弹——08 `../xyz` 即此机理）**；D 剩余恰
+  //   "."/".." ⇒ 清空；E 搬**首段（含前导 "/" 与到下一个 "/" 为止的全部字节）**到输出。
+  let parts : Array[StringView] = []
+  let n = path.length()
+  let mut i = 0
+  while i < n {
+    let rest = path[i:]
+    if rest.has_prefix("../") {
+      i = i + 3
+      continue
     }
-  }
-
-  if result.is_empty() {
-    return if starts_with_slash { "/" } else { "" }
-  }
-
-  let final_path = result.join("/")
-  if starts_with_slash {
-    // 尾斜杠保留（目录引用语义，RFC 5.2.4 尾空段不可弃——subm-01 口径：
-    // base /a/ 上解析 #x 得 /a/#x，吞尾斜杠会把文档引用改成父路径词项）
-    if path[path.length() - 1] == '/' {
-      "/" + final_path + "/"
-    } else {
-      "/" + final_path
+    if rest.has_prefix("./") {
+      i = i + 2
+      continue
     }
-  } else if path[path.length() - 1] == '/' {
-    final_path + "/"
-  } else {
-    final_path
+    if rest == "." || rest == ".." {
+      break
+    }
+    if rest.has_prefix("/./") {
+      i = i + 2
+      continue
+    }
+    if rest == "/." {
+      // 恰好 "/."：RFC 替换为 "/" ⇒ **显式落一个 "/"**（指针模型下无法"留在输入流"），再让 D 收尾
+      parts.push(rest[0:1])
+      i = i + 1
+      continue
+    }
+    if rest.has_prefix("/../") {
+      i = i + 3
+      if parts.length() > 0 {
+        let _ = parts.pop()
+      }
+      continue
+    }
+    if rest == "/.." {
+      // 恰好 "/.."：替换为 "/" + 弹末段 ⇒ 同样显式落 "/"
+      if parts.length() > 0 {
+        let _ = parts.pop()
+      }
+      parts.push(rest[0:1])
+      i = i + 1
+      continue
+    }
+    // E：首段 = 前导 "/"（如有）+ 到下一个 "/" 为止
+    let leading = if rest.has_prefix("/") { 1 } else { 0 }
+    let mut j = leading
+    while j < rest.length() && rest[j] != '/' {
+      j = j + 1
+    }
+    parts.push(rest[0:j])
+    i = i + j
   }
+  parts.join("")
 }
 
 // ============================================================
@@ -368,7 +395,11 @@ let is_path_char : FixedArray[Bool] = {
 fn IriSpan::parse_scheme(self : IriSpan, data : BytesView) -> Unit {
   let start = self.pos
   let len = data.length()
-  while self.pos < len && is_scheme_char[data[self.pos].to_int()] {
+  while self.pos < len &&
+        (
+          data[self.pos].to_int() >= 0x80 ||
+          is_scheme_char[data[self.pos].to_int()]
+        ) {
     self.pos += 1
   }
   if self.pos > start && self.pos < len && data[self.pos] == b':' {
@@ -385,8 +416,15 @@ fn IriSpan::parse_authority(self : IriSpan, data : BytesView) -> Unit {
   let len = data.length()
   if self.pos + 1 < len && data[self.pos] == b'/' && data[self.pos + 1] == b'/' {
     self.pos += 2
+    // 「//」**出现**即记位——与 host 长度无关（`file:///a` 的空 authority 也必须记位，
+    // 否则 resolve 会把它当"无 authority"而错继承 base 的 path/query）。
+    self.has_authority = true
     let start = self.pos
-    while self.pos < len && is_auth_char[data[self.pos].to_int()] {
+    while self.pos < len &&
+          (
+            data[self.pos].to_int() >= 0x80 ||
+            is_auth_char[data[self.pos].to_int()]
+          ) {
       self.pos += 1
     }
     if self.pos > start {
@@ -400,7 +438,11 @@ fn IriSpan::parse_authority(self : IriSpan, data : BytesView) -> Unit {
 fn IriSpan::parse_path(self : IriSpan, data : BytesView) -> Unit {
   let start = self.pos
   let len = data.length()
-  while self.pos < len && is_path_char[data[self.pos].to_int()] {
+  while self.pos < len &&
+        (
+          data[self.pos].to_int() >= 0x80 ||
+          is_path_char[data[self.pos].to_int()]
+        ) {
     self.pos += 1
   }
   if self.pos > start {
@@ -458,8 +500,31 @@ fn parse_iri(data : BytesView, start : Int) -> Result[IriSpan, ParseError] {
   span.parse_fragment(data)
 
   if span.query is None && span.fragment is None && span.pos < len {
-    span.path = (span.path.0, len - span.path.0)
-    span.pos = len
+    // 兜底**精确化**（2026-09-27）：剩余里若含 '#' / '?' 就按**最左者**切，只有都没有才整体并 path。
+    // （原实现"剩余全并 path"会在任何扫描提前停下时吞掉 '#'/'?'——非 ASCII 路径曾因此吞 fragment。）
+    let mut hash = -1
+    let mut qm = -1
+    let mut i = span.pos
+    while i < len {
+      if hash < 0 && qm < 0 && data[i] == b'#' {
+        hash = i
+      } else if hash < 0 && qm < 0 && data[i] == b'?' {
+        qm = i
+      }
+      i += 1
+    }
+    if qm >= 0 && (hash < 0 || qm < hash) {
+      span.path = (span.path.0, qm - span.path.0)
+      span.query = Some((qm + 1, len - (qm + 1)))
+      span.pos = len
+    } else if hash >= 0 {
+      span.path = (span.path.0, hash - span.path.0)
+      span.fragment = Some((hash + 1, len - (hash + 1)))
+      span.pos = len
+    } else {
+      span.path = (span.path.0, len - span.path.0)
+      span.pos = len
+    }
   }
 
   Ok(span)
@@ -473,10 +538,14 @@ fn IriSpan::build(self : IriSpan, data : BytesView) -> Iri {
   } else {
     []
   }
-  let authority = if self.authority.1 > 0 {
-    data[self.authority.0:self.authority.0 + self.authority.1]
+  let authority = if self.has_authority {
+    Some(
+      @utf8.decode_lossy(
+        data[self.authority.0:self.authority.0 + self.authority.1],
+      )[:],
+    )
   } else {
-    []
+    None
   }
   let path = if self.path.1 > 0 {
     data[self.path.0:self.path.0 + self.path.1]
@@ -493,7 +562,7 @@ fn IriSpan::build(self : IriSpan, data : BytesView) -> Iri {
   }
   Iri::{
     scheme: @utf8.decode_lossy(scheme),
-    authority: @utf8.decode_lossy(authority),
+    authority,
     path: @utf8.decode_lossy(path),
     query,
     fragment,

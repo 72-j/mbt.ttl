@@ -289,3 +289,27 @@ test "B2 Light 档探针（n3v2）：交错 A/B" {
 2. **抽取器"跳过注释行"写成显式约定**：**`##` 开头的元信息注释（含 `Two answers` 段）一律跳过、不入用例表**；
    **`#` 开头的解释性注释保留阅读、不参与抽取**。当前实现"碰巧跳过"（`## <urn:ex:s042> …` 本身是注释行）⇒
    约定成文后，抽取器行为可视作**契约**：**跳过即需登记被跳行**（防"静默漏抽"）。
+
+**§XI 补记（2026-09-27，pin 裁决）**：旧 pin `fn_remove_dot_segments("///") == "/"` 系 **split/join 近似残留**
+（近似把 4 个空段全丢 ⇒ 空串 ⇒ `starts_with_slash` 补 `/`）⇒ 按**官方 08 空段保留口径**更正为 **`"///"`**；
+同组其余 20 条 pins（含 `/`、`/a/b/`、`/a/b/c/./`、`a/b/`、`/a/b/c/../../g`、`/../a`）经逐条 trace 与新实现一致。
+裁决律同前：**官方 expected + RFC 文字 > 本地旧期望**，改期望同期入册。
+
+### XIII. resolve 三情形与 has_authority（2026-09-27 定稿；五处裁决一次写清）
+
+**§5.2.2 分支三情形（`resolve` / `resolve_unchecked` 同律）**：
+
+| 情形 | authority | path | query |
+|---|---|---|---|
+| 引用有 scheme | R | R | R |
+| **authority 出现**（含空 `//`） | R | **R（不继承）** | **R（不继承）** |
+| 引用 path 为空、**且无 authority** | base | base | R 有则覆盖，否则 base |
+| 引用 path 非空 | base（或 R，见上） | merge 后 rds | R（不继承） |
+
+**`has_authority` 位**：`IriSpan` 新增 `has_authority : Bool`，在 **`parse_authority` 消费 `//` 前缀处**置位
+（**与 host 长度无关**——`file:///a` 的空 authority 长为 0 却"出现"，`None` 与 `Some("")` 必须分开）。
+`build` 读该位决定 `Iri.authority`（不再用 span 长判存在）。
+
+**本轮五处裁决（沿革）**：① rds 由 split/join 近似改**§5.2.4 A–E 逐字**（E = 搬前导 `/` 到下一 `/`；B/C 恰好形态显式落 `/`）；
+② 旧 pin `"///"→"/"` 系近似残留 ⇒ 改 `"///"`（官方 08 空段口径）；③ 空 authority 置位修正；
+④ path 三分支补"authority 出现 ⇒ 取引用"瓣；⑤ query 继承**只属"空 path 且无 authority"支**（①②③④⑤ 均由回归面当场抓出）。

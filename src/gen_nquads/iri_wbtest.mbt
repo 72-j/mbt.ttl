@@ -19,7 +19,7 @@ test "iri parse full" {
   match result {
     Ok(r) => {
       @debug.assert_eq(r.scheme, "http")
-      @debug.assert_eq(r.authority, "user@host:8080")
+      @debug.assert_eq(r.authority, Some("user@host:8080"[:]))
       @debug.assert_eq(r.path, "/path")
       @debug.assert_eq(r.query, Some("q=f"[:]))
       @debug.assert_eq(r.fragment, Some("frag"[:]))
@@ -39,7 +39,7 @@ test "parse_unchecked: basic absolute IRI" {
     "https://example.com/path?query#fragment",
   )
   @debug.assert_eq(parsed.scheme.to_owned(), "https")
-  @debug.assert_eq(parsed.authority.to_owned(), "example.com")
+  @debug.assert_eq(parsed.authority, Some("example.com"[:]))
   @debug.assert_eq(parsed.path.to_owned(), "/path")
   @debug.assert_eq(parsed.query, Some("query"[:]))
   @debug.assert_eq(parsed.fragment, Some("fragment"[:]))
@@ -56,7 +56,7 @@ test "parse absolute IRI with slashes" {
   match result {
     Ok(parsed) => {
       @debug.assert_eq(parsed.scheme.to_owned(), "https")
-      @debug.assert_eq(parsed.authority.to_owned(), "example.com")
+      @debug.assert_eq(parsed.authority, Some("example.com"[:]))
       @debug.assert_eq(parsed.path.to_owned(), "/path/to/resource")
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
@@ -121,7 +121,7 @@ test "parse: basic absolute IRI" {
         "https://example.com/path?query#fragment",
       )
       @debug.assert_eq(parsed.scheme.to_owned(), "https")
-      @debug.assert_eq(parsed.authority.to_owned(), "example.com")
+      @debug.assert_eq(parsed.authority, Some("example.com"[:]))
       @debug.assert_eq(parsed.path.to_owned(), "/path")
       @debug.assert_eq(parsed.query, Some("query"[:]))
       @debug.assert_eq(parsed.fragment, Some("fragment"[:]))
@@ -140,7 +140,7 @@ test "parse: relative IRI (absolute path)" {
     Ok(parsed) => {
       @debug.assert_eq(parsed.into_string(), "/path/to/resource")
       @debug.assert_eq(parsed.scheme, "")
-      @debug.assert_eq(parsed.authority.to_owned(), "")
+      @debug.assert_eq(parsed.authority, None)
       @debug.assert_eq(parsed.path.to_owned(), "/path/to/resource")
       // 相对引用无 ?/#：query/fragment 为 None（区分"未出现"与"空串"）
       @debug.assert_eq(parsed.query, None)
@@ -207,7 +207,7 @@ test "parse_unchecked: empty string" {
 
   @debug.assert_eq(parsed.into_string(), "")
   @debug.assert_eq(parsed.scheme.to_owned(), "")
-  @debug.assert_eq(parsed.authority.to_owned(), "")
+  @debug.assert_eq(parsed.authority, None)
   @debug.assert_eq(parsed.path.to_owned(), "")
 }
 
@@ -228,7 +228,7 @@ test "resolve: relative to absolute base" {
 test "resolve: absolute reference overrides base" {
   let base = Iri::{
     scheme: "https",
-    authority: "example.com",
+    authority: Some("example.com"[:]),
     path: "/base/",
     query: None,
     fragment: None,
@@ -241,7 +241,7 @@ test "resolve: absolute reference overrides base" {
     Ok(resolved) => {
       @debug.assert_eq(resolved.into_string(), "http://other.com/path")
       @debug.assert_eq(resolved.scheme.to_owned(), "http")
-      @debug.assert_eq(resolved.authority.to_owned(), "other.com")
+      @debug.assert_eq(resolved.authority, Some("other.com"[:]))
     }
     Err(e) => fail("Expected Ok, got Err: \{e}")
   }
@@ -251,7 +251,7 @@ test "resolve: absolute reference overrides base" {
 test "resolve: query and fragment replacement" {
   let base = Iri::{
     scheme: "https",
-    authority: "example.com",
+    authority: Some("example.com"[:]),
     path: "/path",
     query: None,
     fragment: None,
@@ -277,7 +277,7 @@ test "resolve: query and fragment replacement" {
 test "resolve_unchecked: basic functionality" {
   let base = Iri::{
     scheme: "https",
-    authority: "example.com",
+    authority: Some("example.com"[:]),
     path: "/base",
     query: None,
     fragment: None,
@@ -286,10 +286,9 @@ test "resolve_unchecked: basic functionality" {
   let bytes = @utf8.encode(data)[:]
   let resolved = base.resolve_unchecked(bytes[0:bytes.length()])
 
-  @debug.assert_eq(
-    resolved.into_string(),
-    "https://example.com/base/relative/path",
-  )
+  // RFC 3986 5.2.2：merge 取 base 目录前缀（"/base" → "/"），不拼整个 base path
+  // （旧断言 "/base/relative/path" 系 unchecked 旧分叉，已按 RFC 对齐）
+  @debug.assert_eq(resolved.into_string(), "https://example.com/relative/path")
 }
 
 ///|
@@ -314,12 +313,12 @@ test "remove_dot_segments: relative" {
   // 单独使用 .. 没有上级可返回，丢弃
   @debug.assert_eq(fn_remove_dot_segments(".."), "")
 
-  // a/.. 有上级可返回，移除 a
-  @debug.assert_eq(fn_remove_dot_segments("a/.."), "")
+  // a/.. 有上级可返回，移除 a；规则 B/C 尾点段以 "/" 收尾（RFC 5.2.4）
+  @debug.assert_eq(fn_remove_dot_segments("a/.."), "/")
 
   // 多个 .. 依次移除
-  @debug.assert_eq(fn_remove_dot_segments("a/b/.."), "a")
-  @debug.assert_eq(fn_remove_dot_segments("a/b/c/.."), "a/b")
+  @debug.assert_eq(fn_remove_dot_segments("a/b/.."), "a/")
+  @debug.assert_eq(fn_remove_dot_segments("a/b/c/.."), "a/b/")
 
   // ../a - 第一个 .. 没有上级，丢弃；a 保留
   @debug.assert_eq(fn_remove_dot_segments("../a"), "a")
@@ -336,7 +335,7 @@ test "remove_dot_segments: edge cases" {
   @debug.assert_eq(fn_remove_dot_segments(".."), "")
   @debug.assert_eq(fn_remove_dot_segments(""), "")
   @debug.assert_eq(fn_remove_dot_segments("/"), "/")
-  @debug.assert_eq(fn_remove_dot_segments("///"), "/")
+  @debug.assert_eq(fn_remove_dot_segments("///"), "///") // 空段保留（官方 08 口径；旧期望 "/" 系 split/join 近似残留）
 }
 
 ///|

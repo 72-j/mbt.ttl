@@ -12,6 +12,8 @@
 
 ### 破坏性变更
 
+- **`Iri.authority` 由 `StringView` 改为 `StringView?`**（IRI 解析/解析器面）：语义自此精确区分——**`None` = 无 authority**、**`Some("")` = authority 出现但为空**（如 `file:///a`）；`""` 不再兼作"无"。同笔：`Iri::Iri` 构造器参数同步、`resolve` 的 §5.2.2 三情形按新类型收紧（query 继承只属"空 path 且无 authority"支）。
+
 - **`QuadEmit` 平化**（产物模型 P3）：`Subject` / `Object` / `GraphName` 三个带载荷
   枚举除名，改为 **`TermKind`（8 常量臂：Iri/BNode/PrefName/TripleTerm/Variable/
   Literal/Formula/DefaultGraph）+ 逐位 `s_kind`/`s_view`、`o_kind`/`o_view`、

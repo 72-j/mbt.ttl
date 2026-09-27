@@ -275,12 +275,12 @@ pub struct Hooks {
 
 pub(all) struct Iri {
   scheme : StringView
-  authority : StringView
+  authority : StringView?
   path : StringView
   query : StringView?
   fragment : StringView?
 } derive(Default, Eq, @debug.Debug)
-pub fn Iri::Iri(StringView, StringView, StringView, StringView?, StringView?) -> Self
+pub fn Iri::Iri(StringView, StringView?, StringView, StringView?, StringView?) -> Self
 pub fn Iri::default() -> Self
 pub fn Iri::equal(Self, Self) -> Bool
 pub fn Iri::into_string(Self) -> String
