@@ -349,7 +349,9 @@ fn is_variant(
   legacy : Array[StringView],
 ) -> Bool {
   let len = span_len(span)
-  if len >= 5 {
+  if len >= 5 && len <= 8 {
+    // RFC 5646：variant = **5*8**alphanum——**上界 8 不可省**（旧实现无上界 ⇒ 9 字母等越界形态被当变体收下；
+    // Jena bad battery 的 `en-abcdefghz` 即此）
     return is_alphanumeric_span(s, span)
   }
   if len == 4 {
@@ -519,9 +521,9 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
   // 1. 语言（必选，第一个子标签）
   let lang = subtags[0]
   let lang_len = span_len(lang)
-  // 检查长度：2-3 位 或 5-8 位（4 位无效）
-  let is_valid_length = (lang_len >= 2 && lang_len <= 3) ||
-    (lang_len >= 5 && lang_len <= 8)
+  // RFC 5646 §2.2.1：language = 2*3ALPHA / **4ALPHA**（reserved for future use）/ 5*8ALPHA
+  // ⇒ **4 位合法**（旧注释"4 位无效"系 ISO 639-1/2 口径误植）
+  let is_valid_length = lang_len >= 2 && lang_len <= 8
   if !is_valid_length {
     return Err(TagParseErr::InvalidLanguageLength)
   }
@@ -611,6 +613,12 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
       variants.push(s)
       i += 1
     } else {
+      // 收口（2026-09-27）：变体不匹配 ⇒ 该子标签必须属**扩展标识**或**私有使用**，否则**拒**。
+      // 依据 RFC 5646：variant = 5*8alphanum / (DIGIT 3alphanum)；`en-abcdefghz`（9 字母）等
+      // 越界形态在此被挡（旧实现 break 后落兜底，被静默收下）。
+      if !is_extension_ident(tag, s) && !is_private_use_prefix(tag, s) {
+        return Err(TagParseErr::InvalidSubtag(s, sub(tag, s)))
+      }
       break
     }
   }
@@ -636,6 +644,13 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
     if ext_subtags.is_empty() {
       return Err(TagParseErr::EmptyExtension)
     }
+    // RFC 5646：**每个 singleton 只能出现一次**（`en-a-bbb-a-ccc` 形态拒）
+    for e in extensions {
+      // 比的是**字符**（大小写不敏感），不是 span 元组——两次 `a` 的 span 天然不同
+      if sub(tag, e.ident).to_lower() == sub(tag, ident).to_lower() {
+        return Err(TagParseErr::InvalidSubtag(ident, sub(tag, ident)))
+      }
+    }
     extensions.push({ ident, subtags: ext_subtags, })
   }
 
@@ -646,8 +661,16 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
     i += 1
     let subs : Array[TagSpan] = []
     while i < subtags.length() {
+      // RFC 5646：私有使用子标签 **1..8** alnum（旧实现无条件收下 ⇒ `x-abcdefghz`（9）漏过）
+      if !is_valid_private_use_subtag(tag, subtags[i]) {
+        return Err(TagParseErr::InvalidSubtag(subtags[i], sub(tag, subtags[i])))
+      }
       subs.push(subtags[i])
       i += 1
+    }
+    // RFC 5646：私有使用前缀 `x` **必须跟随 ≥1 个子标签**（`sss-x` 形态拒）
+    if subs.is_empty() {
+      return Err(TagParseErr::InvalidSubtag(prefix, sub(tag, prefix)))
     }
     Some({ prefix, subtags: subs, })
   } else {

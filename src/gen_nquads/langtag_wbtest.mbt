@@ -526,11 +526,12 @@ test "langtag buckets" {
     "tlh-a-b-foo", "abcde-efg", "u-t", "x", "h", "L", "D", "b-UTn33HF", "t-nsSp-7-t-mUK2",
     "y-oF-chnavU-H", "9-yOc-gbh", "laiY-5",
   ]
-  // 2b. 4 字母主语言（fuzzer 误标 good 的样本，规则同 "abcd-efg"）
-  let bad_language_4letter = [
-    "IWXS", "kDEP", "WzaD", "XYta", "OjJb-550", "WRZs-AaFd-yQ", "laSu-ZcAq-338",
-    "kUWq-gWfQ-794", "PTow-w-cAQ51-8Xd6E-cumicgt-WpkZv3NY-q-ORYPRy-v-A4jL4A-iNEqQZZ-sjKn-W-N1F-pzyc-xP5eWz-LmsCiCcZ",
-  ]
+  // 2b.【重评估 2026-09-27】4 字母主语言——**旧依据 =「fuzzer 误标 good 的样本」**；
+  //    按 RFC 5646 §2.2.1（language = 2*3ALPHA / **4ALPHA** / 5*8ALPHA，4ALPHA = reserved for future use）
+  //    + Jena 对端实测 ⇒ **本桶退役**（变量与 bads 条目一并退；样本留档，不再作 bad 断言）。
+  //    ⚠ 与 `abcd-efg` 分家：后者无效系"孤立 3 字母子标签"（仍在 bad_language 桶，不受本重评估影响）。
+  //    原样本：IWXS / kDEP / WzaD / XYta / OjJb-550 / WRZs-AaFd-yQ / laSu-ZcAq-338 / kUWq-gWfQ-794 /
+  //            PTow-w-cAQ51-…-LmsCiCcZ
   // 3. 次级子标签错误：region 单字母 / 非法 variant / extension 单标识符无子标签
   let bad_secondary = [
     "fr-Latn-F", "ab-abcd-abc", "ab-1abc-abc", "ab-a-b", "ab-a-x", "ab-abcde-abc",
@@ -560,7 +561,6 @@ test "langtag buckets" {
   let bads : Array[(String, Array[String])] = [
     ("empty", bad_empty),
     ("language", bad_language),
-    ("language_4letter", bad_language_4letter),
     ("secondary", bad_secondary),
     ("hyphen", bad_hyphen),
     ("count", bad_count),
@@ -575,6 +575,24 @@ test "langtag buckets" {
       }
     }
   }
+}
+
+///|
+/// RFC 5646 §2.2.6：singleton 大小写不敏感且不得重复。fuzzer 良构集的**生成侧过滤**判据（样本不动）。
+fn langtag_has_dup_singleton(tag : StringView) -> Bool {
+  let seen : Array[StringView] = []
+  for part in tag.split("-") {
+    if part.length() == 1 {
+      let c = part.to_lower()
+      if c != "x" {
+        if seen.contains(c) {
+          return true
+        }
+        seen.push(c)
+      }
+    }
+  }
+  false
 }
 
 ///|
@@ -603,10 +621,20 @@ test "random good tags" {
     "WAFSbos", "HkgnmerM-x-e5-zf-VdDjcpz-1V6", "UAfYflJU-uXDc-YV", "x-CHsHx-VDcOUAur-FqagDTx-H-V0e74R",
     "uZIAZ-Xmbh-pd",
   ]
+  // 【重评估 2026-09-27】fuzzer 集含**大小写重复 singleton** 的条目（如 `…-c-…-C-…`）：按 RFC 5646 §2.2.6
+  // 它们不是合法标签 ⇒ 在**生成侧过滤**（样本原样保留），并打印过滤条数供入账。
+  let mut filtered = 0
   for tag in tags {
+    if langtag_has_dup_singleton(tag) {
+      filtered += 1
+      continue
+    }
     match LanguageTag::parse(tag) {
       Ok(_v) => ()
       Err(e) => fail("\{tag} should be valid but failed: \{e}")
     }
   }
+  println(
+    "random good tags：按 RFC singleton 唯一性过滤 \{filtered} 条",
+  )
 }
