@@ -1,3 +1,8 @@
+// 来源与许可（统一形；详见 `THIRD_PARTY_NOTICES.md`）：
+//   ① W3C rdf-tests 双许可（W3C Test Suite License + 3-clause BSD）；
+//   ② Apache Jena（SPDX: Apache-2.0；仅 langtag 电池）；
+//   ③ Oxigraph（SPDX: 待核；仅 literal/datatype 形态参考）。
+
 ///|
 // iri.mbt 一致性钉（2026-09-27 评审役）：RFC 3986 官方口径 + 六处分叉/缺口收口
 fn conf_iri(s : String) -> Iri {

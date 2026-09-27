@@ -384,3 +384,9 @@ let (emits, merrs) = @nquads.materialize_all(quads)   // nquads 物化 = 自由�
 
 - **单一声明源**：数字、判据体、复现条件（target / 冷缓存 / 命令 / 机器指纹）与沿革勘误一律见 `perf-review.txt`（面四）；本 README 只引用，不另立数字。
   （沿革：旧账面"5–6×"系**预估投影**，非实测；自 2026-09-23 起以 `perf-review.txt` 为准。）
+
+## 第三方来源与许可
+
+测试数据与派生断言的第三方来源（W3C rdf-tests / Apache Jena / Oxigraph）及其许可、我们的遵守方式，
+集中见 **`THIRD_PARTY_NOTICES.md`**；本仓自身许可见 `LICENSE`（Apache-2.0）。
+（W3C 语料要求**测试文件保持未修改**——本仓以逐字节副本 + `SHA256SUMS` 锁版满足。）
