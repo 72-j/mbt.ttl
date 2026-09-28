@@ -112,7 +112,7 @@ src/rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
 - 再生三段（两仓）：
 
 ```sh
-cd /home/thy/moonttl && moon test src/rdf/n3gen          # 落 n3v2_out.gen（失配红 = 表已领先，需交付）
+cd ../.. && moon test src/rdf/n3gen          # 落 n3v2_out.gen（失配红 = 表已领先，需交付）
 cp src/rdf/n3gen/n3v2_out.gen src/ttl/src/gen_n3v2/n3.mbt
 cd src/ttl && moon info && moon fmt && moon test src/gen_n3v2
 ```
@@ -265,14 +265,14 @@ validate_pred 白名单）/ **役34 集合谓位**（CG 定案 collections any p
 
 ```sh
 # 包内（嵌套仓）
-cd /home/thy/moonttl/src/ttl
+cd src/ttl
 moon check src/gen_n3v2          # 0 error / 0 warning（役26 起强制，已达标）
 moon test src/gen_n3v2           # 116/116（只增不减）
 moon test                        # 329/329（模块：n3v2 116 + trig 80 + nquads 124 + 其余）
 moon info && moon fmt            # .mbti diff 只含预期项（当前 166 行 / 29 pub）
 
 # 生成链（外层仓）
-cd /home/thy/moonttl
+cd ../..
 moon test src/rdf/n3gen          # 12/12（G1–G9 生成门 + G12 compose 负例 + G13 锚点漂移 + 纯函数单测）
 moon test src/rdf                # 20/20（含 trig 三层表源对照）
 ```
@@ -295,7 +295,7 @@ A13/B0/C0 + 影子 strict-gap 13。R-01 专项：`grep -c "ctx.state = " actions
 ### 10.1 基线与族分布
 
 ```sh
-cd /home/thy/moonttl/src/rdf/n3gen
+cd ../../src/rdf/n3gen
 grep -c '^\[\[states\]\]' n3v2_base.toml        # 55 态
 grep -c '^\[\[events\]\]'  n3v2_base.toml        # 41 事件
 grep -c '^\[\[transitions\]\]' n3v2_trans.toml   # 384 转移行
@@ -322,14 +322,14 @@ grep -c '^\[\[transitions\]\]' n3v2_trans.toml   # 384 转移行
 ```sh
 python3 - << 'EOF'
 import re, collections
-base = open('/home/thy/moonttl/src/rdf/n3gen/n3v2_base.toml', encoding='utf-8').read()
+base = open('../../src/rdf/n3gen/n3v2_base.toml', encoding='utf-8').read()
 blocks = re.findall(r'^\[\[(states|events)\]\]\n(.*?)(?=^\[\[|\Z)', base, re.M | re.S)
 agg = collections.defaultdict(str)
 for t, c in blocks: agg[t] += c
 states = re.findall(r'name = "([A-Za-z]+)"', agg["states"])
 fam_order = ["Formula","Bnp","SubjTrail","Annot","Quant","Path","ListPath","List","ObjTrail"]
 fam = lambda n: next((f for f in fam_order if n.startswith(f)), "Core")
-trans = open('/home/thy/moonttl/src/rdf/n3gen/n3v2_trans.toml', encoding='utf-8').read()
+trans = open('../../src/rdf/n3gen/n3v2_trans.toml', encoding='utf-8').read()
 cs, ct = collections.Counter(map(fam, states)), collections.Counter(map(fam, re.findall(r'^from = "(\w+)"', trans, re.M)))
 for f in fam_order + ["Core"]: print(f, cs[f], ct[f])
 print("TOTAL", sum(cs.values()), sum(ct.values()))
@@ -357,7 +357,7 @@ bnp 窗 7 态次之。**新窗的入场价 = 核心镜像 3~4 态起步**，之�
 ### 10.3 历史每特性成本（git 可复算点 + 台账引用）
 
 ```sh
-cd /home/thy/moonttl/src/ttl
+cd src/ttl
 git show 50c72d9:src/n3gen/n3_trans.toml   | grep -c '^\[\[transitions\]\]'  # 376（09-09 录14 表即文件）
 git show b39136c:src/n3gen/n3v2_trans.toml | grep -c '^\[\[transitions\]\]'  # 384（09-10 录16 v2 收官，至今未变）
 ```

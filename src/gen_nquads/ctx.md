@@ -12,7 +12,7 @@
 ## 1 坐标与基线
 
 ```
-外层仓 /home/thy/moonttl
+外层仓 ../..
 ├── src/rdf/domain2/nquads_{base,domain}.toml   ← 2.0 数据面（唯一事实源）
 ├── src/rdf/fsm_out/nquads_fsm.toml             ← IR（v1 形态，codegen 输入契约）
 ├── src/fsm/cmd                                 ← 再生入口（`--ts` 钉头横幅）

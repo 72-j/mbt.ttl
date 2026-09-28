@@ -64,7 +64,7 @@ Bang/Caret 行全 Zones 就位，物化层零改——框架系误诊。真根�
 
 **背景**：spec §9（现随 bak 归档）预授权"v1 退役为条件驱动：v2 物化面收官 +
 v1 print-sweep 对照归档一次"。役18 物化残差清零后条件全熟，用户当日手动执行
-包迁移：`src/ttl/src/gen_n3` → `/home/thy/moonttl/bak/260910/gen_n3`（含
+包迁移：`src/ttl/src/gen_n3` → `../../bak/260910/gen_n3`（含
 spec.md / const.md / todo.adr.md 历史卷 / N3Tests 语料 / v1 双表 n3.mbt）。
 
 **涟漪清理（本役落两仓）**：

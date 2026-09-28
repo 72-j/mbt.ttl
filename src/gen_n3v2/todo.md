@@ -106,7 +106,7 @@ ADR 随役次（详见 `adr.md` 卷首）。原始底稿：2026-09-11 评审全�
 统一验收（每役都跑，缺一不可；数字为 2026-09-12 基线）：
 
 ```sh
-cd /home/thy/moonttl
+cd ../..
 moon test src/rdf/n3gen      # 12/12（G1–G9 + G12 + G13 + 纯函数单测）；动表/生成器才需要，G9 会写 n3v2_out.gen
 moon test src/rdf            # 20/20（含 trig 对照）
 cd src/ttl

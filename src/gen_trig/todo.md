@@ -99,10 +99,10 @@ T10 产物黄金门 ──┬─→ T11 效果面接活 ──┐
 统一验收（每役都跑，缺一不可；数字为 2026-09-12 基线）：
 
 ```sh
-cd /home/thy/moonttl
+cd ../..
 moon test src/rdf            # 20/20（含 IR 侧 trig 对照门；动生成面时必跑）
 moon test src/rdf/n3gen      # 12/12（动外仓时兜底）
-cd /home/thy/moonttl/src/ttl
+cd src/ttl
 moon check src/gen_trig      # 0 error / 0 warning
 moon test src/gen_trig       # 80/80；四套件数字不变（357/316/36/75）
 moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等

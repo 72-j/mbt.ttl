@@ -20,7 +20,7 @@
 仓界（改代码前先确认落到哪个仓，**提交必须分开**）：
 
 ```
-外层仓 /home/thy/moonttl            （生成器 + 表源 + 契约）
+外层仓 ../..            （生成器 + 表源 + 契约）
 ├── src/rdf/n3gen/                  n3v2_base.toml + n3v2_trans.toml
 │   ├── compose.mbt                 构建期求积（役30：子机 × 实例 × 标记行）
 │   ├── validate.mbt                G10 装配门 / G11 可达性 + 分级开关
@@ -39,8 +39,8 @@
 | `cd src/ttl && moon check src/gen_n3v2` | 0 error / **0 warning** | 守（役26 起强制） |
 | `cd src/ttl && moon test src/gen_n3v2` | **116/116** | 只增不减 |
 | `cd src/ttl && moon test` | **329/329**（模块） | 守 |
-| `cd /home/thy/moonttl && moon test src/rdf/n3gen` | **12/12**（G1–G9 + G12 + G13 + 纯函数单测） | 守 |
-| `cd /home/thy/moonttl && moon test src/rdf` | **20/20** | 守 |
+| `cd ../.. && moon test src/rdf/n3gen` | **12/12**（G1–G9 + G12 + G13 + 纯函数单测） | 守 |
+| `cd ../.. && moon test src/rdf` | **20/20** | 守 |
 | 套件 | trig 357/357、rdf-turtle 316/316、rdf12-trig 36/36、rdf12-turtle 75/75、nquads 124 | pin 不变 |
 | N3Tests | neg 23ok/0miss；pos+eval 205 clean | pin 不变 |
 | examples | A=13 / B=0 / C=0（pinned） | pin 不变 |

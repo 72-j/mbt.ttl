@@ -284,10 +284,10 @@ quad.o 形如 << ... >> 且语句无图名位:
 ## 9 验收口径（命令 + 当前数字，2026-09-12 实测）
 
 ```sh
-cd /home/thy/moonttl
+cd ../..
 moon test src/rdf            # 20/20（含 IR 侧 trig 对照门）
 moon test src/rdf/n3gen      # 12/12（G1–G13；与本包无耦合，动外仓时兜底）
-cd /home/thy/moonttl/src/ttl
+cd src/ttl
 moon check src/gen_trig      # 0 error / 0 warning
 moon test src/gen_trig       # 80/80（单元）
 moon info && moon fmt        # .mbti diff 逐行审（当前 349 行 / 54 pub 行）
