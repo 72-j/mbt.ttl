@@ -60,7 +60,8 @@
 5. 版本号 + CHANGELOG + README——对外三件齐，且**版本号三处一致**。
 6. publish.yml manual dispatch——不自动触发，注释写清理由。
 7. GH 三 OS 全绿——**Windows 黄金门逐字节绿**。
-8. 两仓成对提交推送——远端 gitlink 成对。
+8. 两仓成对提交推送——远端 gitlink 成对；**GitHub 侧由 gitlink 镜像同步**（`72-j/mbt.ttl`，**有延迟**）。
+   注意：**镜像来的是 push ⇒ 只触发 Test**；**发布触发不随之来**（见下 CI 发布路径）。
 
 ## 发版日序（本机发布路径；**用户择时**，Claude 侧不执行发布）
 
@@ -83,6 +84,25 @@
 **准备役勘定（同笔实证）**：清单数字与实况**逐项对齐**——wasm **507/507**、native **521/521**、
 冷口径覆盖率 **10176/11193 = 909‰**（= `coverage-baseline.txt` 字段）· 面一/面三复现**逐字节一致** ·
 版本三处一致（`moon.mod 0.3.0` / `CHANGELOG ## 0.3.0` / README 指向 CHANGELOG）· 红线 **8 条齐**。
+
+### CI 发布路径（2026-09-28 拍：走 CI；与上面"本机路径"并列，二选一）
+
+> 取证依据：本机**没有** GitHub 通道（无 `gh` / 无 token / SSH key 未授权 GitHub）；
+> 子仓推送只到 gitlink，GitHub 侧由**镜像**同步。`publish.yml` 是 `workflow_dispatch` only
+> （红线 6"不自动触发"）⇒ **镜像 push 不会启动发布**，那一下必须显式触发。
+
+1. **三条核**（发布触发前）：① 工作区已提交已推干净（子仓 `git status` 空 + `## master...origin/master` 无前后差
+   + gitlink/GitHub/本地三面同 hash）；② `moon.mod` 版本已 bump；③ `CHANGELOG` 有 `## <ver>（` 段 + README 提及该版本。
+2. **推 gitlink** ⇒ 镜像同步到 GitHub ⇒ **Test 复跑**（push 触发；镜像有延迟，以 GitHub master hash 对齐为准）。
+3. **前置确认**：repo secret `MOONCAKES_MOONBIT_COMMUNITY_TOKEN` 在位（缺则工作流在
+   "Restore mooncakes credentials" 步**显式判空报红**，不会静默）。凭据只落 runner 内存盘，末步 `Cleanup` 必删。
+4. **触发**：Actions → **Publish** → Run workflow（`master`）；或用带 `actions:write` 的 PAT 走
+   `POST /repos/72-j/mbt.ttl/actions/workflows/publish.yml/dispatches`。
+5. **判据 = 回查**（工作流末步）：注册表出现该版本。更硬的一手（本地可跑）：
+   `GET https://mooncakes.io/api/v0/modules/thy1016/moonttl` ⇒ `latest_version == <ver>`
+   + `metadata.keywords` / `deps` 与本地 `moon.mod` 一致 + `build_status`。
+6. **跟跳一笔**：回查**绿之后**才推主仓 `import` 跟跳（`0.2.2 → 0.3.0`）；推前确认 registry 上的 API 与本地
+   `.mbti` 一致，否则本地门会红。**"以回查为准"贯穿整条链，不只用于"发布成功没"。**
 
 
 ### 包内清单实证（2026-09-28，发版前）
