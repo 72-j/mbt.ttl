@@ -84,3 +84,32 @@
 冷口径覆盖率 **10176/11193 = 909‰**（= `coverage-baseline.txt` 字段）· 面一/面三复现**逐字节一致** ·
 版本三处一致（`moon.mod 0.3.0` / `CHANGELOG ## 0.3.0` / README 指向 CHANGELOG）· 红线 **8 条齐**。
 
+
+### 包内清单实证（2026-09-28，发版前）
+
+`moon package --list` ⇒ **251 件**，与「`git ls-files` 去掉隐藏路径与 `.rdf-tests/`」**逐行 `diff` 无差异**
+⇒ **发布包内容 ⟺ 已跟踪的非隐藏文件**；`.rdf-tests/`（2439 件 / 40M）**命中 0** ⇒ **语料不入包**（"语料随包发出"的推想**已证伪**）。
+（口径勘误：`--list` 走 stderr，且含 3 行前言 + `Package to …` 尾行；**只数文件行才是 251**——此前记的 255 是三行前言被计入。）
+
+**排除机制实证**（`/tmp` scratch 模块探针，非本仓）：
+
+- `moon.mod` 写 `exclude = […]` ⇒ **直接报错**（`Unexpected key 'exclude' found in moon.mod`）；
+- `moon.mod.json` 写 `exclude` ⇒ **收但已废弃**，工具链当场给出现役机制：
+  「use `.gitignore` or `.moonignore` to control which files are packaged instead. `.moonignore` overrides `.gitignore` in the same directory」；
+- 实测 `.moonignore` 生效：列入的 `review.md` / `*.txt` 从 `--list` 消失，且**不依赖 git 跟踪态**（纯文件系统规则）。
+
+⇒ **发起版不改包内容**（251 件、体量无虞）；"包内收窄"**另立一笔**（机制已实证，不必再猜）。
+
+### 账本/评审/覆盖类 md·txt 的忽略裁定（2026-09-28，发版前）
+
+**结论：无一入忽略名单**（tracked 面不动）。逐类依据：
+
+| 族 | 例子 | 为什么不忽略 |
+|---|---|---|
+| CI 判据数据 | `coverage-baseline.txt`、`reachable-coverage-baseline.txt` | 棘轮/可达账门**直接读它**；忽略 ⇒ **冷检出上预检失效**（`.gitignore` 已写明此理由） |
+| 复核面 | `coverage-review.txt`、`suite-review.txt`、`perf-review.txt` | 预检第 3/4 段"同命令重生成逐字节一致"的**比对面**；忽略 ⇒ 门无处可比 |
+| 对外事实源 | `review.md`、`release-checklist.md`、`CHANGELOG.md`、`README*.md`、`THIRD_PARTY_NOTICES.md` | 对外契约/发版事实，须随仓分发 |
+| 模块卷 | `src/gen_{n3v2,nquads,trig}/{adr,architecture,const,ctx,spec,todo}.md` | `.gitignore` 的 `!src/gen_*/*.md` 白名单**明确放开**（对外文档卷） |
+
+**唯一可讨论的是"包内是否含开发侧工件"**（`ci/*.sh`、`*-review.txt`、`release-checklist.md`、模块卷 `todo|ctx.md`）——
+这属包体洁癖，**非发版阻塞**；执行面留给上面那笔收窄（`.moonignore`）。
