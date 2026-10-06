@@ -112,14 +112,14 @@
   （`.github/workflows/test.yaml:64-72` 原文："2026-09-19 起；N5 治本…**豁免清零**；旧版按路径豁免 `src/gen_n3v2/quicktest/`
   已**实测证伪**〔trig 实例 scratch 上 fmt 零变化〕"）——报错文案里"再生件路径已按 §Q.3-F1 裁定豁免"属**陈旧字样**。
   ⇒ **权威标记只剩 `.hand-maintained`**（生成通道**跳过**；缺标记但有实例 ⇒ 通道 **fail**，语义出处
-  `quick_machine/codegen_test.mbt:1004/1203`）。**步① 可手改/禁手改对照表**：
+  `pbtgen/codegen_test.mbt:1004/1203`）。**步① 可手改/禁手改对照表**：
 
   | 面 | 判据 | 可手改？ |
   |---|---|---|
   | `src/gen_*/quicktest/`（三方言，带 `.hand-maintained`） | 标记实证 | ✅ 是（手维护层） |
   | `src/gen_*/{trig.mbt,nquads.mbt,n3.mbt}` + `quicktest/{model_exec,valid,state_machine,types,business,runner,system}.mbt` | 排除面清单（改走模板） | ❌ 禁 |
   | `parser_slice.mbt` / `materialize_*.mbt`（实现面） | 非生成通道产物 | ✅ 是（但**必须 fmt-clean**，全路径门） |
-  | `validate_helper.mbt` / `materialize_quad.mbt`（nquads） | **归属已定（2026-09-25 三轮取证）**：全仓检索（主仓 `src/**` 除 `_build` 外、含 `quick_machine/*.{mbt,toml}`）对这两个文件名**零命中**（仅账本提到）⇒ **无生成通道按名写盘证据** | ✅ **按可手改面对待**（须 fmt-clean；若某次再生真覆盖它，CI 的 fmt / `.mbti` 漂移 / 黄金门会抓到） |
+  | `validate_helper.mbt` / `materialize_quad.mbt`（nquads） | **归属已定（2026-09-25 三轮取证）**：全仓检索（主仓 `src/**` 除 `_build` 外、含 `pbtgen/*.{mbt,toml}`）对这两个文件名**零命中**（仅账本提到）⇒ **无生成通道按名写盘证据** | ✅ **按可手改面对待**（须 fmt-clean；若某次再生真覆盖它，CI 的 fmt / `.mbti` 漂移 / 黄金门会抓到） |
 
 - **旧口径（保留作沿革）**：`todo.md` **§Q.3-F1** + **§W.2**
   （"再生件与手写件**分口径**：再生件走生成通道口径，手写件走仓库 fmt 口径；冲突按路径显式豁免并写理由"），

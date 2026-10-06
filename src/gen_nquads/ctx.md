@@ -15,7 +15,7 @@
 外层仓 ../..
 ├── rdf/domain2/nquads_{base,domain}.toml   ← 2.0 数据面（唯一事实源）
 ├── rdf/fsm_out/nquads_fsm.toml             ← IR（v1 形态，codegen 输入契约）
-├── fsm/cmd                                 ← 再生入口（`--ts` 钉头横幅）
+├── mbtgen/cmd                                 ← 再生入口（`--ts` 钉头横幅）
 └── ttl/src/gen_nquads/
     ├── nquads.mbt        ⚠ 生成物（禁手编）；入库形 = `moon fmt(生成器原始形)`
     ├── engine.mbt / actions.mbt / parser_slice.mbt / validate_helper.mbt
@@ -30,7 +30,7 @@
 | 测试 | `gen_nquads` **124/124**；`quicktest` 编译通过；模块 330/330 |
 | 套件 | rdf-n-quads 89/89、rdf12-nt 29/29、rdf12-nq 27/27、ntriples 72/72、对比 72/72 mismatch 0 |
 | 公共面 | `.mbti` **543 行 / 203 pub 行**（冻结：不做收窄） |
-| 再生配方 | `moon run fsm/cmd -- rdf/fsm_out/nquads_fsm.toml --ts 1788844502518 -o <产物>` → `moon fmt <产物>` |
+| 再生配方 | `moon run mbtgen/cmd -- rdf/fsm_out/nquads_fsm.toml --ts 1788844502518 -o <产物>` → `moon fmt <产物>` |
 
 ## 2 契约成员（注解）
 
@@ -53,7 +53,7 @@
 ### R-N1 文档锚点修复 `[✅ 收口 2026-09-13]`
 
 - 目标：消除 `src/md/*` 对已不存在文件的引用。
-- 锚点：`src/md/FSM-toml-const.md:6`（`fsm/test_nquads.toml` 已删）、`src/md/Tensor-evolution.md:12`
+- 锚点：`src/md/FSM-toml-const.md:6`（`mbtgen/test_nquads.toml` 已删）、`src/md/Tensor-evolution.md:12`
   （把 `src/gen_nquads/test_nquads.toml` 当 mutable 产品再生命令）。
 - 动作：二选一——① 改为指向 2.0 配方（domain2 → fsm_out → CLI `--ts` → `moon fmt`）；
   ② 标注"历史快照，非事实源"。

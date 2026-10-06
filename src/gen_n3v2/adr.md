@@ -7,7 +7,7 @@ v2 生产线役录自本文件起立卷（用户定案 2026-09-10）；役16/17 
 `n3v2_out.gen` → cp 本包 `n3.mbt`），改表先落 domain 层再生，禁手编 n3.mbt。
 跨卷注记（R-12③，役26）：役21 Action Chaining（`[[actions]]` 全键 round-trip +
 五门校验接活、`CodegenConfig.actions`/`codegen_trait` 退役、`fsm` 陈钉清零 95/95，
-提交 `7630bf2`）落外层卷 `fsm/toml.md` §根级动作声明面 与 `rdf/adr.md`，
+提交 `7630bf2`）落外层卷 `mbtgen/toml.md` §根级动作声明面 与 `rdf/adr.md`，
 不在本卷重复立条。
 
 ## ADR-18：字面量贴路径解胶 + path_obj_close 双发（物化残差清零 2→0）——✅ 2026-09-10
@@ -334,7 +334,7 @@ ARCHITECTURE.md 新增 / guides 两件 / mbti 刷新）；外层仓 n3v2_base.to
 
 **文档三件**：①`ARCHITECTURE.md` 一页（五层/生成链/I-1..9/术语/预留位清单）；
 ②guides/n3 README+syntax 与 mbti 实形对齐（包名/`N3SliceParser`/`N3Materializer::new`
-构造形/效果枚举实名/ctx 字段清单）；③役21 跨卷注记（役21 落外层 `fsm/toml.md`，
+构造形/效果枚举实名/ctx 字段清单）；③役21 跨卷注记（役21 落外层 `mbtgen/toml.md`，
 本卷不重复立条）。附带 spec §1 陈数同步（27 字段/116 测试/I-6 收敛后）。
 
 **验收数字**：`moon check` 0 warning；gen_n3v2 116/116；turtle 316/316(gap5)、rdf12 75/75(gap0)、
@@ -466,7 +466,7 @@ TOML 引用语法交 quick_machine 运行时解释（运行时解释器未落地
 
 **C 的处置**：两门独立于 A 成立、必做（30e）——G10 族声明装配门（交叉族状态必须能由
 机制×窗求积解释，防手列漂移）+ G11 可达性门（自初始态全 55 态可达、384 行无死行；
-移植外层 `fsm/analyze.mbt`）。**兜底条款**：30c 探针若 G9 判不等价或求积引入行为差，
+移植外层 `mbtgen/analyze.mbt`）。**兜底条款**：30c 探针若 G9 判不等价或求积引入行为差，
 立即停 A 转 C（仅落 30e 两门，30d 全量迁移取消）。
 
 **探针切片定义（30c）**：量化窗子机 = **5 态 13 行**（顶层：`QuantExpectVar`/
@@ -477,18 +477,18 @@ G9 黄金门直接判字节等价。
 
 **回灌条款（役30 明确要求）**：探针通过后，compose 概念回灌外层 `fsm` 生成器线——
 `StateMeta` 的 `is_nestable`/`exit_event` 元数据位已备而未用，fsm 侧缺的正是构建器
-求积；回灌 = n3gen compose 经验反哺 fsm 构建器 + `fsm/toml.md` 键文档同步。
+求积；回灌 = n3gen compose 经验反哺 fsm 构建器 + `mbtgen/toml.md` 键文档同步。
 
 **改动面**：30b 本步零代码。后续 30c/30d 改 `rdf/n3gen/n3v2_base.toml`（新键全可选，
 TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`（手列行按族退役，
-最后一步才删）；30e 加 `fsm/analyze.mbt` 移植。
+最后一步才删）；30e 加 `mbtgen/analyze.mbt` 移植。
 
 **验收**：本 ADR 落卷；30c 探针 G9 字节等价或触发兜底条款；30d 每族一步 G9 + 329/329；
 30e 后 G1–G11 全绿；终态"新增特性只增子机声明 + 接线、零手列交叉态"。
 
 ## ADR-31：可达性判据（三源模型）与 G11 分级——✅ 2026-09-12
 
-**背景（用户指正 → 实测坐实）**：ADR-30 写"G11 可达性门（…移植外层 `fsm/analyze.mbt`）"，
+**背景（用户指正 → 实测坐实）**：ADR-30 写"G11 可达性门（…移植外层 `mbtgen/analyze.mbt`）"，
 其隐含假设 = **可达性可由表边（`from → to`）完全表达**。首版按此实现（`rdf/n3gen/validate.mbt:479` 起，
 只按 `trans` 的 `from/to` 建邻接表 + 自初始态 BFS），**n3gen 门当场红（9/10）**，报两个"不可达态"：
 
@@ -502,7 +502,7 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 ——5 个量化态（`QuantExpectVar` / `QuantExpectVarOrDot` / `FormulaDirectiveKind` / `FormulaQuantExpectVar` /
 `FormulaQuantExpectVarOrDot`）只能经**展开后**的真名进入；建边顺序若颠倒即假红。
 
-**移植源的事实核对**：`fsm/analyze.mbt` 只从 `rules`（已展开 IR 行）建边，**没有**"手写写入态"概念；
+**移植源的事实核对**：`mbtgen/analyze.mbt` 只从 `rules`（已展开 IR 行）建边，**没有**"手写写入态"概念；
 它是**警告级**打印（`print_analysis_warnings` 不阻断）+ 靠 `meta.terminal_states` 兜底 dead 判定；
 且**当前无任何调用者**（`grep -rn 'analyze_fsm_paths|print_analysis_warnings' src/` 除自身与测试零命中）。
 ⇒ 可移植其 **BFS/报告骨架**，**不可移植其输入假设**。

@@ -30,7 +30,7 @@
 
 | C | 事实 | 影响 | 处置 |
 |---|---|---|---|
-| C-N1 | `fsm/test_nquads.toml` 已不存在，`fsm_out/nquads_fsm.toml` 为唯一 IR | 无功能影响 | **已收口**：`src/md/*` 两处锚点改现代口径（R-N1） |
+| C-N1 | `mbtgen/test_nquads.toml` 已不存在，`fsm_out/nquads_fsm.toml` 为唯一 IR | 无功能影响 | **已收口**：`src/md/*` 两处锚点改现代口径（R-N1） |
 | C-N2 | 遗留件（`nquads.bak` 8.5 KB、`test_nquads.toml` 326 行 v1 输入、`plan-retire-owned-terms.md` 94 行已执行方案、`quicktest/todo.md` 空件） | 目录噪声 | **已清（2026-09-13，ADR-NQ-008）**：两件归档 `bak/gen_nquads/`、两件删除（git 历史留档） |
 | C-N3 | `quick_machine` 双生成器并存（`gen_check/*` 旧词表） | 生成链重复面 | 归并属"另役"；本样本不动 |
 | C-N4 | ~~MoonBit 词法器落后 C 侧 2.3–2.6×~~ | 性能 | **已收口（P1 役，2026-09-14）**：该结论是 **debug 档假象**；release 下 Lexermoon **反超** C FFI ~2×。见 §5 与 ADR-NQ-009 |

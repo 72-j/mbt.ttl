@@ -68,7 +68,7 @@
   `fsm_out/trig_fsm.toml`」三腿逐字节 + 增量校验门；
   ② **产物侧**：「钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节 + 强幂等」
   （`trig 产物黄金门`，金样 ts = `1788654011855`）。
-  **再生配方**：`moon run fsm/cmd -- rdf/fsm_out/trig_fsm.toml --ts <golden> -o <产物>`
+  **再生配方**：`moon run mbtgen/cmd -- rdf/fsm_out/trig_fsm.toml --ts <golden> -o <产物>`
   → `moon fmt <产物>`；**门绿即可改生成面**（禁令解除）。
 - 生成面改动是**跨仓原子变更**：`rdf`（domain/IR）→ `fsm_out/trig_fsm.toml` → `fsm`（codegen）
   → `trig.mbt` → 子仓测试，**必须同笔**。

@@ -36,7 +36,7 @@ serialize_trig.mbt         序列化：字节保真回写 + 图归并
 rdf/domain/trig_domain.toml
    → rdf/domain_to_ir.mbt          （域推导：状态/事件/效果/动作）
    → rdf/fsm_out/trig_fsm.toml     （IR）
-   → fsm/cmd（fsm-gen CLI）        （v1 codegen）
+   → mbtgen/cmd（fsm-gen CLI）        （v1 codegen）
    → ttl/src/gen_trig/trig.mbt     （⚠ 生成物，禁手编）
 ```
 

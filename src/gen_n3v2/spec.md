@@ -463,7 +463,7 @@ machine = "listpath_window.s0" # 标记行：原位请求展开（实例.段）
 - **P2（长期）**：R-04（长期方言感知词法器，短期补偿点已落役29）、~~R-14~~（**✅ 役30，30a–30f 收官**）。
 
 另记（非整改、需知情）：生成本包的包名仍为 `gen_n3v2`（`pkg.generated.mbti` 头），
-用户指南写 `gen_n3`——R-12 一并处理；外层仓 `fsm/codegen.mbt`、`prune.mbt` 有未提交改动（役21 收尾）。
+用户指南写 `gen_n3`——R-12 一并处理；外层仓 `mbtgen/codegen.mbt`、`prune.mbt` 有未提交改动（役21 收尾）。
 
 ## 12. 可达性判据与表外入口登记（役31 / ADR-31）
 
@@ -514,7 +514,7 @@ terminal_states = ["<干净终局态>", ...]   # 可选；缺省 = 空 = 旧口�
 - **死态判据**：`可达 ∧ 无出边 ∧ 未声明为终止态` → 报 `G11: 死态 [...]（可达、无出边、未声明 terminal_states）`；
 - 名字必须**已声明**（形检，防 typo 让豁免失效）；
 - **现状（2026-09-12 实测）**：当前表**零死态**，未声明也不报——该键作为前置保留；
-- 制度位对应 `fsm/analyze.mbt` 的 `dead_states`（其 `terminal_states` 兜底同义）。
+- 制度位对应 `mbtgen/analyze.mbt` 的 `dead_states`（其 `terminal_states` 兜底同义）。
 
 **顺序前置（ADR-31 前置 A）**：模板 `$param` 必须**先展开再建边**——由 `n3gen_build` 的固定顺序
 `parse → compose → validate → emit`（`emit.mbt:1287/1291`）保证；`validate.mbt` 另有显式门
@@ -548,5 +548,5 @@ G11 报 `死态 [ExpectTildeEnd]`；在同一探针态下声明 `terminal_states
   （错误级 `Err`，不再是打印告警）；删除幽灵态 → **12/12 绿**，`n3v2_out.gen` md5 与探针前一致
   （`66a876c6…`，产物零漂移）。
 
-**源件关系**：`fsm/analyze.mbt` 仅借 BFS 骨架——其"只按表边建边"的输入假设**被 ADR-31 否决**
+**源件关系**：`mbtgen/analyze.mbt` 仅借 BFS 骨架——其"只按表边建边"的输入假设**被 ADR-31 否决**
 （该源件当前无调用者，且未建模手写写入态）。

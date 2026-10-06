@@ -34,7 +34,7 @@
 rdf/domain2/trig_base.toml    （骨架：ctx/events/states/effects/chains/hooks/direct_actions）
 rdf/domain2/trig_domain.toml  （行为：195 行 [[parser.transitions]]）
         └─(compile_domain2_files, rdf/domain_toml_2.mbt)→ rdf/fsm_out/trig_fsm.toml
-                                                                        └─(fsm/cmd)→ gen_trig/trig.mbt
+                                                                        └─(mbtgen/cmd)→ gen_trig/trig.mbt
 ```
 
 > **改表落点 = 上面这对 domain2 文件**（ADR-3 翻转 + ADR-5）：v1
@@ -44,7 +44,7 @@ rdf/domain2/trig_domain.toml  （行为：195 行 [[parser.transitions]]）
 
 ```sh
 moon test -p rdf                                              # 1) 外仓测试落 fsm_out/trig_fsm.toml
-moon run fsm/cmd -- rdf/fsm_out/trig_fsm.toml -o ttl/src/gen_trig/trig.mbt   # 2) 再生产物
+moon run mbtgen/cmd -- rdf/fsm_out/trig_fsm.toml -o ttl/src/gen_trig/trig.mbt   # 2) 再生产物
 cd ttl && moon test src/gen_trig                          # 3) 子仓回归
 ```
 
@@ -218,7 +218,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 | 编号 | 事实（写实） | 证据锚点 | 性质 |
 |---|---|---|---|
 | C-T1 | ~~效果面孤儿~~ **已收口（T11，2026-09-13）**：`interpret` 成唯一解释器（`gen_nquads/gen_nquads/engine.mbt:404` 调用点）；`emit_queue` 下沉 ctx；引擎实现 `snapshot`/`on_*` 真实挂点（`:476/489/496/504/513`）——观测/容灾切面可挂 | `gen_nquads/gen_nquads/engine.mbt:404`（调用点）+ `:476/489/496/504/513`（impl）；`domain2/trig_base.toml`（`emit_queue`）；ADR-TRIG-013 | [债]→**已收口（T11）** |
-| C-T2 | ~~产物无黄金门~~ **已收口（T10，2026-09-13）**：`Generated at:` 墙钟值改由 `generate_with_ts` 显式注入（CLI `--ts`）；形态差由工具链 `moon fmt` 在管线末端收敛——钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节，门在 `rdf/trig_domain_toml_gen.mbt`。**遗留**：nquads 同类形态差 68 行（其 check-in 同为 fmt 形），产物门待补（另役） | 门：`trig 产物黄金门`；`fsm/codegen.mbt`（`generate_with_ts`）；`rdf/adr.md` ADR-6 | [债]→**已收口（T10）** |
+| C-T2 | ~~产物无黄金门~~ **已收口（T10，2026-09-13）**：`Generated at:` 墙钟值改由 `generate_with_ts` 显式注入（CLI `--ts`）；形态差由工具链 `moon fmt` 在管线末端收敛——钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节，门在 `rdf/trig_domain_toml_gen.mbt`。**遗留**：nquads 同类形态差 68 行（其 check-in 同为 fmt 形），产物门待补（另役） | 门：`trig 产物黄金门`；`mbtgen/codegen.mbt`（`generate_with_ts`）；`rdf/adr.md` ADR-6 | [债]→**已收口（T10）** |
 | C-T3 | ~~公共面过宽~~ **已收口（T12，2026-09-13）**：`internals_priv` 数据键 ⇒ 内部声明 `priv`（`Event`/`PendingQuad` 例外）+ 死面同收；`.mbti` **349→172 行 / 54→37 pub 行** | `pkg.generated.mbti`；`domain2/trig_base.toml`（`[meta] internals_priv`）；ADR-TRIG-016 / rdf ADR-11 | [债]→**已收口（T12）** |
 | C-T4 | ~~命名未回灌~~ **已收口（T13，2026-09-13）**：`TrigSupervisor`（数据键 `[meta] policy_trait_name`）+ `TrigActionsImpl`（`actions.mbt`）+ 字段 `actions`；产物已再生 | `trig.mbt`（trait 头）；`engine.mbt`；ADR-TRIG-015 / rdf ADR-10 | [债]→**已收口（T13）** |
 | C-T5 | 包内死件：5 个 `.bak`（`trig.mbt.bak` 36 KB、`engine.mbt.bak` 15 KB、`lexer_mbt*.bak` ×2、`nquads_test.mbt.bak`） | ~~`ls *.bak`~~ **实况：`ls src/gen_trig/*.bak` 无匹配（2026-09-20 复核）** | [债]→**已清（T15）** |
