@@ -98,14 +98,14 @@ Oxigraph `RdfParser` 迭代出 `Quad`，不插 Store）：
 
 ```bash
 # MoonBit 基准——工作目录用模块根；正式口径 = native + release
-cd src/ttl
+cd ttl
 moon run src/bench/nquads-benchmark --target native --release                          # 1k
 moon run src/bench/nquads-benchmark --target native --release src/bench/test_10000.nq   # 10k
 # 裸命令（默认 wasm 档）也能跑，但那是宿主口径，不作性能结论
 moon run src/bench/nquads-benchmark
 
-# 其它实现——工作目录 src/ttl/src/bench
-cd src/ttl/src/bench
+# 其它实现——工作目录 ttl/src/bench
+cd ttl/src/bench
 
 # C（gcc -O3；fast=纯计数 / full=行级结构解析）
 gcc -O3 -o nqparser nqparser.c

@@ -1,8 +1,8 @@
 // ========================================
 // Types — 类型映射层（手写版；目标形状 = 生成器产物 types.mbt）
 // FSM: nquads_parser（引擎 = thy1016/moonttl/gen_nquads，step 由 [[transitions]] 生成）
-// 规范: src/quick_machine/quick_machine.md §3.1 类型映射 / §11 补充清单
-// 手写一版先跑通，再回灌 src/quick_machine 生成器。
+// 规范: quick_machine/quick_machine.md §3.1 类型映射 / §11 补充清单
+// 手写一版先跑通，再回灌 quick_machine 生成器。
 // ========================================
 // 映射约定：
 //   Event   → Command （Span 载荷 → @qcs.Ref[RefId]，多载荷简化为单引用）

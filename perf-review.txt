@@ -3,7 +3,7 @@
 # 口径（**正式数字只取此档**）：`--target native --release`（debug 档慢 4.6×，不作结论；见 `src/bench/README.md`）。
 #
 # 生成命令（**必须原样复跑**；同命令 + 同档位 + 同机 ⇒ 比较体应得同一张表）：
-#   cd src/ttl
+#   cd ttl
 #   moon run src/bench/nquads-benchmark --target native --release src/bench/test_10000.nq
 #   moon test --target native --release src/gen_nquads -f "*词法役 P1*"
 #

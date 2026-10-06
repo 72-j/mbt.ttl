@@ -31,10 +31,10 @@
 ## 2 生成链与再生
 
 ```
-src/rdf/domain2/trig_base.toml    （骨架：ctx/events/states/effects/chains/hooks/direct_actions）
-src/rdf/domain2/trig_domain.toml  （行为：195 行 [[parser.transitions]]）
-        └─(compile_domain2_files, src/rdf/domain_toml_2.mbt)→ src/rdf/fsm_out/trig_fsm.toml
-                                                                        └─(src/fsm/cmd)→ gen_trig/trig.mbt
+rdf/domain2/trig_base.toml    （骨架：ctx/events/states/effects/chains/hooks/direct_actions）
+rdf/domain2/trig_domain.toml  （行为：195 行 [[parser.transitions]]）
+        └─(compile_domain2_files, rdf/domain_toml_2.mbt)→ rdf/fsm_out/trig_fsm.toml
+                                                                        └─(fsm/cmd)→ gen_trig/trig.mbt
 ```
 
 > **改表落点 = 上面这对 domain2 文件**（ADR-3 翻转 + ADR-5）：v1
@@ -44,28 +44,28 @@ src/rdf/domain2/trig_domain.toml  （行为：195 行 [[parser.transitions]]）
 
 ```sh
 moon test -p rdf                                              # 1) 外仓测试落 fsm_out/trig_fsm.toml
-moon run src/fsm/cmd -- src/rdf/fsm_out/trig_fsm.toml -o src/ttl/src/gen_trig/trig.mbt   # 2) 再生产物
-cd src/ttl && moon test src/gen_trig                          # 3) 子仓回归
+moon run fsm/cmd -- rdf/fsm_out/trig_fsm.toml -o ttl/src/gen_trig/trig.mbt   # 2) 再生产物
+cd ttl && moon test src/gen_trig                          # 3) 子仓回归
 ```
 
 **门现状（2026-09-13 更新）**：
 
-- **IR 侧有门**——`src/rdf/trig_domain_toml_gen.mbt`：**三腿对拍**「domain2 双文件编译 ≡
+- **IR 侧有门**——`rdf/trig_domain_toml_gen.mbt`：**三腿对拍**「domain2 双文件编译 ≡
   管线路由 ≡ 盘上 `fsm_out/trig_fsm.toml`」+ 增量校验门 6 条。
   原"停役数组腿"（v1 `domain/trig_domain.toml` + 冻结数组）已**退役**
-  （`src/rdf/adr.md` **ADR-5**）：v1 TOML 只服务 nquads；trig 的 2.0 数据面为唯一事实源。
-- **产物侧门已立（T10 ✅ 2026-09-13，src/rdf ADR-6）**——`trig 产物黄金门`：
-  ① `src/fsm` 增 `generate_with_ts(ir, config, ts)`（`generate` 缺省行为不变）+ CLI `--ts`；
+  （`rdf/adr.md` **ADR-5**）：v1 TOML 只服务 nquads；trig 的 2.0 数据面为唯一事实源。
+- **产物侧门已立（T10 ✅ 2026-09-13，rdf ADR-6）**——`trig 产物黄金门`：
+  ① `fsm` 增 `generate_with_ts(ir, config, ts)`（`generate` 缺省行为不变）+ CLI `--ts`；
   ② 形态口径 = **原始形 + 工具链 `moon fmt`**（禁进程内 fmt 包——实测与工具链输出不一致）；
   ③ 门 = 钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` **逐字节** + 强幂等
   （金样 ts = `1788654011855`，与 n3v2 G9 同法）；证伪探针：改一行表 → 门红。
 - **注解面已追平（2026-09-13）**：役9 的四字段/四动作/20 行行型已回灌 `domain2/trig_*`
-  （`src/rdf/adr.md` **ADR-4**）——此前"盘上 2.0 数据落后产物、再生会抹注解"的预存分歧
+  （`rdf/adr.md` **ADR-4**）——此前"盘上 2.0 数据落后产物、再生会抹注解"的预存分歧
   **已解除**；2.0 再生与产物的残差从 337 行降到 **250 行，且全部是 fmt 形 + 头横幅 ts**
   （48 hunk：单语句臂去花括号 / 超宽签名折行 / 空行与 `///|` / `Generated at:`）。
-- ✅ **Turtle 路径已翻 2.0（T18，2026-09-13，src/rdf ADR-8）**：`DomainDialectKind::Turtle`
+- ✅ **Turtle 路径已翻 2.0（T18，2026-09-13，rdf ADR-8）**：`DomainDialectKind::Turtle`
   与 Trig 同路路由到 `domain2/trig_*`（方言差异在运行时开关 `TrigDialect::Turtle` 禁图块区），
-  数据面**单一**；钉子「Turtle 路由 ≡ domain2 trig 双文件」在 `src/rdf`（**22/22**）。
+  数据面**单一**；钉子「Turtle 路由 ≡ domain2 trig 双文件」在 `rdf`（**22/22**）。
   ⇒ 本包全方言（Trig / Turtle）再生只走一条链，不再有"按方言走旧数组口径"的分叉。
 （对照：n3v2 的 `n3_emit_banner(ts)` 把 ts 显式注入 ⇒ 可逐字节对拍。）
 
@@ -87,7 +87,7 @@ cd src/ttl && moon test src/gen_trig                          # 3) 子仓回归
 - **guard 只通 `ctx`**：表行 guard 不得读 `data`/`arena`（词法字节判断属适配层/物化层）。
 - **EOF 不进表**：`None` 分支归 loop 收尾；词法器结尾 `Some(EOF(pos))`。
 - **ctx 新字段守门**：新增 ctx 字段须同时声明 reset 粒度归属（`ResetScope` 四档之哪档）与
-  `[[context.snapshot_extras]]`（若需随 quad 带出），否则 `moon test src/rdf` 的表/生成器对照会红。
+  `[[context.snapshot_extras]]`（若需随 quad 带出），否则 `moon test rdf` 的表/生成器对照会红。
 - **表外入口登记**：任何"表推不出的状态写入"必须在 `ctx.md` 登记锚点（T10 后由 G-门类机制兜底）。
 
 ## 5 已定语义口径（合理面总结，固化）
@@ -114,11 +114,11 @@ cd src/ttl && moon test src/gen_trig                          # 3) 子仓回归
 - 零空格指令名拆分：`@prefix:<iri>` 在 `@` 邻接位精确命中 `prefix:`/`base:`/`version:` 才拆
   （`kw:foo` 带本地部不拆，term 位 `prefix:x` 不受扰）。
 
-### 5.3 引擎表（`src/rdf/fsm_out/trig_fsm.toml`；规模 **37 态 / 35 事件 / 10 效果 / 206 转移**）
+### 5.3 引擎表（`rdf/fsm_out/trig_fsm.toml`；规模 **37 态 / 35 事件 / 10 效果 / 206 转移**）
 
 > 规模沿革：36/34/10/195 → **37/35/10/206**（役35 35-B1：`@keywords` 表源化 +11 行、
-> 事件 `KeywordX`、状态 `ExpectKeywordsList`；表源 = `src/rdf/domain2/trig_{base,domain}.toml`，
-> 计数钉 = `src/rdf/domain_to_ir.mbt`）。
+> 事件 `KeywordX`、状态 `ExpectKeywordsList`；表源 = `rdf/domain2/trig_{base,domain}.toml`，
+> 计数钉 = `rdf/domain_to_ir.mbt`）。
 
 - **指令双风格**：`@prefix` / `@base`（精确小写，Dot 收尾）与 `PREFIX` / `BASE` / `VERSION`
   （SPARQL 风格，无 Dot）；两者都要求精确小写拼写。
@@ -218,9 +218,9 @@ quad.o 形如 << ... >> 且语句无图名位:
 | 编号 | 事实（写实） | 证据锚点 | 性质 |
 |---|---|---|---|
 | C-T1 | ~~效果面孤儿~~ **已收口（T11，2026-09-13）**：`interpret` 成唯一解释器（`gen_nquads/gen_nquads/engine.mbt:404` 调用点）；`emit_queue` 下沉 ctx；引擎实现 `snapshot`/`on_*` 真实挂点（`:476/489/496/504/513`）——观测/容灾切面可挂 | `gen_nquads/gen_nquads/engine.mbt:404`（调用点）+ `:476/489/496/504/513`（impl）；`domain2/trig_base.toml`（`emit_queue`）；ADR-TRIG-013 | [债]→**已收口（T11）** |
-| C-T2 | ~~产物无黄金门~~ **已收口（T10，2026-09-13）**：`Generated at:` 墙钟值改由 `generate_with_ts` 显式注入（CLI `--ts`）；形态差由工具链 `moon fmt` 在管线末端收敛——钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节，门在 `src/rdf/trig_domain_toml_gen.mbt`。**遗留**：nquads 同类形态差 68 行（其 check-in 同为 fmt 形），产物门待补（另役） | 门：`trig 产物黄金门`；`src/fsm/codegen.mbt`（`generate_with_ts`）；`src/rdf/adr.md` ADR-6 | [债]→**已收口（T10）** |
-| C-T3 | ~~公共面过宽~~ **已收口（T12，2026-09-13）**：`internals_priv` 数据键 ⇒ 内部声明 `priv`（`Event`/`PendingQuad` 例外）+ 死面同收；`.mbti` **349→172 行 / 54→37 pub 行** | `pkg.generated.mbti`；`domain2/trig_base.toml`（`[meta] internals_priv`）；ADR-TRIG-016 / src/rdf ADR-11 | [债]→**已收口（T12）** |
-| C-T4 | ~~命名未回灌~~ **已收口（T13，2026-09-13）**：`TrigSupervisor`（数据键 `[meta] policy_trait_name`）+ `TrigActionsImpl`（`actions.mbt`）+ 字段 `actions`；产物已再生 | `trig.mbt`（trait 头）；`engine.mbt`；ADR-TRIG-015 / src/rdf ADR-10 | [债]→**已收口（T13）** |
+| C-T2 | ~~产物无黄金门~~ **已收口（T10，2026-09-13）**：`Generated at:` 墙钟值改由 `generate_with_ts` 显式注入（CLI `--ts`）；形态差由工具链 `moon fmt` 在管线末端收敛——钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节，门在 `rdf/trig_domain_toml_gen.mbt`。**遗留**：nquads 同类形态差 68 行（其 check-in 同为 fmt 形），产物门待补（另役） | 门：`trig 产物黄金门`；`fsm/codegen.mbt`（`generate_with_ts`）；`rdf/adr.md` ADR-6 | [债]→**已收口（T10）** |
+| C-T3 | ~~公共面过宽~~ **已收口（T12，2026-09-13）**：`internals_priv` 数据键 ⇒ 内部声明 `priv`（`Event`/`PendingQuad` 例外）+ 死面同收；`.mbti` **349→172 行 / 54→37 pub 行** | `pkg.generated.mbti`；`domain2/trig_base.toml`（`[meta] internals_priv`）；ADR-TRIG-016 / rdf ADR-11 | [债]→**已收口（T12）** |
+| C-T4 | ~~命名未回灌~~ **已收口（T13，2026-09-13）**：`TrigSupervisor`（数据键 `[meta] policy_trait_name`）+ `TrigActionsImpl`（`actions.mbt`）+ 字段 `actions`；产物已再生 | `trig.mbt`（trait 头）；`engine.mbt`；ADR-TRIG-015 / rdf ADR-10 | [债]→**已收口（T13）** |
 | C-T5 | 包内死件：5 个 `.bak`（`trig.mbt.bak` 36 KB、`engine.mbt.bak` 15 KB、`lexer_mbt*.bak` ×2、`nquads_test.mbt.bak`） | ~~`ls *.bak`~~ **实况：`ls src/gen_trig/*.bak` 无匹配（2026-09-20 复核）** | [债]→**已清（T15）** |
 | C-T6 | 测试位置：生产文件内联 21 个 test（`materialize_trig.mbt` 16 + `serialize_trig.mbt` 5） | ~~`grep -c '^test '` 两文件~~ **实况：两文件各 0 个 `test`（2026-09-20 复核）** | [债]→**已清（T14：迁 `_wbtest.mbt`）** |
 | C-T7 | 卷面违规（**2026-09-12 已收口**）：`todo.md` 曾同时承载宪法（§1）与规格（§2） | 旧 `todo.md` §1/§2；`bangto/world/const.md` §5.2 | [债]→**已收口（T16）** |
@@ -254,7 +254,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 |---|---|---|---|---|
 | 1 | **`a` 在台账在册即"复活"**（`@keywords a` 声明后 `a` 仍是 turtle `rdf:type` 简写） | **口径选择**（照 n3v2 `kw_a_live` 支），**不是规范强制** | `engine.mbt normalize_term_span` 的 `TrigKeywordA` 支条件：`dialect is N3 ∧ kw_directive_seen ∧ 非列表区 ∧ !kw_ledger_hits` 才降 `PrefName`；判据载体 = 产物 `pk`（`KwA` vs `Normal`） | **要改"恒失效"**（无论是否在册）：删去末一条件 `!self.kw_ledger_hits(s2)` 一个合取项即可；受影响钉 = 钉 4 第 ③ 支（`@keywords a b .` 后 `a` 的 `pk` 期望 `KwA → Normal`）+ 需核 `declared_keyword` 的列表申报支（列表区判定在失效条件之前，故不动） |
 | 2 | **组装层放行无冒号裸名**（`prefix_declared` 的 `colon < 0 ⇒ true`） | **有意分叉**（n3v2 组装层仍拒裸名）——**分叉层 = 组装/轻验层**（`parser_slice.mbt`） | 原因：listed 词到组装层时是**裸名 span**，按旧口径报 `Undeclared prefix`（钉 8/9 首跑实测红）⇒ 与 §AS.8 ⑤"照 `PrefName` 径"的兜底一致：**合法性归表，组装层不二次裁决**。边界：**只有引擎收下的词才到得了本层**（TriG/Turtle 档裸词被适配层降 `Unknown`、N3 档未列裸词被表外拒）⇒ **不放宽被接受的语言** | **"组装层放行 + 物化层严格"是有意分层，不是口径漂移**：物化层 `resolve_prefname` 裸名按**空前缀展开**（`DefaultPrefixIRI` 同源），**默认前缀未声明 ⇒ `Ok(None)` ⇒ 槽位错误面**（钉 2 载体② / 钉 8 载体②）。重评估条件：若 n3v2 组装层同步放行（消分叉），本行降为同源项 |
-| 3 | **两行"不译"**（n3v2 的 `ExpectKeywordsList + Comma`、`ExpectIsProp + KeywordX`） | **表源无此行 ⇒ `UnexpectedEvent`**（干净拒 + 恢复）——**不是"显式拒绝"**：表上没有 `Comma`/`ExpectIsProp` 相关行（`ExpectIsProp` 态在 trig 根本不存在），故**无"拒绝行"可指**，语义为"表即裁决者"的兜底臂 | 判据载体 = 错误面（`errors > 0`）：`@keywords a, b .` 在 N3 档报错；`ExpectIsProp` 无对应态 | **补法**：加 `ExpectKeywordsList + Comma → ExpectKeywordsList`（无 action）一行 ⇒ IR 钉 **205→206→207**（现 206 行；`[[transitions]]` 计数钉在 `src/rdf/domain_to_ir.mbt`），并同笔走黄金门 scratch 交付 + 子仓 quicktest valid/臂成对补行。**`ExpectIsProp` 行不建议补**（trig 无 `Is` 族词行，补它须连带来 `Is` 事件/状态族） |
+| 3 | **两行"不译"**（n3v2 的 `ExpectKeywordsList + Comma`、`ExpectIsProp + KeywordX`） | **表源无此行 ⇒ `UnexpectedEvent`**（干净拒 + 恢复）——**不是"显式拒绝"**：表上没有 `Comma`/`ExpectIsProp` 相关行（`ExpectIsProp` 态在 trig 根本不存在），故**无"拒绝行"可指**，语义为"表即裁决者"的兜底臂 | 判据载体 = 错误面（`errors > 0`）：`@keywords a, b .` 在 N3 档报错；`ExpectIsProp` 无对应态 | **补法**：加 `ExpectKeywordsList + Comma → ExpectKeywordsList`（无 action）一行 ⇒ IR 钉 **205→206→207**（现 206 行；`[[transitions]]` 计数钉在 `rdf/domain_to_ir.mbt`），并同笔走黄金门 scratch 交付 + 子仓 quicktest valid/臂成对补行。**`ExpectIsProp` 行不建议补**（trig 无 `Is` 族词行，补它须连带来 `Is` 事件/状态族） |
 
 > **余项保留（明确划界）**：**"更宽裸词语义"未顺手扩张**——当前只放行 **listed 词到组装层的裸名**
 > （即"引擎已收、组装层照 `PrefName` 径兜底"），**不是所有裸词**：无声明裸词在 N3 档仍被表外拒
@@ -268,9 +268,9 @@ quad.o 形如 << ... >> 且语句无图名位:
 | 编号 | 结论 | 状态 | 归属役 | 关联 |
 |---|---|---|---|---|
 | R-T1 | 效果面接活：`interpret` 成唯一解释器，`engine.next` 调它；套装收形；`emit_queue` 下沉 ctx | 建议 | T11 | C-T1 |
-| R-T2 | 产物黄金门 ✅（形态口径按 ADR-6 修正为"原始形 + 工具链 `moon fmt`"，非进程内直产 fmt 形） | **✅ 已落地（T10，2026-09-13）** | T10 | C-T2、src/rdf ADR-4/ADR-6 |
-| R-T3 | 公共面收窄：FSM 机械降包内，留入口与数据面 | **✅ 已落地（T12）** | T12 | C-T3、src/rdf ADR-11 |
-| R-T4 | 命名回灌：`TrigLoopPolicy → TrigSupervisor`；`Hooks → TrigActionsImpl` | **✅ 已落地（T13）** | T13 | C-T4、world `ADR-NAMING-001`、src/rdf ADR-10 |
+| R-T2 | 产物黄金门 ✅（形态口径按 ADR-6 修正为"原始形 + 工具链 `moon fmt`"，非进程内直产 fmt 形） | **✅ 已落地（T10，2026-09-13）** | T10 | C-T2、rdf ADR-4/ADR-6 |
+| R-T3 | 公共面收窄：FSM 机械降包内，留入口与数据面 | **✅ 已落地（T12）** | T12 | C-T3、rdf ADR-11 |
+| R-T4 | 命名回灌：`TrigLoopPolicy → TrigSupervisor`；`Hooks → TrigActionsImpl` | **✅ 已落地（T13）** | T13 | C-T4、world `ADR-NAMING-001`、rdf ADR-10 |
 | R-T5 | 清包内死件：5 个 `.bak` 归档（禁静默删） | 建议 | T15 | C-T5 |
 | R-T6 | 测试归位：16+5 个内联 test 迁 `_wbtest.mbt`，辅助去重 | 建议 | T14 | C-T6 |
 | R-T7 | 卷面补全：拆 const/spec/adr，todo 只留役与账本 | **✅ 已落地（T16，2026-09-12）** | T16 | C-T7 |
@@ -285,9 +285,9 @@ quad.o 形如 << ... >> 且语句无图名位:
 
 ```sh
 cd ../..
-moon test src/rdf            # 20/20（含 IR 侧 trig 对照门）
-moon test src/rdf/n3gen      # 12/12（G1–G13；与本包无耦合，动外仓时兜底）
-cd src/ttl
+moon test rdf            # 20/20（含 IR 侧 trig 对照门）
+moon test rdf/n3gen      # 12/12（G1–G13；与本包无耦合，动外仓时兜底）
+cd ttl
 moon check src/gen_trig      # 0 error / 0 warning
 moon test src/gen_trig       # 80/80（单元）
 moon info && moon fmt        # .mbti diff 逐行审（当前 349 行 / 54 pub 行）

@@ -16,7 +16,7 @@
 
 ## ADR-NQ-001：FSM 生成链路打通（第一样板）——✅ 2026-09-03
 
-**决策**：`src/fsm` 生成器（`ir.toml` + `codegen*`）以 `test_nquads.toml` 为输入产出 `nquads.mbt`
+**决策**：`fsm` 生成器（`ir.toml` + `codegen*`）以 `test_nquads.toml` 为输入产出 `nquads.mbt`
 （DO NOT EDIT）；三条线（决策在表 / 机械在模板 / 领域知识在契约成员）、`ResetScope` 四档、
 Effect 三件套（`Continue`/`EmitQuad`/`Done`）、`LoopPolicy` 四钩子由此定案，并**推广至 gen_trig**
 （第二样板）。
@@ -31,7 +31,7 @@ Effect 三件套（`Continue`/`EmitQuad`/`Done`）、`LoopPolicy` 四钩子由�
 **被否**：第二泛型轴（actions 也泛型化）——调用面复杂度翻倍且无当前需求。
 
 **后果**：`step[A : NQuadsActions]` 保持泛型，使 **quicktest 包**能以自有实现跨包接入
-（后来成为 `pub(open)` 的载荷面，见 `src/rdf/adr.md` ADR-9）。
+（后来成为 `pub(open)` 的载荷面，见 `rdf/adr.md` ADR-9）。
 
 ## ADR-NQ-003：双词法器同字母表；C 版为标准对齐源——✅ 2026-09-03
 
@@ -74,7 +74,7 @@ ntriples 走"循环读文件 + 整合文件对比"双口径；`read_context` 提
 **演进位**：将来若需两段内容，把门卫升级为 splitter（`validate_literal -> Result[LiteralSplit, …]`），
 词法事件形状与三层边界不动。
 
-**关联**：细则与证据见 `spec.md` §1–§3；2.0 数据面与门见 `src/rdf/adr.md`（ADR-1…ADR-9）。
+**关联**：细则与证据见 `spec.md` §1–§3；2.0 数据面与门见 `rdf/adr.md`（ADR-1…ADR-9）。
 
 ## ADR-NQ-008：目录瘦身（遗留计划件 / 空件 / v1 输入件）——✅ 2026-09-13
 

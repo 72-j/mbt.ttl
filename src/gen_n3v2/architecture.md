@@ -5,7 +5,7 @@
 > **卷名沿革**：本卷 2026-09-20 由 `ARCHITECTURE.md` 更名 `architecture.md`（世界宪法 v2.6「实例卷名一律小写规范名」
 > + v2.8 立 `architecture` 卷位）；`adr.md` 里旧名出现处为**历史语境**，按规保留。
 
-N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态机 + 装配层（Assembly）；
+N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `ttl`）。生成状态机 + 装配层（Assembly）；
 生成件 `n3.mbt` 由外层仓表源再生，禁手编。细节卷：`spec.md`（架构规格）、`adr.md`（役录裁决）、
 `todo.md`（整改立项）、`ctx.md`（上下文与工程经验）。用户指南：`guides/n3/`。
 
@@ -30,12 +30,12 @@ N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态�
 ## 生成链（parse → **compose** → validate → emit；黄金门 G9）
 
 ```
-外层仓 src/rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
+外层仓 rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
   → n3gen_build（parse → G10 装配门 → **compose 求积** → validate G1–G9/G11–G13 → emit）→ n3v2_out.gen
-  → cp src/ttl/src/gen_n3v2/n3.mbt（G9 逐字节对拍 + 强幂等）
+  → cp ttl/src/gen_n3v2/n3.mbt（G9 逐字节对拍 + 强幂等）
 ```
 
-表变 → 再生 → cp；手编 `n3.mbt` 会被 G9 判红。生成器测试 `moon test src/rdf/n3gen`。
+表变 → 再生 → cp；手编 `n3.mbt` 会被 G9 判红。生成器测试 `moon test rdf/n3gen`。
 
 **compose（役30c/30d，ADR-30 方案 A）**：交叉族不再手列，改为**声明面 + 构建期求积**——
 
@@ -77,7 +77,7 @@ N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `src/ttl`）。生成状态�
 | 套件（N3Tests / rdf-turtle / rdf12-turtle） | `moon test src/gen_n3v2`（自报行 `=== … ===`） | **复核表 `../suite-review.txt`**（`[n3v2]` 节） |
 | 值级对拍 | `moon test src/gen_n3v2/quicktest`（台账五类计数钉死） | 门内打印（不可比/违例/债点全 0） |
 | 覆盖率棘轮 | `coverage-baseline.txt` / `reachable-coverage-baseline.txt` | 两基线文件（**只引用字段名**） |
-| 生成链 | `moon test src/rdf/n3gen`（G9 字节对拍） | 12/12 即绿 |
+| 生成链 | `moon test rdf/n3gen`（G9 字节对拍） | 12/12 即绿 |
 
 > 口径：**数字不落在导读卷**（`bangto/world/const.md` §5.6.3 单一数字源）；自报行看复核表，基线看基线文件。
 

@@ -100,7 +100,7 @@ RFC 3986 §5.2 与累计值合并）；前缀账本同理加 `prefix_version` �
 
 **决策**：把手改面**全部回灌生成管线**——`domain/trig_domain.toml`（36 态 / 33 事件 / 10 效果 / 184 行 +
 `[[context.snapshot_extras]]` + 18 动作词表）→ `domain_to_ir.mbt` 推导 → `fsm_out/trig_fsm.toml` →
-`fsm` CLI 再生 `trig.mbt`。配套机械（外仓 `src/fsm`）：`[[context.snapshot_extras]]` 解析、
+`fsm` CLI 再生 `trig.mbt`。配套机械（外仓 `fsm`）：`[[context.snapshot_extras]]` 解析、
 根 `[[actions]]` 声明面、多参签名按位统一、binding 词表（`state:` / `::`）、trait 方法 `fn` 前缀补正。
 
 **验收**：再生 vs 手稿 diff 仅余**化妆差**（枚举/注释不发射、单行 vs 折行、canonical 绑定名、
@@ -130,9 +130,9 @@ TT 独立主语回归 / `~` 驻留位 + 物化 2 钉）；`gen_trig` 80/80、套
 **补记（2026-09-13）**：本 ADR 声称的"toml 侧 +4 字段 +1 extra +4 动作"当时只落到了
 v1 层之外的产物/文档面——**2.0 数据面（`domain2/trig_*`）实际停在役9 之前**，导致
 "从盘上 `fsm_out` 再生会抹注解"的预存分歧（ADR-TRIG-006 遗留）。该分歧已由外层仓
-`src/rdf/adr.md` **ADR-4** 收口：四字段（含 derived `subj_shell`）/四 `action_hooks`/
+`rdf/adr.md` **ADR-4** 收口：四字段（含 derived `subj_shell`）/四 `action_hooks`/
 20 行行型回灌 `domain2/trig_*`，盘上 IR 与产物注解面追平；残差只剩 fmt 形与墙钟 ts。
-同轮 `src/rdf/adr.md` **ADR-5** 退役了 v1 数组对拍腿（v1 TOML 只服务 nquads）；
+同轮 `rdf/adr.md` **ADR-5** 退役了 v1 数组对拍腿（v1 TOML 只服务 nquads）；
 ⚠ Turtle 路径仍走数组函数、口径停在役9 前，翻 2.0 另立役。
 
 ## ADR-TRIG-008：Enter/ExitGraph 双路由维持现状（不引入 `action_args`）——✅ 2026-09-03
@@ -207,7 +207,7 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 2. **`emit_queue` 下沉 ctx**（`domain2/trig_base.toml` 新增 `Array[TrigPendingQuad]` 累积字段）：
    Sequence 多发逐条入队、队首即返、余者 loop 顶部排空——集合链 `rest+first` 双发射不再被
    单 pending 覆盖。
-3. **生成器数据驱动开关**（ADR-7 @`src/rdf`）：ctx 声明 `emit_queue` 即发射"队列模式
+3. **生成器数据驱动开关**（ADR-7 @`rdf`）：ctx 声明 `emit_queue` 即发射"队列模式
    interpret"（顶层意图臂走 `handle_*`/`on_*` 兑现）；无该字段的方言（nquads 等）**字节零波及**。
 4. **用户层接活**：`engine.mbt` 实现 handler 的真实挂点——`snapshot`（壳旗结算 + 收口旗消费）、
    `on_exit_graph` / `on_pop_bnp` / `on_list_step` / `on_open_slot`（意图兑现调 action）；
@@ -216,7 +216,7 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 **被否方案**：让用户的 `snapshot` 私藏队列绕过模板（会丢首发/乱序，`rest+first` 顺序不可保）。
 
 **验证**：`moon test src/gen_trig` **80/80**（四套件 357/316/36/75 不变）；
-`moon test src/rdf` **21/21**（产物黄金门对新产物仍逐字节绿）；模块 **329/329**；
+`moon test rdf` **21/21**（产物黄金门对新产物仍逐字节绿）；模块 **329/329**；
 验收锚点：`gen_trig/engine.mbt:404`（调用点）+ `:587/600/607/615/624`（impl）。
 
 **风险/遗留**：图块语义（ADR-TRIG-008 双路由）未被收形改动；Turtle 路径仍走数组旧口径（ADR-5）。
@@ -247,7 +247,7 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 转义钉子随开关改名（1.2 成对代理拒 / 1.1 成对合法）。`.mbti` diff = 预期改名（3 行）。
 
 **遗留（另役）**：n3v2 侧仍是 `scalar_only_escapes` 单命名（无 langdir 面），
-若要与本口径对齐，属独立原子改名（`src/ttl/src/gen_n3v2`）。
+若要与本口径对齐，属独立原子改名（`ttl/src/gen_n3v2`）。
 
 **补记（2026-09-13 当日收口，n3v2 同批）**：
 
@@ -256,7 +256,7 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
    套件 runner `rdf12? = true`，`rdf-trig`(357) / `rdf-turtle`(316) 两套件显式 `rdf12=false`，
    `rdf12-trig`(36) / `rdf12-turtle`(75) 显式 `true`；测试辅助 `mat_chain_deep` 默认同步为 `true`，
    1.1 用例（成对代理合法 / 方向后缀拒）显式 `rdf12=false`。
-2. **n3v2 同步落地**（`src/ttl/src/gen_n3v2`，其 `adr.md` **ADR-32**）：同一改名 + 同门控 +
+2. **n3v2 同步落地**（`ttl/src/gen_n3v2`，其 `adr.md` **ADR-32**）：同一改名 + 同门控 +
    同默认；新增双向钉子后 `gen_n3v2` **117/117**，模块 **330/330**。
 3. **落点差异（写实）**：nquads 的 `rdf12` 落**校验层**（`SliceParser`，langtag/literal 文法在
    `validate_helper`）；trig/n3v2 的全量字面量文法在**物化层**（`deep_check_literal`），
@@ -268,7 +268,7 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
 
 1. 生成物：`trig.mbt` 的控制流 Hook trait **`TrigLoopPolicy → TrigSupervisor`**——
    由**数据**给出（`domain2/trig_base.toml` 的 `[meta] policy_trait_name = "TrigSupervisor"`；
-   生成器侧数据键见 `src/rdf/adr.md` **ADR-10**），产物由新管线再生
+   生成器侧数据键见 `rdf/adr.md` **ADR-10**），产物由新管线再生
    （`fsm CLI --ts 1788654011855` + `moon fmt`）。
 2. 用户层：`actions.mbt` 的 `Hooks → TrigActionsImpl`（44 处）+ `engine.mbt` 引用改
    （类型 2 处、字段 `hooks → actions` 7 处）；`impl TrigSupervisor for TrigEngine[L]` 四钩子与
@@ -281,13 +281,13 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
    > 各随码名自洽，定位 B 不破），trig/nquads **同笔再生**、两道产物黄金门同绿——
    > T13 时"连带撞红"的约束因同笔再生而解除。
 
-**验证**：`gen_trig` **80/80**（四套件 357/316/36/75 不变）；`src/rdf` **23/23**（trig/nquads 两道
+**验证**：`gen_trig` **80/80**（四套件 357/316/36/75 不变）；`rdf` **23/23**（trig/nquads 两道
 产物门 + G9 同绿）；模块 **330/330**；`.mbti` diff = 预期改名（6 行）；`rg TrigLoopPolicy|Hooks\b`
 在包内零残留。
 
 ## ADR-TRIG-016：公共面收窄（T12 / R-T3，题T2=B）——✅ 2026-09-13
 
-**决策**（数据驱动，生成器侧见 `src/rdf/adr.md` **ADR-11**）：
+**决策**（数据驱动，生成器侧见 `rdf/adr.md` **ADR-11**）：
 
 1. `domain2/trig_base.toml` 置 `[meta] internals_priv = true` ⇒ 生成件内部声明发 `priv`
    （**例外** `TrigEvent`/`TrigPendingQuad` 保 `pub(all)`：出现在用户层 `pub` 签名里）。
@@ -300,7 +300,7 @@ n3v2 五卷制分叉）；只拆 `spec.md` 不拆 `adr.md`（决策会继续以"
    （`src/examples/trig`）由 `slice.engine.ctx.*` 改走访问器——不把整个 `ctx` 暴露出去。
 
 **验收**：`.mbti` **349 → 172 行**（−51%）/ **54 → 37 pub 行**（−31%，n3v2 参照 166/29）；
-`moon check src/gen_trig` **0 warning**；`gen_trig` **80/80**；`src/rdf` **23/23**（nquads 产物门
+`moon check src/gen_trig` **0 warning**；`gen_trig` **80/80**；`rdf` **23/23**（nquads 产物门
 证明冻结方言字节零波及）；模块 **330/330**（`examples/trig` 等外部包照常编译）；`moon fmt --check` 通过。
 
 **保留的公共面（有意）**：`trig_parser`、`TrigEngine`、`TrigSliceParser`、`TrigMaterializer`、

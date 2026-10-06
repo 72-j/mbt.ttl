@@ -6,7 +6,7 @@
 它的价值是"FSM 生成链路第一样板 + 行为对照基线"。因此本卷不做大路线图，只列**资产、债务与
 明确不做的边界**；确有必要的动作走"钉门/清障"两档，且**不改产物语义**。
 
-**时效与定位**（`bangto/world/const.md` §5.1/§5.2）：临时账本；只对 `src/ttl/src/gen_nquads/` 有效；
+**时效与定位**（`bangto/world/const.md` §5.1/§5.2）：临时账本；只对 `ttl/src/gen_nquads/` 有效；
 **不记决策**（→`adr.md`）、**不记红线**（→`const.md`）、**不重复结构事实**（→`spec.md`）。
 
 卷面分工：`const.md` 红线 / `spec.md` 结构事实与已验证口径 / `adr.md` 决策录 / 本卷路线与账本 /
@@ -21,8 +21,8 @@
 | A1 | 五层管线：Lexermoon/Lexerc → token_to_event → `step`（生成表）→ SliceParser（组装+轻验）→ 物化 → 序列化 | `spec.md` §2；`engine.mbt` |
 | A2 | 双词法器同 Token 字母表（Moon/C 逐 token pin、span 全词含定界符） | `lexerc_parity_wbtest.mbt` |
 | A3 | 单一实现面：RDF 1.2 逃逸检查与 n3v2/trig 共用 `@nquads.validate_escapes_unicode`（`scalar_only` 参数） | `validate_helper.mbt:564` |
-| A4 | 2.0 数据面：`src/rdf/domain2/nquads_{base,domain}.toml` → `fsm_out/nquads_fsm.toml` → 产物 | `src/rdf/spec.md` §1/§2 |
-| A5 | 门：IR **三腿对拍** + 反门 12 条 + **产物黄金门**（`nquads 产物黄金门`，ts `1788844502518`） | `src/rdf/adr.md` ADR-9 |
+| A4 | 2.0 数据面：`rdf/domain2/nquads_{base,domain}.toml` → `fsm_out/nquads_fsm.toml` → 产物 | `rdf/spec.md` §1/§2 |
+| A5 | 门：IR **三腿对拍** + 反门 12 条 + **产物黄金门**（`nquads 产物黄金门`，ts `1788844502518`） | `rdf/adr.md` ADR-9 |
 | A6 | 跨包扩展点真实存在：`pub(open) trait NQuadsActions`，quicktest 包以自有实现接 `step` | `quicktest/system.mbt:59-92`；生成器侧数据键 `[parser] actions_trait_open` |
 | A7 | 套件 oracle：rdf-n-quads 89/89、rdf12-nt 29/29、rdf12-nq 27/27、ntriples 72/72、对比 72 段 mismatch 0 | `rdf_suite_wbtest.mbt` |
 
@@ -30,7 +30,7 @@
 
 | C | 事实 | 影响 | 处置 |
 |---|---|---|---|
-| C-N1 | `src/fsm/test_nquads.toml` 已不存在，`fsm_out/nquads_fsm.toml` 为唯一 IR | 无功能影响 | **已收口**：`src/md/*` 两处锚点改现代口径（R-N1） |
+| C-N1 | `fsm/test_nquads.toml` 已不存在，`fsm_out/nquads_fsm.toml` 为唯一 IR | 无功能影响 | **已收口**：`src/md/*` 两处锚点改现代口径（R-N1） |
 | C-N2 | 遗留件（`nquads.bak` 8.5 KB、`test_nquads.toml` 326 行 v1 输入、`plan-retire-owned-terms.md` 94 行已执行方案、`quicktest/todo.md` 空件） | 目录噪声 | **已清（2026-09-13，ADR-NQ-008）**：两件归档 `bak/gen_nquads/`、两件删除（git 历史留档） |
 | C-N3 | `quick_machine` 双生成器并存（`gen_check/*` 旧词表） | 生成链重复面 | 归并属"另役"；本样本不动 |
 | C-N4 | ~~MoonBit 词法器落后 C 侧 2.3–2.6×~~ | 性能 | **已收口（P1 役，2026-09-14）**：该结论是 **debug 档假象**；release 下 Lexermoon **反超** C FFI ~2×。见 §5 与 ADR-NQ-009 |
@@ -50,10 +50,10 @@
 
 | 日期 | 事 | 范围 | 结果 / 验收数字 | 备注 |
 |---|---|---|---|---|
-| 2026-09-13 | **T21 立门** | nquads 产物黄金门 + `[parser] actions_trait_open` 数据驱动 + 数组腿退役 | `src/rdf` 23/23；`gen_nquads` 124/124；quicktest 照常编译 | `src/rdf/adr.md` ADR-9；立门首日抓到 `pub(open)` 漂移 |
+| 2026-09-13 | **T21 立门** | nquads 产物黄金门 + `[parser] actions_trait_open` 数据驱动 + 数组腿退役 | `rdf` 23/23；`gen_nquads` 124/124；quicktest 照常编译 | `rdf/adr.md` ADR-9；立门首日抓到 `pub(open)` 漂移 |
 | 2026-09-13 | **卷面整理** | `todo.adr.md` → `adr.md`（只留决策）；新建本卷 + `ctx.md`；白名单补 `!src/gen_nquads/*.md` | 文档改动，门未动 | 与 gen_trig 五卷口径对齐 |
 | 2026-09-13 | **软项清理** | R-N1 文档锚点（`src/md/*` 两处）+ R-N2 `.bak` 归档 + R-N4 旧卷正文搬入 `spec.md` §4 | 文档/文件整理，门未动：`gen_nquads` 124/124、模块 330/330 | ctx 三项转 ✅；`adr.md` 去向表更新 |
-| 2026-09-13 | **目录瘦身** | `plan-retire-owned-terms.md` / `quicktest/todo.md` 删除；`test_nquads.toml` 归档 `bak/gen_nquads/` | 门未动：`gen_nquads` 124/124、模块 330/330 | ADR-NQ-008；另修 `src/rdf` trig 数组留档删除（ADR-12） |
+| 2026-09-13 | **目录瘦身** | `plan-retire-owned-terms.md` / `quicktest/todo.md` 删除；`test_nquads.toml` 归档 `bak/gen_nquads/` | 门未动：`gen_nquads` 124/124、模块 330/330 | ADR-NQ-008；另修 `rdf` trig 数组留档删除（ADR-12） |
 | 2026-09-14 | **P1 立测量仪** | 新建 `lexer_bench_wbtest.mbt`（1k/10k 纯词法双词法器对照，native-only）+ `moon.pkg` targets 登记 | release 基线（10k）：Lexermoon 1505 µs / Lexerc 3039 µs | 见 ADR-NQ-009；debug 同跑 14027 µs |
 | 2026-09-14 | **P1 口径纠偏** | bench 正式口径改 `--target native --release` + `Lexermoon`；`src/bench` 词法探针二选一退役 | 10k 总计 debug 34.07 → release **7.41 ms**（4.6×）；同口径比 Oxigraph 21 ms **快 2.7×** | `src/bench/README.md` 同步改写 |
 | 2026-09-14 | **P1 微改造判定** | 三项热路径改造 A/B（pos 本地化 / `<` 优先分派 / 表驱动扫描） | release 实测 **−15% / −7.6% / −4%** ⇒ 全部回退 | ADR-NQ-010；负结果留档防反复 |
@@ -88,7 +88,7 @@ moon run src/bench/nquads-benchmark --target native --release src/bench/test_100
 
 ## 6 指标口径样板（quicktest，2026-09-14）
 
-`src/ttl/src/gen_nquads/quicktest/` 定为 quick machine 的**指标口径样板**——三方言生成后照此对齐。
+`ttl/src/gen_nquads/quicktest/` 定为 quick machine 的**指标口径样板**——三方言生成后照此对齐。
 事实源：`quicktest/metrics.mbt` 文件头 + 下表。
 
 | # | 指标 | 门槛（"怎么算够"） | 事实源 / 门 |

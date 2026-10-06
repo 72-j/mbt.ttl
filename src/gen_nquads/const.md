@@ -18,7 +18,7 @@
 
 | 文件 | 层 | 职责 |
 |---|---|---|
-| nquads.mbt | 生成契约（src/fsm 产物，DO NOT EDIT） | Event / State / ResetScope / Effect / ActionError / Context / PendingQuad / LoopPolicy trait / Actions trait / `step()` / EffectHandler trait |
+| nquads.mbt | 生成契约（fsm 产物，DO NOT EDIT） | Event / State / ResetScope / Effect / ActionError / Context / PendingQuad / LoopPolicy trait / Actions trait / `step()` / EffectHandler trait |
 | engine.mbt | 机械层 | loop 模板 + `LexerSource` trait（next/pos/byte_at）+ 词内尾点裁决 + LoopPolicy 的 Engine 实现 |
 | parser_slice.mbt | 加工层 | 组装（PendingQuad → QuadSpan）+ 验证调度 + 行号统计（engine 不持 data） |
 | validate_helper.mbt | 验证层 | 语法对错全部在此裁决（span → view 切分后逐词项校验） |
@@ -112,7 +112,7 @@
   （`.github/workflows/test.yaml:64-72` 原文："2026-09-19 起；N5 治本…**豁免清零**；旧版按路径豁免 `src/gen_n3v2/quicktest/`
   已**实测证伪**〔trig 实例 scratch 上 fmt 零变化〕"）——报错文案里"再生件路径已按 §Q.3-F1 裁定豁免"属**陈旧字样**。
   ⇒ **权威标记只剩 `.hand-maintained`**（生成通道**跳过**；缺标记但有实例 ⇒ 通道 **fail**，语义出处
-  `src/quick_machine/codegen_test.mbt:1004/1203`）。**步① 可手改/禁手改对照表**：
+  `quick_machine/codegen_test.mbt:1004/1203`）。**步① 可手改/禁手改对照表**：
 
   | 面 | 判据 | 可手改？ |
   |---|---|---|

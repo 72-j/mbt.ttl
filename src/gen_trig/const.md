@@ -3,7 +3,7 @@
 版本：v1.0.0（2026-09-12 自 `todo.md` §1 拆出）
 
 **效力与时效**（`bangto/world/const.md` §5.1/§5.2）：本卷是**红线条款**——**冻结，只减不增**；
-改一条必须由用户裁决并以 `adr.md` 条目留痕；**只对 `src/ttl/src/gen_trig/` 有效**。
+改一条必须由用户裁决并以 `adr.md` 条目留痕；**只对 `ttl/src/gen_trig/` 有效**。
 术语以 `bangto/world/vocabulary.spec.md`（v2.0）为准：契约成员 = `Actions` / `EffectHandler` / `Supervisor`
 （`LoopPolicy` 为废弃别名、正名 `Supervisor`；本包代码自 T13 起为 **`TrigSupervisor`**）。
 
@@ -64,11 +64,11 @@
 
 - `trig.mbt` 是**生成物**（DO NOT EDIT）：**禁止手编**；改它 = 改生成面 → 再生。
 - 再生的门（**两道，2026-09-13 起齐备**，ADR-6）：
-  ① **IR 侧**：`src/rdf/trig_domain_toml_gen.mbt`「domain2 双文件编译 ≡ 管线路由 ≡
+  ① **IR 侧**：`rdf/trig_domain_toml_gen.mbt`「domain2 双文件编译 ≡ 管线路由 ≡
   `fsm_out/trig_fsm.toml`」三腿逐字节 + 增量校验门；
   ② **产物侧**：「钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节 + 强幂等」
   （`trig 产物黄金门`，金样 ts = `1788654011855`）。
-  **再生配方**：`moon run src/fsm/cmd -- src/rdf/fsm_out/trig_fsm.toml --ts <golden> -o <产物>`
+  **再生配方**：`moon run fsm/cmd -- rdf/fsm_out/trig_fsm.toml --ts <golden> -o <产物>`
   → `moon fmt <产物>`；**门绿即可改生成面**（禁令解除）。
-- 生成面改动是**跨仓原子变更**：`src/rdf`（domain/IR）→ `fsm_out/trig_fsm.toml` → `src/fsm`（codegen）
+- 生成面改动是**跨仓原子变更**：`rdf`（domain/IR）→ `fsm_out/trig_fsm.toml` → `fsm`（codegen）
   → `trig.mbt` → 子仓测试，**必须同笔**。

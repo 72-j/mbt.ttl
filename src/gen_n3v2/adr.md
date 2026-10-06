@@ -3,11 +3,11 @@
 v2 生产线役录自本文件起立卷（用户定案 2026-09-10）；役16/17 全文见
 `bak/260910/gen_n3/todo.adr.md` §5.15–§5.16（役19 起 gen_n3 包退役归档，
 历史卷随迁），后续 n3v2 涟漪（表/引擎/词法/物化/套件）一律落本卷。
-表源再生径：外层仓 `src/rdf/n3gen`（`n3v2_base/n3v2_trans.toml` →
+表源再生径：外层仓 `rdf/n3gen`（`n3v2_base/n3v2_trans.toml` →
 `n3v2_out.gen` → cp 本包 `n3.mbt`），改表先落 domain 层再生，禁手编 n3.mbt。
 跨卷注记（R-12③，役26）：役21 Action Chaining（`[[actions]]` 全键 round-trip +
-五门校验接活、`CodegenConfig.actions`/`codegen_trait` 退役、`src/fsm` 陈钉清零 95/95，
-提交 `7630bf2`）落外层卷 `src/fsm/toml.md` §根级动作声明面 与 `src/rdf/adr.md`，
+五门校验接活、`CodegenConfig.actions`/`codegen_trait` 退役、`fsm` 陈钉清零 95/95，
+提交 `7630bf2`）落外层卷 `fsm/toml.md` §根级动作声明面 与 `rdf/adr.md`，
 不在本卷重复立条。
 
 ## ADR-18：字面量贴路径解胶 + path_obj_close 双发（物化残差清零 2→0）——✅ 2026-09-10
@@ -64,7 +64,7 @@ Bang/Caret 行全 Zones 就位，物化层零改——框架系误诊。真根�
 
 **背景**：spec §9（现随 bak 归档）预授权"v1 退役为条件驱动：v2 物化面收官 +
 v1 print-sweep 对照归档一次"。役18 物化残差清零后条件全熟，用户当日手动执行
-包迁移：`src/ttl/src/gen_n3` → `../../bak/260910/gen_n3`（含
+包迁移：`ttl/src/gen_n3` → `../../bak/260910/gen_n3`（含
 spec.md / const.md / todo.adr.md 历史卷 / N3Tests 语料 / v1 双表 n3.mbt）。
 
 **涟漪清理（本役落两仓）**：
@@ -80,12 +80,12 @@ spec.md / const.md / todo.adr.md 历史卷 / N3Tests 语料 / v1 双表 n3.mbt�
 
 **验证**：v2 109/109（sweep 205 clean / 0 mat-only / 0 parse-fail 不变）；
 嵌套模块 **322/322**（−99 = v1 包测试随役）；外层 n3gen **9/9**（−G0）；
-src/rdf **20/20**。
+rdf **20/20**。
 
 **后果**：
 - 正面：模块纯 v2（单引擎/单表源/单黄金门）；再生线瘦身——
-  `moon test src/rdf/n3gen; cp src/rdf/n3gen/n3v2_out.gen
-  src/ttl/src/gen_n3v2/n3.mbt`；维护面减半。
+  `moon test rdf/n3gen; cp rdf/n3gen/n3v2_out.gen
+  ttl/src/gen_n3v2/n3.mbt`；维护面减半。
 - 未了：v1 print-sweep 对照归档未单独执行（包已切走，历史基线以役18 台账
   记载的 69 clean/126 mat-only/10 parse-fail 为准）；嵌套仓 git 面待用户
   提交（D gen_n3/* + rdf-tests 新增）；ADR-003b 死位、负例缺口 3 留账不变。
@@ -334,7 +334,7 @@ ARCHITECTURE.md 新增 / guides 两件 / mbti 刷新）；外层仓 n3v2_base.to
 
 **文档三件**：①`ARCHITECTURE.md` 一页（五层/生成链/I-1..9/术语/预留位清单）；
 ②guides/n3 README+syntax 与 mbti 实形对齐（包名/`N3SliceParser`/`N3Materializer::new`
-构造形/效果枚举实名/ctx 字段清单）；③役21 跨卷注记（役21 落外层 `src/fsm/toml.md`，
+构造形/效果枚举实名/ctx 字段清单）；③役21 跨卷注记（役21 落外层 `fsm/toml.md`，
 本卷不重复立条）。附带 spec §1 陈数同步（27 字段/116 测试/I-6 收敛后）。
 
 **验收数字**：`moon check` 0 warning；gen_n3v2 116/116；turtle 316/316(gap5)、rdf12 75/75(gap0)、
@@ -402,7 +402,7 @@ iri_upcast 字段与 ARCHITECTURE 预留位）、`SlotNodeId`（零消费）、`
 **验收**：mbti `pub` 55→29 行，diff 一次性全对预期；0 warning 嵌套仓全模块；329/329；
 套件钉全绿（turtle 316/316 gap5、rdf12 75/75 gap0、trig 357/357、nquads 89/89+29/29+27/27+
 72/72、N3Tests neg 23ok/0miss + pos+eval 205clean gap123、examples A13 gap13）；G9 9/9；
-fmt 幂等。外层 `src/fsm` 存量 111 警告非本役（stash 对照 HEAD 同数）。
+fmt 幂等。外层 `fsm` 存量 111 警告非本役（stash 对照 HEAD 同数）。
 
 ---
 
@@ -466,7 +466,7 @@ TOML 引用语法交 quick_machine 运行时解释（运行时解释器未落地
 
 **C 的处置**：两门独立于 A 成立、必做（30e）——G10 族声明装配门（交叉族状态必须能由
 机制×窗求积解释，防手列漂移）+ G11 可达性门（自初始态全 55 态可达、384 行无死行；
-移植外层 `src/fsm/analyze.mbt`）。**兜底条款**：30c 探针若 G9 判不等价或求积引入行为差，
+移植外层 `fsm/analyze.mbt`）。**兜底条款**：30c 探针若 G9 判不等价或求积引入行为差，
 立即停 A 转 C（仅落 30e 两门，30d 全量迁移取消）。
 
 **探针切片定义（30c）**：量化窗子机 = **5 态 13 行**（顶层：`QuantExpectVar`/
@@ -475,21 +475,21 @@ TOML 引用语法交 quick_machine 运行时解释（运行时解释器未落地
 `from/to` 触量化族∪公式指令头共 13 行）。子机声明 + 删 13 行手列 → compose 求积还原 →
 G9 黄金门直接判字节等价。
 
-**回灌条款（役30 明确要求）**：探针通过后，compose 概念回灌外层 `src/fsm` 生成器线——
-`StateMeta` 的 `is_nestable`/`exit_event` 元数据位已备而未用，src/fsm 侧缺的正是构建器
-求积；回灌 = n3gen compose 经验反哺 src/fsm 构建器 + `src/fsm/toml.md` 键文档同步。
+**回灌条款（役30 明确要求）**：探针通过后，compose 概念回灌外层 `fsm` 生成器线——
+`StateMeta` 的 `is_nestable`/`exit_event` 元数据位已备而未用，fsm 侧缺的正是构建器
+求积；回灌 = n3gen compose 经验反哺 fsm 构建器 + `fsm/toml.md` 键文档同步。
 
-**改动面**：30b 本步零代码。后续 30c/30d 改 `src/rdf/n3gen/n3v2_base.toml`（新键全可选，
+**改动面**：30b 本步零代码。后续 30c/30d 改 `rdf/n3gen/n3v2_base.toml`（新键全可选，
 TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`（手列行按族退役，
-最后一步才删）；30e 加 `src/fsm/analyze.mbt` 移植。
+最后一步才删）；30e 加 `fsm/analyze.mbt` 移植。
 
 **验收**：本 ADR 落卷；30c 探针 G9 字节等价或触发兜底条款；30d 每族一步 G9 + 329/329；
 30e 后 G1–G11 全绿；终态"新增特性只增子机声明 + 接线、零手列交叉态"。
 
 ## ADR-31：可达性判据（三源模型）与 G11 分级——✅ 2026-09-12
 
-**背景（用户指正 → 实测坐实）**：ADR-30 写"G11 可达性门（…移植外层 `src/fsm/analyze.mbt`）"，
-其隐含假设 = **可达性可由表边（`from → to`）完全表达**。首版按此实现（`src/rdf/n3gen/validate.mbt:479` 起，
+**背景（用户指正 → 实测坐实）**：ADR-30 写"G11 可达性门（…移植外层 `fsm/analyze.mbt`）"，
+其隐含假设 = **可达性可由表边（`from → to`）完全表达**。首版按此实现（`rdf/n3gen/validate.mbt:479` 起，
 只按 `trans` 的 `from/to` 建邻接表 + 自初始态 BFS），**n3gen 门当场红（9/10）**，报两个"不可达态"：
 
 - `ExpectVerbRequired` —— **表行参数入口**：由 `action_args` 的 `state:ExpectVerbRequired` 携带
@@ -502,7 +502,7 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 ——5 个量化态（`QuantExpectVar` / `QuantExpectVarOrDot` / `FormulaDirectiveKind` / `FormulaQuantExpectVar` /
 `FormulaQuantExpectVarOrDot`）只能经**展开后**的真名进入；建边顺序若颠倒即假红。
 
-**移植源的事实核对**：`src/fsm/analyze.mbt` 只从 `rules`（已展开 IR 行）建边，**没有**"手写写入态"概念；
+**移植源的事实核对**：`fsm/analyze.mbt` 只从 `rules`（已展开 IR 行）建边，**没有**"手写写入态"概念；
 它是**警告级**打印（`print_analysis_warnings` 不阻断）+ 靠 `meta.terminal_states` 兜底 dead 判定；
 且**当前无任何调用者**（`grep -rn 'analyze_fsm_paths|print_analysis_warnings' src/` 除自身与测试零命中）。
 ⇒ 可移植其 **BFS/报告骨架**，**不可移植其输入假设**。
@@ -530,7 +530,7 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 
 **落地记录（2026-09-12，役31 step5）**：第 3 条"分级"的**钳制已执行**——`n3_g11_strict = true`，
 可达性发现升为错误级（阻断构建）；钳制前置"跑满 30c/30d 与四套件无假报"实测满足
-（全量迁移后构建输出零 `G11(warn)`）；探针：幽灵态 `G11ProbeGhost` → `moon test src/rdf/n3gen` 11/12 红
+（全量迁移后构建输出零 `G11(warn)`）；探针：幽灵态 `G11ProbeGhost` → `moon test rdf/n3gen` 11/12 红
 （`G11: 不可达态 [G11ProbeGhost]`），删除后 12/12 绿、产物 md5 零漂移。判据不变，本记录只补执行事实。
 
 **关联**：ADR-30（选型，判据句被本 ADR 取代）；役31（本判据的落地役）；`spec.md` §10；
@@ -570,18 +570,18 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 
 **决策**（world 词表 `ADR-NAMING-001`；与 trig T13 同笔）：
 
-1. **生成器侧数据化**：n3gen（`src/rdf/n3gen/emit.mbt`）原先把 `N3LoopPolicy` 硬编码在
+1. **生成器侧数据化**：n3gen（`rdf/n3gen/emit.mbt`）原先把 `N3LoopPolicy` 硬编码在
    LoopPolicy 模板字符串里——改为 **`\{base.meta_prefix}Supervisor`**（前缀来自数据），
    并把保留名清单里的 `"LoopPolicy"` 换成 `"Supervisor"`；
 2. **用户层**：`engine.mbt` 6 处 `N3LoopPolicy → N3Supervisor`（四钩子 impl + `extend` + 注释）；
-3. **产物**：走 G9 黄金路再生——`moon test src/rdf/n3gen` 落 `n3v2_out.gen` → `cp` 交付 `n3.mbt`
+3. **产物**：走 G9 黄金路再生——`moon test rdf/n3gen` 落 `n3v2_out.gen` → `cp` 交付 `n3.mbt`
    （n3gen 直产 fmt 形，无需再 fmt）。
 
-**验证**：`moon test src/rdf/n3gen` **12/12**（G9 逐字节 ⇒ 改名是全量唯一差异）；
+**验证**：`moon test rdf/n3gen` **12/12**（G9 逐字节 ⇒ 改名是全量唯一差异）；
 `gen_n3v2` **117/117**；模块 **330/330**；`.mbti` 零 diff（该 trait 是 `priv`，不进公共面）。
 
-**关联**：trig 侧同一改名见 `src/ttl/src/gen_trig/adr.md` ADR-TRIG-015；生成器侧数据键
-（v1 codegen + 2.0 面）见 `src/rdf/adr.md` ADR-10。
+**关联**：trig 侧同一改名见 `ttl/src/gen_trig/adr.md` ADR-TRIG-015；生成器侧数据键
+（v1 codegen + 2.0 面）见 `rdf/adr.md` ADR-10。
 
 ## ADR-34：R-16 影子缺口修口 step1–2（隐式空前缀 + 操作符谓词）——⏳ 2026-09-13（部分落地）
 

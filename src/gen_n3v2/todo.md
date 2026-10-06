@@ -3,7 +3,7 @@
 版本：v1.1.0（2026-09-11 立卷；2026-09-12 整理收口）
 
 **时效与定位**（定自 `bangto/world/const.md` §5.1/§5.2）：本卷是**临时账本**——役关闭、结论被推翻
-或改名落地后条目即失效，允许随时重写/合并；**只对 `src/ttl/src/gen_n3v2/` 有效**；
+或改名落地后条目即失效，允许随时重写/合并；**只对 `ttl/src/gen_n3v2/` 有效**；
 **不记决策**（决策归 `adr.md`）、**不记红线**（红线归 `const`）。
 
 卷面分工（同一信息只在一处详写，其余引用编号）：
@@ -31,7 +31,7 @@ ADR 随役次（详见 `adr.md` 卷首）。原始底稿：2026-09-11 评审全�
 |---|---|---|
 | A1 | 分层单一职责：词法 → 事件适配 → 表驱动 `step` → 主循环 → 动作语义 → 组装校验 → 物化 → 序列化 | `architecture.md`；`spec.md` §1 |
 | A2 | span 唯一身份 + 零拷贝：`(offset,len)` 为词项与 fresh 节点身份，`ArrayView[Byte]` 直引 + `arena` append-only | `spec.md` §1/§6 |
-| A3 | 表驱动 + 生成期门 G1–G13（引用完整性 / 唯一性 / 白名单 / 黄金对拍 / 装配 / 可达性 / 锚点漂移） | `spec.md` §4；`src/rdf/n3gen/n3gen_test.mbt` |
+| A3 | 表驱动 + 生成期门 G1–G13（引用完整性 / 唯一性 / 白名单 / 黄金对拍 / 装配 / 可达性 / 锚点漂移） | `spec.md` §4；`rdf/n3gen/n3gen_test.mbt` |
 | A4 | 三成员契约面：`Actions` / `EffectHandler` / `Supervisor`（声明属 `Contract`，实现属 `Assembly`） | `spec.md` §2；`ctx.md` §2 |
 | A5 | 外部 oracle 齐备：turtle 316、rdf12-turtle 75、trig 357、rdf12-trig 36、nquads 124、N3Tests neg 23ok/0miss + pos+eval 205 clean、Moon/C 词法 parity | `spec.md` §9 |
 | A6 | 语义口径有钉：ADR-002 / 003a / 003b / 004 / 005 / 006 逐条有测试兜底 | `spec.md` §6；`adr.md` |
@@ -107,9 +107,9 @@ ADR 随役次（详见 `adr.md` 卷首）。原始底稿：2026-09-11 评审全�
 
 ```sh
 cd ../..
-moon test src/rdf/n3gen      # 12/12（G1–G9 + G12 + G13 + 纯函数单测）；动表/生成器才需要，G9 会写 n3v2_out.gen
-moon test src/rdf            # 20/20（含 trig 对照）
-cd src/ttl
+moon test rdf/n3gen      # 12/12（G1–G9 + G12 + G13 + 纯函数单测）；动表/生成器才需要，G9 会写 n3v2_out.gen
+moon test rdf            # 20/20（含 trig 对照）
+cd ttl
 moon check src/gen_n3v2      # 0 error / 0 warning（役26 起强制）
 moon test src/gen_n3v2       # 116/116；套件四项数字（316/75/357/36）不变
 moon test                    # 329/329（模块）
@@ -135,7 +135,7 @@ moon info && moon fmt        # .mbti diff 逐行审（当前 166 行 / 29 pub）
 
 | 候选 | 内容 | 触发条件 / 判据 |
 |---|---|---|
-| 役32 | 生成器包清账：`src/rdf/n3gen` 33 处 deprecation（`StringBuilder::new` / `not(x)` / `to_string`） | 换气役，零语义风险；`moon check src/rdf/n3gen` 警告数 → 0 |
+| 役32 | 生成器包清账：`rdf/n3gen` 33 处 deprecation（`StringBuilder::new` / `not(x)` / `to_string`） | 换气役，零语义风险；`moon check rdf/n3gen` 警告数 → 0 |
 | 役33 | ✅ R-16 影子缺口修口（step1–4：隐式空前缀 + `<=`/`=>` 白名单 + 结构性词项放行 + 校验层升格主判定链；**路线翻案**内建前缀表不需要） | 影子钉 5/0/123/13 → **0/0/0/0**（2026-09-22 复跑；`5ff9755` + `10a6434`） |
 | 役34 | 命名对齐 world 词表：`N3LoopPolicy → N3Supervisor`（trig `TrigLoopPolicy` 同笔） | world `vocabulary.spec.md` 废弃别名表；与 trig T13 同源 |
 
@@ -184,10 +184,10 @@ moon info && moon fmt        # .mbti diff 逐行审（当前 166 行 / 29 pub）
 | 2026-09-12 | **役30e** | G10 族声明装配门（死段 / 死实例） | 12/12；探针加 `ghost_seg` + `ghost_window` → 双点名；调用点 = compose 之前 | ADR-30；教训：门的调用点必须在数据可见的阶段 |
 | 2026-09-12 | **役30f** | 回灌四件（spec §10.6 / ARCHITECTURE 门表 / world macro-spec §8 / ctx R-14） | 文档改动，门未动：12/12 + 20/20 + 116/116 + 80/80 | 役30 收官；world 卷首次落"子自动机组装"样板 |
 | 2026-09-12 | **役31 step1–4** | G11 三源可达 + 锚点登记册（G13）+ `terminal_states` + 分级 | 12/12；探针：锚点改错行号 → G13 点名；删 7 条出行 → 死态告警 | ADR-31；判据入 spec §12 |
-| 2026-09-12 | **役31 step5** | G11 钳制：`n3_g11_strict = false → true` | 12/12；`src/rdf` 20/20；子仓 116/116 + 80/80；产物 md5 零漂移；探针加幽灵态 → 11/12 红（`G11: 不可达态 [G11ProbeGhost]`） | 前置实测满足（构建输出零 `G11(warn)`）；回退路径写进开关注释 |
+| 2026-09-12 | **役31 step5** | G11 钳制：`n3_g11_strict = false → true` | 12/12；`rdf` 20/20；子仓 116/116 + 80/80；产物 md5 零漂移；探针加幽灵态 → 11/12 红（`G11: 不可达态 [G11ProbeGhost]`） | 前置实测满足（构建输出零 `G11(warn)`）；回退路径写进开关注释 |
 | 2026-09-12 | **整理役（本卷 + ctx）** | 去重 / 收索引 / 对齐 world 词表与 ADR 口径 | 文档改动，四门数字不变 | 卷面分工改为"索引 + 指针"，收口项不再复制动作与验收 |
 | 2026-09-13 | **口径对齐（ADR-32）** | RDF 1.2 单开关：`scalar_only_escapes → rdf12`（默认 `true`=1.2，对齐 nquads）；转义 + 方向后缀同门控，1.1 显式拒 `--ltr/--rtl` | `gen_n3v2` **117/117**（+1 双向钉子）；模块 **330/330**；rdf-turtle 316（`rdf12=false`）/ rdf12-turtle 75（`true`）不变；`.mbti` diff = 预期改名 2 行 | 与 gen_trig 同批（ADR-TRIG-014）；落点差异（nquads 在校验层、n3v2/trig 在物化层）记入 ADR-32 |
-| 2026-09-13 | **T13 同笔** | `N3LoopPolicy → N3Supervisor`：n3gen 模板数据化（`{base.meta_prefix}Supervisor`）+ engine 6 处 + G9 再生交付 | `n3gen` 12/12（G9 逐字节）、`gen_n3v2` 117/117、模块 330/330；`.mbti` 零 diff（priv trait） | ADR-33；与 trig ADR-TRIG-015 同批；生成器数据键见 src/rdf ADR-10 |
-| 2026-09-13 | **R-16 step1–2** | 影子缺口修口：隐式空前缀放行 + `<=`/`=>` 操作符谓词白名单；负例钉与影子钉按新口径翻新 | `gen_n3v2` **117/117**；实报 488→**416**（rdf-turtle 5→1、n3tests 123→108、rdf12 0、examples 13）；模块 330/330、`src/rdf` 23/23 | ADR-34；余量 = 内建前缀表（`log:`/`string:`/`math:`/`list:`/`time:`）预绑定 + 升格议题 |
-| 2026-09-13 | **R-16 step3–4 ✅** | 缺口清零 + 升格：③ 结构性词项（`{`/`[`/`(`）放行（主因 ~344 处）；④ 主判定链改严格、宽容面降反向哨兵 | `gen_n3v2` **117/117**；影子缺口 **488 → 0**；升格后判据**零漂移**（316/75/205clean/23ok/13 全保）；模块 330/330、`src/rdf` 23/23、`n3gen` 12/12、`gen_trig` 80/80 | ADR-35；C-07 欠账清偿（套件数字首次覆盖校验层）；内建前缀表确认非必需（选做） |
+| 2026-09-13 | **T13 同笔** | `N3LoopPolicy → N3Supervisor`：n3gen 模板数据化（`{base.meta_prefix}Supervisor`）+ engine 6 处 + G9 再生交付 | `n3gen` 12/12（G9 逐字节）、`gen_n3v2` 117/117、模块 330/330；`.mbti` 零 diff（priv trait） | ADR-33；与 trig ADR-TRIG-015 同批；生成器数据键见 rdf ADR-10 |
+| 2026-09-13 | **R-16 step1–2** | 影子缺口修口：隐式空前缀放行 + `<=`/`=>` 操作符谓词白名单；负例钉与影子钉按新口径翻新 | `gen_n3v2` **117/117**；实报 488→**416**（rdf-turtle 5→1、n3tests 123→108、rdf12 0、examples 13）；模块 330/330、`rdf` 23/23 | ADR-34；余量 = 内建前缀表（`log:`/`string:`/`math:`/`list:`/`time:`）预绑定 + 升格议题 |
+| 2026-09-13 | **R-16 step3–4 ✅** | 缺口清零 + 升格：③ 结构性词项（`{`/`[`/`(`）放行（主因 ~344 处）；④ 主判定链改严格、宽容面降反向哨兵 | `gen_n3v2` **117/117**；影子缺口 **488 → 0**；升格后判据**零漂移**（316/75/205clean/23ok/13 全保）；模块 330/330、`rdf` 23/23、`n3gen` 12/12、`gen_trig` 80/80 | ADR-35；C-07 欠账清偿（套件数字首次覆盖校验层）；内建前缀表确认非必需（选做） |
 | 2026-09-20 | **T17（对侧）** | 双包重复治理：本包装配层各减 ≈445 行（14 项纯函数抽 `gen_shared`）；真分歧 `deep_check_literal` 的 `rdf12` 门控取严者归一 | `moon test` 473/473 + 四套件自报行不变；覆盖率 905→906‰ | 决策/裁定表在 trig 侧（ADR-TRIG-017 / spec §7.1）；本卷台账索引 C-18 |

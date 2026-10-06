@@ -33,14 +33,14 @@ serialize_trig.mbt         序列化：字节保真回写 + 图归并
 ## 生成链（三方言里最绕的一条）
 
 ```
-src/rdf/domain/trig_domain.toml
-   → src/rdf/domain_to_ir.mbt          （域推导：状态/事件/效果/动作）
-   → src/rdf/fsm_out/trig_fsm.toml     （IR）
-   → src/fsm/cmd（fsm-gen CLI）        （v1 codegen）
-   → src/ttl/src/gen_trig/trig.mbt     （⚠ 生成物，禁手编）
+rdf/domain/trig_domain.toml
+   → rdf/domain_to_ir.mbt          （域推导：状态/事件/效果/动作）
+   → rdf/fsm_out/trig_fsm.toml     （IR）
+   → fsm/cmd（fsm-gen CLI）        （v1 codegen）
+   → ttl/src/gen_trig/trig.mbt     （⚠ 生成物，禁手编）
 ```
 
-- **IR 侧门**：`moon test src/rdf` 的「双文件编译 ≡ `fsm_out/trig_fsm.toml`」（四腿对照）。
+- **IR 侧门**：`moon test rdf` 的「双文件编译 ≡ `fsm_out/trig_fsm.toml`」（四腿对照）。
 - **产物侧门**：**尚缺**（T10 立）——`trig.mbt:4` 的 `Generated at:` 是墙钟值 ⇒ 再生不可复现，
   当前一致性靠 `domain_to_ir.mbt` 的人工"逐行对齐"注释（`const.md` §5 因此禁止无对拍改生成面）。
 
@@ -63,10 +63,10 @@ I-7 单遍深验｜I-8 合成谓词 `pk` 读出即归 `Normal`。
 
 | 门 | 判据 / 命令 | 数字出处 |
 |---|---|---|
-| 单元 | `cd src/ttl && moon test src/gen_trig` | CI `test` 作业日志（命令即判据：0 failed） |
+| 单元 | `cd ttl && moon test src/gen_trig` | CI `test` 作业日志（命令即判据：0 failed） |
 | 警告 | `moon check --deny-warn` | CI `static` 作业（0 条即绿） |
 | 套件（四套 `pin=true`） | `moon test src/gen_trig`（自报行 `=== … ===`） | **复核表 `../suite-review.txt`**（`[trig]` 节；同命令可复现） |
-| IR 侧 | `cd moonttl && moon test src/rdf` | CI/home 日志（0 failed） |
+| IR 侧 | `cd bitbang && moon test rdf` | CI/home 日志（0 failed） |
 | 产物侧 | — | **缺**（`spec.md` §8 C-T10 族 `[立案]`） |
 
 > 口径：**数字不落在导读卷**（`bangto/world/const.md` §5.6.3 单一数字源）；门清单只写"判据/命令 + 出处"，
@@ -85,7 +85,7 @@ I-7 单遍深验｜I-8 合成谓词 `pk` 读出即归 `Normal`。
 
 | 维度 | gen_n3v2 | gen_trig |
 |---|---|---|
-| 生成链 | 自含（`src/rdf/n3gen` parse→validate→emit） | 三层（domain → IR → fsm CLI） |
+| 生成链 | 自含（`rdf/n3gen` parse→validate→emit） | 三层（domain → IR → fsm CLI） |
 | 产物门 | **G9 黄金门**（ts 钉 + 逐字节 + 强幂等） | **无**（仅 IR 侧门 + 人工对齐） |
 | 方言特性 | N3（公式/量化/路径/倒装） | TriG（图块/GRAPH/注解区/集合） |
 | 图形语义 | 无图块 | `EnterGraph`/`ExitGraph` 双路由（ADR-TRIG-008） |

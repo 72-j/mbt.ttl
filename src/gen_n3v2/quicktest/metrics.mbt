@@ -1,7 +1,7 @@
 // ========================================
 // Metrics — 枚举件 + 全臂冒烟门（**手维护层**；对齐 trig quicktest 的 metrics.mbt 角色）
 // ========================================
-// 定位（src/ttl/todo.md §C 役 14 的第一步可跑件）：先给「全状态 / 全命令」枚举与全臂冒烟，
+// 定位（ttl/todo.md §C 役 14 的第一步可跑件）：先给「全状态 / 全命令」枚举与全臂冒烟，
 // 覆盖率门（路径驱动）/结构钉子/引擎侧普查按 trig P4.3 形态在其上继续搭。
 // 纪律：枚举是**手工维护**的数据面——IR（n3_fsm.toml）变了这里必须同笔改，数字门会替你把关。
 
@@ -149,7 +149,7 @@ test "n3v2 全臂冒烟：55×41 全对 + 合法对 384（臂表结构钉）" {
 ///|
 /// **权重表钉子**：41 名逐条等值 + 表外名回落 1。
 /// 权重决定随机门的分布（属判据面）⇒ 改表即红，必须与
-/// `src/quick_machine/quick_machine_n3.toml` 的 `[business.weights]` 同笔说明。
+/// `quick_machine/quick_machine_n3.toml` 的 `[business.weights]` 同笔说明。
 test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
   let expected : Array[(String, Int)] = [
     ("At", 1),
@@ -824,7 +824,7 @@ fn site_set_drift(
 ///|
 /// **值级根因台账**（R-20 开账，2026-09-19）：首跑实测 **27 处**（全站点 355 → 根因 27）；**A+B+C+F+D+E 六族全清偿，台账归零**（A 笔消失 11 = A 全族；C 笔消失 18 = C 全族含孪生 8；B 笔消失 4 = B 全族、同笔浮出 26 = 新族 F；F+D+E 合笔消失 30 = F 26 + D 1 + E 3，**新增 0**——开括号站首版外层折写被普查红牌（帧内 s/p 被盖回装槽值），改写后快照无折写形后归零）。
 /// 逐条在册 + 棘轮（`const.md` §5.2）：修好一处不改账 ⇒ 红；新冒一处 ⇒ 红。
-/// 五族归类（根因与清偿路径见 `src/ttl/todo.md` §AF）：
+/// 五族归类（根因与清偿路径见 `ttl/todo.md` §AF）：
 ///   A **公式族压帧的"当前 subject"**（11，**已清偿** 2026-09-19：frame_push 体按 is_formula 位分派 + open_slot 行吃 IR SlotType::Formula 旗；trig/nquads 字节零迁移）——生成器 `frame_push` 硬编码
 ///     `subject := Some(open_span)`（那是 BnodeProp/Collection 口径），引擎 `open_formula`
 ///     是 `subject := None`；
