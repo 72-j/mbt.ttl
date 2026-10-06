@@ -158,7 +158,7 @@ src/
 Each dialect package carries the same five-volume documentation set (`const.md` red lines /
 `spec.md` structural facts / `adr.md` decisions / `todo.md` roadmap / `ctx.md` working context;
 `gen_n3v2` additionally ships a one-page `architecture.md`). The generation surface lives in the
-outer repository under `src/rdf` and `src/fsm`.
+outer repository under `rdf` and `fsm`.
 
 ## Example Programs
 
@@ -223,7 +223,7 @@ moon test src/gen_n3v2        # 122/122 (turtle 316/316, rdf12 75/75, N3Tests ne
 Every dialect's **generated artifact** (`nquads.mbt` / `trig.mbt` / `n3.mbt`) is protected by a golden
 gate: the banner timestamp is pinned, the regenerated code is formatted with the toolchain `moon fmt`
 and must match the checked-in artifact **byte for byte**, repeatedly (`n3.mbt` is guarded by the G9
-gate of `src/rdf/n3gen`).
+gate of `rdf/n3gen`).
 
 ## W3C Test Suite
 

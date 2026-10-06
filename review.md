@@ -46,7 +46,7 @@ v1.3.2 = **面一（套件自报行面）同笔重生成（补漏）**：`src/ge
 | 主仓 `thy7/BitBang` | 编译 + 测试 | `moon test --deny-warn` | **289/289**，`check --deny-warn` 0 |
 | 主仓 | 格式 | `moon fmt --warn`（**全路径，无豁免**） | **0 offender** |
 
-两条格式豁免（`src/fsm/gen_check/gen.mbt`、`src/gen_n3v2/quicktest/`）已于本轮**清零**（§3 N5）。
+两条格式豁免（`fsm/gen_check/gen.mbt`、`src/gen_n3v2/quicktest/`）已于本轮**清零**（§3 N5）。
 
 ### 1.1 复核表（复核面产出物①）
 
@@ -55,7 +55,7 @@ v1.3.2 = **面一（套件自报行面）同笔重生成（补漏）**：`src/ge
 **复现命令**（照抄执行即可；**同一命令 + 同一留证 ⇒ 第三方得到同一张表**）：
 
 ```sh
-cd src/ttl
+cd ttl
 for d in n3v2 nquads trig; do
   echo "[$d]"
   moon test src/gen_$d 2>&1 | grep -oE '=== [^"]+ ===' | sed 's/^=== //;s/ ===$//' | sort -u
@@ -66,7 +66,7 @@ done > suite-review.txt
 **机器门**：同命令重生成 ≡ 入库表（逐字节），不等即红 —— CI 步「复核面（可复现性检查）」。
 **口径**：原样收纳套件自报行（**零纸解析**：不拆数字、不重算比率）；缺口清零由各套件测试**自身断言**（非零即 `moon test` 红）。
 
-**覆盖边界（必写）**：本面 = **套件自报行面**。**不覆盖**：① **IR/产物面**（G9 逐字节 / ts 钉 / `moon fmt` 幂等）——**本轮起另立面**（`src/quick_machine/gen-review.txt` + 主仓 CI 步「复核面·产物/IR」）；② **覆盖率面**（基线棘轮管）；③ **方言语义面**（分叉件由各包 wbtest 管）；④ **性能面**——**已另立为面四**（`perf-review.txt` + CI 步「复核面·性能」；注意其比较体只放机器无关相对判据，见 §1.5）。
+**覆盖边界（必写）**：本面 = **套件自报行面**。**不覆盖**：① **IR/产物面**（G9 逐字节 / ts 钉 / `moon fmt` 幂等）——**本轮起另立面**（`quick_machine/gen-review.txt` + 主仓 CI 步「复核面·产物/IR」）；② **覆盖率面**（基线棘轮管）；③ **方言语义面**（分叉件由各包 wbtest 管）；④ **性能面**——**已另立为面四**（`perf-review.txt` + CI 步「复核面·性能」；注意其比较体只放机器无关相对判据，见 §1.5）。
 （边界同文写在 `suite-review.txt` 表头；钉子 = `src/gen_guard/source_sync_wbtest.mbt`「复核面账钉子」。）
 
 ### 1.3 面二：产物/IR 面（**本轮落地**）
@@ -75,7 +75,7 @@ done > suite-review.txt
 
 ```sh
 cd <主仓根>
-for p in src/rdf src/rdf/n3gen; do
+for p in rdf rdf/n3gen; do
   echo "[$p]"
   moon test $p 2>&1 | grep -oE '=== [^"]+ ===' | sed 's/^=== //;s/ ===$//' | sort -u
 done > gen-review.txt
@@ -104,12 +104,12 @@ done > gen-review.txt
 | C-T12 | ~~MoonBit 词法落后 C 侧 2.3–2.6×~~ → **结案（方向反了）** | `[已结案]` | 复跑（2026-09-21，native **release**）证伪：`Lexermoon` 10k **1477 µs / 33.84M tok/s** vs `Lexerc`（C FFI）**3242 µs / 15.42M tok/s** ⇒ **C-FFI 路径慢 2.20×**（1k 档 1.82×）。原 2.3–2.6× 出自 **debug 档**（README 已记 debug 慢 4.6×）。词法仅占端到端 **21%**（1.47/7.14 ms）⇒ 非瓶颈 | 若改"每 token 跨界"口径（如批量取 token）时重看 | `src/bench/README.md` §词法器 · 复跑 = `moon test --target native --release src/gen_nquads -f "*词法役 P1*"` |
 | C-T13 | `@keywords` 语义豁免未接表 | `[立案]` | 表源表达力缺口（同 `when_slot_type` 族） | 表源扩容时 | 同 §8（R-T13） |
 | N6 | 宿主 CI 观测未取 | `[未闭]` | 本机无 gitlink 凭据 | 拿到运行态读权，或 CI 失败通知 | 本卷 §3 / §5 |
-| 役 15 | 深片排除项权重放宽 | `[立案]` | 非门缺陷；门已债点 0/违例 0 | 深片缺口再现时 | `src/quick_machine/todo.md` |
-| 权 0 事件（`EOF`） | quicktest 权重 0 | `[设计]`×1 | `EOF`=不可达（反断言钉，模型 BFS 无出边）。**沿革（五个事件依次转正）**：`Id`=R-17（2026-09-20）、`ImpliedBy`=役 2 / 2a（2026-09-21，零机械）、`Caret`=役 2 / 2b（2026-09-21，**fwd 墙后恢复道入模**：`[type_mapping.recovery_close]` 声明门 + `Model.recovering`/`Response::Skip` + 探针面同扩，反例形两侧逐步全同） | — | `src/quick_machine/todo.md` P4.6 + `src/ttl/todo.md` §AP.4 |
+| 役 15 | 深片排除项权重放宽 | `[立案]` | 非门缺陷；门已债点 0/违例 0 | 深片缺口再现时 | `quick_machine/todo.md` |
+| 权 0 事件（`EOF`） | quicktest 权重 0 | `[设计]`×1 | `EOF`=不可达（反断言钉，模型 BFS 无出边）。**沿革（五个事件依次转正）**：`Id`=R-17（2026-09-20）、`ImpliedBy`=役 2 / 2a（2026-09-21，零机械）、`Caret`=役 2 / 2b（2026-09-21，**fwd 墙后恢复道入模**：`[type_mapping.recovery_close]` 声明门 + `Model.recovering`/`Response::Skip` + 探针面同扩，反例形两侧逐步全同） | — | `quick_machine/todo.md` P4.6 + `ttl/todo.md` §AP.4 |
 | 覆盖率残差 ~10 行 | `argv`/`env` 进程态胶水 | `[设计]` | 进程态不可宿主（役 A 已入册） | 出现宿主测试框架时 | `coverage-baseline.txt` 沿革 + 役 A 账 |
 | **产物/IR 面** | 本面**开放缺口 = 0**（三产物黄金门 + **IR 校验族 G1–G13** 全绿） | `[设计]` | 面二现覆盖两族；**W17 已把 IR 校验族自报行装齐**（原"未装"登记收口） | 门族增删时（自报行随门） | `gen-review.txt` 表头边界节 |
 | **覆盖率面** | 残差 ~10 行（`argv`/`env` 进程态胶水）+ 不可达钉子 9/2/1 | `[设计]` | 进程态不可宿主（役 A 已入册）；不可达项已配**反向断言**（变可达即红） | 出现宿主测试框架时 / 不可达项变可达时 | `coverage-review.txt` 表头 + `coverage-baseline.txt` 沿革 |
-| **主仓工具链弃用面**（W18） | 子仓 **0**（86/86 已清 + 钉版已跟升 **20260920**）；主仓 **A 12 + B 132**（A = `implicit_impl_as_method`：`quick_machine/codegen` 9〔生产码〕+ 夹具 3；B = `test_unqualified_package`：**全在 `*_test.mbt`** 5 文件） | `[立案]` | 两类都由**工具逐处给出答案**（提升声明 / `@pkg.name` 替换），属机械改；主仓钉版**故意仍留 20260915**（跟升必须与清偿同笔） | W18 主仓半·二执行时 / 动到相应包时 / 对外宣称"工具链干净"成为卖点时 | `src/ttl/todo.md` §AQ.3–§AQ.4 + `bangto/world/todo.md` W18 行 |
+| **主仓工具链弃用面**（W18） | 子仓 **0**（86/86 已清 + 钉版已跟升 **20260920**）；主仓 **A 12 + B 132**（A = `implicit_impl_as_method`：`quick_machine/codegen` 9〔生产码〕+ 夹具 3；B = `test_unqualified_package`：**全在 `*_test.mbt`** 5 文件） | `[立案]` | 两类都由**工具逐处给出答案**（提升声明 / `@pkg.name` 替换），属机械改；主仓钉版**故意仍留 20260915**（跟升必须与清偿同笔） | W18 主仓半·二执行时 / 动到相应包时 / 对外宣称"工具链干净"成为卖点时 | `ttl/todo.md` §AQ.3–§AQ.4 + `bangto/world/todo.md` W18 行 |
 | **性能面**（面四） | 比较体 = 5 条**机器无关相对判据**（段序 3 + 档位带 1 + 词法 > C-FFI 1）；绝对读数**只作留证** | `[设计]` | 性能**抖动/跨机不可比**是本质属性 ⇒ 比较体只装相对判据（该设计由"同日三次 ±15% 抖动而判据全 true"实证支撑）；**棘轮不归本面** | 出现"段序判据被打破"（如验证段不再是主段）时重看 | `perf-review.txt` 表头 + §1.5 + `gen_guard` 第五钉 |
 
 **说明**：本表**只回答"多少、怎么复现、缺口为什么可接受"**；每条的理由详述与影响面在**台账正文**（上表"台账落点"列）。
@@ -120,7 +120,7 @@ B 类"台账滞后"5 处已于本笔归位（`src/gen_trig/{spec,todo}.md`、`sr
 **复核表文件**：`coverage-review.txt`（子仓根；生成物）。**复现命令**（照抄执行；**冷口径**）：
 
 ```sh
-cd src/ttl
+cd ttl
 moon clean && moon coverage clean && moon test --enable-coverage
 {
   echo "[行覆盖]"
@@ -141,7 +141,7 @@ moon clean && moon coverage clean && moon test --enable-coverage
 **复核表文件**：`perf-review.txt`（子仓根；生成物）。**复现命令**（照抄执行；**正式档位**）：
 
 ```sh
-cd src/ttl
+cd ttl
 moon run src/bench/nquads-benchmark --target native --release src/bench/test_10000.nq
 moon test --target native --release src/gen_nquads -f "*词法役 P1*"
 ```
@@ -197,7 +197,7 @@ moon test --target native --release src/gen_nquads -f "*词法役 P1*"
 | N5 | 两条"格式豁免"是两个口径来源 | ✅ 已收口：**勘误**——不是"两套口径"，是 n3v2 实例**没跟工具链格式化**（trig 实例 scratch-fmt 零变化；n3v2 `model_exec` 现行口径 1119→4659 行）。已统一重排，两仓格式门**无豁免** |
 | N6 | CI 首跑未观测 | ⬜ **未闭**：gitlink 是 SPA，无匿名 API/token，本机无法读取远端 run 状态 |
 | N7 | 活账不入库、结论只在本地 | ✅ **本卷即收口**：跨人结论入 `review.md`（本文件）；活账继续作本地原始账 |
-| N8 | **主仓测试套件偶发红**（2026-09-19 观测 **3 次** `287 → 286`）——根因 = 非原子写盘 × 同套件并发读（详见 §5.1 存档项 2） | ✅ **已收口**（2026-09-20，役 B）：`write_file_atomic`（`src/fsm/atomic_write.mbt`）+ 四点转换 + 负控两门；捕获循环 30 轮含冷跑 3 次全绿（世界宪法 §6.4.6 落点行同笔回灌） |
+| N8 | **主仓测试套件偶发红**（2026-09-19 观测 **3 次** `287 → 286`）——根因 = 非原子写盘 × 同套件并发读（详见 §5.1 存档项 2） | ✅ **已收口**（2026-09-20，役 B）：`write_file_atomic`（`fsm/atomic_write.mbt`）+ 四点转换 + 负控两门；捕获循环 30 轮含冷跑 3 次全绿（世界宪法 §6.4.6 落点行同笔回灌） |
 
 ## 4 五类危险病（复议后现状）
 
@@ -227,7 +227,7 @@ moon test --target native --release src/gen_nquads -f "*词法役 P1*"
    ⑤ **"可能未接线"风险（本条比"读不到状态"更严重）**——帮助站目录显示引擎文档为
    「引擎简介 / 代码流水线 / 图形流水线 / 参数配置 / 密钥设置 / **执行记录查询**」
    （`help.gitlink.org.cn/sitemap.xml` 实证），即宿主引擎是**建木自有流水线配置**；
-   而两仓（含 `src/ttl`）**只有 `.github/workflows/*.yaml`，无建木配置**（全仓 find 实测）
+   而两仓（含 `ttl`）**只有 `.github/workflows/*.yaml`，无建木配置**（全仓 find 实测）
    ⇒ 现有 GitHub Actions 工作流**很可能不在宿主执行**。
    **解锁动作（一步判定）**：登录后看仓库页有无「DevOps / 流水线 / 执行记录」入口——
    ① 有记录 ⇒ 贴 run 结论，本条收口；② 无记录/入口为空 ⇒ **CI 未接线**：按《代码流水线》配一条建木流水线
@@ -236,7 +236,7 @@ moon test --target native --release src/gen_nquads -f "*词法役 P1*"
    **重评估条件**：拿到登录态/token（即可一次性收口本条），或宿主 CI 出现失败通知。
 2. **役 15 余量**：深片排除项的权重放宽（表 / IR 侧），不属于门缺陷。
    症状：排除片放宽后深片权重仍偏保守。缺什么：表 / IR 侧权重放宽的裁决。
-   已做到哪：门已债点 0 / 违例 0（§1）。下一步：**转立案**（去向：`src/quick_machine/todo.md` 的表 / IR 权重条目）。
+   已做到哪：门已债点 0 / 违例 0（§1）。下一步：**转立案**（去向：`quick_machine/todo.md` 的表 / IR 权重条目）。
    **重评估条件**：深片缺口再现时重看。
 
 ### 5.1 本轮收口存档（条目已失效，只留指向，不复述过程）
@@ -246,13 +246,13 @@ moon test --target native --release src/gen_nquads -f "*词法役 P1*"
    **机制结论** = 世界宪法 §5.5（review 卷位）、§6.3（覆盖率两量纪律）与 **§6.4（门的设计与可重复性六条）**
    ——六条中**前五条**（假绿 / 禁止整行跳过 / 格式所有权 / 锚引擎真件双轴 / 先入册后扩容）即源自本链；
    第六条（**生成物写盘必须原子**）源自同日 N8 定案，见本存档项 2。
-   **沿革**（只记拐点，细节见活账与 `src/quick_machine/adr.md`）：首片 8 债点 → 整行跳过收窄 →
+   **沿革**（只记拐点，细节见活账与 `quick_machine/adr.md`）：首片 8 债点 → 整行跳过收窄 →
    `when_slot_type` 槽型臂 → **快照分隔符撞车（静默截断）** → 条件式 + 缺省绑定写实 →
    帧面开面（`frames()` / `inversion()`）→ **`pop_writes` 行终态臂** ⇒ 两方言 100% 可比。
 2. **双包重复治理（T17 / C-T8）**——✅ 2026-09-20 收口：**判据** = `src/gen_trig/spec.md` §7.1 裁定表 + `src/gen_shared/`（14 项纯函数）+ `suite-review.txt` 逐字节不变（抽件零波及）；**机制结论** = 世界宪法 §6.4.2/§6.4.4 的实证之一（重复面按项裁定：纯函数抽件 / 语义层分叉）；**沿革**：旧册记"交集 20" → 实测 14 项（去注释后 13 项逐字同源）→ 取严者归一 1 处真分歧（`rdf12` 门控）→ 两包装配层各减 ≈445 行、覆盖 905 → 906‰。
 3. **N8 写盘原子化**（2026-09-20 役 B 收口）：症状 = 主仓套件偶发 `286/287`（观测 3 次）；
-   根因 = `src/rdf/domain_to_ir.mbt` 物化 truncate-then-write × 同套件 `trig_domain_toml_gen.mbt:236`
-   逐字节比对并发 ⇒ 读到空文件。修法 = **处方一**：`src/fsm/atomic_write.mbt` `write_file_atomic`
+   根因 = `rdf/domain_to_ir.mbt` 物化 truncate-then-write × 同套件 `trig_domain_toml_gen.mbt:236`
+   逐字节比对并发 ⇒ 读到空文件。修法 = **处方一**：`fsm/atomic_write.mbt` `write_file_atomic`
    （同目录 `.tmp` + `rename(replace=true)`）+ 四点转换（rdf 物化三件 + `codegen_check` gen.mbt）+
    负控两门（残留门、写者×读者重叠门；变异探针直写形 3/3 轮红）；结案 = **捕获循环 30 轮含冷跑 3 次全绿**；
    红线落点回灌世界宪法 §6.4.6（同笔）。留观有据（无并发窗口不换）：存在门 bootstrap
@@ -261,15 +261,15 @@ moon test --target native --release src/gen_nquads -f "*词法役 P1*"
 
 ## 6 引用索引
 
-- 红线：`src/ttl` 各 `const.md`；世界卷 `bangto/world/const.md` §5/§6
-- 决策：`src/quick_machine/adr.md`、`src/gen_*/adr.md`
-- 结构事实：`src/gen_*/spec.md`、`src/quick_machine/spec.md`
+- 红线：`ttl` 各 `const.md`；世界卷 `bangto/world/const.md` §5/§6
+- 决策：`quick_machine/adr.md`、`src/gen_*/adr.md`
+- 结构事实：`src/gen_*/spec.md`、`quick_machine/spec.md`
 - **本卷模板**：`bangto/world/review-template.meta.md`（本卷 = 其权威实例；卷位与边界见世界宪法 §5.1 / §5.5）
 - **共享装配层件**：`src/gen_shared/`（14 项纯函数；T17 / C-T8；语义层有意分叉见 `src/gen_trig/spec.md` §7.1）
 - **复核面**：`bangto/world/const.md` §6.5（判据 = 可复现 + 缺口有解释；产出物 = §1.1 复核表 + §1.2 缺口解释表 + 复现命令）；实例复核表 = `suite-review.txt`
 - **覆盖率纪律**：`bangto/world/const.md` §6.3（两量口径：命令行 `moon clean` 不可省、取整口径 `floor(covered*1000/total)`、分子必须是执行记录、分母只含应当可达）
 - **门设计纪律**：`bangto/world/const.md` §6.4（**六条**：可重复性 + 盯守 / 禁止整行跳过 / 生成物格式所有权 / 判据必须锚引擎真件且双轴各自锚 / 先入册后扩容 / **生成物写盘必须原子**）
-- 活账（不入库）：`src/ttl/todo.md`、各 `quicktest/{todo,ctx}.md`
+- 活账（不入库）：`ttl/todo.md`、各 `quicktest/{todo,ctx}.md`
 - 覆盖率账：`coverage-baseline.txt`（行覆盖）、`reachable-coverage-baseline.txt`（可达命令名覆盖）
 
 ## 7 变更记录
@@ -287,11 +287,11 @@ moon test --target native --release src/gen_nquads -f "*词法役 P1*"
 | v1.2.1 | 2026-09-20 | **T17 双包重复治理收口**（随世界宪法线 W14/R26）：新建 `src/gen_shared/` 收 14 项零方言语义纯函数（≈445 行/包；包级 `using @gs` ⇒ 零改调用点），语义层有意分叉逐条入册（`src/gen_trig/spec.md` §7.1 裁定表 + ADR-TRIG-017）；一处真分歧（`deep_check_literal` 的 `rdf12` 门控）取严者归一。**§1.2 缺口解释表**移除 C-T8（→ §5.1 存档项 2）、§1 行覆盖行 905 → **906‰**、§6 索引补"共享装配层件"。实证：473/473 + 四套件自报行逐字节不变。 |
 | v1.2.0 | 2026-09-20 | **建立复核面**（随世界宪法 **v2.9** §6.5；词表 v2.3 补三词）：新增 **§1.1 复核表**（`suite-review.txt`，生成物；表头写死复现命令 + 留证位置；机器门 = 同命令重生成 ≡ 入库表**逐字节**；2026-09-20 连跑两次逐字节一致）与 **§1.2 缺口解释表**（12 行：类别 + 一句理由 + 重评估条件 + 台账落点；**详述留台账**）；**账源归位**（B 类 5 处实况对齐）：`src/gen_trig/{spec,todo}.md`（C-T5/C-T6/C-T9 实况已清/已修 + §2.1 总状态行 + R-T5/R-T6/R-T9 ✅）、`src/gen_n3v2/spec.md`（C-10 已收口 / C-13 收窄为 `[立案]`）；§6 索引补"复核面"；判据明确为**可复现 + 缺口有解释**（**禁**"分数不降"）。 |
 | v1.1.8 | 2026-09-20 | **一致性扫除**（顺手项）：① 役 C「W10 trig/nquads 同形回灌」（子仓 `656c904`，世界卷 R22 ✅）**入账**——§2 役序表补 A / A 续 / B / C 四行；② §5.1 存档**编号归位**（值级对拍 = 项 1、N8 = 项 2）并把存档项 1 的「§6.4 五条」改**六条**（第六条=写盘原子，注明源自 N8）；③ §5 删除已失效的残留指针行；④ §4「纸上红线」行刷新（值级对拍与写盘原子化已出纸面，剩余仅 N6）；⑤ §3 N8 指向改 §5.1；⑥ §1 门清单标注实测日期 2026-09-19/20。数字未动（905‰ / 473 / 289 实测复核一致）。 |
-| v1.1.7 | 2026-09-20 | **役 B「N8 写盘原子化」收口**：`src/fsm/atomic_write.mbt` `write_file_atomic`（同目录 `.tmp` + `rename(replace=true)`，§6.4.6 处方一）+ 四点转换（rdf 物化三件 + `codegen_check` gen.mbt 工具链读者通道）；负控两门入册（残留门 + 写者×读者重叠门，`atomic_write_test.mbt`；变异探针直写形 3/3 轮红 = 门牙齿实证）；**捕获循环 30 轮含冷跑 3 次全绿结案**；§3 N8 行 → ✅、§5 项 3 → §5.1 存档；主仓 287 → **289**（+2 负控）；世界宪法 §6.4.6 落点行同笔回灌（已收口 + 落点名）。 |
+| v1.1.7 | 2026-09-20 | **役 B「N8 写盘原子化」收口**：`fsm/atomic_write.mbt` `write_file_atomic`（同目录 `.tmp` + `rename(replace=true)`，§6.4.6 处方一）+ 四点转换（rdf 物化三件 + `codegen_check` gen.mbt 工具链读者通道）；负控两门入册（残留门 + 写者×读者重叠门，`atomic_write_test.mbt`；变异探针直写形 3/3 轮红 = 门牙齿实证）；**捕获循环 30 轮含冷跑 3 次全绿结案**；§3 N8 行 → ✅、§5 项 3 → §5.1 存档；主仓 287 → **289**（+2 负控）；世界宪法 §6.4.6 落点行同笔回灌（已收口 + 落点名）。 |
 | v1.1.6 | 2026-09-20 | **HOLD 族转正**：9 事件权重 0→1（Invert/AnnotStart/AnnotEnd/KeywordX/ForAllKw/ForSomeKw/KeywordsKw/VersionKw/Unknown）；**set_inversion 存真桩→全形声明**（随机门 5 步收缩反例实证：引擎 gen_n3v2/actions.mbt:1159 记 is_src/is_depth 两键、发射点倒装消费——`Literal→Invert→=→Iri→AnnotStart` 模型发 (0,5,8)、引擎发 (8,5,0)）；快照同笔再生（314 行不变、Invert 两行写实两槽，数据面 314/314 全可比 0 分道）；Id/Caret/ImpliedBy/EOF 仍 0（Id=R-17 建模图已立案、Caret/ImpliedBy=R-19、EOF=不可达）；门况：473/473、287/287、905‰（10030/11074 同笔复算保持）。 |
 | v1.1.5 | 2026-09-20 | **役 A「门自证 + 覆盖率回补」**：①数据面门自证——两方言 quicktest 各立 `data_face_wbtest.mbt`（n3 17 + trig 12 测试；白盒直调私有判定函数，负控断言"确实红 + 理由文本对得上"：列数≠7 跳行 / args 列不足 / 条件式缺 `\|` / 形态未解析 / `frame.popped` 防御位 / 帧栈空 / 帧位非值域 / 面外槽 /（无帧）/ `fwd:` 口径缺口（trig）），红-only 臂入分子；②结构性 0 覆盖裁决·**补测路**（303 行）：bench/cmd/examples 四个 main 提取冒烟入口（`bench_all`/`cmd_parse_argv`/`demo_all`）wbtest 直调 + gen_nquads Token Show 十臂格式钉；argv/env 进程态胶水 ~10 行结构性不可宿主，**如实入册留残差**（口径未动）；③开题实测基线钉滞后树面（9611/11064 = 868 < 871；Batch 6 分母增长未复算所致，非测试退化）⇒ 补测后冷跑 **10029/11072 = 905‰** 同笔推高（`coverage-baseline.txt` 沿革同笔）；④门清单刷新：测试 438 → 473（子仓），主仓 287/287 复验，check --deny-warn 0 / fmt 0 offender / mbti 漂移 0。 |
-| v1.1.4 | 2026-09-19 | **N8 定案**（捕获循环首轮复现，全量日志在手）：写者 = `src/rdf/domain_to_ir.mbt:1950-1953` 非原子写盘，读者 = `src/rdf/trig_domain_toml_gen.mbt:236` 逐字节比对 ⇒ 读到空文件；§3 状态改「**转立案**」、§5 项 3 重写（根因 + 处方 + 结案判据：捕获循环 30 轮含冷跑全绿）；**盯守撤**。该发现的红线回灌世界宪法 **§6.4.6「生成物写盘必须原子」**（const v2.7 同笔）。 |
-| v1.1.3 | 2026-09-19 | N8 由"未闭"升为"**未闭 + 盯守**"（依据世界宪法 §6.4.1）：§3 行 / §5 项 3 补盯守指针（捕获命令 + 升级/回收判据落在 `src/quick_machine/todo.md`「盯守」节）；§6 索引补**门设计纪律**（§6.4 五条）；§5.1 机制结论补 §6.4。 |
+| v1.1.4 | 2026-09-19 | **N8 定案**（捕获循环首轮复现，全量日志在手）：写者 = `rdf/domain_to_ir.mbt:1950-1953` 非原子写盘，读者 = `rdf/trig_domain_toml_gen.mbt:236` 逐字节比对 ⇒ 读到空文件；§3 状态改「**转立案**」、§5 项 3 重写（根因 + 处方 + 结案判据：捕获循环 30 轮含冷跑全绿）；**盯守撤**。该发现的红线回灌世界宪法 **§6.4.6「生成物写盘必须原子」**（const v2.7 同笔）。 |
+| v1.1.3 | 2026-09-19 | N8 由"未闭"升为"**未闭 + 盯守**"（依据世界宪法 §6.4.1）：§3 行 / §5 项 3 补盯守指针（捕获命令 + 升级/回收判据落在 `quick_machine/todo.md`「盯守」节）；§6 索引补**门设计纪律**（§6.4 五条）；§5.1 机制结论补 §6.4。 |
 | v1.1.2 | 2026-09-19 | 新增发现 **N8**（主仓测试套件偶发红：观测 2 次、10 次连跑含冷跑不复现）→ §3 行 + §5 未闭项 3（四件套 + 重评估条件：再出现先留全量输出定案）。 |
 | v1.1.1 | 2026-09-19 | 随世界宪法 **v2.6** 统一小写规范名：本卷更名 **`review.md`**（内容仅自指与本节变更行）；宪法 §5.3 同笔新增硬约束"实例卷名一律小写规范名，**禁止**大小写异构形"。 |
 | v1.1 | 2026-09-19 | 值级对拍链收口（§AN.9–§AN.14）：§5 未闭项只留未闭者（N6 / 役 15 余量），收口链条目移入 §5.1 存档；§1 门清单补"数据面 ⟷ 引擎 值级对拍"与"快照格式所有权"两行、测试数刷新（438 / 287）；§6 引用索引补**本卷模板**（`bangto/world/review-template.meta.md`）与**覆盖率纪律**（世界宪法 §6.3）；头部补"按模板编写"与版本沿革。 |

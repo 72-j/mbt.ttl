@@ -1,7 +1,7 @@
 # 复核表（生成物，DO NOT EDIT MANUALLY）
 # 口径：`bangto/world/const.md` §6.5「复核面」（判据 = **可复现 + 缺口有解释**；**禁止**以"分数不降"作判据）
 # 生成命令（**必须原样复跑**；同一命令 + 同一留证 ⇒ 第三方应得到同一张表）：
-#   cd src/ttl
+#   cd ttl
 #   for d in n3v2 nquads trig; do
 #     echo "[$d]"
 #     moon test src/gen_$d 2>&1 | grep -oE '=== [^"]+ ===' | sed 's/^=== //;s/ ===$//' | sort -u
@@ -15,7 +15,7 @@
 # 覆盖边界（**必写**：复核面只覆盖"它覆盖的那部分"，读者不得误以为覆盖全；`const.md` §6.5.7）
 #   本面 = **套件自报行面**：三方言套件（N3Tests / rdf-turtle / rdf-* / rdf12-*）的 `=== … ===` 自报行。
 #   **不覆盖**：① **IR/产物面**（表源 → IR → 生成件 → 产物黄金门：G9 逐字节 / ts 钉 / `moon fmt` 幂等）——
-#     本轮起**另立面**（`src/quick_machine/gen-review.txt` + 主仓 CI 步「复核面·产物/IR」）；
+#     本轮起**另立面**（`quick_machine/gen-review.txt` + 主仓 CI 步「复核面·产物/IR」）；
 #     ② **覆盖率面**（行覆盖 / 可达命令名覆盖 —— 由**基线棘轮**管：`coverage-baseline.txt`、`reachable-coverage-baseline.txt`）；
 #     ③ **方言语义面**（`validate_term` / `classify_structural` 等**有意分叉件**的内部语义 —— 由各包 wbtest 管）；
 #     ④ **性能面**（bench：`trig_bench_wbtest` / nquads 基准）。

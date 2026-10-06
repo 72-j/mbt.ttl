@@ -154,7 +154,7 @@ src/
 
 每个方言包内并列五卷文档（`const.md` 红线 / `spec.md` 结构事实 / `adr.md` 决策 /
 `todo.md` 路线账本 / `ctx.md` 整改上下文；`gen_n3v2` 另有 `architecture.md` 一页导读）；
-生成面（表源/生成器）在主仓 `src/rdf`、`src/fsm`。
+生成面（表源/生成器）在主仓 `rdf`、`fsm`。
 
 
 ## Examples
@@ -222,7 +222,7 @@ moon test src/gen_n3v2        # 122/122（turtle 316/316、rdf12 75/75、N3Tests
 `TermKind` + 逐位 kind/view 平化形态（破坏性 API 变更，迁移见 CHANGELOG）。
 
 三方言的**生成物**（`nquads.mbt` / `trig.mbt` / `n3.mbt`）都有黄金对拍门：钉死头横幅 ts、
-经工具链 `moon fmt` 后与 check-in 产物**逐字节**相等且强幂等（`n3.mbt` 由 `src/rdf/n3gen` 的 G9 门把关）。
+经工具链 `moon fmt` 后与 check-in 产物**逐字节**相等且强幂等（`n3.mbt` 由 `rdf/n3gen` 的 G9 门把关）。
 
  ### 许可证声明
 
