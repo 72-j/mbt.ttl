@@ -3,7 +3,7 @@
 版本：v1.1.0（2026-09-12 立卷；2026-09-12 T16 对齐收口；**锚点行号为 2026-09-12 实测**）
 
 **时效与定位**（`bangto/world/const.md` §5.1/§5.2）：本卷是**临时账本**——某项整改"怎么做"的
-工作上下文；条目随役关闭而失效，允许随时重写/合并；**只对 `ttl/src/gen_trig/` 有效**；
+工作上下文；条目随役关闭而失效，允许随时重写/合并；**只对 `moonttl/src/gen_trig/` 有效**；
 **不记决策**（`adr.md`）、**不记红线**（`const.md`）、**不重复结构事实**（`spec.md`）。
 因此：收口项只留索引，[建议]/[立案] 项保留完整字段。
 
@@ -32,7 +32,7 @@
 
 | 项 | 值 | 证据 / 命令 |
 |---|---|---|
-| 警告 | **0** | `cd ttl && moon check src/gen_trig` |
+| 警告 | **0** | `cd moonttl && moon check src/gen_trig` |
 | 单元测试 | **80/80** | `moon test src/gen_trig` |
 | 套件 | rdf-trig **357/357**、rdf-turtle **316/316**、rdf12-trig **36/36**、rdf12-turtle **75/75**（四套 `pin=true`，deferred 全零） | `gen_trig/rdf_suite_wbtest.mbt:47/108/115/123/131` |
 | 外仓门 | `moon test rdf` **20/20**（含 IR 侧 trig 对照）、`moon test rdf/n3gen` **12/12** | 外层仓根 |
@@ -251,7 +251,7 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 
 动手前：
 
-- [ ] 确认改的是**生成面**（外仓 `rdf` / `fsm`）还是**装配层**（子仓 `ttl/src/gen_trig`）。
+- [ ] 确认改的是**生成面**（外仓 `rdf` / `fsm`）还是**装配层**（子仓 `moonttl/src/gen_trig`）。
 - [ ] 生成面改动 → 先确认 T10 门状态（**无门不改**）。
 - [ ] 读 `const.md` 相关红线（三条线 / 口径铁律 / action-effect 边界）。
 - [ ] 跑基线：`moon check` / `moon test src/gen_trig` / 四套件数字记录（§1.2）。

@@ -5,7 +5,7 @@
 > **卷名沿革**：本卷 2026-09-20 由 `ARCHITECTURE.md` 更名 `architecture.md`（世界宪法 v2.6「实例卷名一律小写规范名」
 > + v2.8 立 `architecture` 卷位）；`adr.md` 里旧名出现处为**历史语境**，按规保留。
 
-N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `ttl`）。生成状态机 + 装配层（Assembly）；
+N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `moonttl`）。生成状态机 + 装配层（Assembly）；
 生成件 `n3.mbt` 由外层仓表源再生，禁手编。细节卷：`spec.md`（架构规格）、`adr.md`（役录裁决）、
 `todo.md`（整改立项）、`ctx.md`（上下文与工程经验）。用户指南：`guides/n3/`。
 
@@ -32,7 +32,7 @@ N3 解析包（模块 `thy1016/moonttl`，嵌套仓 `ttl`）。生成状态机 +
 ```
 外层仓 rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
   → n3gen_build（parse → G10 装配门 → **compose 求积** → validate G1–G9/G11–G13 → emit）→ n3v2_out.gen
-  → cp ttl/src/gen_n3v2/n3.mbt（G9 逐字节对拍 + 强幂等）
+  → cp moonttl/src/gen_n3v2/n3.mbt（G9 逐字节对拍 + 强幂等）
 ```
 
 表变 → 再生 → cp；手编 `n3.mbt` 会被 G9 判红。生成器测试 `moon test rdf/n3gen`。

@@ -37,7 +37,7 @@ rdf/domain/trig_domain.toml
    → rdf/domain_to_ir.mbt          （域推导：状态/事件/效果/动作）
    → rdf/fsm_out/trig_fsm.toml     （IR）
    → mbtgen/cmd（fsm-gen CLI）        （v1 codegen）
-   → ttl/src/gen_trig/trig.mbt     （⚠ 生成物，禁手编）
+   → moonttl/src/gen_trig/trig.mbt     （⚠ 生成物，禁手编）
 ```
 
 - **IR 侧门**：`moon test rdf` 的「双文件编译 ≡ `fsm_out/trig_fsm.toml`」（四腿对照）。
@@ -63,7 +63,7 @@ I-7 单遍深验｜I-8 合成谓词 `pk` 读出即归 `Normal`。
 
 | 门 | 判据 / 命令 | 数字出处 |
 |---|---|---|
-| 单元 | `cd ttl && moon test src/gen_trig` | CI `test` 作业日志（命令即判据：0 failed） |
+| 单元 | `cd moonttl && moon test src/gen_trig` | CI `test` 作业日志（命令即判据：0 failed） |
 | 警告 | `moon check --deny-warn` | CI `static` 作业（0 条即绿） |
 | 套件（四套 `pin=true`） | `moon test src/gen_trig`（自报行 `=== … ===`） | **复核表 `../suite-review.txt`**（`[trig]` 节；同命令可复现） |
 | IR 侧 | `cd bitbang && moon test rdf` | CI/home 日志（0 failed） |

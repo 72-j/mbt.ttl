@@ -3,7 +3,7 @@
 版本：v1.1.0（2026-09-11 立卷；2026-09-12 整理收口；**锚点行号为 2026-09-12 实测**）
 
 **时效与定位**（定自 `bangto/world/const.md` §5.1/§5.2）：本卷是**临时账本**——某项整改"怎么做"的
-工作上下文；条目随役关闭而失效，允许随时重写/合并；**只对 `ttl/src/gen_n3v2/` 有效**；
+工作上下文；条目随役关闭而失效，允许随时重写/合并；**只对 `moonttl/src/gen_n3v2/` 有效**；
 **不记决策**（决策归 `adr.md`）、**不记红线**（红线归 `const`）、**不重复结构事实**（归 `spec.md`）。
 因此：**收口项只留索引**（动作 / 锚点 / 验收随 ADR 归档），只有 [立案] 项保留完整字段。
 
@@ -25,7 +25,7 @@
 │   ├── compose.mbt                 构建期求积（役30：子机 × 实例 × 标记行）
 │   ├── validate.mbt                G10 装配门 / G11 可达性 + 分级开关
 │   └── n3gen_test.mbt              G1–G9、G12、G13；G9 落 n3v2_out.gen
-└── ttl/                        （嵌套仓，独立 .git；下游包）
+└── moonttl/                        （嵌套仓，独立 .git；下游包）
     └── src/gen_n3v2/
         ├── n3.mbt                  ⚠ 生成物，禁手编；改它 = 改表 + 再生
         ├── engine.mbt / actions.mbt / lexer_adapter.mbt / parser_slice.mbt / materialize_n3.mbt / serialize_n3.mbt
@@ -36,9 +36,9 @@
 
 | 命令 | 当前值 | 目标 |
 |---|---|---|
-| `cd ttl && moon check src/gen_n3v2` | 0 error / **0 warning** | 守（役26 起强制） |
-| `cd ttl && moon test src/gen_n3v2` | **116/116** | 只增不减 |
-| `cd ttl && moon test` | **329/329**（模块） | 守 |
+| `cd moonttl && moon check src/gen_n3v2` | 0 error / **0 warning** | 守（役26 起强制） |
+| `cd moonttl && moon test src/gen_n3v2` | **116/116** | 只增不减 |
+| `cd moonttl && moon test` | **329/329**（模块） | 守 |
 | `cd ../.. && moon test rdf/n3gen` | **12/12**（G1–G9 + G12 + G13 + 纯函数单测） | 守 |
 | `cd ../.. && moon test rdf` | **20/20** | 守 |
 | 套件 | trig 357/357、rdf-turtle 316/316、rdf12-trig 36/36、rdf12-turtle 75/75、nquads 124 | pin 不变 |
@@ -147,7 +147,7 @@
 | R-09 | 役26 | ADR-26 | 0 warning（全模块 30 条清零）；死字段先改表源再生 | `n3v2_base.toml`；`moon check` |
 | R-10 | 役27a/28 | ADR-27·28 | `prefix_version/base_version/iri_version`；`fr→frame`；`Hooks→N3ActionsImpl` | `types.mbt`；`actions.mbt`；trig 同笔 |
 | R-11 | 役27a | ADR-27 | 27 test 迁 `materialize_n3_wbtest.mbt` / `serialize_n3_wbtest.mbt`，生产件纯实现 | 两新件；`grep '^test '` = 0 |
-| R-12 | 役26 | ADR-26 | `architecture.md` 一页 + guides 实名化 + 役21 跨卷注记 | `architecture.md`；`ttl/guides/n3/*` |
+| R-12 | 役26 | ADR-26 | `architecture.md` 一页 + guides 实名化 + 役21 跨卷注记 | `architecture.md`；`moonttl/guides/n3/*` |
 | R-13 | 役28 | ADR-28 | 组清方法：`clear_annotation`（四件套）/ `clear_path`（三槽）；keywords/directive 不立项 | `engine.mbt` ctx 方法区；`actions.mbt` |
 | R-14 | 役30 | ADR-30 | 交叉族全部改为**子机声明 + 构建期求积**；G10 装配门；声明面 schema 见 `spec.md` §10.6 | `compose.mbt:161`；`validate.mbt:687`；`n3v2_base.toml` |
 | R-15 | 役29 | ADR-29 | 识别件单点 `gen_nquads/numeric.mbt`（八消费点三面收编；展开件留各物化层） | `numeric.mbt`；`rg "has_digit" src` 单点 |
@@ -228,7 +228,7 @@
 
 动手前：
 
-- [ ] 确认改的是嵌套仓（`ttl`）还是外层仓（`rdf/n3gen`）——**两仓分开提交**。
+- [ ] 确认改的是嵌套仓（`moonttl`）还是外层仓（`rdf/n3gen`）——**两仓分开提交**。
 - [ ] 读 `spec.md` §5 机械约束（guard 只通 ctx / EOF 不进表 / ctx 新字段守门）与 §12 可达性判据。
 - [ ] 跑基线命令并记录数字（§1 表）。
 - [ ] 涉及 `n3.mbt` → 先写清表源改法（禁手编，走 G9 再生）。
@@ -238,8 +238,8 @@
 动手后：
 
 - [ ] 若动表/生成器：`moon test rdf/n3gen` 绿 + `cp` 交付 + `moon fmt` 幂等。
-- [ ] `cd ttl && moon check src/gen_n3v2` → **0 warning**。
-- [ ] `cd ttl && moon test src/gen_n3v2` → 116/116 且套件四项（316/75/357/36）不变；模块 329/329。
+- [ ] `cd moonttl && moon check src/gen_n3v2` → **0 warning**。
+- [ ] `cd moonttl && moon test src/gen_n3v2` → 116/116 且套件四项（316/75/357/36）不变；模块 329/329。
 - [ ] `moon info` 审 `.mbti` diff（重命名 / 收面 / 加字段都在这露出）。
 - [ ] 探针复原 + 产物 md5 复核；门与表格同步（G10/G11/G13 类改动附探针证据）。
 - [ ] 回写 `spec.md` §7/§8 状态；语义变更写 `adr.md`；本卷刷新失效锚点；`todo.md` §6 追加一行。
@@ -275,7 +275,7 @@
 - 生成器输出必须 fmt-clean：`moon fmt` 后 G9 仍逐字节一致才算达标。已知 fmt 形态：单语句 match 臂折花括号、
   `assert_eq` 80 列内折叠、fn 签名超宽折叠、`new()` 展开内建——新输出非规范形 = **改模板**，禁事后 fmt 生成件。
 - 再生一条链（外层仓根）：`moon test rdf/n3gen`（G9 红 = 表领先）→
-  `cp rdf/n3gen/n3v2_out.gen ttl/src/gen_n3v2/n3.mbt` → 复测绿。
+  `cp rdf/n3gen/n3v2_out.gen moonttl/src/gen_n3v2/n3.mbt` → 复测绿。
 - `moon info | head` 会 SIGPIPE 杀半程导致 `.mbti` 半新半旧——**不要接 `head`**；pipeline 退出码会说谎，
   判定一律看 `grep "Error"/"failed"/"Total tests"`。
 

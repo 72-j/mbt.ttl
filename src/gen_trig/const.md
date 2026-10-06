@@ -3,7 +3,7 @@
 版本：v1.0.0（2026-09-12 自 `todo.md` §1 拆出）
 
 **效力与时效**（`bangto/world/const.md` §5.1/§5.2）：本卷是**红线条款**——**冻结，只减不增**；
-改一条必须由用户裁决并以 `adr.md` 条目留痕；**只对 `ttl/src/gen_trig/` 有效**。
+改一条必须由用户裁决并以 `adr.md` 条目留痕；**只对 `moonttl/src/gen_trig/` 有效**。
 术语以 `bangto/world/vocabulary.spec.md`（v2.0）为准：契约成员 = `Actions` / `EffectHandler` / `Supervisor`
 （`LoopPolicy` 为废弃别名、正名 `Supervisor`；本包代码自 T13 起为 **`TrigSupervisor`**）。
 

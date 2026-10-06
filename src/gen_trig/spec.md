@@ -44,8 +44,8 @@ rdf/domain2/trig_domain.toml  （行为：195 行 [[parser.transitions]]）
 
 ```sh
 moon test -p rdf                                              # 1) 外仓测试落 fsm_out/trig_fsm.toml
-moon run mbtgen/cmd -- rdf/fsm_out/trig_fsm.toml -o ttl/src/gen_trig/trig.mbt   # 2) 再生产物
-cd ttl && moon test src/gen_trig                          # 3) 子仓回归
+moon run mbtgen/cmd -- rdf/fsm_out/trig_fsm.toml -o moonttl/src/gen_trig/trig.mbt   # 2) 再生产物
+cd moonttl && moon test src/gen_trig                          # 3) 子仓回归
 ```
 
 **门现状（2026-09-13 更新）**：
@@ -287,7 +287,7 @@ quad.o 形如 << ... >> 且语句无图名位:
 cd ../..
 moon test rdf            # 20/20（含 IR 侧 trig 对照门）
 moon test rdf/n3gen      # 12/12（G1–G13；与本包无耦合，动外仓时兜底）
-cd ttl
+cd moonttl
 moon check src/gen_trig      # 0 error / 0 warning
 moon test src/gen_trig       # 80/80（单元）
 moon info && moon fmt        # .mbti diff 逐行审（当前 349 行 / 54 pub 行）

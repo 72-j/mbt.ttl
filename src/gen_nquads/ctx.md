@@ -2,7 +2,7 @@
 
 版本：v1.0.0（2026-09-13 立卷；**锚点行号为 2026-09-13 实测**）
 
-**时效与定位**：临时账本——某项整改"怎么做"的工作上下文；只对 `ttl/src/gen_nquads/` 有效；
+**时效与定位**：临时账本——某项整改"怎么做"的工作上下文；只对 `moonttl/src/gen_nquads/` 有效；
 **不记决策**（→`adr.md`）、**不记红线**（→`const.md`）、**不重复结构事实**（→`spec.md`）。
 **本包定位 = B 冻结样本**（用户定 2026-09-13）：不演进功能、不做命名/公共面迁移；
 本卷只承载"钉门 / 清障 / 修文档锚点"三类动作的上下文（见 `todo.md` §3 边界）。
@@ -16,7 +16,7 @@
 ├── rdf/domain2/nquads_{base,domain}.toml   ← 2.0 数据面（唯一事实源）
 ├── rdf/fsm_out/nquads_fsm.toml             ← IR（v1 形态，codegen 输入契约）
 ├── mbtgen/cmd                                 ← 再生入口（`--ts` 钉头横幅）
-└── ttl/src/gen_nquads/
+└── moonttl/src/gen_nquads/
     ├── nquads.mbt        ⚠ 生成物（禁手编）；入库形 = `moon fmt(生成器原始形)`
     ├── engine.mbt / actions.mbt / parser_slice.mbt / validate_helper.mbt
     ├── materialize_quad.mbt / serialize_nquads.mbt / lexer_mbt.mbt / lexerc_ffi.c

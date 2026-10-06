@@ -14,12 +14,12 @@
 不得删除；`N3Supervisor`（旧名 `N3LoopPolicy`，2026-09-13 改名，见 ADR-33）定案 = **第三条业务面**，将来承载 **Test & Fallback（容灾）** 与
 **Observability（可观测）** 切面。本文件与 `ctx.md` 一律按此口径书写。
 
-仓界事实（改代码前先确认落到哪个仓）：本包在**嵌套仓** `ttl`（独立 `.git`）；
+仓界事实（改代码前先确认落到哪个仓）：本包在**嵌套仓** `moonttl`（独立 `.git`）；
 生成器与表源在**外层仓** `rdf/n3gen`。跨仓改动分两笔提交；`n3.mbt` 只许再生，不许手编（G9 黄金门）。
 
 基线（2026-09-11 实测）：
 
-- `cd ttl && moon test src/gen_n3v2` → **111/111**；`moon check src/gen_n3v2` → 0 error / 11 warning。
+- `cd moonttl && moon test src/gen_n3v2` → **111/111**；`moon check src/gen_n3v2` → 0 error / 11 warning。
 - 套件：rdf-turtle **316/316**、rdf12-turtle **75/75**、N3Tests **neg 23ok/0miss + pos+eval 205clean/0mat-only/0parse-fail**、examples 13 文件全 A-full。
 
 ---
@@ -52,7 +52,7 @@ Lexermoon(@nquads) → N3LexerAdapter(LexerSource) → N3Engine.next → step(�
 rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
   → n3gen_build(parse → validate G1–G8 → emit)
   → rdf/n3gen/n3v2_out.gen
-  → cp → ttl/src/gen_n3v2/n3.mbt   （G9 逐字节黄金门 + 强幂等）
+  → cp → moonttl/src/gen_n3v2/n3.mbt   （G9 逐字节黄金门 + 强幂等）
 ```
 
 规模事实：41 事件 / 55 状态 / 384 转移 / 48 动作 / 27 ctx 字段（役26 删 variable_name/rule_side）/ 5 快照 extras
@@ -113,8 +113,8 @@ rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
 
 ```sh
 cd ../.. && moon test rdf/n3gen          # 落 n3v2_out.gen（失配红 = 表已领先，需交付）
-cp rdf/n3gen/n3v2_out.gen ttl/src/gen_n3v2/n3.mbt
-cd ttl && moon info && moon fmt && moon test src/gen_n3v2
+cp rdf/n3gen/n3v2_out.gen moonttl/src/gen_n3v2/n3.mbt
+cd moonttl && moon info && moon fmt && moon test src/gen_n3v2
 ```
 
 - emit 面锚点：`rdf/n3gen/emit.mbt:657`（Supervisor 模板；名字由数据键 `{base.meta_prefix}Supervisor` 给）、`emit.mbt:1083`（`n3_emit_handler_suite`：
@@ -249,7 +249,7 @@ validate_pred 白名单）/ **役34 集合谓位**（CG 定案 collections any p
 | R-09 | **清账**：删死字段/死 helper/未用导入；修 4×`starts_with`、未用 `self`、2 处多余 trait bound | **✅ 已落地（役26，ADR-26）**（全模块 30 条清零） | 见 `ctx.md` 4.1 行 | `moon check` 0 warning | C-09 |
 | R-10 | **重命名**（原子）：`pver/bver/iver → prefix_version/base_version/iri_version`；`fr → frame`；`Hooks → N3ActionsImpl`（或去 trait 化）；`mat_*` 测试辅助随测试归位改名 | **✅ 已落地（役27a fr + 役28 余项，经表源再生）** | 本包 types/materialize/parser_slice/tests + `.mbti` 同笔 | `moon info` diff 只含预期重命名 | C-10 |
 | R-11 | **测试归位**：`materialize_n3.mbt`/`serialize_n3.mbt` 的内联 test 移入 `_wbtest.mbt`；`mat_*` 辅助抽到测试支持文件 | **✅ 已落地（役27a，ADR-27）** | 新建 `materialize_n3_wbtest.mbt` / `serialize_n3_wbtest.mbt` | 生产文件只剩实现（`grep '^test '` = 0）；116/116；mbti 零 diff | C-11 |
-| R-12 | **文档三件**：新增 `gen_n3v2/architecture.md`（一页：五层图 + 生成链 + 不变量 + 术语表 + 预留位清单）；修 `guides/n3` 的 `@gen_n3`/`SliceParser`；ADR 补役21 条目（提交 `7630bf2`，或注明归 `rdf` 卷） | **✅ 已落地（役26，ADR-26）** | 三处 md | 文档与 `.mbti`/代码名一致（`rg "@gen_n3\b" ttl/guides` = 0） | C-12 |
+| R-12 | **文档三件**：新增 `gen_n3v2/architecture.md`（一页：五层图 + 生成链 + 不变量 + 术语表 + 预留位清单）；修 `guides/n3` 的 `@gen_n3`/`SliceParser`；ADR 补役21 条目（提交 `7630bf2`，或注明归 `rdf` 卷） | **✅ 已落地（役26，ADR-26）** | 三处 md | 文档与 `.mbti`/代码名一致（`rg "@gen_n3\b" moonttl/guides` = 0） | C-12 |
 | R-13 | **ctx 分组**：组清方法形式落地（题5=A，表平铺生成器零改）——`clear_annotation`（四件套；settle/begin_record/recover 三消费点）+ `clear_path`（src/tail/pend 三槽；四发射点）；keywords/directive 零成组清账不立项；字段分节 B 留账 | **✅ 已落地（役28，ADR-28）** | engine.mbt ctx 方法区 + actions.mbt | 清账清单按组表达；116/116；0 warning | C-13、I-6 |
 | R-14 | **状态爆炸治理（生成器侧）**：由子 FSM 自动组合交叉状态，替代手列 55 态；或混合架构（语句核心表驱动 + 递归结构子自动机）。量化基座已落 §10（役30a）：交叉族 36 态/232 行，求积上限 61%。**裁决（ADR-30）= A 构建期 compose**（B 混合架构否决：字节等价红线/三面重写/行数不省；C 吸收为门 G10）；落地= 30c 探针 → 30d 全量迁移（机器 9 族 / 段 57 / 实例 10 / 标记 59，**零手列交叉族**）→ 30e G10 装配门 → 30f 回灌；声明面见 §10.6 | **✅ 已落地（役30 30a–30f）** | `rdf/n3gen/{compose,validate,emit}.mbt` + `n3v2_{base,trans}.toml` | 新增特性只需"子机声明 + 接线"；G9 逐字节等价贯穿迁移；12/12 + 20/20 + 116/116 + 80/80 | C-14、§10、§10.6 |
 | R-15 | **单一实现**：数值/布尔识别合并为共享 helper（adapter/校验/物化同源） | **✅ 已落地（役29，ADR-29）**：`gen_nquads/numeric.mbt`（`is_numeric_span` + `is_boolean_word`，两包公共依赖故落此；账面原建议 n3v2 types.mbt 不成立——trig 有字节孪生件）；n3v2/trig 八消费点三面收编；`bool_at` ×2 删除；展开件 expand_* 留驻各物化层 | gen_nquads/numeric.mbt + 两包 adapter/parser_slice/materialize 六件 | `rg "has_digit" src` 全仓单点；数值/布尔正负例套件不变（357/316/75） | C-15 |
@@ -265,7 +265,7 @@ validate_pred 白名单）/ **役34 集合谓位**（CG 定案 collections any p
 
 ```sh
 # 包内（嵌套仓）
-cd ttl
+cd moonttl
 moon check src/gen_n3v2          # 0 error / 0 warning（役26 起强制，已达标）
 moon test src/gen_n3v2           # 116/116（只增不减）
 moon test                        # 329/329（模块：n3v2 116 + trig 80 + nquads 124 + 其余）
@@ -357,7 +357,7 @@ bnp 窗 7 态次之。**新窗的入场价 = 核心镜像 3~4 态起步**，之�
 ### 10.3 历史每特性成本（git 可复算点 + 台账引用）
 
 ```sh
-cd ttl
+cd moonttl
 git show 50c72d9:src/n3gen/n3_trans.toml   | grep -c '^\[\[transitions\]\]'  # 376（09-09 录14 表即文件）
 git show b39136c:src/n3gen/n3v2_trans.toml | grep -c '^\[\[transitions\]\]'  # 384（09-10 录16 v2 收官，至今未变）
 ```
@@ -477,7 +477,7 @@ machine = "listpath_window.s0" # 标记行：原位请求展开（实例.段）
 ```toml
 [[state_entries]]
 state  = "BnpIdAfterClose"                       # 必须是已声明态
-anchor = "ttl/src/gen_n3v2/actions.mbt:200"  # file:line（首版只形检）
+anchor = "moonttl/src/gen_n3v2/actions.mbt:200"  # file:line（首版只形检）
 note   = "set_id_subject 改写 frame.ret_state；pop_bnode_prop(:172) 兑现"
 ```
 

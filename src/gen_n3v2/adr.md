@@ -64,7 +64,7 @@ Bang/Caret 行全 Zones 就位，物化层零改——框架系误诊。真根�
 
 **背景**：spec §9（现随 bak 归档）预授权"v1 退役为条件驱动：v2 物化面收官 +
 v1 print-sweep 对照归档一次"。役18 物化残差清零后条件全熟，用户当日手动执行
-包迁移：`ttl/src/gen_n3` → `../../bak/260910/gen_n3`（含
+包迁移：`moonttl/src/gen_n3` → `../../bak/260910/gen_n3`（含
 spec.md / const.md / todo.adr.md 历史卷 / N3Tests 语料 / v1 双表 n3.mbt）。
 
 **涟漪清理（本役落两仓）**：
@@ -85,7 +85,7 @@ rdf **20/20**。
 **后果**：
 - 正面：模块纯 v2（单引擎/单表源/单黄金门）；再生线瘦身——
   `moon test rdf/n3gen; cp rdf/n3gen/n3v2_out.gen
-  ttl/src/gen_n3v2/n3.mbt`；维护面减半。
+  moonttl/src/gen_n3v2/n3.mbt`；维护面减半。
 - 未了：v1 print-sweep 对照归档未单独执行（包已切走，历史基线以役18 台账
   记载的 69 clean/126 mat-only/10 parse-fail 为准）；嵌套仓 git 面待用户
   提交（D gen_n3/* + rdf-tests 新增）；ADR-003b 死位、负例缺口 3 留账不变。
@@ -580,7 +580,7 @@ TOML 契约兼容）+ n3gen 构建器（compose 纯函数）+ `n3v2_trans.toml`�
 **验证**：`moon test rdf/n3gen` **12/12**（G9 逐字节 ⇒ 改名是全量唯一差异）；
 `gen_n3v2` **117/117**；模块 **330/330**；`.mbti` 零 diff（该 trait 是 `priv`，不进公共面）。
 
-**关联**：trig 侧同一改名见 `ttl/src/gen_trig/adr.md` ADR-TRIG-015；生成器侧数据键
+**关联**：trig 侧同一改名见 `moonttl/src/gen_trig/adr.md` ADR-TRIG-015；生成器侧数据键
 （v1 codegen + 2.0 面）见 `rdf/adr.md` ADR-10。
 
 ## ADR-34：R-16 影子缺口修口 step1–2（隐式空前缀 + 操作符谓词）——⏳ 2026-09-13（部分落地）

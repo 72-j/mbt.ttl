@@ -55,7 +55,7 @@ v1.3.2 = **面一（套件自报行面）同笔重生成（补漏）**：`src/ge
 **复现命令**（照抄执行即可；**同一命令 + 同一留证 ⇒ 第三方得到同一张表**）：
 
 ```sh
-cd ttl
+cd moonttl
 for d in n3v2 nquads trig; do
   echo "[$d]"
   moon test src/gen_$d 2>&1 | grep -oE '=== [^"]+ ===' | sed 's/^=== //;s/ ===$//' | sort -u
@@ -105,11 +105,11 @@ done > gen-review.txt
 | C-T13 | `@keywords` 语义豁免未接表 | `[立案]` | 表源表达力缺口（同 `when_slot_type` 族） | 表源扩容时 | 同 §8（R-T13） |
 | N6 | 宿主 CI 观测未取 | `[未闭]` | 本机无 gitlink 凭据 | 拿到运行态读权，或 CI 失败通知 | 本卷 §3 / §5 |
 | 役 15 | 深片排除项权重放宽 | `[立案]` | 非门缺陷；门已债点 0/违例 0 | 深片缺口再现时 | `pbtgen/todo.md` |
-| 权 0 事件（`EOF`） | quicktest 权重 0 | `[设计]`×1 | `EOF`=不可达（反断言钉，模型 BFS 无出边）。**沿革（五个事件依次转正）**：`Id`=R-17（2026-09-20）、`ImpliedBy`=役 2 / 2a（2026-09-21，零机械）、`Caret`=役 2 / 2b（2026-09-21，**fwd 墙后恢复道入模**：`[type_mapping.recovery_close]` 声明门 + `Model.recovering`/`Response::Skip` + 探针面同扩，反例形两侧逐步全同） | — | `pbtgen/todo.md` P4.6 + `ttl/todo.md` §AP.4 |
+| 权 0 事件（`EOF`） | quicktest 权重 0 | `[设计]`×1 | `EOF`=不可达（反断言钉，模型 BFS 无出边）。**沿革（五个事件依次转正）**：`Id`=R-17（2026-09-20）、`ImpliedBy`=役 2 / 2a（2026-09-21，零机械）、`Caret`=役 2 / 2b（2026-09-21，**fwd 墙后恢复道入模**：`[type_mapping.recovery_close]` 声明门 + `Model.recovering`/`Response::Skip` + 探针面同扩，反例形两侧逐步全同） | — | `pbtgen/todo.md` P4.6 + `moonttl/todo.md` §AP.4 |
 | 覆盖率残差 ~10 行 | `argv`/`env` 进程态胶水 | `[设计]` | 进程态不可宿主（役 A 已入册） | 出现宿主测试框架时 | `coverage-baseline.txt` 沿革 + 役 A 账 |
 | **产物/IR 面** | 本面**开放缺口 = 0**（三产物黄金门 + **IR 校验族 G1–G13** 全绿） | `[设计]` | 面二现覆盖两族；**W17 已把 IR 校验族自报行装齐**（原"未装"登记收口） | 门族增删时（自报行随门） | `gen-review.txt` 表头边界节 |
 | **覆盖率面** | 残差 ~10 行（`argv`/`env` 进程态胶水）+ 不可达钉子 9/2/1 | `[设计]` | 进程态不可宿主（役 A 已入册）；不可达项已配**反向断言**（变可达即红） | 出现宿主测试框架时 / 不可达项变可达时 | `coverage-review.txt` 表头 + `coverage-baseline.txt` 沿革 |
-| **主仓工具链弃用面**（W18） | 子仓 **0**（86/86 已清 + 钉版已跟升 **20260920**）；主仓 **A 12 + B 132**（A = `implicit_impl_as_method`：`pbtgen/codegen` 9〔生产码〕+ 夹具 3；B = `test_unqualified_package`：**全在 `*_test.mbt`** 5 文件） | `[立案]` | 两类都由**工具逐处给出答案**（提升声明 / `@pkg.name` 替换），属机械改；主仓钉版**故意仍留 20260915**（跟升必须与清偿同笔） | W18 主仓半·二执行时 / 动到相应包时 / 对外宣称"工具链干净"成为卖点时 | `ttl/todo.md` §AQ.3–§AQ.4 + `bangto/world/todo.md` W18 行 |
+| **主仓工具链弃用面**（W18） | 子仓 **0**（86/86 已清 + 钉版已跟升 **20260920**）；主仓 **A 12 + B 132**（A = `implicit_impl_as_method`：`pbtgen/codegen` 9〔生产码〕+ 夹具 3；B = `test_unqualified_package`：**全在 `*_test.mbt`** 5 文件） | `[立案]` | 两类都由**工具逐处给出答案**（提升声明 / `@pkg.name` 替换），属机械改；主仓钉版**故意仍留 20260915**（跟升必须与清偿同笔） | W18 主仓半·二执行时 / 动到相应包时 / 对外宣称"工具链干净"成为卖点时 | `moonttl/todo.md` §AQ.3–§AQ.4 + `bangto/world/todo.md` W18 行 |
 | **性能面**（面四） | 比较体 = 5 条**机器无关相对判据**（段序 3 + 档位带 1 + 词法 > C-FFI 1）；绝对读数**只作留证** | `[设计]` | 性能**抖动/跨机不可比**是本质属性 ⇒ 比较体只装相对判据（该设计由"同日三次 ±15% 抖动而判据全 true"实证支撑）；**棘轮不归本面** | 出现"段序判据被打破"（如验证段不再是主段）时重看 | `perf-review.txt` 表头 + §1.5 + `gen_guard` 第五钉 |
 
 **说明**：本表**只回答"多少、怎么复现、缺口为什么可接受"**；每条的理由详述与影响面在**台账正文**（上表"台账落点"列）。
@@ -120,7 +120,7 @@ B 类"台账滞后"5 处已于本笔归位（`src/gen_trig/{spec,todo}.md`、`sr
 **复核表文件**：`coverage-review.txt`（子仓根；生成物）。**复现命令**（照抄执行；**冷口径**）：
 
 ```sh
-cd ttl
+cd moonttl
 moon clean && moon coverage clean && moon test --enable-coverage
 {
   echo "[行覆盖]"
@@ -141,7 +141,7 @@ moon clean && moon coverage clean && moon test --enable-coverage
 **复核表文件**：`perf-review.txt`（子仓根；生成物）。**复现命令**（照抄执行；**正式档位**）：
 
 ```sh
-cd ttl
+cd moonttl
 moon run src/bench/nquads-benchmark --target native --release src/bench/test_10000.nq
 moon test --target native --release src/gen_nquads -f "*词法役 P1*"
 ```
@@ -227,7 +227,7 @@ moon test --target native --release src/gen_nquads -f "*词法役 P1*"
    ⑤ **"可能未接线"风险（本条比"读不到状态"更严重）**——帮助站目录显示引擎文档为
    「引擎简介 / 代码流水线 / 图形流水线 / 参数配置 / 密钥设置 / **执行记录查询**」
    （`help.gitlink.org.cn/sitemap.xml` 实证），即宿主引擎是**建木自有流水线配置**；
-   而两仓（含 `ttl`）**只有 `.github/workflows/*.yaml`，无建木配置**（全仓 find 实测）
+   而两仓（含 `moonttl`）**只有 `.github/workflows/*.yaml`，无建木配置**（全仓 find 实测）
    ⇒ 现有 GitHub Actions 工作流**很可能不在宿主执行**。
    **解锁动作（一步判定）**：登录后看仓库页有无「DevOps / 流水线 / 执行记录」入口——
    ① 有记录 ⇒ 贴 run 结论，本条收口；② 无记录/入口为空 ⇒ **CI 未接线**：按《代码流水线》配一条建木流水线
@@ -261,7 +261,7 @@ moon test --target native --release src/gen_nquads -f "*词法役 P1*"
 
 ## 6 引用索引
 
-- 红线：`ttl` 各 `const.md`；世界卷 `bangto/world/const.md` §5/§6
+- 红线：`moonttl` 各 `const.md`；世界卷 `bangto/world/const.md` §5/§6
 - 决策：`pbtgen/adr.md`、`src/gen_*/adr.md`
 - 结构事实：`src/gen_*/spec.md`、`pbtgen/spec.md`
 - **本卷模板**：`bangto/world/review-template.meta.md`（本卷 = 其权威实例；卷位与边界见世界宪法 §5.1 / §5.5）
@@ -269,7 +269,7 @@ moon test --target native --release src/gen_nquads -f "*词法役 P1*"
 - **复核面**：`bangto/world/const.md` §6.5（判据 = 可复现 + 缺口有解释；产出物 = §1.1 复核表 + §1.2 缺口解释表 + 复现命令）；实例复核表 = `suite-review.txt`
 - **覆盖率纪律**：`bangto/world/const.md` §6.3（两量口径：命令行 `moon clean` 不可省、取整口径 `floor(covered*1000/total)`、分子必须是执行记录、分母只含应当可达）
 - **门设计纪律**：`bangto/world/const.md` §6.4（**六条**：可重复性 + 盯守 / 禁止整行跳过 / 生成物格式所有权 / 判据必须锚引擎真件且双轴各自锚 / 先入册后扩容 / **生成物写盘必须原子**）
-- 活账（不入库）：`ttl/todo.md`、各 `quicktest/{todo,ctx}.md`
+- 活账（不入库）：`moonttl/todo.md`、各 `quicktest/{todo,ctx}.md`
 - 覆盖率账：`coverage-baseline.txt`（行覆盖）、`reachable-coverage-baseline.txt`（可达命令名覆盖）
 
 ## 7 变更记录

@@ -6,7 +6,7 @@
 它的价值是"FSM 生成链路第一样板 + 行为对照基线"。因此本卷不做大路线图，只列**资产、债务与
 明确不做的边界**；确有必要的动作走"钉门/清障"两档，且**不改产物语义**。
 
-**时效与定位**（`bangto/world/const.md` §5.1/§5.2）：临时账本；只对 `ttl/src/gen_nquads/` 有效；
+**时效与定位**（`bangto/world/const.md` §5.1/§5.2）：临时账本；只对 `moonttl/src/gen_nquads/` 有效；
 **不记决策**（→`adr.md`）、**不记红线**（→`const.md`）、**不重复结构事实**（→`spec.md`）。
 
 卷面分工：`const.md` 红线 / `spec.md` 结构事实与已验证口径 / `adr.md` 决策录 / 本卷路线与账本 /
@@ -88,7 +88,7 @@ moon run src/bench/nquads-benchmark --target native --release src/bench/test_100
 
 ## 6 指标口径样板（quicktest，2026-09-14）
 
-`ttl/src/gen_nquads/quicktest/` 定为 quick machine 的**指标口径样板**——三方言生成后照此对齐。
+`moonttl/src/gen_nquads/quicktest/` 定为 quick machine 的**指标口径样板**——三方言生成后照此对齐。
 事实源：`quicktest/metrics.mbt` 文件头 + 下表。
 
 | # | 指标 | 门槛（"怎么算够"） | 事实源 / 门 |
