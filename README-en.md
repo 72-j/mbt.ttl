@@ -152,7 +152,7 @@ src/
 ├── cmd/main/         # Command line tool (`moon run src/cmd/main -- <file>`)
 ├── examples/         # Runnable examples for the three dialects: nquads / trig / n3
 ├── bench/            # Benchmark programs
-└── quick_machine/    # Quick machine (table-driven model-execution cross-check)
+└── pbtgen/    # Quick machine (table-driven model-execution cross-check)
 ```
 
 Each dialect package carries the same five-volume documentation set (`const.md` red lines /

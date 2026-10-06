@@ -149,7 +149,7 @@ test "n3v2 全臂冒烟：55×41 全对 + 合法对 384（臂表结构钉）" {
 ///|
 /// **权重表钉子**：41 名逐条等值 + 表外名回落 1。
 /// 权重决定随机门的分布（属判据面）⇒ 改表即红，必须与
-/// `quick_machine/quick_machine_n3.toml` 的 `[business.weights]` 同笔说明。
+/// `pbtgen/quick_machine_n3.toml` 的 `[business.weights]` 同笔说明。
 test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
   let expected : Array[(String, Int)] = [
     ("At", 1),

@@ -688,7 +688,7 @@ test "指标·label 钉子: resp:Done 不适用（表零引用）+ 引擎单步�
 /// **权重表钉子**（2026-09-18 补，覆盖率实测发现 `command_weight` 有臂从没被查过——
 /// 例如 `"Caret"`）：35 个命令名逐条等值 + 表外名回落 1（+1 = `KeywordX`）。
 /// 权重决定随机门的分布（属判据面）⇒ 改表即红，必须与
-/// `quick_machine/quick_machine_trig.toml` 的 `[business.weights]` 同笔说明。
+/// `pbtgen/quick_machine_trig.toml` 的 `[business.weights]` 同笔说明。
 test "指标·权重表逐名等值（35 名全量 + 默认档）" {
   let expected : Array[(String, Int)] = [
     ("Iri", 3),

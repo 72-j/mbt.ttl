@@ -149,7 +149,7 @@ src/
 ├── cmd/main/         # 命令行工具（`moon run src/cmd/main -- <file>`）
 ├── examples/         # 三方言可运行示例：nquads / trig / n3
 ├── bench/            # 基准程序
-└── quick_machine/    # 快测机（表驱动的模型执行对照）
+└── pbtgen/    # 快测机（表驱动的模型执行对照）
 ```
 
 每个方言包内并列五卷文档（`const.md` 红线 / `spec.md` 结构事实 / `adr.md` 决策 /

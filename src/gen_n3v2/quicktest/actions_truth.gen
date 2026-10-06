@@ -1,5 +1,5 @@
 # 数据面真值快照（生成物，DO NOT EDIT）
-# 源: ./rdf/fsm_out/n3_fsm.toml [[transitions]] × ./quick_machine/quick_machine_n3_gen.toml [actions]
+# 源: ./rdf/fsm_out/n3_fsm.toml [[transitions]] × ./pbtgen/quick_machine_n3_gen.toml [actions]
 # format: v3 —— **列分隔符 = TAB**（v1 用 `|`，与 `fwd:a|b` 词表撞车 ⇒ 整行静默截断，§AN.12）
 # 列: from+on〈TAB〉action〈TAB〉returns〈TAB〉writes〈TAB〉frame〈TAB〉push_writes〈TAB〉args
 #      （writes 逐项排序、空记 -；带行 assign 的 `nfwd:a|b` 已**编译期坍缩**；槽型分派臂已按行 SlotType 选臂）
