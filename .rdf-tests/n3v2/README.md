@@ -17,7 +17,7 @@ examples 保留作嵌套规则/内建谓词风格的冒烟覆盖。
 
 ## N3Tests 入库裁剪
 
-全量在 `/home/thy/moonttl/bak/N3/tests/N3Tests`（36MB，含 28MB 机器生成证明料）。
+全量在 `/home/thy/bitbang/bak/N3/tests/N3Tests`（36MB，含 28MB 机器生成证明料）。
 包内只拷 manifest-parser 引用文件（`parser_index.tsv` 逐项记账：`kind<TAB>path`），
 唯一超 100KB 的 `cwm_other/rdfcore-tests.n3` 以 `skip` 行排除（机器聚合料，
 parser 裁决价值零）。净重 1.1MB / 227 个唯一 .n3。
