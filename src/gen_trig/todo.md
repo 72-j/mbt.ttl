@@ -114,12 +114,12 @@ moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 **原始形 + 工具链 `moon fmt`**（进程内 fmt 包实测与工具链不一致，已否决）；门 =
 「钉 ts 再生 + `moon fmt` ≡ check-in `trig.mbt` 逐字节 + 强幂等」，落
 `rdf/trig_domain_toml_gen.mbt`（`rdf` **21/21**；证伪探针：改一行表 → 门红）。
-**再生配方**：`moon run mbtgen/cmd -- rdf/fsm_out/trig_fsm.toml --ts 1788654011855 -o <产物>`
+**再生配方**：`moon run skelgen/cmd -- rdf/fsm_out/trig_fsm.toml --ts 1788654011855 -o <产物>`
 → `moon fmt <产物>`。**再生禁令解除**（`const.md` §5 已改写）。决策见 `rdf/adr.md` ADR-6。
 
 | 五件套 | 落地内容 |
 |---|---|
-| 范围 | `mbtgen/codegen.mbt`（`generate_with_ts`）+ `mbtgen/cli.mbt`（`--ts`）+ `rdf/trig_domain_toml_gen.mbt`（门位） |
+| 范围 | `skelgen/codegen.mbt`（`generate_with_ts`）+ `skelgen/cli.mbt`（`--ts`）+ `rdf/trig_domain_toml_gen.mbt`（门位） |
 | 交付 | 钉 ts 可再生；`trig 产物黄金门` 落 `rdf`；`const.md` §5 禁令改写 |
 | 验收 | `moon test rdf` **21/21**；证伪探针：改一行表 → 门红（`assert_eq(formatted, golden)`）→ 复原 → 绿；强幂等（同 ir+ts 重放零字节移动） |
 | 风险 | ⚠ **Turtle 路径例外**：数组函数口径停在役9 前，经 Turtle 路径再生仍会抹注解，门只覆盖 2.0 路径（`rdf/adr.md` ADR-5）；nquads 同类形态差 68 行，产物门待补（另役） |
@@ -136,7 +136,7 @@ moon info && moon fmt        # .mbti diff 逐行审；fmt 幂等
 
 | 五件套 | 落地内容 |
 |---|---|
-| 范围 | `mbtgen/codegen_effects.mbt`（队列模式 interpret 发射，数据驱动开关）+ `domain2/trig_base.toml`（`emit_queue` ctx 字段）+ `gen_trig/engine.mbt`（loop 纯化 + handler 接活） |
+| 范围 | `skelgen/codegen_effects.mbt`（队列模式 interpret 发射，数据驱动开关）+ `domain2/trig_base.toml`（`emit_queue` ctx 字段）+ `gen_trig/engine.mbt`（loop 纯化 + handler 接活） |
 | 交付 | `interpret` 唯一解释器；观测/容灾切面可挂；`emit_queue` 下沉 ctx（Sequence 多发不丢） |
 | 验收 | `moon test src/gen_trig` **80/80**（四套件 357/316/36/75 不变）；`moon test rdf` **21/21**（产物黄金门对新产物仍逐字节绿）；模块 329/329；锚点 `gen_trig/engine.mbt:404` + `:587/600/607/615/624` |
 | 风险 | 图块双路由语义未动（ADR-TRIG-008）；Turtle 路径仍走数组旧口径（ADR-5） |
@@ -291,7 +291,7 @@ T16 ✅ 已完成（本卷即其产物）。**R-T10–R-T13 的修口一律排�
 
 **生成器侧三处修复（都在 `pbtgen/`）**：
 
-1. `[actions]` 解析（`mbtgen/{construct,toml_parser}.mbt`）+ `classify_action` **优先查表**
+1. `[actions]` 解析（`skelgen/{construct,toml_parser}.mbt`）+ `classify_action` **优先查表**
    （`codegen.mbt`）：命中即按声明意图发臂——发射档 → `emit_or_error`/scope 臂，其余 → 状态推进 + 该响应（**不再挂 TODO**）。
    分类顺序：**结构优先**（`set_<槽位>` 先判，否则槽位写入会被声明表抢走——实测踩过）。
 2. **发射臂按 scope 组装**（`codegen_model.mbt`）：声明/行 effect 文本经 `scope_of_effect_text`

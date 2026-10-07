@@ -22,10 +22,10 @@
 | 方言 | 生成链 | 产物门 |
 |---|---|---|
 | n3v2 | `rdf/n3gen`（自含：parse → validate → emit 直产） | **G9 黄金门**：ts 显式注入（`n3_emit_banner(ts)`）+ 逐字节对拍 + 强幂等 |
-| **trig** | `rdf/domain/trig_domain.toml` → `rdf/domain_to_ir.mbt` → `rdf/fsm_out/trig_fsm.toml` → `mbtgen/cmd`（v1 codegen） | **仅 IR 侧门**：`rdf/trig_domain_toml_gen.mbt:215/222`（双文件编译 ≡ `fsm_out/trig_fsm.toml`，四腿）；**产物 `trig.mbt` 无门**——一致性靠 `domain_to_ir.mbt:15/52/257/407/2717` 的人工"逐行对齐"注释 |
+| **trig** | `rdf/domain/trig_domain.toml` → `rdf/domain_to_ir.mbt` → `rdf/fsm_out/trig_fsm.toml` → `skelgen/cmd`（v1 codegen） | **仅 IR 侧门**：`rdf/trig_domain_toml_gen.mbt:215/222`（双文件编译 ≡ `fsm_out/trig_fsm.toml`，四腿）；**产物 `trig.mbt` 无门**——一致性靠 `domain_to_ir.mbt:15/52/257/407/2717` 的人工"逐行对齐"注释 |
 | md | `src/gen_md/gen`（自有编译器） | — |
 
-> 产物 `trig.mbt:4` 的 `Generated at:` 是**墙钟值**（`mbtgen/codegen.mbt` 的 `@env.now()`）：
+> 产物 `trig.mbt:4` 的 `Generated at:` 是**墙钟值**（`skelgen/codegen.mbt` 的 `@env.now()`）：
 > 重跑即变 ⇒ 无 ts 钉就**不可复现**（T10 要解决的第一件事）。
 
 ### 1.2 基线（2026-09-12 实测）
@@ -221,7 +221,7 @@ handle_list_step / handle_open_slot` + `snapshot` + `apply_scope` + `on_exit_gra
 | 变更 | 是原子的 | 跨包 / 跨仓清单 |
 |---|---|---|
 | 改生成面（`rdf/domain*` / `domain_to_ir.mbt` / `fsm` codegen） | 是 | 外仓 `rdf` + `fsm` → 再生 `fsm_out/trig_fsm.toml` → 再生 `trig.mbt` → 子仓测试（**同笔**） |
-| 改产物门（T10） | 是 | `mbtgen/codegen.mbt`（ts 注入）+ `rdf/trig_domain_toml_gen.mbt`（门）+ `fsm` 全测试 |
+| 改产物门（T10） | 是 | `skelgen/codegen.mbt`（ts 注入）+ `rdf/trig_domain_toml_gen.mbt`（门）+ `fsm` 全测试 |
 | 公共面收窄（R-T3） | 是 | 生成面 `pub` 声明 + `.mbti` + 黑盒测试可见性 |
 | 命名回灌（R-T4） | 是 | 生成面 + 实现面 + 文档 + 测试 + `.mbti` 同笔 |
 | 测试归位（R-T6） / 清件（R-T5） | 是 | 仅本包 `_wbtest.mbt`、生产文件、`bak/` 归档位 |

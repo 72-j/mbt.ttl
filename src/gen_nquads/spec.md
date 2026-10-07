@@ -49,7 +49,7 @@ value / suffix span），下游从门卫结果取两段。
 
 > **来源**：旧卷 `todo.adr.md`（已更名 `adr.md`）的 §2/§3，按 `ctx.md` R-N4 搬入本卷。
 > **现状增补（2026-09-13）**：① 生成面事实源 = `rdf/domain2/nquads_{base,domain}.toml` → `fsm_out/nquads_fsm.toml`
-> → 产物（配方：`moon run mbtgen/cmd -- <fsm_out> --ts 1788844502518 -o <产物>` + `moon fmt`）；
+> → 产物（配方：`moon run skelgen/cmd -- <fsm_out> --ts 1788844502518 -o <产物>` + `moon fmt`）；
 > ② 产物侧有黄金门（`nquads 产物黄金门`，ADR-9）；③ 下文提及的 `test_nquads.toml` 为**旧输入件**（非事实源）；
 > ④ RDF 1.2 开关的现代口径见 `validate_helper.mbt` 的 `rdf12`（1.2 默认）+ `scalar_only`（转义严格度）。
 

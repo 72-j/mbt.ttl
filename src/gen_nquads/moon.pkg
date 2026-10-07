@@ -1,4 +1,4 @@
-// gen_nquads：mbtgen 生成器产物 + 装配层补充部分（词法器/Actions 回调/主循环/SliceParser）
+// gen_nquads：skelgen 生成器产物 + 装配层补充部分（词法器/Actions 回调/主循环/SliceParser）
 // 词法器复用装配层收录的 lexer_mbt.mbt（Lexermoon；Token 与 C 版 Lexerc 同型同宽）
 import {
   "moonbitlang/core/debug",
