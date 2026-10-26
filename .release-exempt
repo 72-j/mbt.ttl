@@ -1,0 +1,3 @@
+# 语料豁免:上游 RDF 测试数据(.rdf-tests 内 abs-path 27 处为合法测试路径,非秘密)
+# 机制:moonxr/release_review.mbtx desensitize 扫描前滤除,豁免件数进明细
+.rdf-tests
