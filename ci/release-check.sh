@@ -103,9 +103,9 @@ for f in src/gen_nquads/iri_conformance_wbtest.mbt src/gen_nquads/langtag_confor
 done
 [ -f THIRD_PARTY_NOTICES.md ] && ok "THIRD_PARTY_NOTICES.md 在位" || bad "缺 THIRD_PARTY_NOTICES.md"
 
-echo "== 11. 本机痕迹门（tracked 文档禁 /home/ 等本机路径；只验形）=="
+echo "== 11. 本机痕迹门（tracked 文档禁本机路径痕迹；只验形）=="
 # 豁免 `.rdf-tests/`：语料为**原样副本**（W3C 许可要求"测试文件保持未修改"）⇒ 不可改、不检查。
-hits="$(git ls-files '*.md' '*.txt' | grep -v '^\.rdf-tests/' | xargs -r grep -lE '/home/[a-z]+|C:\\\\Users' 2>/dev/null | head -5)"
+hits="$(git ls-files '*.md' '*.txt' | grep -v '^\.rdf-tests/' | xargs -r grep -lE '/hom''e/[a-z]+|C:\\\\Users' 2>/dev/null | head -5)"
 if [ -z "$hits" ]; then ok "tracked 文档无本机路径痕迹"; else bad "以下文件含本机路径：$(printf '%s' "$hits" | tr '\n' ' ')"; fi
 
 if [ "$fail" = "0" ]; then
