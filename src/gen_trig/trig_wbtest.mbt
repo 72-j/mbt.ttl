@@ -8,7 +8,7 @@ fn bytes_of(input : String) -> Array[Byte] {
 }
 
 ///|
-fn view_str(data : ArrayView[Byte], span : (Int, Int)) -> String {
+fn view_str(data : ArrayView[Byte], span : (Int32, Int32)) -> String {
   let (off, len) = span
   let buf = StringBuilder()
   for i in 0..<len {

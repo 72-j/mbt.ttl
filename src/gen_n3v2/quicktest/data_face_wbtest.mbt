@@ -8,7 +8,7 @@
 ///|
 /// `RefId` 解包探针：`Ok(Some(x))` → `Some(x.id)`；`Ok(None)`/`Err` 都落 `None`
 /// （区分两者用 `wb_err`/直接 match，不靠本探针）。
-fn wb_ok_id(r : Result[RefId?, String]) -> Int? {
+fn wb_ok_id(r : Result[RefId?, String]) -> Int32? {
   match r {
     Ok(Some(v)) => Some(v.id)
     _ => None
@@ -51,7 +51,7 @@ fn wb_face_none(r : FaceValue?) -> Bool {
 }
 
 ///|
-fn wb_rid(id : Int) -> RefId {
+fn wb_rid(id : Int32) -> RefId {
   { id, }
 }
 

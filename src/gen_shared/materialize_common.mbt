@@ -177,7 +177,7 @@ pub fn deep_check_tt(view : ArrayView[Byte]) -> Result[Unit, ParseError] {
 }
 
 ///|
-pub fn literal_body_end(data : ArrayView[Byte], span : Span) -> Int {
+pub fn literal_body_end(data : ArrayView[Byte], span : Span) -> Int32 {
   let (off, len) = span
   let q = data[off]
   if off + 2 < off + len && data[off + 1] == q && data[off + 2] == q {

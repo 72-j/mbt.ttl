@@ -309,14 +309,14 @@ pub impl LexerSource for TrigLexerAdapter with fn next(self : TrigLexerAdapter) 
 pub extend TrigLexerAdapter with LexerSource::{next, byte_at, pos}
 
 ///|
-pub impl LexerSource for TrigLexerAdapter with fn pos(self : TrigLexerAdapter) -> Int {
+pub impl LexerSource for TrigLexerAdapter with fn pos(self : TrigLexerAdapter) -> Int32 {
   self.inner.current_pos()
 }
 
 ///|
 pub impl LexerSource for TrigLexerAdapter with fn byte_at(
   self : TrigLexerAdapter,
-  offset : Int,
+  offset : Int32,
 ) -> Byte {
   self.data[offset]
 }

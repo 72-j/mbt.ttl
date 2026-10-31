@@ -60,9 +60,9 @@ pub(all) struct QuadSpan {
   o : Span
   g : Span? // 图名 span；None = 默认图（N3 无图块，恒 None——字段保留为管线同源布局）。
   pk : PredKind // 谓词来源：Normal=原文；RDFFirst/RDFRest=显式链物化（ADR-003b）。
-  prefix_version : Int // 前缀账本版本 = 发射时点账本长（物化层回扫上界——中途重声明不污染历史 quad）。
-  base_version : Int // base 链版本 = 发射时点链长（物化层折叠得该 quad 生效 base）。
-  iri_version : Int // IRI 版本 = 发射时点 upcast 账本长（ADR-003b 显式链专用；集合语法不经此槽）。
+  prefix_version : Int32 // 前缀账本版本 = 发射时点账本长（物化层回扫上界——中途重声明不污染历史 quad）。
+  base_version : Int32 // base 链版本 = 发射时点链长（物化层折叠得该 quad 生效 base）。
+  iri_version : Int32 // IRI 版本 = 发射时点 upcast 账本长（ADR-003b 显式链专用；集合语法不经此槽）。
   subj_shell : Bool // 注解壳主语（役8）：true = s 为锚三元组原文 span，物化层合成 <<原文>> TT 壳。
 }
 
@@ -101,7 +101,7 @@ priv struct Slot {
   as_subject : Bool
   as_pred : Bool
   mut prev_node : Span?
-  mut node_seq : Int
+  mut node_seq : Int32
   mut id_subject : Span? // 役16 B 桶：`[ id :X … ]` 语义主语（None = fresh 开括号身份；pop 时盖写落位）
 }
 

@@ -16,7 +16,7 @@
 
 ///|
 /// 内存生成语料：n 行 `<base s{i}> <base p{i}> <base o{i}> .`
-fn lexer_bench_generated(n : Int) -> String {
+fn lexer_bench_generated(n : Int32) -> String {
   let base = "http://example.org/"
   let buf = StringBuilder()
   for i = 0; i < n; i = i + 1 {
@@ -27,7 +27,7 @@ fn lexer_bench_generated(n : Int) -> String {
 
 ///|
 /// 纯 MoonBit 词法器：拉取循环（生产路径 = 引擎 step 的取词方式）
-fn lexer_bench_moon(data : Array[Byte]) -> Int {
+fn lexer_bench_moon(data : Array[Byte]) -> Int32 {
   let lexer = Lexermoon::new(data[:])
   let mut token_count = 0
   for ;; {
@@ -42,7 +42,7 @@ fn lexer_bench_moon(data : Array[Byte]) -> Int {
 
 ///|
 /// C FFI 词法器：拉取循环（基准线）
-fn lexer_bench_c(data : FixedArray[Byte]) -> Int {
+fn lexer_bench_c(data : FixedArray[Byte]) -> Int32 {
   let lexer = Lexerc::new(data)
   let mut token_count = 0
   for ;; {

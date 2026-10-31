@@ -211,7 +211,7 @@ test "jena bad battery" {
 //    主语言/脚本/区域/变体数/扩展数/私有用数；grandfathered 行仅 round-trip——
 //    本仓口径：祖父标签不透明整体）
 test "bcp47 fixtures battery" {
-  let rows : Array[(String, String?, String?, String?, Int, Int, Int)] = [
+  let rows : Array[(String, String?, String?, String?, Int32, Int32, Int32)] = [
     ("aa-111", Some("aa"), None, Some("111"), 0, 0, 0),
     ("aa-7-123abc-abc-a-12", Some("aa"), None, None, 0, 2, 0),
     ("aa-b1b1b-6a8b-cccccc", Some("aa"), None, None, 3, 0, 0),

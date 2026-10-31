@@ -5,17 +5,17 @@
 
 ///|
 /// 常用事件构造捷径
-fn ev_iri(off : Int) -> NQuadsEvent {
+fn ev_iri(off : Int32) -> NQuadsEvent {
   NQuadsEvent::NQuadsIri((off, 5))
 }
 
 ///|
-fn ev_bnode(off : Int) -> NQuadsEvent {
+fn ev_bnode(off : Int32) -> NQuadsEvent {
   NQuadsEvent::NQuadsBlankNode((off, 4))
 }
 
 ///|
-fn ev_lit(off : Int) -> NQuadsEvent {
+fn ev_lit(off : Int32) -> NQuadsEvent {
   NQuadsEvent::NQuadsLiteral((off, 7))
 }
 

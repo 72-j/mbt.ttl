@@ -151,7 +151,7 @@ test "n3v2 全臂冒烟：55×41 全对 + 合法对 384（臂表结构钉）" {
 /// 权重决定随机门的分布（属判据面）⇒ 改表即红，必须与
 /// `pbtgen/n3trig/quick_machine_n3.toml` 的 `[business.weights]` 同笔说明。
 test "n3v2 权重表逐名等值（41 名全量 + 默认档）" {
-  let expected : Array[(String, Int)] = [
+  let expected : Array[(String, Int32)] = [
     ("At", 1),
     ("Is", 1), // 【0 → 1（排除片转正，2026-09-19）】：IsProp 词行 = 既有 set_predicate 面（fsm_out 同源在册），零新增机械
     ("Of", 1), // 【0 → 1（排除片转正，2026-09-19）】：is_of 晋声明 action + 发射族倒装交换/结算（引擎 take_pending/settle_inversion 同形）

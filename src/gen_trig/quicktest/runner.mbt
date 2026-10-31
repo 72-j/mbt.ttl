@@ -144,7 +144,7 @@ test "trig_quick_machine 可达覆盖门（路径驱动·缺口清零）" {
 ///|
 /// 随机检查: Result 返回, 失败信息含反例命令序列（供 CI 分支处理）
 fn run_random_check(
-  config? : @qcs.RunConfig = quick_run_config(),
+  config~ : @qcs.RunConfig = quick_run_config(),
 ) -> Result[
   @qcs.RunReport[Command, Response, Command, Response],
   @qcs.RunFailure[Model, Model, Command, Command, Response, Response],

@@ -60,8 +60,8 @@ fn command_name(command : Command) -> String {
 /// 组装状态机（B 式直接引用）: 业务函数来自 business.mbt;
 /// system_call 可替换 —— 反例注入（验证机器真能发现系统漂移）
 fn quick_state_machine(
-  system_call? : (Command, System) -> Response = run_command,
-  script? : Array[Command]? = None,
+  system_call~ : (Command, System) -> Response = run_command,
+  script~ : Array[Command]? = None,
 ) -> @qcs.StateMachine[
   Model,
   Model,
@@ -72,7 +72,7 @@ fn quick_state_machine(
   RefId,
   System,
 ] {
-  let cursor : Array[Int] = [0]
+  let cursor : Array[Int32] = [0]
   @qcs.StateMachine::new(
     init_symbolic_model=model_empty,
     init_concrete_model=model_empty,

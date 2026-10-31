@@ -43,12 +43,12 @@ pub impl LexerSource for Lexerc with fn next(self : Lexerc) -> NQuadsEvent? {
 pub extend Lexerc with LexerSource::{byte_at, pos}
 
 ///|
-pub impl LexerSource for Lexerc with fn pos(self : Lexerc) -> Int {
+pub impl LexerSource for Lexerc with fn pos(self : Lexerc) -> Int32 {
   Lexerc::position(self)
 }
 
 ///|
-pub impl LexerSource for Lexerc with fn byte_at(self : Lexerc, offset : Int) -> Byte {
+pub impl LexerSource for Lexerc with fn byte_at(self : Lexerc, offset : Int32) -> Byte {
   self.data[offset]
 }
 
@@ -56,7 +56,7 @@ pub impl LexerSource for Lexerc with fn byte_at(self : Lexerc, offset : Int) -> 
 /// C FFI 词法版便捷入口：显式构造与释放（LexerSource 不再约束生命周期）
 pub fn nquads_parser_c(
   input : FixedArray[Byte],
-  lenient? : Bool = false,
+  lenient~ : Bool = false,
 ) -> (Array[QuadSpan], Array[ParseError]) {
   let lexer = Lexerc::new(input)
   let engine : NQuadsEngine[Lexerc] = NQuadsEngine::new(lexer)

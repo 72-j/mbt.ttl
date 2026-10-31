@@ -33,8 +33,8 @@ pub fn[L] TrigSliceParser::bases(self : TrigSliceParser[L]) -> Array[Span] {
 pub fn[L] TrigSliceParser::new(
   engine : TrigEngine[L],
   data : ArrayView[Byte],
-  lenient? : Bool = false,
-  mode? : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
+  lenient~ : Bool = false,
+  mode~ : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
 ) -> TrigSliceParser[L] {
   { engine, data, lenient: lenient || mode.is_light(), errors: [], }
 }
@@ -43,8 +43,8 @@ pub fn[L] TrigSliceParser::new(
 /// 统计 offset 之前的换行数（0 基行号；词法器不吐换行 token，统一按数据统计）
 fn[L] TrigSliceParser::line_before(
   self : TrigSliceParser[L],
-  offset : Int,
-) -> Int {
+  offset : Int32,
+) -> Int32 {
   let limit = if offset < self.data.length() {
     offset
   } else {

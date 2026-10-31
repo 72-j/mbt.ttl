@@ -24,7 +24,7 @@ pub(all) enum Token {
   Unknown(Span) // 其他字符
 
   // 结束
-  EOF(Int) // 文件结束
+  EOF(Int32) // 文件结束
 } derive(Debug)
 
 ///|

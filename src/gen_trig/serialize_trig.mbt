@@ -54,8 +54,8 @@ pub struct TrigSerializer {
 ///|
 /// 创建序列化器。默认 TriG + Strict：无损是底线，有损必须显式选 Drop
 pub fn TrigSerializer::new(
-  format? : SerializeFormat = TriG,
-  graph_policy? : GraphPolicy = Strict,
+  format~ : SerializeFormat = TriG,
+  graph_policy~ : GraphPolicy = Strict,
 ) -> TrigSerializer {
   { format, graph_policy, }
 }

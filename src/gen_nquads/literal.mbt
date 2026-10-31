@@ -346,7 +346,7 @@ fn append_escaped_str(f : StringBuilder, string : StringView) -> Unit {
 
 ///|
 /// 左侧填充
-fn String::lpad(self : String, width : Int, char : Char) -> String {
+fn String::lpad(self : String, width : Int32, char : Char) -> String {
   let pad_count = width - self.length()
   if pad_count <= 0 {
     return self

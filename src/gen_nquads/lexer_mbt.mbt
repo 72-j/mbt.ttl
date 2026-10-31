@@ -21,8 +21,8 @@
 ///|
 pub(all) struct Lexermoon {
   view : ArrayView[Byte]
-  mut pos : Int
-  mut len : Int
+  mut pos : Int32
+  mut len : Int32
   mut last_unknown : Span // 单槽旁路：Unknown 出词点 span（生成契约无 span 载荷）
 }
 
@@ -42,7 +42,7 @@ pub fn Lexermoon::last_unknown_span(self : Lexermoon) -> Span {
 
 ///|
 /// 获取当前位置（用于错误报告）
-pub fn Lexermoon::current_pos(self : Lexermoon) -> Int {
+pub fn Lexermoon::current_pos(self : Lexermoon) -> Int32 {
   self.pos
 }
 
@@ -52,8 +52,8 @@ pub fn Lexermoon::current_pos(self : Lexermoon) -> Int {
 /// 位义：`1` = alpha；`2` = 非字母的 name 追加（`0-9` / `_` / `-` / `.`）；`4` = hex 位。
 /// ⇒ `is_name_char = (cls & 3) != 0`、`is_alpha = (cls & 1) != 0`、`is_hex = (cls & 4) != 0`
 /// （**逐字节同义**：本表只是同一判据的查表实现，不改任何接受面）。
-let lexer_cls : FixedArray[Int] = {
-  let t : FixedArray[Int] = FixedArray::make(256, 0)
+let lexer_cls : FixedArray[Int32] = {
+  let t : FixedArray[Int32] = FixedArray::make(256, 0)
   for i in 0..<256 {
     let c = i.to_byte()
     let is_alpha = (c >= b'a' && c <= b'z') || (c >= b'A' && c <= b'Z')
@@ -101,7 +101,7 @@ fn is_hex(c : Byte) -> Bool {
 /// UTF-8 码点解码（字节级零分配）：返回 (码点, 消耗字节数)；非法形态 (-1, 0)。
 /// 拒收：裸续字节 / C0-C1 过长前导 / F5-FF 越界前导 / 断尾 / E0-F0-F4 下的
 /// 过短编码 / 代理区（ED A0+）/ >U+10FFFF（F4 90+）
-fn utf8_cp_at(v : ArrayView[Byte], pos : Int, l : Int) -> (Int, Int) {
+fn utf8_cp_at(v : ArrayView[Byte], pos : Int32, l : Int32) -> (Int32, Int32) {
   if pos >= l {
     return (-1, 0)
   }
@@ -173,7 +173,7 @@ fn utf8_cp_at(v : ArrayView[Byte], pos : Int, l : Int) -> (Int, Int) {
 /// 多字节名字字符（Turtle PN_CHARS 非 ASCII 全集：PN_CHARS_BASE ∪ 组合记号
 /// U+0300-036F ∪ U+203F-2040 ∪ ZWJ/ZWNJ U+200C-200D ∪ 中点 U+00B7）：
 /// 返回消耗字节数（0 = 非名字字符）。码点合法性由 utf8_cp_at 保证
-fn utf8_name_advance(v : ArrayView[Byte], pos : Int, l : Int) -> Int {
+fn utf8_name_advance(v : ArrayView[Byte], pos : Int32, l : Int32) -> Int32 {
   let r = utf8_cp_at(v, pos, l)
   let cp = r.0
   let n = r.1
@@ -614,7 +614,11 @@ fn Lexermoon::tokenize(self : Lexermoon) -> Array[NQuadsEvent] {
 
 ///|
 /// 从 span 提取字符串
-pub fn Lexermoon::extract(self : Lexermoon, start : Int, end : Int) -> String {
+pub fn Lexermoon::extract(
+  self : Lexermoon,
+  start : Int32,
+  end : Int32,
+) -> String {
   let mut s = ""
   for i in start..<end {
     s = s + self.view[i].to_char().to_string()
@@ -706,7 +710,7 @@ test "benchmark: tokenizer 1000 quad" {
 /// 事件流口径串（判据本体：下面的构造规则即"什么算一致"）：字面事件保 span 串（与原 Token span 同值）；
 /// 结构事件 span 已在直产时收窄 ⇒ 以 "@<start>" 钉起点（钉力与原 span 同价——
 /// start = current_pos()−1，单字符消费后回退一位 = 原 Token span.0）
-fn lexer_test_fmt_event_at(ev : NQuadsEvent, start : Int) -> String {
+fn lexer_test_fmt_event_at(ev : NQuadsEvent, start : Int32) -> String {
   match ev {
     NQuadsIri(s) => "Iri(\{s.0},\{s.1})"
     NQuadsBlankNode(s) => "BlankNode(\{s.0},\{s.1})"

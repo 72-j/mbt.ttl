@@ -75,8 +75,8 @@ pub(all) struct QuadSpan {
   o : Span
   g : Span? // 图名 span；None = 默认图
   pk : PredKind // 谓词来源：Normal=原文；RDFFirst/RDFRest=集合链合成（p 无字节）
-  prefix_version : Int // 前缀账本版本 = 发射时点账本长（物化层回扫上界——中途重声明不污染历史 quad）
-  base_version : Int // base 链版本 = 发射时点链长（物化层折叠得该 quad 生效 base）
+  prefix_version : Int32 // 前缀账本版本 = 发射时点账本长（物化层回扫上界——中途重声明不污染历史 quad）
+  base_version : Int32 // base 链版本 = 发射时点链长（物化层折叠得该 quad 生效 base）
   subj_shell : Bool // 注解壳主语（役9）：true = s 为锚三元组原文 span，物化层合成 <<原文>> TT 壳。
 }
 
@@ -114,7 +114,7 @@ pub(all) struct Slot {
   ret_state : TrigState // 返回态：类型来自生成件（`internals_priv` 下为 priv）
   as_subject : Bool
   prev_node : Span?
-  mut node_seq : Int
+  mut node_seq : Int32
 }
 
 ///|

@@ -8,9 +8,9 @@ import {
 // Values
 pub fn is_banned_langstring_iri(ArrayView[Byte]) -> Bool
 
-pub fn is_boolean_word(ArrayView[Byte], Int, Int) -> Bool
+pub fn is_boolean_word(ArrayView[Byte], Int32, Int32) -> Bool
 
-pub fn is_numeric_span(ArrayView[Byte], Int, Int) -> Bool
+pub fn is_numeric_span(ArrayView[Byte], Int32, Int32) -> Bool
 
 pub fn materialize_all(Array[QuadSpan]) -> (Array[QuadEmit], Array[ParseError])
 
@@ -168,38 +168,38 @@ pub let rdf_xml_literal : NamedNodeRef
 
 pub let rdf_year_month_duration : NamedNodeRef
 
-pub fn scan_string_body(ArrayView[Byte], Int, Int, Int) -> Result[Int, ParseError]
+pub fn scan_string_body(ArrayView[Byte], Int32, Int32, Int32) -> Result[Int32, ParseError]
 
 pub fn[A : NQuadsActions] step(NQuadsContext, NQuadsEvent, A) -> Result[NQuadsEffect, NQuadsActionError]
 
-pub fn validate_bnode(ArrayView[Byte], Int) -> Result[Unit, ParseError]
+pub fn validate_bnode(ArrayView[Byte], Int32) -> Result[Unit, ParseError]
 
-pub fn validate_escapes_unicode(ArrayView[Byte], Int, Int, Int, scalar_only? : Bool) -> Result[Unit, ParseError]
+pub fn validate_escapes_unicode(ArrayView[Byte], Int32, Int32, Int32, scalar_only? : Bool) -> Result[Unit, ParseError]
 
-pub fn validate_iri_body(ArrayView[Byte], Int, Int, Int) -> Result[Unit, ParseError]
+pub fn validate_iri_body(ArrayView[Byte], Int32, Int32, Int32) -> Result[Unit, ParseError]
 
 // Errors
 pub(all) suberror IriError {
-  NoScheme(Int)
-  InvalidScheme(Char, Int)
-  InvalidCharacter(Char, Int)
-  InvalidPath(Int)
+  NoScheme(Int32)
+  InvalidScheme(Char, Int32)
+  InvalidCharacter(Char, Int32)
+  InvalidPath(Int32)
   InvalidAuthority(String)
-  InvalidPercentEncoding(Int)
-  UnexpectedEnd(Int)
+  InvalidPercentEncoding(Int32)
+  UnexpectedEnd(Int32)
 } derive(@debug.Debug)
 pub fn IriError::err_kind(Self) -> String
 pub fn IriError::message(Self) -> String
 pub fn IriError::output(Self, &Logger) -> Unit
-pub fn IriError::position(Self) -> Int
+pub fn IriError::position(Self) -> Int32
 pub fn IriError::to_repr(Self) -> @debug.Repr
 pub fn IriError::to_string(Self) -> String
 pub impl Show for IriError
 pub impl ErrOut for IriError
 
 pub(all) suberror ParseError {
-  StructSyntaxErr(String, Int, (Int, Int))
-  SyntaxErr(String, (Int, Int))
+  StructSyntaxErr(String, Int32, (Int32, Int32))
+  SyntaxErr(String, (Int32, Int32))
   ValidationErr(String)
   IriErr(String)
 } derive(@debug.Debug)
@@ -207,7 +207,7 @@ pub fn ParseError::err_kind(Self) -> String
 pub fn ParseError::message(Self) -> String
 pub fn ParseError::output(Self, &Logger) -> Unit
 pub fn ParseError::to_repr(Self) -> @debug.Repr
-pub fn ParseError::to_span(Self) -> (Int, Int)
+pub fn ParseError::to_span(Self) -> (Int32, Int32)
 pub fn ParseError::to_string(Self) -> String
 pub impl Show for ParseError
 pub impl ErrOut for ParseError
@@ -218,7 +218,7 @@ pub(all) suberror TagParseErr {
   InvalidLanguageLength
   ForbiddenChar
   TooManyExtlangs
-  InvalidSubtag((Int, Int), StringView)
+  InvalidSubtag((Int32, Int32), StringView)
   EmptyExtension
   EmptyPrivateUse
   InvalidVariant
@@ -235,7 +235,7 @@ pub(all) enum BaseDirection {
   Rtl
 } derive(Eq, Hash, ToJson, @debug.Debug)
 pub fn BaseDirection::equal(Self, Self) -> Bool
-pub fn BaseDirection::hash(Self) -> Int
+pub fn BaseDirection::hash(Self) -> Int32
 pub fn BaseDirection::hash_combine(Self, Hasher) -> Unit
 pub fn BaseDirection::not_equal(Self, Self) -> Bool
 pub fn BaseDirection::output(Self, &Logger) -> Unit
@@ -245,8 +245,8 @@ pub fn BaseDirection::to_string(Self) -> String
 pub impl Show for BaseDirection
 
 pub struct Extension {
-  ident : (Int, Int)
-  subtags : Array[(Int, Int)]
+  ident : (Int32, Int32)
+  subtags : Array[(Int32, Int32)]
 } derive(Eq, @debug.Debug)
 pub fn Extension::equal(Self, Self) -> Bool
 pub fn Extension::not_equal(Self, Self) -> Bool
@@ -258,7 +258,7 @@ pub impl Show for Extension
 pub struct ExtensionIter {
   tag : StringView
   extensions : Array[Extension]
-  index : Int
+  index : Int32
 }
 pub fn ExtensionIter::to_array(Self) -> Array[(StringView, Array[StringView])]
 
@@ -323,17 +323,17 @@ pub impl Show for LanguageTag
 
 pub(all) struct Lexermoon {
   view : ArrayView[Byte]
-  mut pos : Int
-  mut len : Int
-  mut last_unknown : (Int, Int)
+  mut pos : Int32
+  mut len : Int32
+  mut last_unknown : (Int32, Int32)
 }
-pub fn Lexermoon::byte_at(Self, Int) -> Byte
-pub fn Lexermoon::current_pos(Self) -> Int
-pub fn Lexermoon::extract(Self, Int, Int) -> String
-pub fn Lexermoon::last_unknown_span(Self) -> (Int, Int)
+pub fn Lexermoon::byte_at(Self, Int32) -> Byte
+pub fn Lexermoon::current_pos(Self) -> Int32
+pub fn Lexermoon::extract(Self, Int32, Int32) -> String
+pub fn Lexermoon::last_unknown_span(Self) -> (Int32, Int32)
 pub fn Lexermoon::new(ArrayView[Byte]) -> Self
 pub fn Lexermoon::next(Self) -> NQuadsEvent?
-pub fn Lexermoon::pos(Self) -> Int
+pub fn Lexermoon::pos(Self) -> Int32
 pub impl LexerSource for Lexermoon
 
 pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Hash, @debug.Debug)
@@ -342,7 +342,7 @@ pub fn LiteralRef::datatype(Self) -> NamedNodeRef
 pub fn LiteralRef::destruct(Self) -> (StringView, NamedNodeRef?, StringView?, BaseDirection?)
 pub fn LiteralRef::direction(Self) -> BaseDirection?
 pub fn LiteralRef::equal(Self, Self) -> Bool
-pub fn LiteralRef::hash(Self) -> Int
+pub fn LiteralRef::hash(Self) -> Int32
 pub fn LiteralRef::hash_combine(Self, Hasher) -> Unit
 pub fn LiteralRef::language(Self) -> StringView?
 pub fn LiteralRef::new_directional_language_tagged_literal(String, String, BaseDirection) -> Result[Self, TagParseErr]
@@ -366,7 +366,7 @@ pub(all) enum LiteralRefContent {
   TypedLiteral(value~ : StringView, datatype~ : NamedNodeRef)
 } derive(Eq, Hash, @debug.Debug)
 pub fn LiteralRefContent::equal(Self, Self) -> Bool
-pub fn LiteralRefContent::hash(Self) -> Int
+pub fn LiteralRefContent::hash(Self) -> Int32
 pub fn LiteralRefContent::hash_combine(Self, Hasher) -> Unit
 pub fn LiteralRefContent::not_equal(Self, Self) -> Bool
 pub fn LiteralRefContent::to_repr(Self) -> @debug.Repr
@@ -378,10 +378,10 @@ pub(all) enum NQuadsActionError {
 
 pub(all) struct NQuadsContext {
   mut state : NQuadsState
-  mut subject : (Int, Int)?
-  mut predicate : (Int, Int)?
-  mut object : (Int, Int)?
-  mut graph : (Int, Int)?
+  mut subject : (Int32, Int32)?
+  mut predicate : (Int32, Int32)?
+  mut object : (Int32, Int32)?
+  mut graph : (Int32, Int32)?
 }
 pub fn NQuadsContext::has_pending(Self) -> Bool
 pub fn NQuadsContext::new() -> Self
@@ -403,18 +403,18 @@ pub struct NQuadsEngine[L] {
   lexer : L
   hooks : Hooks
   ctx : NQuadsContext
-  mut last_error : (Int, Int)?
+  mut last_error : (Int32, Int32)?
 }
 pub fn NQuadsEngine::from_bytes(Array[Byte]) -> Self[Lexermoon]
 pub fn[L] NQuadsEngine::new(L) -> Self[L]
 pub fn[L : LexerSource] NQuadsEngine::next(Self[L]) -> Result[NQuadsPendingQuad, ParseError]?
 
 pub(all) enum NQuadsEvent {
-  NQuadsIri((Int, Int))
-  NQuadsBlankNode((Int, Int))
-  NQuadsLiteral((Int, Int))
-  NQuadsPrefName((Int, Int))
-  NQuadsTripleTerm((Int, Int))
+  NQuadsIri((Int32, Int32))
+  NQuadsBlankNode((Int32, Int32))
+  NQuadsLiteral((Int32, Int32))
+  NQuadsPrefName((Int32, Int32))
+  NQuadsTripleTerm((Int32, Int32))
   NQuadsComma
   NQuadsSemicolon
   NQuadsDot
@@ -423,10 +423,10 @@ pub(all) enum NQuadsEvent {
 }
 
 pub(all) struct NQuadsPendingQuad {
-  subj : (Int, Int)?
-  pred : (Int, Int)?
-  obj : (Int, Int)?
-  graph : (Int, Int)?
+  subj : (Int32, Int32)?
+  pred : (Int32, Int32)?
+  obj : (Int32, Int32)?
+  graph : (Int32, Int32)?
 } derive(Eq)
 pub fn NQuadsPendingQuad::equal(Self, Self) -> Bool
 pub fn NQuadsPendingQuad::not_equal(Self, Self) -> Bool
@@ -443,7 +443,7 @@ pub(all) struct NamedNodeRef {
   iri : StringView
 } derive(Eq, Hash, @debug.Debug)
 pub fn NamedNodeRef::equal(Self, Self) -> Bool
-pub fn NamedNodeRef::hash(Self) -> Int
+pub fn NamedNodeRef::hash(Self) -> Int32
 pub fn NamedNodeRef::hash_combine(Self, Hasher) -> Unit
 pub fn NamedNodeRef::new_unchecked(StringView) -> Self
 pub fn NamedNodeRef::not_equal(Self, Self) -> Bool
@@ -453,8 +453,8 @@ pub fn NamedNodeRef::to_string(Self) -> String
 pub impl Show for NamedNodeRef
 
 pub struct PrivateUse {
-  prefix : (Int, Int)
-  subtags : Array[(Int, Int)]
+  prefix : (Int32, Int32)
+  subtags : Array[(Int32, Int32)]
 } derive(Eq, @debug.Debug)
 pub fn PrivateUse::equal(Self, Self) -> Bool
 pub fn PrivateUse::not_equal(Self, Self) -> Bool
@@ -530,11 +530,11 @@ pub fn[L : LexerSource] SliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Arr
 pub fn[L : LexerSource] SliceParser::parse_next(Self[L]) -> Result[QuadSpan, ParseError]?
 
 pub struct TagState {
-  language : (Int, Int)
-  extlang : (Int, Int)?
-  script : (Int, Int)?
-  region : (Int, Int)?
-  variants : Array[(Int, Int)]
+  language : (Int32, Int32)
+  extlang : (Int32, Int32)?
+  script : (Int32, Int32)?
+  region : (Int32, Int32)?
+  variants : Array[(Int32, Int32)]
   extensions : Array[Extension]
   private_use : PrivateUse?
   is_grandfathered : Bool
@@ -577,16 +577,16 @@ pub fn TermType::to_string(Self) -> String
 pub impl Show for TermType
 
 pub(all) enum Token {
-  Dot((Int, Int))
-  Semicolon((Int, Int))
-  Comma((Int, Int))
-  Iri((Int, Int))
-  Literal((Int, Int))
-  BlankNode((Int, Int))
-  PrefName((Int, Int))
-  TripleTerm((Int, Int))
-  Unknown((Int, Int))
-  EOF(Int)
+  Dot((Int32, Int32))
+  Semicolon((Int32, Int32))
+  Comma((Int32, Int32))
+  Iri((Int32, Int32))
+  Literal((Int32, Int32))
+  BlankNode((Int32, Int32))
+  PrefName((Int32, Int32))
+  TripleTerm((Int32, Int32))
+  Unknown((Int32, Int32))
+  EOF(Int32)
 } derive(@debug.Debug)
 pub fn Token::output(Self, &Logger) -> Unit
 pub fn Token::to_repr(Self) -> @debug.Repr
@@ -602,9 +602,9 @@ pub fn ValidateMode::is_light(Self) -> Bool
 // Type aliases
 pub type Predicate = ArrayView[Byte]
 
-pub type Span = (Int, Int)
+pub type Span = (Int32, Int32)
 
-pub type TagSpan = (Int, Int)
+pub type TagSpan = (Int32, Int32)
 
 // Traits
 pub trait ErrOut {
@@ -615,10 +615,10 @@ pub trait ErrOut {
 trait LexerSource
 
 pub(open) trait NQuadsActions {
-  fn set_subject(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]
-  fn set_predicate(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]
-  fn set_object(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]
-  fn set_graph(Self, NQuadsContext, (Int, Int)) -> Result[NQuadsEffect, NQuadsActionError]
+  fn set_subject(Self, NQuadsContext, (Int32, Int32)) -> Result[NQuadsEffect, NQuadsActionError]
+  fn set_predicate(Self, NQuadsContext, (Int32, Int32)) -> Result[NQuadsEffect, NQuadsActionError]
+  fn set_object(Self, NQuadsContext, (Int32, Int32)) -> Result[NQuadsEffect, NQuadsActionError]
+  fn set_graph(Self, NQuadsContext, (Int32, Int32)) -> Result[NQuadsEffect, NQuadsActionError]
 }
 
 pub trait NQuadsEffectHandler {
@@ -630,7 +630,7 @@ pub trait NQuadsEffectHandler {
 
 pub trait NQuadsLoopPolicy {
   fn begin_record(Self) -> Unit
-  fn recover(Self, (Int, Int)) -> Unit
+  fn recover(Self, (Int32, Int32)) -> Unit
   fn finish_at_end(Self) -> Result[NQuadsPendingQuad, ParseError]?
   fn on_business_failed(Self, String) -> ParseError
 }

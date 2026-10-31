@@ -284,7 +284,7 @@ fn is_langtag_byte(c : Byte) -> Bool {
 
 ///|
 /// span 内是否含冒号（变量名禁冒号：?x:y 非 N3 变量形态）
-fn span_has_colon(data : ArrayView[Byte], off : Int, len : Int) -> Bool {
+fn span_has_colon(data : ArrayView[Byte], off : Int32, len : Int32) -> Bool {
   for i in 0..<len {
     if data[off + i] == b':' {
       return true
@@ -442,14 +442,14 @@ pub impl LexerSource for N3LexerAdapter with fn next(self : N3LexerAdapter) -> N
 pub extend N3LexerAdapter with LexerSource::{byte_at, next, pos}
 
 ///|
-pub impl LexerSource for N3LexerAdapter with fn pos(self : N3LexerAdapter) -> Int {
+pub impl LexerSource for N3LexerAdapter with fn pos(self : N3LexerAdapter) -> Int32 {
   self.inner.current_pos()
 }
 
 ///|
 pub impl LexerSource for N3LexerAdapter with fn byte_at(
   self : N3LexerAdapter,
-  offset : Int,
+  offset : Int32,
 ) -> Byte {
   self.data[offset]
 }

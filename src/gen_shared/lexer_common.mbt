@@ -5,7 +5,7 @@
 // 引入方式：方言包 `using @gs { fn <name> }` ⇒ 本地调用点**零改写**。
 
 ///|
-pub fn eq_ignore_case(data : ArrayView[Byte], off : Int, kw : Bytes) -> Bool {
+pub fn eq_ignore_case(data : ArrayView[Byte], off : Int32, kw : Bytes) -> Bool {
   let n = kw.length()
   for i in 0..<n {
     let c = data[off + i]
@@ -21,7 +21,7 @@ pub fn eq_ignore_case(data : ArrayView[Byte], off : Int, kw : Bytes) -> Bool {
 }
 
 ///|
-pub fn eq_lower(data : ArrayView[Byte], off : Int, kw : Bytes) -> Bool {
+pub fn eq_lower(data : ArrayView[Byte], off : Int32, kw : Bytes) -> Bool {
   for i in 0..<kw.length() {
     if data[off + i] != kw[i] {
       return false
@@ -31,6 +31,6 @@ pub fn eq_lower(data : ArrayView[Byte], off : Int, kw : Bytes) -> Bool {
 }
 
 ///|
-pub fn at_style_kw(data : ArrayView[Byte], off : Int) -> Bool {
+pub fn at_style_kw(data : ArrayView[Byte], off : Int32) -> Bool {
   off > 0 && data[off - 1] == b'@'
 }

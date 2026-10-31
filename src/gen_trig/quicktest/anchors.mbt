@@ -22,7 +22,7 @@
 /// 不给 Deadlock 留口子。
 fn scripted_check(
   script : Array[Command],
-  system_call? : (Command, System) -> Response = run_command,
+  system_call~ : (Command, System) -> Response = run_command,
 ) -> Result[@qcs.RunReport[Command, Response, Command, Response], Error] {
   let config : @qcs.RunConfig = {
     ..quick_run_config(),

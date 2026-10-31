@@ -6,7 +6,7 @@
 // `fwd:` 词条即口径缺口（fail-loud 臂）与清-读同槽序敏感臂（n3 已转读前值真判）。
 
 ///|
-fn wb_ok_id(r : Result[RefId?, String]) -> Int? {
+fn wb_ok_id(r : Result[RefId?, String]) -> Int32? {
   match r {
     Ok(Some(v)) => Some(v.id)
     _ => None
@@ -22,7 +22,7 @@ fn wb_err(r : Result[RefId?, String]) -> String? {
 }
 
 ///|
-fn wb_rid(id : Int) -> RefId {
+fn wb_rid(id : Int32) -> RefId {
   { id, }
 }
 

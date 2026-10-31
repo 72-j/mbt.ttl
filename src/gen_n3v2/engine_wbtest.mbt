@@ -8,7 +8,7 @@ fn bytes_of(input : String) -> Array[Byte] {
 }
 
 ///|
-fn view_str(data : ArrayView[Byte], span : (Int, Int)) -> String {
+fn view_str(data : ArrayView[Byte], span : (Int32, Int32)) -> String {
   let (off, len) = span
   // decode_lossy 同序列化器口径——严禁逐字节 to_char 拼多字节（役27a 与 mat_vs 归一）
   @utf8.decode_lossy(Bytes::from_array(data[off:off + len]))

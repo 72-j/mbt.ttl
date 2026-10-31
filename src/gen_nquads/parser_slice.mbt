@@ -13,9 +13,9 @@ pub struct SliceParser[L] {
 pub fn[L] SliceParser::new(
   engine : NQuadsEngine[L],
   data : ArrayView[Byte],
-  lenient? : Bool = false,
-  rdf12? : Bool = true,
-  mode? : ValidateMode = ValidateMode::Deep,
+  lenient~ : Bool = false,
+  rdf12~ : Bool = true,
+  mode~ : ValidateMode = ValidateMode::Deep,
 ) -> SliceParser[L] {
   // 档位入口（B2 步① A）：`Light` 映射为 `lenient=true`（口径表 §X 第 1 条：nquads 侧 `lenient`
   // 即轻验档）；`lenient` 形参保留作内部语义；**缺省档 = `Deep`**（性能不换深验）。
@@ -50,7 +50,7 @@ fn[L] SliceParser::assemble(
 
 ///|
 /// 统计 offset 之前的换行数（0 基行号；词法器不吐换行 token，统一按数据统计）
-fn[L] SliceParser::line_before(self : SliceParser[L], offset : Int) -> Int {
+fn[L] SliceParser::line_before(self : SliceParser[L], offset : Int32) -> Int32 {
   let limit = if offset < self.data.length() {
     offset
   } else {

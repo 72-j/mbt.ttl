@@ -4,7 +4,7 @@
 
 ///|
 /// 子标签位置，左闭右开 [start, end)
-pub type TagSpan = (Int, Int)
+pub type TagSpan = (Int32, Int32)
 
 ///|
 /// 扩展 (单字符标识符 + 多个子标签)
@@ -193,7 +193,7 @@ fn sub(s : StringView, span : TagSpan) -> StringView {
 
 ///|
 /// 计算 TagSpan 长度
-fn span_len(span : TagSpan) -> Int {
+fn span_len(span : TagSpan) -> Int32 {
   span.1 - span.0
 }
 
@@ -207,8 +207,8 @@ fn span_len(span : TagSpan) -> Int {
 /// 提取范围内的所有子标签
 fn split_by_span(
   s : StringView,
-  start : Int,
-  end : Int,
+  start : Int32,
+  end : Int32,
   delim : Char,
 ) -> Array[StringView] {
   let view = sub(s, (start, end))
@@ -221,36 +221,36 @@ fn split_by_span(
 ///|
 /// 数字常量
 /// 'A'=65 'Z'=90 'a'=97 'z'=122 '0'=48 '9'=57
-const UPPER_A : Int = 65
+const UPPER_A : Int32 = 65
 
 ///|
-const UPPER_Z : Int = 90
+const UPPER_Z : Int32 = 90
 
 ///|
-const LOWER_A : Int = 97
+const LOWER_A : Int32 = 97
 
 ///|
-const LOWER_Z : Int = 122
+const LOWER_Z : Int32 = 122
 
 ///|
-const DIGIT_0 : Int = 48
+const DIGIT_0 : Int32 = 48
 
 ///|
-const DIGIT_9 : Int = 57
+const DIGIT_9 : Int32 = 57
 
 ///|
 /// 字符分类
-fn is_alpha_for_int(c : Int) -> Bool {
+fn is_alpha_for_int(c : Int32) -> Bool {
   (c >= LOWER_A && c <= LOWER_Z) || (c >= UPPER_A && c <= UPPER_Z)
 }
 
 ///|
-fn is_digit(c : Int) -> Bool {
+fn is_digit(c : Int32) -> Bool {
   c >= DIGIT_0 && c <= DIGIT_9
 }
 
 ///|
-fn is_alphanumeric_char(c : Int) -> Bool {
+fn is_alphanumeric_char(c : Int32) -> Bool {
   is_alpha_for_int(c) || is_digit(c)
 }
 
@@ -260,7 +260,7 @@ fn is_alphanumeric_char(c : Int) -> Bool {
 // }
 
 ///|
-fn is_upper(c : Int) -> Bool {
+fn is_upper(c : Int32) -> Bool {
   c >= UPPER_A && c <= UPPER_Z
 }
 
@@ -988,7 +988,7 @@ pub fn LanguageTag::has_private_use(self : LanguageTag) -> Bool {
 pub struct ExtensionIter {
   tag : StringView
   extensions : Array[Extension]
-  index : Int
+  index : Int32
 }
 
 ///|
@@ -1057,7 +1057,7 @@ fn validate_tag_format(tag : StringView) -> Result[Unit, TagParseErr] {
 
 ///|
 /// 检查字符是否有效（字母、数字、'-'）
-fn is_valid_char(c : Int) -> Bool {
+fn is_valid_char(c : Int32) -> Bool {
   is_alphanumeric_char(c) || c == '-'.to_int()
 }
 

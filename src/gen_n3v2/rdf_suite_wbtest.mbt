@@ -73,10 +73,10 @@ fn n3_suite_n3_legal(name : String) -> Bool {
 /// good files additionally require emits.length == quads.length
 fn n3_suite_verdict(
   is_bad : Bool,
-  perr_count : Int,
+  perr_count : Int32,
   emits : Array[@nquads.QuadEmit],
   merrs : Array[ParseError],
-  quad_count : Int,
+  quad_count : Int32,
 ) -> Bool {
   // 役17：mat_deferred 两档豁免退役（桶清零，成员全数升格 n3_legal），二元裁定
   if is_bad {
@@ -97,10 +97,10 @@ async fn run_n3_suite(
   suffix : String,
   label : String,
   suite_base : String,
-  pin? : Bool = false,
-  rdf12? : Bool = true, // 语法版本（对齐 nquads 口径）：true = RDF 1.2（方向后缀放行 + 转义代理全禁）；false = 1.1 严格契约
-  expect_pass? : Int = -1, // 役25 绝对计数钉（-1 不钉）：files 漂移即红
-  expect_strict_gap? : Int = -1, // 影子扫描缺口基线（-1 不钉；清零后升格主判定）
+  pin~ : Bool = false,
+  rdf12~ : Bool = true, // 语法版本（对齐 nquads 口径）：true = RDF 1.2（方向后缀放行 + 转义代理全禁）；false = 1.1 严格契约
+  expect_pass~ : Int32 = -1, // 役25 绝对计数钉（-1 不钉）：files 漂移即红
+  expect_strict_gap~ : Int32 = -1, // 影子扫描缺口基线（-1 不钉；清零后升格主判定）
 ) -> Unit {
   let files = @fs.readdir(test_dir, sort=true).filter(fn(x) {
     x.has_suffix(suffix) && !x.has_prefix("manifest")

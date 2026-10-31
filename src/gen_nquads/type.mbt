@@ -4,7 +4,7 @@
 
 ///|
 /// (offset, length)
-pub type Span = (Int, Int)
+pub type Span = (Int32, Int32)
 
 ///|
 /// 词项类型

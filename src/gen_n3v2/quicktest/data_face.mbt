@@ -128,7 +128,7 @@ priv struct FaceFrame {
   as_subject : Bool
   as_pred : Bool
   prev_node : RefId?
-  node_seq : Int
+  node_seq : Int32
   id_subject : RefId?
 }
 
@@ -139,7 +139,7 @@ priv struct FaceFrame {
 priv struct FaceLedger {
   frames : Array[FaceFrame] // 自底向上（栈顶 = 末元素）
   is_src : RefId?
-  is_depth : Int
+  is_depth : Int32
 }
 
 ///|
@@ -176,7 +176,7 @@ fn face_ledger_of_engine(probe : @n3.N3Probe) -> FaceLedger {
 priv enum FaceValue {
   FRef(RefId?)
   FBool(Bool)
-  FInt(Int)
+  FInt(Int32)
   FState(String)
 }
 
@@ -219,7 +219,7 @@ fn frame_ref_field(frame : FaceFrame, field : String) -> RefId? {
 /// 帧写地址解析（§AN.13 投影写实）：`frame.top.<位>` → 后态**帧顶**（偏移 0）；
 /// `frame.below.<位>` → 后态**次顶**（偏移 1，效果通道压帧行的体写）；
 /// `frame.<位>`（无地址老形）按帧顶读，容错用。
-fn frame_address(target : String) -> (Int, String)? {
+fn frame_address(target : String) -> (Int32, String)? {
   if target.has_prefix("frame.top.") {
     Some((0, target[10:].to_owned()))
   } else if target.has_prefix("frame.below.") {
@@ -373,7 +373,7 @@ fn resolve_span_source(
     return Ok(None)
   }
   // `argN` 按该行 args 列解引用（trig §AN.5：args=none ⇒ 实参 None，不是合成载荷）
-  let arg_index : Int? = match source {
+  let arg_index : Int32? = match source {
     "arg0" => Some(0)
     "arg1" => Some(1)
     "arg2" => Some(2)
@@ -495,7 +495,7 @@ fn response_short(response : Response) -> String {
 /// 逐行对拍：返回 (可比行数, 不可比清单, 不可达清单, 分道清单)
 fn data_face_compare(
   rows : Array[DataFaceRow],
-) -> (Int, Array[String], Array[String], Array[String]) {
+) -> (Int32, Array[String], Array[String], Array[String]) {
   let witnesses = reachable_state_witness_paths()
   let mut compared = 0
   let incomparable : Array[String] = []

@@ -60,7 +60,7 @@ fn shared_files() -> Array[String] {
 
 ///|
 /// 文本里 `fn <name>(` 的出现次数（不区分 `pub` / `priv` / `impl … with` 前缀）。
-fn def_count(text : String, name : String) -> Int {
+fn def_count(text : String, name : String) -> Int32 {
   text
   .split("\n")
   .iter()
@@ -70,7 +70,7 @@ fn def_count(text : String, name : String) -> Int {
 
 ///|
 /// 文本里**调用点**计数（`<name>(`，排除定义行）。
-fn call_count(text : String, name : String) -> Int {
+fn call_count(text : String, name : String) -> Int32 {
   text
   .split("\n")
   .iter()

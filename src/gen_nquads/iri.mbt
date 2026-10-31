@@ -44,7 +44,7 @@ struct IriSpan {
   mut path : Span
   mut query : Span? // None = 未出现
   mut fragment : Span? // None = 未出现
-  mut pos : Int // 当前解析位置
+  mut pos : Int32 // 当前解析位置
 } derive(Eq, Default)
 
 ///|
@@ -86,7 +86,7 @@ fn parse_unchecked(view : BytesView) -> Iri {
 pub fn Iri::resolve(
   self : Iri,
   ref_iri : BytesView,
-  remove_dot_segments? : Bool = true,
+  remove_dot_segments~ : Bool = true,
 ) -> Result[Iri, ParseError] {
   let ref_parsed = match parse(ref_iri) {
     Ok(r) => r
@@ -180,7 +180,7 @@ pub fn Iri::relativize(self : Iri, target : Iri) -> Result[Iri, ParseError] {
 pub fn Iri::resolve_unchecked(
   self : Iri,
   ref_iri : BytesView,
-  remove_dot_segments? : Bool = true,
+  remove_dot_segments~ : Bool = true,
 ) -> Iri {
   let ref_parsed = parse_unchecked(ref_iri)
 
@@ -488,7 +488,7 @@ fn IriSpan::parse_fragment(self : IriSpan, data : BytesView) -> Unit {
 
 ///|
 /// 主解析函数
-fn parse_iri(data : BytesView, start : Int) -> Result[IriSpan, ParseError] {
+fn parse_iri(data : BytesView, start : Int32) -> Result[IriSpan, ParseError] {
   let span : IriSpan = Default::default()
   span.pos = start
   let len = data.length()

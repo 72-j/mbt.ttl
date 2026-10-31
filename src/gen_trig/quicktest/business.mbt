@@ -15,12 +15,12 @@
 
 ///|
 /// 引用取值范围（源 [business].ref_id_range）：越小越利于 shrink 收敛
-const REF_ID_RANGE : Int = 8
+const REF_ID_RANGE : Int32 = 8
 
 ///|
 /// 命令权重（源 [business].weights；未声明默认 1，0 表示禁用）。
 /// 权重只影响选择概率，合法性仍由 valid 过滤（转移表是唯一权威）。
-fn command_weight(name : String) -> Int {
+fn command_weight(name : String) -> Int32 {
   match name {
     "At" => 1
     "Dot" => 3
@@ -61,7 +61,7 @@ fn fresh_ref(rng : @splitmix.RandomState) -> @qcs.Ref[RefId] {
 /// 负责；生成器若将来要"按 size 收束"，接在这里。
 fn generate_command(
   model : Model,
-  size : Int,
+  size : Int32,
   rng : @splitmix.RandomState,
 ) -> Command? {
   ignore(size)
@@ -108,7 +108,7 @@ fn generate_command(
     "Lparen", "Rparen", "Anon", "Bang", "Caret", "Implies", "ImpliedBy", "ForAllKw",
     "ForSomeKw", "KeywordsKw", "Unknown", "EOF",
   ]
-  let weighted : Array[(Command, Int)] = []
+  let weighted : Array[(Command, Int32)] = []
   for index = 0; index < candidates.length(); index = index + 1 {
     let command = candidates[index]
     if valid(model, command) {

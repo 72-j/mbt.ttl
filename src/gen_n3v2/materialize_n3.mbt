@@ -32,7 +32,7 @@ pub struct N3Materializer {
   base_fallback : String? // 外部 base（套件 runner 注入 test-URI 口径；doc @base 优先）
   rdf12 : Bool // **语法版本开关**（对齐 nquads 口径）：true = RDF 1.2（方向后缀 `--ltr/--rtl` 放行；转义代理全禁），false = 1.1 严格契约（方向后缀拒；转义成对合法）
   mut fallback_parsed : @nquads.Iri? // 外部 fallback base 解析 memo（成功才记）
-  base_memo : Map[Int, @nquads.Iri] // base_version → 折叠后的生效 base（链前缀稳定，append-only）
+  base_memo : Map[Int32, @nquads.Iri] // base_version → 折叠后的生效 base（链前缀稳定，append-only）
   mut deep_validate : Bool // 深验融合开关（materialize_all 参数落位，materialize_quad 单入口读）
   fresh_ids : Map[Span, Span] // fresh 节点 memo：开括号全 span → arena 内 `_:genid<N>` span
   arena : Array[Byte] // 展开字节缓冲（PrefName/'a'/数值/布尔/^^PrefName/相对 IRI 落这里）
@@ -45,9 +45,9 @@ pub struct N3Materializer {
 pub fn N3Materializer::new(
   data : ArrayView[Byte],
   prefixes : Array[(Span, Span)],
-  bases? : Array[Span] = [],
-  base_fallback? : String? = None,
-  rdf12? : Bool = true,
+  bases~ : Array[Span] = [],
+  base_fallback~ : String? = None,
+  rdf12~ : Bool = true,
 ) -> N3Materializer {
   {
     data,
@@ -106,8 +106,8 @@ fn N3Materializer::push_vocab(
 fn N3Materializer::resolve_prefname(
   self : N3Materializer,
   span : Span,
-  prefix_version : Int,
-) -> Result[(Span, Int)?, ParseError] {
+  prefix_version : Int32,
+) -> Result[(Span, Int32)?, ParseError] {
   let (off, len) = span
   let mut colon = -1
   for i in 0..<len {
@@ -186,7 +186,7 @@ fn N3Materializer::resolve_prefname(
 fn N3Materializer::write_prefname_iri(
   self : N3Materializer,
   span : Span,
-  colon : Int,
+  colon : Int32,
   iri : Span,
 ) -> Span {
   let (off, len) = span
@@ -227,8 +227,8 @@ fn N3Materializer::write_prefname_iri(
 fn N3Materializer::expand_prefname(
   self : N3Materializer,
   span : Span,
-  prefix_version : Int,
-  base_version : Int,
+  prefix_version : Int32,
+  base_version : Int32,
 ) -> Result[Span?, ParseError] {
   match self.resolve_prefname(span, prefix_version) {
     Err(e) => Err(e)
@@ -318,7 +318,7 @@ fn N3Materializer::expand_prefname(
 fn N3Materializer::iri_term(
   self : N3Materializer,
   span : Span,
-  base_version : Int,
+  base_version : Int32,
 ) -> Result[ArrayView[Byte], ParseError] {
   let view = slice_span(self.data, span)
   let len = view.length()
@@ -380,7 +380,7 @@ fn N3Materializer::fallback_base(
 /// Ok(None) = 该 quad 无生效 @base（调用方落 fallback_base 口径）
 fn N3Materializer::base_at(
   self : N3Materializer,
-  base_version : Int,
+  base_version : Int32,
 ) -> Result[@nquads.Iri?, ParseError] {
   if base_version == 0 {
     return Ok(None)
@@ -442,7 +442,7 @@ fn N3Materializer::base_at(
 /// 无处解析。结果恒绝对
 fn N3Materializer::quad_base(
   self : N3Materializer,
-  base_version : Int,
+  base_version : Int32,
 ) -> Result[@nquads.Iri, ParseError] {
   let b = match self.base_at(base_version) {
     Ok(b) => b
@@ -512,8 +512,8 @@ fn N3Materializer::expand_boolean(self : N3Materializer, span : Span) -> Span {
 /// 裁决；ADR-002 公式不透明，整段原文持有不做内部深验）
 fn formula_body_end(
   data : ArrayView[Byte],
-  open : Int,
-) -> Result[Int, ParseError] {
+  open : Int32,
+) -> Result[Int32, ParseError] {
   let mut depth = 0
   let mut i = open
   while i < data.length() {
@@ -570,7 +570,7 @@ fn formula_body_end(
 fn N3Materializer::materialize_literal(
   self : N3Materializer,
   span : Span,
-  prefix_version : Int,
+  prefix_version : Int32,
 ) -> Result[ArrayView[Byte], ParseError] {
   let (off, len) = span
   let body_end = literal_body_end(self.data, span)
@@ -1007,8 +1007,8 @@ pub fn N3Materializer::materialize_quad(
 pub fn N3Materializer::materialize_all(
   self : N3Materializer,
   quads : Array[QuadSpan],
-  deep_validate? : Bool = true,
-  mode? : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
+  deep_validate~ : Bool = true,
+  mode~ : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
 ) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
   self.deep_validate = deep_validate && !mode.is_light() // B2 档位：Light 关深验面
   let results : Array[@nquads.QuadEmit] = []

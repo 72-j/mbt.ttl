@@ -192,7 +192,7 @@ pub(all) struct N3FrameView {
   as_subject : Bool
   as_pred : Bool
   prev_node : Span?
-  node_seq : Int
+  node_seq : Int32
   id_subject : Span? // R-17 数据面开面（2026-09-20）：`[ id :X … ]` 语义主语（None = fresh）
 }
 
@@ -223,7 +223,7 @@ pub fn N3Probe::frames(self : N3Probe) -> Array[N3FrameView] {
 /// `is_src` = 交换键（`is_of`/`<-` 落键的入账主语 span），`is_depth` = 结算界（落键时刻栈深）。
 pub(all) struct N3InversionView {
   is_src : Span?
-  is_depth : Int
+  is_depth : Int32
 }
 
 ///|

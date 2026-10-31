@@ -18,7 +18,7 @@ using @nquads {trait NQuadsActions}
 /// Span 的符号替身：符号期 Symbolic(Var)，执行期 Concrete(RefId)。
 /// 编解码在 system.mbt：Span = (id, id)，往返可逆，模型与系统同值可比。
 priv struct RefId {
-  id : Int
+  id : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -52,7 +52,7 @@ priv enum Response {
   EmitQuad(Quad)
   Done
   Skip // 恢复窗吞咽（R-19）：窗内事件不进表（≠ Continue：Continue = 进了表）
-  Error(Int)
+  Error(Int32)
 } derive(Eq, Debug)
 
 ///|

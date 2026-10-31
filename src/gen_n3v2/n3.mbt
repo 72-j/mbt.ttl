@@ -163,13 +163,13 @@ priv struct N3Context {
   mut path_fwd : Bool
   mut path_pend : Span?
   mut path_tail : Span?
-  mut iri_upcast : Int
+  mut iri_upcast : Int32
   mut version_lit_ok : Bool
   mut kw_ledger : Array[Span]
   mut kw_directive_seen : Bool
   mut kw_a_live : Bool
   mut is_src : Span?
-  mut is_depth : Int
+  mut is_depth : Int32
   mut annot_s : Span?
   mut annot_o : Span?
   mut subj_shell : Bool
@@ -244,9 +244,9 @@ pub(all) struct N3PendingQuad {
   obj : Span?
   graph : Span?
   pk : PredKind
-  prefix_version : Int
-  base_version : Int
-  iri_version : Int
+  prefix_version : Int32
+  base_version : Int32
+  iri_version : Int32
   subj_shell : Bool
 } derive(Eq)
 

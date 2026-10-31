@@ -4,7 +4,7 @@
 
 ///|
 /// 合成 N 行 turtle（每行一条绝对 IRI 三元组，避开前缀/转义干扰）
-fn synth_turtle(n : Int) -> Array[Byte] {
+fn synth_turtle(n : Int32) -> Array[Byte] {
   let mut s = ""
   for i in 0..<n {
     s = s +
@@ -19,7 +19,10 @@ fn synth_turtle(n : Int) -> Array[Byte] {
 
 ///|
 /// 单次量：解析 + 物化为给定档位，返回 (ms, quad 数)
-fn timed_once(data : Array[Byte], mode : @nquads.ValidateMode) -> (Double, Int) {
+fn timed_once(
+  data : Array[Byte],
+  mode : @nquads.ValidateMode,
+) -> (Double, Int32) {
   let start = @bench.monotonic_clock_start()
   let engine = N3Engine::from_bytes(data)
   let sec = data[:]
@@ -77,7 +80,7 @@ test "B2 Light 档探针（n3v2）：交错 A/B" {
 fn split_once(
   data : Array[Byte],
   mode : @nquads.ValidateMode,
-) -> (Double, Double, Int) {
+) -> (Double, Double, Int32) {
   let t1 = @bench.monotonic_clock_start()
   let slice = N3SliceParser::new(N3Engine::from_bytes(data), data[:], mode~)
   let (quads, _) = slice.parse_all()

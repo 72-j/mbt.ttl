@@ -37,15 +37,18 @@ pub fn[L] N3SliceParser::bases(self : N3SliceParser[L]) -> Array[Span] {
 pub fn[L] N3SliceParser::new(
   engine : N3Engine[L],
   data : ArrayView[Byte],
-  lenient? : Bool = false,
-  mode? : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
+  lenient~ : Bool = false,
+  mode~ : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
 ) -> N3SliceParser[L] {
   { engine, data, lenient: lenient || mode.is_light(), errors: [], }
 }
 
 ///|
 /// 统计 offset 之前的换行数（0 基行号；词法器不吐换行 token，统一按数据统计）
-fn[L] N3SliceParser::line_before(self : N3SliceParser[L], offset : Int) -> Int {
+fn[L] N3SliceParser::line_before(
+  self : N3SliceParser[L],
+  offset : Int32,
+) -> Int32 {
   let limit = if offset < self.data.length() {
     offset
   } else {

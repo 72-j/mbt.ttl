@@ -19,10 +19,10 @@ fn trig_suite_is_bad(name : String) -> Bool {
 /// 正例加 quad 数对比——每条解析 quad 均须物化存活（emits.length == quads.length）
 fn trig_suite_verdict(
   is_bad : Bool,
-  perr_count : Int,
+  perr_count : Int32,
   emits : Array[@nquads.QuadEmit],
   merrs : Array[ParseError],
-  quad_count : Int,
+  quad_count : Int32,
 ) -> Bool {
   if is_bad {
     perr_count + merrs.length() > 0
@@ -50,9 +50,9 @@ async fn run_trig_suite(
   suffix : String,
   label : String,
   suite_base : String,
-  pin? : Bool = false,
-  rdf12? : Bool = true, // 语法版本（对齐 nquads 口径）：true = RDF 1.2（方向后缀放行 + 转义代理全禁）；false = 1.1 严格契约
-  dialect? : TrigDialect = TriG, // 方言开关：Turtle 禁图块区（bad-struct-01 口径）
+  pin~ : Bool = false,
+  rdf12~ : Bool = true, // 语法版本（对齐 nquads 口径）：true = RDF 1.2（方向后缀放行 + 转义代理全禁）；false = 1.1 严格契约
+  dialect~ : TrigDialect = TriG, // 方言开关：Turtle 禁图块区（bad-struct-01 口径）
 ) -> Unit {
   let files = @fs.readdir(test_dir, sort=true).filter(fn(x) {
     x.has_suffix(suffix) && !x.has_prefix("manifest")

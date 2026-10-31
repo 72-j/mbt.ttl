@@ -32,13 +32,13 @@ pub fn PredKind::equal(Self, Self) -> Bool
 pub fn PredKind::not_equal(Self, Self) -> Bool
 
 pub(all) struct QuadSpan {
-  s : (Int, Int)
-  p : (Int, Int)
-  o : (Int, Int)
-  g : (Int, Int)?
+  s : (Int32, Int32)
+  p : (Int32, Int32)
+  o : (Int32, Int32)
+  g : (Int32, Int32)?
   pk : PredKind
-  prefix_version : Int
-  base_version : Int
+  prefix_version : Int32
+  base_version : Int32
   subj_shell : Bool
 }
 
@@ -60,14 +60,14 @@ pub fn SerializeFormat::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Slot {
   typ : SlotType
-  open_span : (Int, Int)
-  subject : (Int, Int)?
-  predicate : (Int, Int)?
-  graph : (Int, Int)?
+  open_span : (Int32, Int32)
+  subject : (Int32, Int32)?
+  predicate : (Int32, Int32)?
+  graph : (Int32, Int32)?
   ret_state : TrigState
   as_subject : Bool
-  prev_node : (Int, Int)?
-  mut node_seq : Int
+  prev_node : (Int32, Int32)?
+  mut node_seq : Int32
 }
 
 pub(all) enum SlotType {
@@ -84,21 +84,21 @@ pub(all) enum TrigActionError {
 pub(all) struct TrigContext {
   mut state : TrigState
   mut emit_queue : Array[TrigPendingQuad]
-  mut subject : (Int, Int)?
-  mut predicate : (Int, Int)?
-  mut object : (Int, Int)?
-  mut graph : (Int, Int)?
-  mut prefix_name : (Int, Int)?
-  mut base : (Int, Int)?
+  mut subject : (Int32, Int32)?
+  mut predicate : (Int32, Int32)?
+  mut object : (Int32, Int32)?
+  mut graph : (Int32, Int32)?
+  mut prefix_name : (Int32, Int32)?
+  mut base : (Int32, Int32)?
   mut directive_at : Bool
-  mut prefixes : Array[((Int, Int), (Int, Int))]
-  mut bases : Array[(Int, Int)]
-  mut kw_ledger : Array[(Int, Int)]
+  mut prefixes : Array[((Int32, Int32), (Int32, Int32))]
+  mut bases : Array[(Int32, Int32)]
+  mut kw_ledger : Array[(Int32, Int32)]
   mut kw_directive_seen : Bool
   mut slot_stack : Array[Slot]
   mut pred_kind : PredKind
-  mut annot_s : (Int, Int)?
-  mut annot_o : (Int, Int)?
+  mut annot_s : (Int32, Int32)?
+  mut annot_o : (Int32, Int32)?
   mut subj_shell : Bool
   mut annot_close : Bool
 }
@@ -124,8 +124,8 @@ pub(all) enum TrigEffect {
   ExitGraph
   Sequence(Array[TrigEffect])
   PopBnp
-  ListStep((Int, Int))
-  OpenSlot((Int, Int), SlotType, TrigState)
+  ListStep((Int32, Int32))
+  OpenSlot((Int32, Int32), SlotType, TrigState)
 }
 
 pub(all) enum TrigEffectError {
@@ -149,13 +149,13 @@ pub fn[L : LexerSource] TrigEngine::new(L, dialect? : TrigDialect) -> Self[L]
 pub fn[L : LexerSource] TrigEngine::next(Self[L]) -> Result[TrigPendingQuad, @gen_nquads.ParseError]?
 
 pub(all) enum TrigEvent {
-  TrigIri((Int, Int))
-  TrigBlankNode((Int, Int))
-  TrigLiteral((Int, Int))
-  TrigPrefName((Int, Int))
-  TrigTripleTerm((Int, Int))
-  TrigBracketTripleTerm((Int, Int))
-  TrigKeywordA((Int, Int))
+  TrigIri((Int32, Int32))
+  TrigBlankNode((Int32, Int32))
+  TrigLiteral((Int32, Int32))
+  TrigPrefName((Int32, Int32))
+  TrigTripleTerm((Int32, Int32))
+  TrigBracketTripleTerm((Int32, Int32))
+  TrigKeywordA((Int32, Int32))
   TrigAt
   TrigPrefixKw
   TrigBaseKw
@@ -169,11 +169,11 @@ pub(all) enum TrigEvent {
   TrigDot
   TrigLbrace
   TrigRbrace
-  TrigLbracket((Int, Int))
+  TrigLbracket((Int32, Int32))
   TrigRbracket
-  TrigLparen((Int, Int))
+  TrigLparen((Int32, Int32))
   TrigRparen
-  TrigAnon((Int, Int))
+  TrigAnon((Int32, Int32))
   TrigBang
   TrigCaret
   TrigImplies
@@ -181,8 +181,8 @@ pub(all) enum TrigEvent {
   TrigForAllKw
   TrigForSomeKw
   TrigKeywordsKw
-  TrigKeywordX((Int, Int))
-  TrigUnknown((Int, Int))
+  TrigKeywordX((Int32, Int32))
+  TrigUnknown((Int32, Int32))
   TrigEOF
 }
 pub fn TrigEvent::output(Self, &Logger) -> Unit
@@ -190,14 +190,14 @@ pub fn TrigEvent::to_string(Self) -> String
 pub impl Show for TrigEvent
 
 pub(all) struct TrigFrameView {
-  open_span : (Int, Int)
-  subject : (Int, Int)?
-  predicate : (Int, Int)?
-  graph : (Int, Int)?
+  open_span : (Int32, Int32)
+  subject : (Int32, Int32)?
+  predicate : (Int32, Int32)?
+  graph : (Int32, Int32)?
   ret_state : TrigState
   as_subject : Bool
-  prev_node : (Int, Int)?
-  node_seq : Int
+  prev_node : (Int32, Int32)?
+  node_seq : Int32
 }
 
 pub(all) struct TrigLexerAdapter {
@@ -207,36 +207,36 @@ pub(all) struct TrigLexerAdapter {
   mut pending : TrigEvent?
   mut anon_swallow : Bool
 }
-pub fn TrigLexerAdapter::byte_at(Self, Int) -> Byte
+pub fn TrigLexerAdapter::byte_at(Self, Int32) -> Byte
 pub fn TrigLexerAdapter::new(ArrayView[Byte]) -> Self
 pub fn TrigLexerAdapter::next(Self) -> TrigEvent?
-pub fn TrigLexerAdapter::pos(Self) -> Int
+pub fn TrigLexerAdapter::pos(Self) -> Int32
 pub impl LexerSource for TrigLexerAdapter
 
 pub struct TrigMaterializer {
   data : ArrayView[Byte]
-  prefixes : Array[((Int, Int), (Int, Int))]
-  bases : Array[(Int, Int)]
+  prefixes : Array[((Int32, Int32), (Int32, Int32))]
+  bases : Array[(Int32, Int32)]
   base_fallback : String?
   rdf12 : Bool
   mut fallback_parsed : @gen_nquads.Iri?
-  base_memo : Map[Int, @gen_nquads.Iri]
+  base_memo : Map[Int32, @gen_nquads.Iri]
   mut deep_validate : Bool
-  fresh_ids : Map[(Int, Int), (Int, Int)]
+  fresh_ids : Map[(Int32, Int32), (Int32, Int32)]
   arena : Array[Byte]
 }
 pub fn TrigMaterializer::materialize_all(Self, Array[QuadSpan], deep_validate? : Bool, mode? : @gen_nquads.ValidateMode) -> (Array[@gen_nquads.QuadEmit], Array[@gen_nquads.ParseError])
 pub fn TrigMaterializer::materialize_quad(Self, QuadSpan) -> Result[@gen_nquads.QuadEmit, @gen_nquads.ParseError]
-pub fn TrigMaterializer::new(ArrayView[Byte], Array[((Int, Int), (Int, Int))], bases? : Array[(Int, Int)], base_fallback? : String?, rdf12? : Bool) -> Self
+pub fn TrigMaterializer::new(ArrayView[Byte], Array[((Int32, Int32), (Int32, Int32))], bases? : Array[(Int32, Int32)], base_fallback? : String?, rdf12? : Bool) -> Self
 
 pub(all) struct TrigPendingQuad {
-  subj : (Int, Int)?
-  pred : (Int, Int)?
-  obj : (Int, Int)?
-  graph : (Int, Int)?
+  subj : (Int32, Int32)?
+  pred : (Int32, Int32)?
+  obj : (Int32, Int32)?
+  graph : (Int32, Int32)?
   pk : PredKind
-  prefix_version : Int
-  base_version : Int
+  prefix_version : Int32
+  base_version : Int32
   subj_shell : Bool
 } derive(Eq)
 pub fn TrigPendingQuad::equal(Self, Self) -> Bool
@@ -271,17 +271,17 @@ pub struct TrigSliceParser[L] {
   lenient : Bool
   errors : Array[@gen_nquads.ParseError]
 }
-pub fn[L] TrigSliceParser::bases(Self[L]) -> Array[(Int, Int)]
+pub fn[L] TrigSliceParser::bases(Self[L]) -> Array[(Int32, Int32)]
 pub fn[L] TrigSliceParser::new(TrigEngine[L], ArrayView[Byte], lenient? : Bool, mode? : @gen_nquads.ValidateMode) -> Self[L]
 pub fn[L : LexerSource] TrigSliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
 pub fn[L : LexerSource] TrigSliceParser::parse_next(Self[L]) -> Result[QuadSpan, @gen_nquads.ParseError]?
-pub fn[L] TrigSliceParser::prefixes(Self[L]) -> Array[((Int, Int), (Int, Int))]
+pub fn[L] TrigSliceParser::prefixes(Self[L]) -> Array[((Int32, Int32), (Int32, Int32))]
 
 pub(all) struct TrigSlotSnapshot {
-  subject : (Int, Int)?
-  predicate : (Int, Int)?
-  object : (Int, Int)?
-  graph : (Int, Int)?
+  subject : (Int32, Int32)?
+  predicate : (Int32, Int32)?
+  object : (Int32, Int32)?
+  graph : (Int32, Int32)?
 }
 
 pub(all) enum TrigState {
@@ -331,7 +331,7 @@ pub using @gen_nquads {type NQuadsEvent}
 
 pub using @gen_nquads {type ParseError}
 
-pub type Span = (Int, Int)
+pub type Span = (Int32, Int32)
 
 pub using @gen_nquads {type TermType}
 
@@ -346,34 +346,34 @@ pub impl ErrOut for @gen_nquads.ParseError
 
 pub trait LexerSource {
   fn next(Self) -> TrigEvent?
-  fn pos(Self) -> Int
-  fn byte_at(Self, Int) -> Byte
+  fn pos(Self) -> Int32
+  fn byte_at(Self, Int32) -> Byte
 }
 
 pub(open) trait TrigActions {
-  fn set_subject(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
-  fn enter_graph(Self, TrigContext, (Int, Int)?) -> Result[TrigEffect, TrigActionError]
-  fn set_predicate(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
-  fn set_object(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn set_subject(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
+  fn enter_graph(Self, TrigContext, (Int32, Int32)?) -> Result[TrigEffect, TrigActionError]
+  fn set_predicate(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
+  fn set_object(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
   fn annot_open(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
-  fn annot_body_verb(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn annot_body_verb(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
   fn annot_close_silent(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
-  fn open_bnode_prop(Self, TrigContext, (Int, Int), Bool, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn open_bnode_prop(Self, TrigContext, (Int32, Int32), Bool, TrigState) -> Result[TrigEffect, TrigActionError]
   fn annot_end(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
-  fn set_prefix_name(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
-  fn declare_prefix(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
-  fn set_base(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
+  fn set_prefix_name(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
+  fn declare_prefix(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
+  fn set_base(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
   fn exit_graph(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
-  fn list_first(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
-  fn list_first_nested(Self, TrigContext, (Int, Int), SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
-  fn list_next(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
-  fn list_next_nested(Self, TrigContext, (Int, Int), SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn list_first(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
+  fn list_first_nested(Self, TrigContext, (Int32, Int32), SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn list_next(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
+  fn list_next_nested(Self, TrigContext, (Int32, Int32), SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
   fn list_nil(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
-  fn open_collection(Self, TrigContext, (Int, Int), Bool, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn open_collection(Self, TrigContext, (Int32, Int32), Bool, TrigState) -> Result[TrigEffect, TrigActionError]
   fn kw_begin(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
-  fn declare_keyword(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
-  fn list_step(Self, TrigContext, (Int, Int)) -> Result[TrigEffect, TrigActionError]
-  fn open_slot(Self, TrigContext, (Int, Int), SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn declare_keyword(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
+  fn list_step(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
+  fn open_slot(Self, TrigContext, (Int32, Int32), SlotType, TrigState) -> Result[TrigEffect, TrigActionError]
   fn pop_bnode_prop(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
 }
 
@@ -386,21 +386,21 @@ pub trait TrigEffectHandler {
   fn handle_exit_graph(Self) -> Result[Unit, TrigEffectError]
   fn handle_sequence(Self, Array[TrigEffect]) -> Result[Unit, TrigEffectError]
   fn handle_pop_bnp(Self) -> Result[Unit, TrigEffectError]
-  fn handle_list_step(Self, (Int, Int)) -> Result[Unit, TrigEffectError]
-  fn handle_open_slot(Self, (Int, Int), SlotType, TrigState) -> Result[Unit, TrigEffectError]
+  fn handle_list_step(Self, (Int32, Int32)) -> Result[Unit, TrigEffectError]
+  fn handle_open_slot(Self, (Int32, Int32), SlotType, TrigState) -> Result[Unit, TrigEffectError]
   fn snapshot(Self, TrigContext) -> TrigPendingQuad
   fn apply_scope(Self, TrigContext, ResetScope) -> Unit
   fn on_exit_graph(Self) -> Unit
   fn on_pop_bnp(Self, TrigContext) -> Unit
-  fn on_list_step(Self, TrigContext, (Int, Int)) -> Unit
-  fn on_open_slot(Self, TrigContext, (Int, Int), SlotType, TrigState) -> Unit
+  fn on_list_step(Self, TrigContext, (Int32, Int32)) -> Unit
+  fn on_open_slot(Self, TrigContext, (Int32, Int32), SlotType, TrigState) -> Unit
   fn interpret(Self, TrigContext, TrigEffect) -> TrigEffectOutcome
   fn dispatch(Self, TrigEffect) -> Result[Unit, TrigEffectError]
 }
 
 pub trait TrigSupervisor {
   fn begin_record(Self) -> Unit
-  fn recover(Self, (Int, Int)) -> Unit
+  fn recover(Self, (Int32, Int32)) -> Unit
   fn finish_at_end(Self) -> Result[TrigPendingQuad, @gen_nquads.ParseError]?
   fn on_business_failed(Self, String) -> @gen_nquads.ParseError
 }

@@ -12,7 +12,7 @@
 ///|
 /// Span 的符号替身：生成期以 Symbolic(Var) 引用，执行期解析为 Concrete(RefId)
 priv struct RefId {
-  id : Int
+  id : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -75,7 +75,7 @@ priv enum Response {
   Continue
   EmitQuad(Quad)
   Done
-  Error(Int) // 引擎错误归一化（[type_mapping].error_codes）
+  Error(Int32) // 引擎错误归一化（[type_mapping].error_codes）
   // P4.2h ③：**有序批**——一条命令可能对应多枚发射（引擎 `Sequence` 内多条 EmitQuad，
   // 经 `emit_queue` 逐条回吐）。批内顺序 = 引擎发射顺序（= `Sequence` 书写顺序）。
   // qcs 的 `run_command` 是单值接口（外部依赖），故用本变体承载批，不 patch 依赖；

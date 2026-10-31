@@ -11,12 +11,12 @@
 
 ///|
 /// 引用取值范围（源 [business].ref_id_range）：越小越利于 shrink 收敛
-const REF_ID_RANGE : Int = 8
+const REF_ID_RANGE : Int32 = 8
 
 ///|
 /// 命令权重（源 [business.weights]；未声明默认 1，0 表示禁用）
 /// 权重只影响选择概率，合法性仍由 valid 过滤（转移表是唯一权威）
-fn command_weight(name : String) -> Int {
+fn command_weight(name : String) -> Int32 {
   match name {
     "Iri" => 3
     "BlankNode" => 2
@@ -41,7 +41,7 @@ fn fresh_ref(rng : @splitmix.RandomState) -> @qcs.Ref[RefId] {
 /// 不是遗漏；下面的 "size 不影响分布" 测试把它钉成可验证事实。
 fn generate_command(
   model : Model,
-  size : Int,
+  size : Int32,
   rng : @splitmix.RandomState,
 ) -> Command? {
   ignore(size)
@@ -61,7 +61,7 @@ fn generate_command(
     Unknown,
     EOF,
   ]
-  let weighted : Array[(Command, Int)] = []
+  let weighted : Array[(Command, Int32)] = []
   for index = 0; index < candidates.length(); index = index + 1 {
     let command = candidates[index]
     if valid(model, command) {
@@ -315,8 +315,8 @@ fn command_name(command : Command) -> String {
 /// label 提供**语义路径指标**：响应分档（continue / emit / emit:graph / done / error），
 /// 供 RunConfig.required_labels 做"路径覆盖门"（命令名粒度之外的第二层覆盖）
 fn quick_state_machine(
-  system_call? : (Command, System) -> Response = run_command,
-  script? : Array[Command]? = None,
+  system_call~ : (Command, System) -> Response = run_command,
+  script~ : Array[Command]? = None,
 ) -> @qcs.StateMachine[
   Model,
   Model,
@@ -328,7 +328,7 @@ fn quick_state_machine(
   System,
 ] {
   // script 模式（P4.3 同源）：固定脚本按游标逐条喂，供"一条见证路径一个用例"复用同一组装
-  let cursor : Array[Int] = [0]
+  let cursor : Array[Int32] = [0]
   @qcs.StateMachine::new(
     init_symbolic_model=model_empty,
     init_concrete_model=model_empty,
@@ -414,7 +414,11 @@ test "nquads quick machine shrinker reduces refs" {
 
 ///|
 /// size 口径测试：同一 seed、不同 size → 命令序列逐条一致（size 不参与分布）
-fn generated_prefix(seed : UInt64, size : Int, steps : Int) -> Array[Command] {
+fn generated_prefix(
+  seed : UInt64,
+  size : Int32,
+  steps : Int32,
+) -> Array[Command] {
   let rng = @splitmix.new(seed~)
   let out : Array[Command] = []
   let mut model = model_empty()

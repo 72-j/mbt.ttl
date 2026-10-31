@@ -18,8 +18,8 @@
 /// 实现：Lexermoon（lexer_mbt.mbt，纯 MoonBit）/ Lexerc（lexerc.mbt，C FFI）
 trait LexerSource {
   fn next(Self) -> NQuadsEvent? // 下一个事件；换行/注释/EOF 已过滤，None = 输入结束
-  fn pos(Self) -> Int // 当前词法位置（兜底错误定位用）
-  fn byte_at(Self, offset : Int) -> Byte // 数据直查（词内尾点裁决用，见 trim_trailing_dot）
+  fn pos(Self) -> Int32 // 当前词法位置（兜底错误定位用）
+  fn byte_at(Self, offset : Int32) -> Byte // 数据直查（词内尾点裁决用，见 trim_trailing_dot）
 }
 
 ///|
@@ -38,14 +38,14 @@ pub impl LexerSource for Lexermoon with fn next(self : Lexermoon) -> NQuadsEvent
 pub extend Lexermoon with LexerSource::{byte_at, pos}
 
 ///|
-pub impl LexerSource for Lexermoon with fn pos(self : Lexermoon) -> Int {
+pub impl LexerSource for Lexermoon with fn pos(self : Lexermoon) -> Int32 {
   self.current_pos()
 }
 
 ///|
 pub impl LexerSource for Lexermoon with fn byte_at(
   self : Lexermoon,
-  offset : Int,
+  offset : Int32,
 ) -> Byte {
   self.view[offset]
 }
@@ -304,8 +304,8 @@ pub fn[L : LexerSource] NQuadsEngine::next(
 /// 便捷入口：解析全部（参考手写 src/moon_ttl/src/parser.mbt 的 nquads_parser）
 fn nquads_parser(
   input : Array[Byte],
-  lenient? : Bool = false,
-  rdf12? : Bool = true,
+  lenient~ : Bool = false,
+  rdf12~ : Bool = true,
 ) -> (Array[QuadSpan], Array[ParseError]) {
   let engine = NQuadsEngine::from_bytes(input)
   let slice = SliceParser::new(engine, input[:], lenient~, rdf12~)

@@ -20,8 +20,8 @@
 /// 实现：N3LexerAdapter（lexer_adapter.mbt，包 @nquads.Lexermoon）
 pub trait LexerSource {
   fn next(Self) -> N3Event? // 换行/注释已过滤；数据尾以 N3EOF 合法送达一次，其后 None=枯竭兜底
-  fn pos(Self) -> Int // 当前词法位置（兜底错误定位用）
-  fn byte_at(Self, Int) -> Byte // 数据直查（词内尾点裁决用）
+  fn pos(Self) -> Int32 // 当前词法位置（兜底错误定位用）
+  fn byte_at(Self, Int32) -> Byte // 数据直查（词内尾点裁决用）
 }
 
 ///|
@@ -286,7 +286,7 @@ pub struct N3Engine[L] {
 /// 前缀/Base 账本跨语句存续，与 trig 同口径）
 pub fn[L : LexerSource] N3Engine::new(
   lexer : L,
-  dialect? : N3Dialect = N3,
+  dialect~ : N3Dialect = N3,
 ) -> N3Engine[L] {
   let engine = N3Engine::{
     lexer,
@@ -304,7 +304,7 @@ pub fn[L : LexerSource] N3Engine::new(
 /// 纯 MoonBit 词法（N3LexerAdapter 包 @nquads.Lexermoon）版
 pub fn N3Engine::from_bytes(
   data : Array[Byte],
-  dialect? : N3Dialect = N3,
+  dialect~ : N3Dialect = N3,
 ) -> N3Engine[N3LexerAdapter] {
   N3Engine::new(N3LexerAdapter::new(data[:]), dialect~)
 }

@@ -74,7 +74,7 @@ fn bench_complex_input() -> String {
 
 ///|
 /// 词法 span 分类（首字节口径，跨词法器可比）：0=IRI/TT 壳 1=字面量 2=bnode 3=其他
-fn bench_span_kind(data : Array[Byte], off : Int) -> Int {
+fn bench_span_kind(data : Array[Byte], off : Int32) -> Int32 {
   let c = data[off]
   if c == b'<' {
     0
@@ -91,9 +91,9 @@ fn bench_span_kind(data : Array[Byte], off : Int) -> Int {
 /// MoonBit 词法流：全量取词 → (分类, offset, len) 序列（末位 EOF 不计）。
 /// P2 刀 a) 起直产事件：结构事件 span = 终点位回推（pos−1，单字节），
 /// Unknown span 走 last_unknown 单槽即读——口径与旧 Token span 逐值一致
-fn lexmoon_stream(data : Array[Byte]) -> Array[(Int, Int, Int)] {
+fn lexmoon_stream(data : Array[Byte]) -> Array[(Int32, Int32, Int32)] {
   let lexer = Lexermoon::new(data[:])
-  let out : Array[(Int, Int, Int)] = []
+  let out : Array[(Int32, Int32, Int32)] = []
   while true {
     match lexer.next() {
       Some(NQuadsEvent::NQuadsEOF) | None => break
@@ -123,9 +123,9 @@ fn lexmoon_stream(data : Array[Byte]) -> Array[(Int, Int, Int)] {
 fn lexerc_stream(
   fa : FixedArray[Byte],
   data : Array[Byte],
-) -> Array[(Int, Int, Int)] {
+) -> Array[(Int32, Int32, Int32)] {
   let lex = @nquads.Lexerc::new(fa)
-  let out : Array[(Int, Int, Int)] = []
+  let out : Array[(Int32, Int32, Int32)] = []
   for ;; {
     match lex.next() {
       None => break

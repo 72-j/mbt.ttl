@@ -26,7 +26,7 @@
 ///|
 /// 创建词法分析器
 #borrow(data)
-extern "C" fn lexer_create(data : FixedArray[Byte], len : Int) -> UInt64 = "lexer_create"
+extern "C" fn lexer_create(data : FixedArray[Byte], len : Int32) -> UInt64 = "lexer_create"
 
 ///|
 /// 销毁词法分析器
@@ -43,11 +43,11 @@ extern "C" fn lexer_next(lexer : UInt64, token_buf : FixedArray[Byte]) -> Bool =
 
 ///|
 /// 获取当前位置
-extern "C" fn lexer_pos(lexer : UInt64) -> Int = "lexer_pos"
+extern "C" fn lexer_pos(lexer : UInt64) -> Int32 = "lexer_pos"
 
 ///|
 /// 获取剩余字节数
-extern "C" fn lexer_remaining(lexer : UInt64) -> Int = "lexer_remaining"
+extern "C" fn lexer_remaining(lexer : UInt64) -> Int32 = "lexer_remaining"
 
 ///|
 /// 检查是否到达末尾
@@ -59,7 +59,7 @@ extern "C" fn lexer_is_end(lexer : UInt64) -> Bool = "lexer_is_end"
 
 ///|
 /// 从 Bytes 读取 int32（小端序）
-fn read_int32(buf : FixedArray[Byte], offset : Int) -> Int {
+fn read_int32(buf : FixedArray[Byte], offset : Int32) -> Int32 {
   let b0 = buf[offset].to_int()
   let b1 = buf[offset + 1].to_int()
   let b2 = buf[offset + 2].to_int()
@@ -71,7 +71,7 @@ fn read_int32(buf : FixedArray[Byte], offset : Int) -> Int {
 /// 从 Bytes 缓冲区读取 CToken
 ///
 /// 解析 C 端写入的 12 字节 Token 数据
-fn parse_ctoken(buf : FixedArray[Byte]) -> (Int, Int, Int) {
+fn parse_ctoken(buf : FixedArray[Byte]) -> (Int32, Int32, Int32) {
   let ctype = read_int32(buf, 0)
   let offset = read_int32(buf, 4)
   let length = read_int32(buf, 8)
@@ -87,7 +87,7 @@ fn parse_ctoken(buf : FixedArray[Byte]) -> (Int, Int, Int) {
 pub(all) struct Lexerc {
   ptr : UInt64 // C 端 Lexerc 指针（整数持有：GC 不追踪 malloc 块，防止误扫堆损坏）
   data : FixedArray[Byte] // 原始数据
-  mut offset : Int
+  mut offset : Int32
   token_buf : FixedArray[Byte] // 复用的 16 字节缓冲区          // 全局偏移（用于流式解析）
 }
 
@@ -206,13 +206,13 @@ pub fn Lexerc::extract(self : Lexerc, span : Span) -> String {
 
 ///|
 /// 获取当前位置
-pub fn Lexerc::position(self : Lexerc) -> Int {
+pub fn Lexerc::position(self : Lexerc) -> Int32 {
   self.offset + lexer_pos(self.ptr)
 }
 
 ///|
 /// 获取剩余数据长度
-pub fn Lexerc::remaining(self : Lexerc) -> Int {
+pub fn Lexerc::remaining(self : Lexerc) -> Int32 {
   lexer_remaining(self.ptr)
 }
 

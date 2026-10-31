@@ -25,10 +25,10 @@ fn byte_to_display(b : Byte) -> String {
 /// 错误上下文：以 [>>> ... <<<] 标出错误 span，前后各带 before/after 字节
 fn read_context(
   data : ArrayView[Byte],
-  offset : Int,
-  len : Int,
-  before? : Int = 20,
-  after? : Int = 20,
+  offset : Int32,
+  len : Int32,
+  before~ : Int32 = 20,
+  after~ : Int32 = 20,
 ) -> String {
   let start = (offset - before).max(0)
   let end = (offset + len + after).min(data.length())
@@ -62,7 +62,7 @@ fn bytes_to_string(data : ArrayView[Byte]) -> String {
 
 ///|
 /// 标记行 "# >>> " 匹配
-fn marker_at(data : ArrayView[Byte], i : Int) -> Bool {
+fn marker_at(data : ArrayView[Byte], i : Int32) -> Bool {
   let m = b"# >>> "
   if i + 6 > data.length() {
     return false
@@ -77,10 +77,10 @@ fn marker_at(data : ArrayView[Byte], i : Int) -> Bool {
 
 ///|
 /// 切段：返回 (段名, 内容起点, 内容长度)；段界 = 下一标记行起点
-fn split_sections(data : ArrayView[Byte]) -> Array[(String, Int, Int)] {
-  let res : Array[(String, Int, Int)] = []
+fn split_sections(data : ArrayView[Byte]) -> Array[(String, Int32, Int32)] {
+  let res : Array[(String, Int32, Int32)] = []
   let n = data.length()
-  let starts : Array[Int] = []
+  let starts : Array[Int32] = []
   let mut i = 0
   while i < n {
     if marker_at(data, i) {
@@ -251,7 +251,7 @@ fn nt_verdict(
 
 ///|
 /// 段名 → 下标（线性查；套件仅 72 项，无需哈希）
-fn nt_index_of(names : Array[String], name : String) -> Int {
+fn nt_index_of(names : Array[String], name : String) -> Int32 {
   for i in 0..<names.length() {
     if names[i] == name {
       return i

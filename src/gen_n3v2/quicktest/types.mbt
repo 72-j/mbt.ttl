@@ -12,7 +12,7 @@
 ///|
 /// Span 的符号替身：生成期以 Symbolic(Var) 引用，执行期解析为 Concrete(RefId)
 priv struct RefId {
-  id : Int
+  id : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -76,7 +76,7 @@ priv enum Response {
   Continue
   EmitQuad(Quad)
   Done
-  Error(Int) // 引擎错误归一化（[type_mapping].error_codes）
+  Error(Int32) // 引擎错误归一化（[type_mapping].error_codes）
   Skip // 恢复窗吞咽（R-19）：窗内事件不进表（≠ Continue：Continue = 进了表）
   // P4.2h ③ 同款（trig 先例）：**有序批**——一条命令可能对应多枚发射（引擎 `Sequence`
   // 内多条 EmitQuad，经 `emit_queue` 逐条回吐）。批内顺序 = 引擎发射顺序。
@@ -160,7 +160,7 @@ priv struct Model {
   directive_at : Bool
   version_lit_ok : Bool
   is_src : RefId?
-  is_depth : Int
+  is_depth : Int32
   frames : Array[Frame]
   recovering : Bool
 } derive(Eq, Debug)

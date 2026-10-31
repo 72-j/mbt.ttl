@@ -7,7 +7,7 @@
 /// 全链路：解析 → 物化。data 由本函数持有（view 生命周期 = 调用方作用域）
 fn parse_materialize(
   input : String,
-  rdf12? : Bool = true,
+  rdf12~ : Bool = true,
 ) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
   let data = bytes_of(input)
   let engine = N3Engine::from_bytes(data)
@@ -28,7 +28,7 @@ fn parse_materialize(
 
 ///|
 /// 首个目标字节偏移（测试内动态定位开括号，免硬编码偏移）
-fn first_offset_of(data : Array[Byte], b : Byte) -> Int {
+fn first_offset_of(data : Array[Byte], b : Byte) -> Int32 {
   for i in 0..<data.length() {
     if data[i] == b {
       return i

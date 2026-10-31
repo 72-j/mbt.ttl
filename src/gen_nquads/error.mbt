@@ -1,7 +1,7 @@
 ///|
 /// NQuadsEngine 错误类型（包含位置信息）
 pub(all) suberror ParseError {
-  StructSyntaxErr(String, Int, Span) // 结构错误（语法层）
+  StructSyntaxErr(String, Int32, Span) // 结构错误（语法层）
   SyntaxErr(String, Span) // 结构错误（语法层）
   ValidationErr(String) // 语义错误（验证层）
   IriErr(String) // IRI 解析错误
@@ -77,19 +77,19 @@ pub extend ParseError with Show::{output, to_string}
 ///|
 pub(all) suberror IriError {
   /// 没有 scheme
-  NoScheme(Int)
+  NoScheme(Int32)
   /// 无效的 scheme 字符
-  InvalidScheme(Char, Int)
+  InvalidScheme(Char, Int32)
   /// 无效的字符（IRI 中不允许的）
-  InvalidCharacter(Char, Int)
+  InvalidCharacter(Char, Int32)
   /// 无效的路径
-  InvalidPath(Int)
+  InvalidPath(Int32)
   /// 无效的授权部分
   InvalidAuthority(String)
   /// 无效的 percent 编码
-  InvalidPercentEncoding(Int)
+  InvalidPercentEncoding(Int32)
   /// 意外的结束
-  UnexpectedEnd(Int)
+  UnexpectedEnd(Int32)
 } derive(Debug)
 
 ///|
@@ -104,7 +104,7 @@ pub trait ErrOut {
 }
 
 ///|
-pub fn IriError::position(self : IriError) -> Int {
+pub fn IriError::position(self : IriError) -> Int32 {
   match self {
     NoScheme(p) => p
     InvalidScheme(_, p) => p

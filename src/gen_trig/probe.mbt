@@ -148,7 +148,7 @@ pub(all) struct TrigFrameView {
   ret_state : TrigState
   as_subject : Bool
   prev_node : Span?
-  node_seq : Int
+  node_seq : Int32
 }
 
 ///|

@@ -11,7 +11,11 @@
 ///|
 /// 数值形态复核（词法整段扫描口径：[+-]?([0-9]+('.'[0-9]*)? | '.'[0-9]+)([eE][+-]?[0-9]+)?）：
 /// 首字节 数字/+/−/.，至少一个数字，其余仅 . e E + -
-pub fn is_numeric_span(data : ArrayView[Byte], off : Int, len : Int) -> Bool {
+pub fn is_numeric_span(
+  data : ArrayView[Byte],
+  off : Int32,
+  len : Int32,
+) -> Bool {
   // A 笔（2026-09-27）：**零长防御**——`len == 0` 时原实现 `data[off]` 越界 panic（未定义行为）。
   if len == 0 {
     return false
@@ -61,7 +65,11 @@ pub fn is_numeric_span(data : ArrayView[Byte], off : Int, len : Int) -> Bool {
 ///|
 /// 布尔词判定（小写精确：true/false；物化层展开 xsd:boolean，词法/校验/
 /// 物化三面同源——原 n3v2 eq_lower 内联、trig 字节内联、双 bool_at 收编）
-pub fn is_boolean_word(data : ArrayView[Byte], off : Int, len : Int) -> Bool {
+pub fn is_boolean_word(
+  data : ArrayView[Byte],
+  off : Int32,
+  len : Int32,
+) -> Bool {
   if len == 4 {
     data[off] == b't' &&
     data[off + 1] == b'r' &&

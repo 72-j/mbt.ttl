@@ -40,7 +40,7 @@ pub struct TrigMaterializer {
   base_fallback : String? // 外部 base（套件 runner 注入 test-URI 口径；doc @base 优先）
   rdf12 : Bool // **语法版本开关**（对齐 nquads 口径）：true = RDF 1.2（方向后缀 `--ltr/--rtl` 放行；转义代理全禁），false = 1.1 严格契约（方向后缀拒；转义成对合法）
   mut fallback_parsed : @nquads.Iri? // 外部 fallback base 解析 memo（成功才记）
-  base_memo : Map[Int, @nquads.Iri] // base_version → 折叠后的生效 base（链前缀稳定，append-only）
+  base_memo : Map[Int32, @nquads.Iri] // base_version → 折叠后的生效 base（链前缀稳定，append-only）
   mut deep_validate : Bool // 深验融合开关（materialize_all 参数落位，materialize_quad 单入口读）
   fresh_ids : Map[Span, Span] // ★3 fresh 节点 memo：开括号全 span → arena 内 `_:genid<N>` span（链节点同 offset 不同长度，键含长度）
   arena : Array[Byte] // 展开字节缓冲（PrefName/'a'/数值/布尔/^^PrefName/相对 IRI 落这里）
@@ -55,9 +55,9 @@ pub struct TrigMaterializer {
 pub fn TrigMaterializer::new(
   data : ArrayView[Byte],
   prefixes : Array[(Span, Span)],
-  bases? : Array[Span] = [],
-  base_fallback? : String? = None,
-  rdf12? : Bool = true,
+  bases~ : Array[Span] = [],
+  base_fallback~ : String? = None,
+  rdf12~ : Bool = true,
 ) -> TrigMaterializer {
   {
     data,
@@ -117,8 +117,8 @@ fn TrigMaterializer::push_vocab(
 fn TrigMaterializer::resolve_prefname(
   self : TrigMaterializer,
   span : Span,
-  prefix_version : Int,
-) -> Result[(Span, Int)?, ParseError] {
+  prefix_version : Int32,
+) -> Result[(Span, Int32)?, ParseError] {
   let (off, len) = span
   let mut colon = -1
   for i in 0..<len {
@@ -198,7 +198,7 @@ fn TrigMaterializer::resolve_prefname(
 fn TrigMaterializer::write_prefname_iri(
   self : TrigMaterializer,
   span : Span,
-  colon : Int,
+  colon : Int32,
   iri : Span,
 ) -> Span {
   let (off, len) = span
@@ -240,8 +240,8 @@ fn TrigMaterializer::write_prefname_iri(
 fn TrigMaterializer::expand_prefname(
   self : TrigMaterializer,
   span : Span,
-  prefix_version : Int,
-  base_version : Int,
+  prefix_version : Int32,
+  base_version : Int32,
 ) -> Result[Span?, ParseError] {
   match self.resolve_prefname(span, prefix_version) {
     Err(e) => Err(e)
@@ -284,7 +284,7 @@ fn TrigMaterializer::expand_prefname(
 fn TrigMaterializer::iri_term(
   self : TrigMaterializer,
   span : Span,
-  base_version : Int,
+  base_version : Int32,
 ) -> Result[ArrayView[Byte], ParseError] {
   let view = slice_span(self.data, span)
   let len = view.length()
@@ -350,7 +350,7 @@ fn TrigMaterializer::fallback_base(
 /// Ok(None) = 该 quad 无生效 @base（base_version=0，调用方落 fallback_base 口径）
 fn TrigMaterializer::base_at(
   self : TrigMaterializer,
-  base_version : Int,
+  base_version : Int32,
 ) -> Result[@nquads.Iri?, ParseError] {
   if base_version == 0 {
     return Ok(None)
@@ -412,7 +412,7 @@ fn TrigMaterializer::base_at(
 /// 无处解析。结果恒绝对（链项经 scheme 嗅探 + parse，fallback 解析自带 scheme）
 fn TrigMaterializer::quad_base(
   self : TrigMaterializer,
-  base_version : Int,
+  base_version : Int32,
 ) -> Result[@nquads.Iri, ParseError] {
   let b = match self.base_at(base_version) {
     Ok(b) => b
@@ -491,7 +491,7 @@ fn TrigMaterializer::expand_boolean(
 fn TrigMaterializer::materialize_literal(
   self : TrigMaterializer,
   span : Span,
-  prefix_version : Int,
+  prefix_version : Int32,
 ) -> Result[ArrayView[Byte], ParseError] {
   let (off, len) = span
   let body_end = literal_body_end(self.data, span)
@@ -798,8 +798,8 @@ pub fn TrigMaterializer::materialize_quad(
 pub fn TrigMaterializer::materialize_all(
   self : TrigMaterializer,
   quads : Array[QuadSpan],
-  deep_validate? : Bool = true,
-  mode? : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
+  deep_validate~ : Bool = true,
+  mode~ : @nquads.ValidateMode = @nquads.ValidateMode::Deep,
 ) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
   self.deep_validate = deep_validate && !mode.is_light() // B2 档位：Light 关深验面
   let results : Array[@nquads.QuadEmit] = []

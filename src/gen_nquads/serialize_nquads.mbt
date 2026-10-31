@@ -54,9 +54,9 @@ pub struct Serializer {
 ///|
 /// 创建序列化器。默认 N-Triples + Strict：无损是底线，有损必须显式选 Drop
 pub fn Serializer::new(
-  format? : SerializeFormat = Triple,
-  graph_policy? : GraphPolicy = Strict,
-  only_named_graph? : Bool = false,
+  format~ : SerializeFormat = Triple,
+  graph_policy~ : GraphPolicy = Strict,
+  only_named_graph~ : Bool = false,
 ) -> Serializer {
   { format, graph_policy, only_named_graph, }
 }

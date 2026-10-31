@@ -11,10 +11,10 @@
 
 ///|
 /// 错误归一化码（源 [type_mapping].error_codes）：未定义转移 / action 业务失败
-const UNDEFINED_TRANSITION_CODE : Int = 0
+const UNDEFINED_TRANSITION_CODE : Int32 = 0
 
 ///|
-const ACTION_FAILED_CODE : Int = 1
+const ACTION_FAILED_CODE : Int32 = 1
 
 // >>> EVIDENCE（P4.4 钉子①：证据注释留位——生成/物化不得覆盖本区间，守卫测试按标记校验）
 // <<< EVIDENCE

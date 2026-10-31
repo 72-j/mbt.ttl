@@ -34,16 +34,16 @@ pub fn[L : LexerSource] N3Engine::new(L, dialect? : N3Dialect) -> Self[L]
 pub fn[L : LexerSource] N3Engine::next(Self[L]) -> Result[N3PendingQuad, @gen_nquads.ParseError]?
 
 pub(all) enum N3Event {
-  N3Iri((Int, Int))
-  N3BlankNode((Int, Int))
-  N3Literal((Int, Int), (Int, Int)?)
-  N3PrefName((Int, Int))
-  N3TripleTerm((Int, Int))
-  N3BracketTripleTerm((Int, Int))
-  N3KeywordA((Int, Int))
-  N3Variable((Int, Int))
-  N3KeywordX((Int, Int))
-  N3Equals((Int, Int))
+  N3Iri((Int32, Int32))
+  N3BlankNode((Int32, Int32))
+  N3Literal((Int32, Int32), (Int32, Int32)?)
+  N3PrefName((Int32, Int32))
+  N3TripleTerm((Int32, Int32))
+  N3BracketTripleTerm((Int32, Int32))
+  N3KeywordA((Int32, Int32))
+  N3Variable((Int32, Int32))
+  N3KeywordX((Int32, Int32))
+  N3Equals((Int32, Int32))
   N3Is
   N3Of
   N3Has
@@ -60,18 +60,18 @@ pub(all) enum N3Event {
   N3Comma
   N3Semicolon
   N3Dot
-  N3Lbrace((Int, Int))
+  N3Lbrace((Int32, Int32))
   N3Rbrace
-  N3Lbracket((Int, Int))
+  N3Lbracket((Int32, Int32))
   N3Rbracket
-  N3Lparen((Int, Int))
+  N3Lparen((Int32, Int32))
   N3Rparen
-  N3Anon((Int, Int))
-  N3Bang((Int, Int))
-  N3Caret((Int, Int))
-  N3Implies((Int, Int))
-  N3ImpliedBy((Int, Int))
-  N3Unknown((Int, Int))
+  N3Anon((Int32, Int32))
+  N3Bang((Int32, Int32))
+  N3Caret((Int32, Int32))
+  N3Implies((Int32, Int32))
+  N3ImpliedBy((Int32, Int32))
+  N3Unknown((Int32, Int32))
   N3Id
   N3Invert
   N3EOF
@@ -79,21 +79,21 @@ pub(all) enum N3Event {
 
 pub(all) struct N3FrameView {
   is_formula : Bool
-  open_span : (Int, Int)
-  subject : (Int, Int)?
-  predicate : (Int, Int)?
-  graph : (Int, Int)?
+  open_span : (Int32, Int32)
+  subject : (Int32, Int32)?
+  predicate : (Int32, Int32)?
+  graph : (Int32, Int32)?
   ret_state : N3State
   as_subject : Bool
   as_pred : Bool
-  prev_node : (Int, Int)?
-  node_seq : Int
-  id_subject : (Int, Int)?
+  prev_node : (Int32, Int32)?
+  node_seq : Int32
+  id_subject : (Int32, Int32)?
 }
 
 pub(all) struct N3InversionView {
-  is_src : (Int, Int)?
-  is_depth : Int
+  is_src : (Int32, Int32)?
+  is_depth : Int32
 }
 
 pub struct N3LexerAdapter {
@@ -103,36 +103,36 @@ pub struct N3LexerAdapter {
   mut anon_swallow : Bool
   // private fields
 }
-pub fn N3LexerAdapter::byte_at(Self, Int) -> Byte
+pub fn N3LexerAdapter::byte_at(Self, Int32) -> Byte
 pub fn N3LexerAdapter::next(Self) -> N3Event?
-pub fn N3LexerAdapter::pos(Self) -> Int
+pub fn N3LexerAdapter::pos(Self) -> Int32
 pub impl LexerSource for N3LexerAdapter
 
 pub struct N3Materializer {
   data : ArrayView[Byte]
-  prefixes : Array[((Int, Int), (Int, Int))]
-  bases : Array[(Int, Int)]
+  prefixes : Array[((Int32, Int32), (Int32, Int32))]
+  bases : Array[(Int32, Int32)]
   base_fallback : String?
   rdf12 : Bool
   mut fallback_parsed : @gen_nquads.Iri?
-  base_memo : Map[Int, @gen_nquads.Iri]
+  base_memo : Map[Int32, @gen_nquads.Iri]
   mut deep_validate : Bool
-  fresh_ids : Map[(Int, Int), (Int, Int)]
+  fresh_ids : Map[(Int32, Int32), (Int32, Int32)]
   arena : Array[Byte]
 }
 pub fn N3Materializer::materialize_all(Self, Array[QuadSpan], deep_validate? : Bool, mode? : @gen_nquads.ValidateMode) -> (Array[@gen_nquads.QuadEmit], Array[@gen_nquads.ParseError])
 pub fn N3Materializer::materialize_quad(Self, QuadSpan) -> Result[@gen_nquads.QuadEmit, @gen_nquads.ParseError]
-pub fn N3Materializer::new(ArrayView[Byte], Array[((Int, Int), (Int, Int))], bases? : Array[(Int, Int)], base_fallback? : String?, rdf12? : Bool) -> Self
+pub fn N3Materializer::new(ArrayView[Byte], Array[((Int32, Int32), (Int32, Int32))], bases? : Array[(Int32, Int32)], base_fallback? : String?, rdf12? : Bool) -> Self
 
 pub(all) struct N3PendingQuad {
-  subj : (Int, Int)?
-  pred : (Int, Int)?
-  obj : (Int, Int)?
-  graph : (Int, Int)?
+  subj : (Int32, Int32)?
+  pred : (Int32, Int32)?
+  obj : (Int32, Int32)?
+  graph : (Int32, Int32)?
   pk : PredKind
-  prefix_version : Int
-  base_version : Int
-  iri_version : Int
+  prefix_version : Int32
+  base_version : Int32
+  iri_version : Int32
   subj_shell : Bool
 } derive(Eq)
 pub fn N3PendingQuad::equal(Self, Self) -> Bool
@@ -166,20 +166,20 @@ pub struct N3SliceParser[L] {
   lenient : Bool
   errors : Array[@gen_nquads.ParseError]
 }
-pub fn[L] N3SliceParser::bases(Self[L]) -> Array[(Int, Int)]
+pub fn[L] N3SliceParser::bases(Self[L]) -> Array[(Int32, Int32)]
 pub fn[L] N3SliceParser::new(N3Engine[L], ArrayView[Byte], lenient? : Bool, mode? : @gen_nquads.ValidateMode) -> Self[L]
 pub fn[L : LexerSource] N3SliceParser::parse_all(Self[L]) -> (Array[QuadSpan], Array[@gen_nquads.ParseError])
 pub fn[L : LexerSource] N3SliceParser::parse_next(Self[L]) -> Result[QuadSpan, @gen_nquads.ParseError]?
-pub fn[L] N3SliceParser::prefixes(Self[L]) -> Array[((Int, Int), (Int, Int))]
+pub fn[L] N3SliceParser::prefixes(Self[L]) -> Array[((Int32, Int32), (Int32, Int32))]
 
 pub(all) struct N3SlotSnapshot {
-  subject : (Int, Int)?
-  predicate : (Int, Int)?
-  object : (Int, Int)?
-  graph : (Int, Int)?
-  path_src : (Int, Int)?
-  path_pend : (Int, Int)?
-  path_tail : (Int, Int)?
+  subject : (Int32, Int32)?
+  predicate : (Int32, Int32)?
+  object : (Int32, Int32)?
+  graph : (Int32, Int32)?
+  path_src : (Int32, Int32)?
+  path_pend : (Int32, Int32)?
+  path_tail : (Int32, Int32)?
   path_fwd : Bool
 }
 
@@ -252,14 +252,14 @@ pub fn PredKind::equal(Self, Self) -> Bool
 pub fn PredKind::not_equal(Self, Self) -> Bool
 
 pub(all) struct QuadSpan {
-  s : (Int, Int)
-  p : (Int, Int)
-  o : (Int, Int)
-  g : (Int, Int)?
+  s : (Int32, Int32)
+  p : (Int32, Int32)
+  o : (Int32, Int32)
+  g : (Int32, Int32)?
   pk : PredKind
-  prefix_version : Int
-  base_version : Int
-  iri_version : Int
+  prefix_version : Int32
+  base_version : Int32
+  iri_version : Int32
   subj_shell : Bool
 }
 
@@ -270,7 +270,7 @@ pub using @gen_nquads {type NQuadsEvent}
 
 pub using @gen_nquads {type ParseError}
 
-pub type Span = (Int, Int)
+pub type Span = (Int32, Int32)
 
 pub using @gen_nquads {type TermType}
 
@@ -285,6 +285,6 @@ pub impl ErrOut for @gen_nquads.ParseError
 
 pub trait LexerSource {
   fn next(Self) -> N3Event?
-  fn pos(Self) -> Int
-  fn byte_at(Self, Int) -> Byte
+  fn pos(Self) -> Int32
+  fn byte_at(Self, Int32) -> Byte
 }

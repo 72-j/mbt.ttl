@@ -19,7 +19,7 @@ fn mat_vs(v : ArrayView[Byte]) -> String {
 /// 全链路：解析 → 物化。data 由本函数持有（view 生命周期 = 调用方作用域）
 fn mat_chain(
   input : String,
-  base_fallback? : String? = None,
+  base_fallback~ : String? = None,
 ) -> (Array[@nquads.QuadEmit], Array[ParseError]) {
   let data = mat_bytes(input)
   let engine = TrigEngine::from_bytes(data)
@@ -209,7 +209,7 @@ test "物化: 全链路 → nquads Serializer(format=Quad) 输出" {
 fn mat_chain_deep(
   input : String,
   deep : Bool,
-  rdf12? : Bool = true,
+  rdf12~ : Bool = true,
 ) -> (Array[@nquads.QuadEmit], Array[ParseError], Array[ParseError]) {
   let data = mat_bytes(input)
   let engine = TrigEngine::from_bytes(data)
