@@ -26,8 +26,8 @@
 /// 实现：TrigLexerAdapter（lexer_adapter.mbt，包 @nquads.Lexermoon）
 pub trait LexerSource {
   fn next(Self) -> TrigEvent? // 换行/注释已过滤；数据尾以 TrigEOF 合法送达一次，其后 None=枯竭兜底
-  fn pos(Self) -> Int // 当前词法位置（兜底错误定位用）
-  fn byte_at(Self, Int) -> Byte // 数据直查（词内尾点裁决用）
+  fn pos(Self) -> Int32 // 当前词法位置（兜底错误定位用）
+  fn byte_at(Self, Int32) -> Byte // 数据直查（词内尾点裁决用）
 }
 
 ///|
@@ -74,45 +74,60 @@ fn span_of_event(event : TrigEvent) -> Span {
 }
 
 ///|
-/// 词内尾点裁决：无脑扫把语句点吞进词尾（<s>. / _:o.）时剥离尾点，
-/// 由 loop 合成 Dot 事件回灌转移表（决策仍在表，机械在此）。
-fn[L : LexerSource] trim_trailing_dot(lexer : L, span : Span) -> (Span, Bool) {
+/// 词内尾标点裁决：无脑扫把语句结构符吞进词尾（<s>. / _:o. /
+/// "v"^^<dt>; / "v"@en,）时剥离尾标点，由 loop 合成对应事件回灌
+/// 转移表（决策仍在表，机械在此）。T22(ADR-NQ-011 续)：`;` `,`
+/// 与 `.` 同族——typed-literal 后缀无脑扫把三形全吞，原补偿只认
+/// `.` 致 `^^dt;` 结构误（complex-data-2/sort-numbers/
+/// temporalProximity01 实证）。
+fn[L : LexerSource] trim_trailing_punct(
+  lexer : L,
+  span : Span,
+) -> (Span, TrigEvent?) {
   let (off, len) = span
-  if len > 0 && lexer.byte_at(off + len - 1) == b'.' {
-    ((off, len - 1), true)
-  } else {
-    (span, false)
+  if len > 0 {
+    let last = lexer.byte_at(off + len - 1)
+    if last == b'.' {
+      return ((off, len - 1), Some(TrigEvent::TrigDot))
+    }
+    if last == b';' {
+      return ((off, len - 1), Some(TrigEvent::TrigSemicolon))
+    }
+    if last == b',' {
+      return ((off, len - 1), Some(TrigEvent::TrigComma))
+    }
   }
+  (span, None)
 }
 
 ///|
 fn[L : LexerSource] TrigEngine::normalize_term_span(
   self : TrigEngine[L],
   event : TrigEvent,
-) -> (TrigEvent, Bool) {
+) -> (TrigEvent, TrigEvent?) {
   match event {
     TrigIri(span) => {
-      let (s2, dot) = trim_trailing_dot(self.lexer, span)
-      (TrigIri(s2), dot)
+      let (s2, synth) = trim_trailing_punct(self.lexer, span)
+      (TrigIri(s2), synth)
     }
     TrigBlankNode(span) => {
-      let (s2, dot) = trim_trailing_dot(self.lexer, span)
-      (TrigBlankNode(s2), dot)
+      let (s2, synth) = trim_trailing_punct(self.lexer, span)
+      (TrigBlankNode(s2), synth)
     }
     TrigLiteral(span) => {
-      let (s2, dot) = trim_trailing_dot(self.lexer, span)
-      (TrigLiteral(s2), dot)
+      let (s2, synth) = trim_trailing_punct(self.lexer, span)
+      (TrigLiteral(s2), synth)
     }
     TrigPrefName(span) => {
-      let (s2, dot) = trim_trailing_dot(self.lexer, span)
-      (TrigPrefName(s2), dot)
+      let (s2, synth) = trim_trailing_punct(self.lexer, span)
+      (TrigPrefName(s2), synth)
     }
     TrigTripleTerm(span) => {
-      let (s2, dot) = trim_trailing_dot(self.lexer, span)
-      (TrigTripleTerm(s2), dot)
+      let (s2, synth) = trim_trailing_punct(self.lexer, span)
+      (TrigTripleTerm(s2), synth)
     }
     TrigKeywordA(span) => {
-      let (s2, dot) = trim_trailing_dot(self.lexer, span)
+      let (s2, synth) = trim_trailing_punct(self.lexer, span)
       // 役35 **35-B1**（R-T13/C-T13，照 n3v2 `kw_a_live` 支逐字同源）：**N3 档**下，
       // `@keywords` **已受理**后 `a` **失效** —— 改写为 `TrigPrefName`（物化层按默认
       // 前缀展开），不再走 turtle 的 `a` = `rdf:type` 简写。三处边界：
@@ -124,24 +139,24 @@ fn[L : LexerSource] TrigEngine::normalize_term_span(
         self.ctx.kw_directive_seen &&
         !(self.ctx.state is TrigState::TrigExpectKeywordsList) &&
         !self.kw_ledger_hits(s2) {
-        (TrigPrefName(s2), dot)
+        (TrigPrefName(s2), synth)
       } else {
-        (TrigKeywordA(s2), dot)
+        (TrigKeywordA(s2), synth)
       }
     }
     TrigUnknown(span) => {
-      let (s2, dot) = trim_trailing_dot(self.lexer, span)
+      let (s2, synth) = trim_trailing_punct(self.lexer, span)
       // 役35 **35-B1**：**listed 裸词再分类**（照 n3v2 `N3Unknown` 支）——台账命中即
       // `TrigKeywordX`（词性 = 词；**决策仍在表行**，本处只做归位点形态改写）。
       // 未列入台账 ⇒ 保 `TrigUnknown` 兜底：表上无词位行 ⇒ `UnexpectedEvent` 同径
       //（"未列表裸词仍拒"口径不变）。TriG/Turtle 档台账恒空 ⇒ 天然不触发。
       if self.dialect is N3 && self.kw_ledger_hits(s2) {
-        (TrigKeywordX(s2), dot)
+        (TrigKeywordX(s2), synth)
       } else {
-        (TrigUnknown(s2), dot)
+        (TrigUnknown(s2), synth)
       }
     }
-    other => (other, false)
+    other => (other, None)
   }
 }
 
@@ -254,6 +269,8 @@ pub struct TrigEngine[L] {
   dialect : TrigDialect // 方言开关（默认 TriG 超集；Turtle 禁图块区）
   priv mut last_error : Span? // 最近一次错误位置（行号由上层按 data 统计）
   priv mut pending : TrigEvent? // 恢复推回的单 token（"停 Rbrace 前界"的兑现机制）
+  // T22 谓词形态载体：逗号续行的 `a` 形态沿用（回放点 = snapshot 覆盖体）
+  priv mut pk_carry : PredKind
   // 役35 **35-B1**：`@keywords` 的**受理旗与台账**已**收编入 ctx**（表源 `kw_ledger` /
   // `kw_directive_seen` + 表行 `kw_begin` / `declare_keyword`）——A1/A2 的引擎私有旗
   //（`kw_directive_seen` 引擎位 + `kw_list_mode`）**已退役**，同一语义不再两处判。
@@ -263,7 +280,7 @@ pub struct TrigEngine[L] {
 /// 创建引擎（词法器由调用方注入；begin_record 仅此一次——TriG 状态连续）
 pub fn[L : LexerSource] TrigEngine::new(
   lexer : L,
-  dialect? : TrigDialect = TriG,
+  dialect~ : TrigDialect = TriG,
 ) -> TrigEngine[L] {
   let engine = TrigEngine::{
     lexer,
@@ -272,6 +289,7 @@ pub fn[L : LexerSource] TrigEngine::new(
     dialect,
     last_error: None,
     pending: None,
+    pk_carry: PredKind::Normal,
   }
   engine.begin_record()
   engine
@@ -281,7 +299,7 @@ pub fn[L : LexerSource] TrigEngine::new(
 /// 纯 MoonBit 词法（TrigLexerAdapter 包 @nquads.Lexermoon）版
 pub fn TrigEngine::from_bytes(
   data : Array[Byte],
-  dialect? : TrigDialect = TriG,
+  dialect~ : TrigDialect = TriG,
 ) -> TrigEngine[TrigLexerAdapter] {
   TrigEngine::new(TrigLexerAdapter::new(data[:]), dialect~)
 }
@@ -346,29 +364,31 @@ fn[L : LexerSource] TrigEngine::consume_to_recover_point(
     self.ctx.state is TrigState::TrigGraphExpectPredicate ||
     self.ctx.state is TrigState::TrigGraphExpectObject ||
     self.ctx.state is TrigState::TrigGraphExpectDotOrGraph
-  let mut synth_dot = false
+  let mut synth : TrigEvent? = None
   for ;; {
-    let event = if synth_dot {
-      synth_dot = false
-      TrigEvent::TrigDot
-    } else {
-      match self.pull() {
-        None | Some(TrigEvent::TrigEOF) => {
-          // EOF：归位交 finish_at_end 判脏；此处只收拾槽位
-          if was_graph {
-            self.ctx.state = TrigState::TrigGraphExpectSubject
-          } else {
-            self.ctx.state = TrigState::TrigExpectSubject
-          }
-          self.ctx.reset(ResetScope::SPO)
-          return
-        }
-        Some(ev) => {
-          let (ev2, dot) = self.normalize_term_span(ev)
-          synth_dot = dot
-          ev2
-        }
+    let event = match synth {
+      Some(ev) => {
+        synth = None
+        ev
       }
+      None =>
+        match self.pull() {
+          None | Some(TrigEvent::TrigEOF) => {
+            // EOF：归位交 finish_at_end 判脏；此处只收拾槽位
+            if was_graph {
+              self.ctx.state = TrigState::TrigGraphExpectSubject
+            } else {
+              self.ctx.state = TrigState::TrigExpectSubject
+            }
+            self.ctx.reset(ResetScope::SPO)
+            return
+          }
+          Some(ev) => {
+            let (ev2, s) = self.normalize_term_span(ev)
+            synth = s
+            ev2
+          }
+        }
     }
     if event is TrigEvent::TrigDot {
       if was_graph {
@@ -453,24 +473,26 @@ pub fn[L : LexerSource] TrigEngine::next(
   if self.ctx.emit_queue.length() > 0 {
     return Some(Ok(self.ctx.emit_queue.remove(0)))
   }
-  let mut synth_dot = false
+  let mut synth : TrigEvent? = None
   for ;; {
-    let event = if synth_dot {
-      synth_dot = false
-      TrigEvent::TrigDot
-    } else {
-      match self.pull() {
-        None | Some(TrigEvent::TrigEOF) => return self.finish_at_end()
-        Some(ev) => {
-          let (ev2, dot) = self.normalize_term_span(ev)
-          synth_dot = dot
-          ev2
-        }
+    let event = match synth {
+      Some(ev) => {
+        synth = None
+        ev
       }
+      None =>
+        match self.pull() {
+          None | Some(TrigEvent::TrigEOF) => return self.finish_at_end()
+          Some(ev) => {
+            let (ev2, s) = self.normalize_term_span(ev)
+            synth = s
+            ev2
+          }
+        }
     }
     // 指令位字节守卫：不过按 UnexpectedEvent 同径恢复（整段消费，待发 Dot 作废）
     if !self.directive_ok(self.ctx, event) {
-      synth_dot = false
+      synth = None
       self.recover(span_of_event(event))
       continue
     }
@@ -478,7 +500,7 @@ pub fn[L : LexerSource] TrigEngine::next(
     //（bad-struct-01 口径）；`{|` 注解壳是双字节 token 不中。字面量内 `{`
     // 已被词法整词吞并，不产 TrigLbrace 事件
     if self.dialect is Turtle && event is TrigEvent::TrigLbrace {
-      synth_dot = false
+      synth = None
       self.recover(span_of_event(event))
       continue
     }
@@ -489,7 +511,7 @@ pub fn[L : LexerSource] TrigEngine::next(
     //   **沿革**：A1/A2 的"吞事件 + 列表区"守卫**已退役**——同一语义收编入表
     //（受理行 / 列表申报 3 行 / 收区行），本处只剩这一道档位门（禁双判）。
     if !(self.dialect is N3) && event is TrigEvent::TrigKeywordsKw {
-      synth_dot = false
+      synth = None
       let span = span_of_event(event)
       self.recover(if span == (0, 0) { (self.lexer.pos(), 0) } else { span })
       continue
@@ -503,10 +525,12 @@ pub fn[L : LexerSource] TrigEngine::next(
     // n3v2 把归属放在手写 action（读 `kw_a_live` 旗）——trig 走"**表管状态 ⇒ 引擎按
     // 状态定归属**"的等价形（pk 面逐字同形；消费即归 I-8 不变）。
     if predicate_state(self.ctx.state) {
-      self.ctx.pred_kind = match event {
+      let pk : PredKind = match event {
         TrigEvent::TrigKeywordA(_) => PredKind::KwA
         _ => PredKind::Normal
       }
+      self.ctx.pred_kind = pk
+      self.pk_carry = pk
     }
     match step(self.ctx, event, self.actions) {
       Ok(effect) =>
@@ -519,7 +543,7 @@ pub fn[L : LexerSource] TrigEngine::next(
         }
       Err(TrigActionError::UnexpectedEvent(_, event)) => {
         // 无转移兜底：取事件载荷位置（缺失则词法位置）；恢复策略在 Supervisor
-        synth_dot = false // 恢复消费整段，待发 Dot 一并作废
+        synth = None // 恢复消费整段，待发合成一并作废
         let span = span_of_event(event)
         let span = if span == (0, 0) { (self.lexer.pos(), 0) } else { span }
         self.recover(span)
@@ -535,8 +559,8 @@ pub fn[L : LexerSource] TrigEngine::next(
 /// 便捷入口：解析全部 trig
 pub fn trig_parser(
   input : Array[Byte],
-  lenient? : Bool = false,
-  dialect? : TrigDialect = TriG,
+  lenient~ : Bool = false,
+  dialect~ : TrigDialect = TriG,
 ) -> (Array[QuadSpan], Array[ParseError]) {
   let engine = TrigEngine::from_bytes(input, dialect~)
   let slice = TrigSliceParser::new(engine, input[:], lenient~)
@@ -588,9 +612,14 @@ impl[L] TrigEffectHandler for TrigEngine[L] with fn snapshot(
   self : TrigEngine[L],
   ctx : TrigContext,
 ) -> TrigPendingQuad {
-  ignore(self)
   let pending = ctx.settle_shell(ctx.snapshot())
   ctx.settle_annotation()
+  // T22 逗号续行谓词形态沿用：ctx.snapshot 把 `pred_kind` 归 `Normal`（spec I-8）后，
+  // 由引擎侧载体回放——`:s a :o1, :o2 .` 的续 quad 谓词仍按 `a` 物化。载体随写随平：
+  // `;` / `.` 后的下个谓词到位即被归属块覆盖，无跨语句残留。
+  if self.pk_carry != PredKind::Normal {
+    ctx.pred_kind = self.pk_carry
+  }
   pending
 }
 

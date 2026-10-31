@@ -151,7 +151,7 @@ test "回归: 未终结输入 parse_all 必须终止且报错" {
 
 ///|
 /// Token → (类型号, offset, len) 归一键（类型号沿用 C 侧 ctype 编号）
-fn tok_kind_key(t : Token) -> (Int, Int, Int) {
+fn tok_kind_key(t : Token) -> (Int32, Int32, Int32) {
   match t {
     Token::Dot(s) => (0, s.0, s.1)
     Token::Semicolon(s) => (1, s.0, s.1)
@@ -169,7 +169,7 @@ fn tok_kind_key(t : Token) -> (Int, Int, Int) {
 ///|
 /// 事件 → (类型号, offset, len) 归一键（类型号沿用 C 侧 ctype 编号；P2 直产：
 /// 结构事件 span 收窄 ⇒ 起点/长度由消费位补齐——单字符消费后回退一位）
-fn event_key(lexer : Lexermoon, ev : NQuadsEvent) -> (Int, Int, Int) {
+fn event_key(lexer : Lexermoon, ev : NQuadsEvent) -> (Int32, Int32, Int32) {
   match ev {
     NQuadsDot => (0, lexer.current_pos() - 1, 1)
     NQuadsSemicolon => (1, lexer.current_pos() - 1, 1)
@@ -192,7 +192,7 @@ test "lexer 加字词: => / <= 整词出，双词法器同口径" {
   let input = "ex:a => ex:b .\nex:c <= ex:d .\nex:e = ex:f .\n<g> >> <h> .\n"
   let data = bytes_of(input)
   let lexer = Lexermoon::new(data[:])
-  let moon : Array[(Int, Int, Int)] = []
+  let moon : Array[(Int32, Int32, Int32)] = []
   // 月侧形态断言（P2 直产：Unknown 无 span ⇒ 词形由消费尾字节对钉——
   // c0 = 末字节，c1 = 次末字节；"=> " 尾对 (=,>)、"<=" 尾对 (<,=)、裸 =/> 单字）
   let mut arrow = 0
@@ -253,4 +253,17 @@ test "lexer 加字词: => / <= 整词出，双词法器同口径" {
     }
   }
   lex.destroy()
+}
+
+///|
+test "validate_escapes_unicode: 转义反斜杠对不启 UCHAR（T22 manifest 语料形）" {
+  // 体 `a\\u then \\U`：`\\` 成对先行消费，后随 u/U 是内容而非 UCHAR——
+  // 修复前第二道 `\` 落单、`u` 被误判 UCHAR 起始把内容字节当十六进制读
+  let lit = bytes_of("\"a\\\\u then \\\\U\"")
+  assert_true(validate_escapes_unicode(lit[:], 0, 1, lit.length() - 1) is Ok(_))
+  // 孤高位代理仍拒（修复不松真负例）
+  let lone = bytes_of("\"\\uD800\"")
+  assert_true(
+    validate_escapes_unicode(lone[:], 0, 1, lone.length() - 1) is Err(_),
+  )
 }

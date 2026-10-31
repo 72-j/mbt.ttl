@@ -15,6 +15,7 @@ ExpectObject+Anon	set_object	Continue	-	-	false	-
 ExpectSubject+Iri	set_subject	Continue	-	-	false	-
 BnpExpectObject+Iri	set_object	Continue	-	-	false	-
 ExpectSubject+Anon	set_subject	Continue	-	-	false	-
+BnpExpectObject+Anon	set_object	Continue	-	-	false	-
 ExpectObject+Literal	set_object	Continue	-	-	false	-
 AnnotExpectObject+Iri	set_object	Continue	-	-	false	-
 ExpectObject+KeywordX	set_object	Continue	-	-	false	-

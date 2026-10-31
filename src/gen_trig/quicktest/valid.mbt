@@ -231,6 +231,7 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (BnpExpectObject, TripleTerm(_)) => true
     (BnpExpectObject, BracketTripleTerm(_)) => true
     (BnpExpectObject, Lbracket(_)) => true
+    (BnpExpectObject, Anon(_)) => true
     (BnpExpectObject, Lparen(_)) => true
     // BnpAfterObject
     (BnpAfterObject, Comma) => true

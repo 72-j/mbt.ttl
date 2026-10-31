@@ -829,6 +829,9 @@ fn model_execute(model : Model, cmd : Command) -> (Model, Response) {
         frame_push(model, r, BnpAfterObject, false, BnpExpectPredicate),
         Continue,
       )
+    // @arm BnpExpectObject+Anon
+    (BnpExpectObject, Anon(r)) =>
+      (set_object(model, r, BnpAfterObject), Continue)
     // @arm BnpExpectObject+Lparen
     (BnpExpectObject, Lparen(r)) =>
       (

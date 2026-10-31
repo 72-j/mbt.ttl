@@ -196,8 +196,8 @@ pub(all) struct TrigPendingQuad {
   obj : Span?
   graph : Span?
   pk : PredKind
-  prefix_version : Int
-  base_version : Int
+  prefix_version : Int32
+  base_version : Int32
   subj_shell : Bool
 } derive(Eq)
 
@@ -975,6 +975,10 @@ pub fn[A : TrigActions] step(
     (TrigBnpExpectObject, TrigLbracket(payload)) => {
       ctx.state = TrigBnpExpectPredicate
       actions.open_bnode_prop(ctx, payload, false, TrigBnpAfterObject)
+    }
+    (TrigBnpExpectObject, TrigAnon(payload)) => {
+      ctx.state = TrigBnpAfterObject
+      actions.set_object(ctx, payload)
     }
     (TrigBnpAfterObject, TrigComma) => {
       ctx.state = TrigBnpExpectObject

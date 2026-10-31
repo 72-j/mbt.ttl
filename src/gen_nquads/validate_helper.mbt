@@ -189,7 +189,10 @@ let iri_cls : FixedArray[Byte] = {
 /// IRI 验证（view 直查 + 全局基偏移定位）：
 /// <> 包裹非空 + 绝对 scheme（[A-Za-z][A-Za-z0-9+.-]*:）+ RFC 3986 禁用字符集外。
 /// 相对 IRI（<g> <p> <dt> 等）在此拒绝
-fn validate_iri(iri : ArrayView[Byte], base : Int) -> Result[Unit, ParseError] {
+fn validate_iri(
+  iri : ArrayView[Byte],
+  base : Int32,
+) -> Result[Unit, ParseError] {
   let len = iri.length()
   if len < 2 || iri[0] != b'<' || iri[len - 1] != b'>' {
     return Err(ParseError::SyntaxErr("IRI must be wrapped in <>", (base, len)))
@@ -244,9 +247,9 @@ fn validate_iri(iri : ArrayView[Byte], base : Int) -> Result[Unit, ParseError] {
 /// pub 供跨包复用（trig 相对 IRI 的 charset 段），nquads 内部由 validate_iri 调用
 pub fn validate_iri_body(
   iri : ArrayView[Byte],
-  base : Int,
-  start : Int,
-  end : Int,
+  base : Int32,
+  start : Int32,
+  end : Int32,
 ) -> Result[Unit, ParseError] {
   // 边界约定：iri[end-1] 是闭 '>'，内容区 = [start, end-1)（与 nquads span 同构）
   let body_end = end - 1
@@ -337,7 +340,7 @@ pub fn validate_iri_body(
 /// （pub：跨包复用，trig 组装后深验直接调用）
 pub fn validate_bnode(
   bnode : ArrayView[Byte],
-  base : Int,
+  base : Int32,
 ) -> Result[Unit, ParseError] {
   let len = bnode.length()
   if len < 3 || bnode[0] != b'_' || bnode[1] != b':' {
@@ -384,10 +387,10 @@ fn is_hex_byte(c : Byte) -> Bool {
 /// quote_run=1 = 单引号串（N-Quads）；=3 = 三引号长串（TriG/Turtle，体内单个 " 合法）
 pub fn scan_string_body(
   lit : ArrayView[Byte],
-  base : Int,
-  start : Int,
-  quote_run : Int,
-) -> Result[Int, ParseError] {
+  base : Int32,
+  start : Int32,
+  quote_run : Int32,
+) -> Result[Int32, ParseError] {
   let len = lit.length()
   let q = lit[0]
   let mut i = start
@@ -461,9 +464,9 @@ pub fn scan_string_body(
 /// rdf12=true 接受 --ltr/--rtl 方向后缀（小写精确），false 一律拒绝
 fn validate_lang_suffix(
   lit : ArrayView[Byte],
-  base : Int,
-  at : Int,
-  len : Int,
+  base : Int32,
+  at : Int32,
+  len : Int32,
   rdf12 : Bool,
 ) -> Result[Unit, ParseError] {
   let tail = at + 1
@@ -558,15 +561,21 @@ fn validate_lang_suffix(
 ///（surrogate-pair-bad 口径；1.1 宽容口径成对合法，故做开关不做全局）
 pub fn validate_escapes_unicode(
   lit : ArrayView[Byte],
-  base : Int,
-  start : Int,
-  end : Int,
-  scalar_only? : Bool = false,
+  base : Int32,
+  start : Int32,
+  end : Int32,
+  scalar_only~ : Bool = false,
 ) -> Result[Unit, ParseError] {
   let mut i = start
   while i < end {
     let c = lit[i]
-    if c == b'\\' && i + 1 < end && (lit[i + 1] == b'u' || lit[i + 1] == b'U') {
+    if c == b'\\' && i + 1 < end && lit[i + 1] == b'\\' {
+      // 转义反斜杠对先行消费（与 scan_string_body 的 `\\` 臂同配对口径）：
+      // `\\u` 的 `u` 是内容——不先吞对则误判 UCHAR 起始、把内容字节当十六进制读
+      i = i + 2
+    } else if c == b'\\' &&
+      i + 1 < end &&
+      (lit[i + 1] == b'u' || lit[i + 1] == b'U') {
       let n = if lit[i + 1] == b'u' { 4 } else { 8 }
       if i + 2 + n > end {
         return Err(
@@ -632,7 +641,7 @@ pub fn validate_escapes_unicode(
 
 ///|
 /// 十六进制字节 → 数值（validate_escapes_unicode 专用；合法性已由上游保证）
-fn hex_val(c : Byte) -> Int {
+fn hex_val(c : Byte) -> Int32 {
   if c >= b'0' && c <= b'9' {
     (c - b'0').to_int()
   } else if c >= b'a' && c <= b'f' {
@@ -651,7 +660,7 @@ fn hex_val(c : Byte) -> Int {
 /// rdf12=false（1.1 严格契约）：langdir 一律拒绝
 fn validate_literal(
   lit : ArrayView[Byte],
-  base : Int,
+  base : Int32,
   rdf12 : Bool,
 ) -> Result[Unit, ParseError] {
   let len = lit.length()
@@ -795,7 +804,7 @@ test "1.1/1.2 通用: 常规 langtag 两版都过" {
 
 ///|
 /// 三元组词项扫描辅助：词项间空白跳过（词项自定界，空白可有可无）
-fn tt_skip_ws(view : ArrayView[Byte], start : Int) -> Int {
+fn tt_skip_ws(view : ArrayView[Byte], start : Int32) -> Int32 {
   let mut i = start
   let n = view.length()
   while i < n &&
@@ -815,7 +824,7 @@ fn tt_skip_ws(view : ArrayView[Byte], start : Int) -> Int {
 /// 词项自定界：IRI 扫到 >；BNode 扫名字尾；Literal 扫配对闭引号 + @/^^ 后缀
 /// （转义感知）；TripleTerm 平衡扫描。未知起点原样返回，交由 validate_* 报错。
 /// 零分配：view 直查纯字节分支（宪法：验证热路径不做对象级解析）
-fn tt_term_end(view : ArrayView[Byte], start : Int) -> Int {
+fn tt_term_end(view : ArrayView[Byte], start : Int32) -> Int32 {
   let mut i = start
   let n = view.length()
   let c = view[i]
@@ -906,7 +915,7 @@ fn tt_term_end(view : ArrayView[Byte], start : Int) -> Int {
 /// rdf12 沿传：嵌套词项内的 langdir/显式 langString 禁令与外层同口径
 fn validate_triple_term(
   tt : ArrayView[Byte],
-  base : Int,
+  base : Int32,
   rdf12 : Bool,
 ) -> Result[Unit, ParseError] {
   let len = tt.length()

@@ -184,7 +184,7 @@ fn classify_write_source(
   }
   // `argN` **必须按该行 args 列解引用**（裁定结论：args=none ⇒ 实参 None，不是合成载荷——
   // `ExpectSubject+Lbrace[enter_graph]` 的假阳即源于此）。
-  let arg_index : Int? = match source {
+  let arg_index : Int32? = match source {
     "arg0" => Some(0)
     "arg1" => Some(1)
     "arg2" => Some(2)
@@ -266,7 +266,7 @@ fn response_short(response : Response) -> String {
 /// 逐行对拍：返回 (可比行数, 不可比清单, 不可达清单, 分道清单)
 fn data_face_compare(
   rows : Array[DataFaceRow],
-) -> (Int, Array[String], Array[String], Array[String]) {
+) -> (Int32, Array[String], Array[String], Array[String]) {
   let witnesses = reachable_state_witness_paths()
   let mut compared = 0
   let incomparable : Array[String] = []
@@ -380,8 +380,9 @@ async test "数据面⟷引擎·trig 值级对拍：可比行逐槽等值 + 台�
   let snapshot = @fs.read_file("src/gen_trig/quicktest/actions_truth.gen").text()
   let rows = parse_data_face_rows(snapshot)
   // `@keywords` 表源化后 +10 带 action 的行（`kw_begin` 1 + `declare_keyword` 3 + `KeywordX`
-  // 词位 6；`ExpectKeywordsList+Dot` 无 action 故不入快照）⇒ 136 → 146
-  assert_eq(rows.length(), 146)
+  // 词位 6；`ExpectKeywordsList+Dot` 无 action 故不入快照）⇒ 136 → 146；
+  // T22（2026-10-31）：`BnpExpectObject+Anon`（嵌套 [] 宾位）+1 ⇒ 146 → 147
+  assert_eq(rows.length(), 147)
   let (compared, incomparable, unreachable_rows, mismatches) = data_face_compare(
     rows,
   )
@@ -446,7 +447,7 @@ async test "数据面⟷引擎·trig 值级对拍：可比行逐槽等值 + 台�
 
 ///|
 /// 台账四类计数（面外 / 序敏感 / 条件式 / `argN` 未解析形态），与 n3v2 门同列（两方言一把尺子）
-fn ledger_classes(incomparable : Array[String]) -> (Int, Int, Int, Int) {
+fn ledger_classes(incomparable : Array[String]) -> (Int32, Int32, Int32, Int32) {
   let mut off_face = 0
   let mut order_sensitive = 0
   let mut conditional = 0

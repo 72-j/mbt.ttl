@@ -231,11 +231,11 @@ test "指标·转移普查: valid ⟺ model_exec 全对一致 + 计数守恒" {
       }
     }
   }
-  // 组合数守恒（改表即变，写死防漏）：37 状态 × 35 命令 = 1295，合法 206 / 非法 1089
-  // （+1 状态 × +1 命令 + 11 行 ⇒ 合法 195 → 206；表源规模见 `spec.md` §5.3）
+  // 组合数守恒（改表即变，写死防漏）：37 状态 × 35 命令 = 1295，合法 207 / 非法 1088
+  // （+1 状态 × +1 命令 + 12 行 ⇒ 合法 195 → 206 → 207；表源规模见 `spec.md` §5.3）
   assert_eq(legal + illegal, 37 * 35)
-  assert_eq(legal, 206)
-  assert_eq(illegal, 1089)
+  assert_eq(legal, 207)
+  assert_eq(illegal, 1088)
 }
 
 ///|
@@ -334,8 +334,8 @@ test "P4.3 账·逐条起跑验证: 见证路径独立复位 + 双执行一致" 
 
 ///|
 /// 状态距离表（最短性下界用）：从初始态 BFS，边 = `valid` 上有出边的命令、下一态**跑模型**取。
-fn state_distances() -> Array[(ModelState, Int)] {
-  let dist : Array[(ModelState, Int)] = [(ExpectSubject, 0)]
+fn state_distances() -> Array[(ModelState, Int32)] {
+  let dist : Array[(ModelState, Int32)] = [(ExpectSubject, 0)]
   let queue : Array[ModelState] = [ExpectSubject]
   while queue.length() > 0 {
     let state = queue.remove(0)
@@ -355,7 +355,7 @@ fn state_distances() -> Array[(ModelState, Int)] {
 
 ///|
 /// 距离表查询（-1 = 未知）；不用 `find`，避免依赖数组查找 API 形态
-fn dist_lookup(dist : Array[(ModelState, Int)], state : ModelState) -> Int {
+fn dist_lookup(dist : Array[(ModelState, Int32)], state : ModelState) -> Int32 {
   let mut found = -1
   for pair in dist {
     if pair.0 == state {
@@ -384,9 +384,9 @@ test "P4.3 账·最短性: 见证路径长度 == 状态下界" {
 ///|
 /// 见证路径 × 状态下界（`(名, 路径长, 下界)`）——最短性断言的数据面
 fn witnesses_with_bound(
-  dist : Array[(ModelState, Int)],
-) -> Array[(String, Int, Int)] {
-  let rows : Array[(String, Int, Int)] = []
+  dist : Array[(ModelState, Int32)],
+) -> Array[(String, Int32, Int32)] {
+  let rows : Array[(String, Int32, Int32)] = []
   for pair in reachable_witness_paths() {
     let (name, path) = pair
     let mut bound = 999999
@@ -690,7 +690,7 @@ test "指标·label 钉子: resp:Done 不适用（表零引用）+ 引擎单步�
 /// 权重决定随机门的分布（属判据面）⇒ 改表即红，必须与
 /// `pbtgen/n3trig/quick_machine_trig.toml` 的 `[business.weights]` 同笔说明。
 test "指标·权重表逐名等值（35 名全量 + 默认档）" {
-  let expected : Array[(String, Int)] = [
+  let expected : Array[(String, Int32)] = [
     ("Iri", 3),
     ("BlankNode", 2),
     ("Literal", 3),
