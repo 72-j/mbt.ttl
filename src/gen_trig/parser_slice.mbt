@@ -267,7 +267,7 @@ fn validate_prefname(data : ArrayView[Byte], span : Span) -> ParseError? {
 fn[L] TrigSliceParser::assemble(
   self : TrigSliceParser[L],
   pending : TrigPendingQuad,
-) -> Result[QuadSpan, ParseError] {
+) -> QuadSpan raise ParseError {
   // ★3 合成谓词归一：**只有"合成谓词族"**（`RDFFirst`/`RDFRest`——集合链 quad 谓词无字节，
   // p 槽 None + pk 标记）才以 (0,0) 占位过缺槽检测，物化层据 pk 合成词表 IRI、永不读 p 字节。
   // 役35 A1（R-T13/C-T13）**顺链修正**：新族 `KwA`（谓词位 `a` = turtle `rdf:type` 简写）
@@ -287,28 +287,28 @@ fn[L] TrigSliceParser::assemble(
         // 组装时验过）
         if !pending.subj_shell {
           match validate_term(self.data, prefixes, s, false) {
-            Some(e) => return Err(e)
+            Some(e) => raise e
             None => ()
           }
         }
         match validate_term(self.data, prefixes, p, true) {
-          Some(e) => return Err(e)
+          Some(e) => raise e
           None => ()
         }
         match validate_term(self.data, prefixes, o, false) {
-          Some(e) => return Err(e)
+          Some(e) => raise e
           None => ()
         }
         match pending.graph {
           Some(g) =>
             match validate_term(self.data, prefixes, g, false) {
-              Some(e) => return Err(e)
+              Some(e) => raise e
               None => ()
             }
           None => ()
         }
       }
-      Ok({
+      {
         s,
         p,
         o,
@@ -317,7 +317,7 @@ fn[L] TrigSliceParser::assemble(
         prefix_version: pending.prefix_version,
         base_version: pending.base_version,
         subj_shell: pending.subj_shell,
-      })
+      }
     }
     // RDF 1.2 引用三元组壳独立成句：`<< s p o >> .`——壳落主语槽后无谓词/宾语，
     // 语句即断言壳内三元组（组装层拆壳，三项交 validate_term 递归验证）
@@ -325,7 +325,7 @@ fn[L] TrigSliceParser::assemble(
       match self.tt_shell_terms(s) {
         Some((ts, tp, to)) =>
           if self.lenient {
-            Ok({
+            {
               s: ts,
               p: tp,
               o: to,
@@ -334,30 +334,30 @@ fn[L] TrigSliceParser::assemble(
               prefix_version: pending.prefix_version,
               base_version: pending.base_version,
               subj_shell: false,
-            })
+            }
           } else {
             let prefixes = self.engine.ctx.prefixes
             match validate_term(self.data, prefixes, ts, false) {
-              Some(e) => return Err(e)
+              Some(e) => raise e
               None => ()
             }
             match validate_term(self.data, prefixes, tp, true) {
-              Some(e) => return Err(e)
+              Some(e) => raise e
               None => ()
             }
             match validate_term(self.data, prefixes, to, false) {
-              Some(e) => return Err(e)
+              Some(e) => raise e
               None => ()
             }
             match pending.graph {
               Some(g) =>
                 match validate_term(self.data, prefixes, g, false) {
-                  Some(e) => return Err(e)
+                  Some(e) => raise e
                   None => ()
                 }
               None => ()
             }
-            Ok({
+            {
               s: ts,
               p: tp,
               o: to,
@@ -366,16 +366,14 @@ fn[L] TrigSliceParser::assemble(
               prefix_version: pending.prefix_version,
               base_version: pending.base_version,
               subj_shell: false,
-            })
+            }
           }
-        None => Err(ParseError::SyntaxErr("Incomplete quad at emission", s))
+        None => raise ParseError::SyntaxErr("Incomplete quad at emission", s)
       }
     _ =>
-      Err(
-        ParseError::SyntaxErr(
-          "Incomplete quad at emission",
-          pending.subj.unwrap_or((0, 0)),
-        ),
+      raise ParseError::SyntaxErr(
+        "Incomplete quad at emission",
+        pending.subj.unwrap_or((0, 0)),
       )
   }
 }
@@ -432,13 +430,16 @@ pub fn[L : LexerSource] TrigSliceParser::parse_next(
         }
         None => ()
       }
-      match self.assemble(pending) {
-        Ok(quad) => Some(Ok(quad))
-        Err(e) => {
-          self.errors.push(e)
-          self.parse_next() // 组装/校验失败：记错误继续下一条
-        }
-      }
+      Some(
+        Ok(
+          self.assemble(pending) catch {
+            e => {
+              self.errors.push(e)
+              return self.parse_next() // 组装/校验失败：记错误继续下一条
+            }
+          },
+        ),
+      )
     }
   }
 }

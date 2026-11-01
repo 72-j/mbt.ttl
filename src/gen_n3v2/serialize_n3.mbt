@@ -32,7 +32,7 @@ fn n3_ser_span(view : ArrayView[Byte], buf : StringBuilder) -> Unit {
 fn n3_append_terms(
   quad : @nquads.QuadEmit,
   buf : StringBuilder,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   match quad.s_kind {
     @nquads.TermKind::Iri => n3_ser_span(quad.s_view, buf)
     @nquads.TermKind::BNode => n3_ser_span(quad.s_view, buf)
@@ -40,11 +40,9 @@ fn n3_append_terms(
     @nquads.TermKind::TripleTerm => n3_ser_span(quad.s_view, buf)
     // N3 语法无前缀名：物化层已展开，残留即不变量破坏，报错钉住
     @nquads.TermKind::PrefName =>
-      return Err(
-        ParseError::SyntaxErr(
-          "Prefixed names are not valid in serialized output",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Prefixed names are not valid in serialized output",
+        (0, 0),
       )
     // 变量 `?x`（ADR-004：只记身份）整段原文回写——名与位置即全部语义，
     // round-trip 不变量
@@ -55,11 +53,9 @@ fn n3_append_terms(
     @nquads.TermKind::Formula => n3_ser_span(quad.s_view, buf)
     // 位-种类非法组合：DefaultGraph 只许图名位，主语位出现即不变量破坏
     @nquads.TermKind::DefaultGraph =>
-      return Err(
-        ParseError::SyntaxErr(
-          "DefaultGraph is not valid in subject position",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "DefaultGraph is not valid in subject position",
+        (0, 0),
       )
   }
   buf.write_char(' ')
@@ -72,25 +68,21 @@ fn n3_append_terms(
     // 引用三元组壳整段原文回写（round-trip 不变量）
     @nquads.TermKind::TripleTerm => n3_ser_span(quad.o_view, buf)
     @nquads.TermKind::PrefName =>
-      return Err(
-        ParseError::SyntaxErr(
-          "Prefixed names are not valid in serialized output",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Prefixed names are not valid in serialized output",
+        (0, 0),
       )
     @nquads.TermKind::Variable => n3_ser_span(quad.o_view, buf)
     // N3 ADR-002：公式宾语整段原文回写（round-trip 不变量）
     @nquads.TermKind::Formula => n3_ser_span(quad.o_view, buf)
     // 位-种类非法组合：DefaultGraph 只许图名位，宾语位出现即不变量破坏
     @nquads.TermKind::DefaultGraph =>
-      return Err(
-        ParseError::SyntaxErr(
-          "DefaultGraph is not valid in object position",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "DefaultGraph is not valid in object position",
+        (0, 0),
       )
   }
-  Ok(())
+  ()
 }
 
 ///|
@@ -99,21 +91,19 @@ fn n3_append_terms(
 pub fn N3Serializer::serialize(
   _self : N3Serializer,
   quads : Array[@nquads.QuadEmit],
-) -> Result[String, ParseError] {
+) -> String raise ParseError {
   let buf = StringBuilder()
   for quad in quads {
     // 图位封闭门（类型级保证的运行时对应物）：N3 无图语法，
     // g_kind ≠ DefaultGraph 一律报错（结构非法与方言越界同一门收口）
     if !(quad.g_kind is @nquads.TermKind::DefaultGraph) {
-      return Err(
-        ParseError::SyntaxErr("Graph term is not representable in N3", (0, 0)),
+      raise ParseError::SyntaxErr(
+        "Graph term is not representable in N3",
+        (0, 0),
       )
     }
-    match n3_append_terms(quad, buf) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
+    n3_append_terms(quad, buf)
     buf.write_string(" .\n")
   }
-  Ok(buf.to_string())
+  buf.to_string()
 }

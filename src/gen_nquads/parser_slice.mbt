@@ -35,15 +35,13 @@ pub fn[L] SliceParser::lenient(self : SliceParser[L]) -> SliceParser[L] {
 fn[L] SliceParser::assemble(
   self : SliceParser[L],
   pending : NQuadsPendingQuad,
-) -> Result[QuadSpan, ParseError] {
+) -> QuadSpan raise ParseError {
   match (pending.subj, pending.pred, pending.obj) {
     (Some(_), Some(_), Some(_)) => self.validate(pending)
     _ =>
-      Err(
-        ParseError::SyntaxErr(
-          "Incomplete quad at emission",
-          pending.subj.unwrap_or((0, 0)),
-        ),
+      raise ParseError::SyntaxErr(
+        "Incomplete quad at emission",
+        pending.subj.unwrap_or((0, 0)),
       )
   }
 }
@@ -85,13 +83,17 @@ pub fn[L : LexerSource] SliceParser::parse_next(
     }
     Some(Err(e)) => Some(Err(e))
     Some(Ok(pending)) =>
-      match self.assemble(pending) {
-        Ok(quad) => Some(Ok(quad))
-        Err(e) => {
-          self.errors.push(e)
-          self.parse_next() // 组装/校验失败：记错误继续下一条
-        }
-      }
+      // 组装/校验失败：记错误继续下一条（assemble 已 raise 化，try/catch 收口）
+      Some(
+        Ok(
+          self.assemble(pending) catch {
+            e => {
+              self.errors.push(e)
+              return self.parse_next()
+            }
+          },
+        ),
+      )
   }
 }
 

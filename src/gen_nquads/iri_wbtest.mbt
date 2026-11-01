@@ -3,29 +3,21 @@ test "iri parse" {
   let data = "http://example.org"
   let data = @utf8.encode(data)[:]
 
-  let result = parse(data)
-  match result {
-    Ok(r) => @debug.assert_eq(r.scheme, "http")
-    Err(e) => fail("Error: \{e}")
-  }
+  let r = parse(data)
+  @debug.assert_eq(r.scheme, "http")
 }
 
 ///|
 test "iri parse full" {
   let data = "http://user@host:8080/path?q=f#frag"
   let bytes = @utf8.encode(data)[:]
-  let result = parse(bytes[0:bytes.length()])
 
-  match result {
-    Ok(r) => {
-      @debug.assert_eq(r.scheme, "http")
-      @debug.assert_eq(r.authority, Some("user@host:8080"[:]))
-      @debug.assert_eq(r.path, "/path")
-      @debug.assert_eq(r.query, Some("q=f"[:]))
-      @debug.assert_eq(r.fragment, Some("frag"[:]))
-    }
-    Err(e) => fail("Error: \{e}")
-  }
+  let r = parse(bytes[0:bytes.length()])
+  @debug.assert_eq(r.scheme, "http")
+  @debug.assert_eq(r.authority, Some("user@host:8080"[:]))
+  @debug.assert_eq(r.path, "/path")
+  @debug.assert_eq(r.query, Some("q=f"[:]))
+  @debug.assert_eq(r.fragment, Some("frag"[:]))
 }
 
 ///|
@@ -51,142 +43,101 @@ test "parse_unchecked: basic absolute IRI" {
 test "parse absolute IRI with slashes" {
   let data = "https://example.com/path/to/resource"
   let bytes = @utf8.encode(data)[:]
-  let result = parse(bytes[0:bytes.length()])
 
-  match result {
-    Ok(parsed) => {
-      @debug.assert_eq(parsed.scheme.to_owned(), "https")
-      @debug.assert_eq(parsed.authority, Some("example.com"[:]))
-      @debug.assert_eq(parsed.path.to_owned(), "/path/to/resource")
-    }
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let parsed = parse(bytes[0:bytes.length()])
+  @debug.assert_eq(parsed.scheme.to_owned(), "https")
+  @debug.assert_eq(parsed.authority, Some("example.com"[:]))
+  @debug.assert_eq(parsed.path.to_owned(), "/path/to/resource")
 }
 
 ///|
 test "parse absolute IRI" {
   let data = "scheme:path-with-dashes_and_underscores"
   let bytes = @utf8.encode(data)[:]
-  let result = parse(bytes[0:bytes.length()])
 
-  match result {
-    Ok(parsed) =>
-      @debug.assert_eq(
-        parsed.into_string(),
-        "scheme:path-with-dashes_and_underscores",
-      )
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let parsed = parse(bytes[0:bytes.length()])
+  @debug.assert_eq(
+    parsed.into_string(),
+    "scheme:path-with-dashes_and_underscores",
+  )
 }
 
 ///|
 test "parse absolute IRI with special characters" {
   let data = "scheme:!$%25&'()*+,-.0123456789:@?#"
   let bytes = @utf8.encode(data)[:]
-  let result = parse(bytes)
 
-  match result {
-    Ok(parsed) =>
-      @debug.assert_eq(
-        parsed.into_string(),
-        "scheme:!$%25&'()*+,-.0123456789:@?#",
-      )
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let parsed = parse(bytes)
+  @debug.assert_eq(parsed.into_string(), "scheme:!$%25&'()*+,-.0123456789:@?#")
 }
 
 ///|
 test "parse absolute IRI with dots" {
   let data = "scheme:abc/def.ghi-jkl_mno"
   let bytes = @utf8.encode(data)[:]
-  let result = parse(bytes[0:bytes.length()])
 
-  match result {
-    Ok(parsed) =>
-      @debug.assert_eq(parsed.into_string(), "scheme:abc/def.ghi-jkl_mno")
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let parsed = parse(bytes[0:bytes.length()])
+  @debug.assert_eq(parsed.into_string(), "scheme:abc/def.ghi-jkl_mno")
 }
 
 ///|
 test "parse: basic absolute IRI" {
   let data = "https://example.com/path?query#fragment"
   let bytes = @utf8.encode(data)[:]
-  let result = parse(bytes[0:bytes.length()])
 
-  match result {
-    Ok(parsed) => {
-      @debug.assert_eq(
-        parsed.into_string(),
-        "https://example.com/path?query#fragment",
-      )
-      @debug.assert_eq(parsed.scheme.to_owned(), "https")
-      @debug.assert_eq(parsed.authority, Some("example.com"[:]))
-      @debug.assert_eq(parsed.path.to_owned(), "/path")
-      @debug.assert_eq(parsed.query, Some("query"[:]))
-      @debug.assert_eq(parsed.fragment, Some("fragment"[:]))
-    }
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let parsed = parse(bytes[0:bytes.length()])
+  @debug.assert_eq(
+    parsed.into_string(),
+    "https://example.com/path?query#fragment",
+  )
+  @debug.assert_eq(parsed.scheme.to_owned(), "https")
+  @debug.assert_eq(parsed.authority, Some("example.com"[:]))
+  @debug.assert_eq(parsed.path.to_owned(), "/path")
+  @debug.assert_eq(parsed.query, Some("query"[:]))
+  @debug.assert_eq(parsed.fragment, Some("fragment"[:]))
 }
 
 ///|
 test "parse: relative IRI (absolute path)" {
   let data = "/path/to/resource"
   let bytes = @utf8.encode(data)[:]
-  let result = parse(bytes[0:bytes.length()])
 
-  match result {
-    Ok(parsed) => {
-      @debug.assert_eq(parsed.into_string(), "/path/to/resource")
-      @debug.assert_eq(parsed.scheme, "")
-      @debug.assert_eq(parsed.authority, None)
-      @debug.assert_eq(parsed.path.to_owned(), "/path/to/resource")
-      // 相对引用无 ?/#：query/fragment 为 None（区分"未出现"与"空串"）
-      @debug.assert_eq(parsed.query, None)
-      @debug.assert_eq(parsed.fragment, None)
-    }
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let parsed = parse(bytes[0:bytes.length()])
+  @debug.assert_eq(parsed.into_string(), "/path/to/resource")
+  @debug.assert_eq(parsed.scheme, "")
+  @debug.assert_eq(parsed.authority, None)
+  @debug.assert_eq(parsed.path.to_owned(), "/path/to/resource")
+  // 相对引用无 ?/#：query/fragment 为 None（区分"未出现"与"空串"）
+  @debug.assert_eq(parsed.query, None)
+  @debug.assert_eq(parsed.fragment, None)
 }
 
 ///|
 test "parse: relative path" {
   let data = "path/to/resource"
   let bytes = @utf8.encode(data)[:]
-  let result = parse(bytes[0:bytes.length()])
 
-  match result {
-    Ok(parsed) => @debug.assert_eq(parsed.path.to_owned(), "path/to/resource")
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let parsed = parse(bytes[0:bytes.length()])
+  @debug.assert_eq(parsed.path.to_owned(), "path/to/resource")
 }
 
 ///|
 test "parse: query only" {
   let data = "https://example.com?query=value"
   let bytes = @utf8.encode(data)[:]
-  let result = parse(bytes[0:bytes.length()])
 
-  match result {
-    Ok(parsed) => {
-      @debug.assert_eq(parsed.path.to_owned(), "")
-      @debug.assert_eq(parsed.query, Some("query=value"[:]))
-    }
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let parsed = parse(bytes[0:bytes.length()])
+  @debug.assert_eq(parsed.path.to_owned(), "")
+  @debug.assert_eq(parsed.query, Some("query=value"[:]))
 }
 
 ///|
 test "parse: fragment only" {
   let data = "https://example.com#fragment"
   let bytes = @utf8.encode(data)[:]
-  let result = parse(bytes[0:bytes.length()])
 
-  match result {
-    Ok(parsed) => @debug.assert_eq(parsed.fragment, Some("fragment"[:]))
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let parsed = parse(bytes[0:bytes.length()])
+  @debug.assert_eq(parsed.fragment, Some("fragment"[:]))
 }
 
 ///|
@@ -216,12 +167,9 @@ test "resolve: relative to absolute base" {
   let base : Iri = Default::default()
   let data = "relative/path"
   let bytes = @utf8.encode(data)[:]
-  let result = base.resolve(bytes[0:bytes.length()])
 
-  match result {
-    Ok(resolved) => @debug.assert_eq(resolved.into_string(), "relative/path")
-    Err(e) => fail("Expected Ok from resolve, got Err: \{e}")
-  }
+  let resolved = base.resolve(bytes[0:bytes.length()])
+  @debug.assert_eq(resolved.into_string(), "relative/path")
 }
 
 ///|
@@ -235,16 +183,11 @@ test "resolve: absolute reference overrides base" {
   }
   let data = "http://other.com/path"
   let bytes = @utf8.encode(data)[:]
-  let result = base.resolve(bytes[0:bytes.length()])
 
-  match result {
-    Ok(resolved) => {
-      @debug.assert_eq(resolved.into_string(), "http://other.com/path")
-      @debug.assert_eq(resolved.scheme.to_owned(), "http")
-      @debug.assert_eq(resolved.authority, Some("other.com"[:]))
-    }
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let resolved = base.resolve(bytes[0:bytes.length()])
+  @debug.assert_eq(resolved.into_string(), "http://other.com/path")
+  @debug.assert_eq(resolved.scheme.to_owned(), "http")
+  @debug.assert_eq(resolved.authority, Some("other.com"[:]))
 }
 
 ///|
@@ -258,19 +201,14 @@ test "resolve: query and fragment replacement" {
   }
   let data = "?query=value#fragment"
   let bytes = @utf8.encode(data)[:]
-  let result = base.resolve(bytes[0:bytes.length()])
 
-  match result {
-    Ok(resolved) => {
-      @debug.assert_eq(
-        resolved.into_string(),
-        "https://example.com/path?query=value#fragment",
-      )
-      @debug.assert_eq(resolved.query, Some("query=value"[:]))
-      @debug.assert_eq(resolved.fragment, Some("fragment"[:]))
-    }
-    Err(e) => fail("Expected Ok, got Err: \{e}")
-  }
+  let resolved = base.resolve(bytes[0:bytes.length()])
+  @debug.assert_eq(
+    resolved.into_string(),
+    "https://example.com/path?query=value#fragment",
+  )
+  @debug.assert_eq(resolved.query, Some("query=value"[:]))
+  @debug.assert_eq(resolved.fragment, Some("fragment"[:]))
 }
 
 ///|

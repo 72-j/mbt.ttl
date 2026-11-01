@@ -8,13 +8,13 @@ import {
 // Values
 pub fn at_style_kw(ArrayView[Byte], Int32) -> Bool
 
-pub fn check_bnode_view(ArrayView[Byte]) -> Result[Unit, @gen_nquads.ParseError]
+pub fn check_bnode_view(ArrayView[Byte]) -> Unit raise @gen_nquads.ParseError
 
-pub fn check_iri_view(ArrayView[Byte]) -> Result[Unit, @gen_nquads.ParseError]
+pub fn check_iri_view(ArrayView[Byte]) -> Unit raise @gen_nquads.ParseError
 
-pub fn deep_check_literal(ArrayView[Byte], Bool) -> Result[Unit, @gen_nquads.ParseError]
+pub fn deep_check_literal(ArrayView[Byte], Bool) -> Unit raise @gen_nquads.ParseError
 
-pub fn deep_check_tt(ArrayView[Byte]) -> Result[Unit, @gen_nquads.ParseError]
+pub fn deep_check_tt(ArrayView[Byte]) -> Unit raise @gen_nquads.ParseError
 
 pub fn eq_ignore_case(ArrayView[Byte], Int32, Bytes) -> Bool
 

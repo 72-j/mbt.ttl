@@ -45,42 +45,40 @@ test "typed literal with integer datatype" {
 
 ///|
 test "language-tagged literal creation" {
-  let lit = LiteralRef::new_language_tagged_literal("hello", "en")
-  match lit {
-    Ok(l) => @debug.assert_eq(l.value(), "hello")
-    Err(e) => fail("Failed to create language-tagged literal: \{e}")
+  let l = LiteralRef::new_language_tagged_literal("hello", "en") catch {
+    e => fail("Failed to create language-tagged literal: \{e}")
   }
+  @debug.assert_eq(l.value(), "hello")
 }
 
 ///|
 test "language-tagged literal case normalization" {
-  let lit = LiteralRef::new_language_tagged_literal("hello", "EN")
-  match lit {
-    Ok(l) => @debug.assert_eq(l.value(), "hello")
-    Err(e) => fail("Failed to create language-tagged literal: \{e}")
+  let l = LiteralRef::new_language_tagged_literal("hello", "EN") catch {
+    e => fail("Failed to create language-tagged literal: \{e}")
   }
+  @debug.assert_eq(l.value(), "hello")
 }
 
 ///|
 test "language-tagged literal language extraction" {
-  let lit = LiteralRef::new_language_tagged_literal("hello", "en")
-  match lit {
-    Ok(l) =>
-      match l.language() {
-        Some(lang) => @debug.assert_eq(lang, "en")
-        None => fail("Expected language 'en', got None")
-      }
-    Err(_) => fail("Failed")
+  let l = LiteralRef::new_language_tagged_literal("hello", "en") catch {
+    _ => fail("Failed")
+  }
+  match l.language() {
+    Some(lang) => @debug.assert_eq(lang, "en")
+    None => fail("Expected language 'en', got None")
   }
 }
 
 ///|
 test "language-tagged literal invalid tag" {
-  let lit = LiteralRef::new_language_tagged_literal("hello", "123")
-  match lit {
-    Ok(_) => fail("Should have failed with invalid language tag")
-    Err(_) => () // Expected
+  let rejected = try {
+    let _ = LiteralRef::new_language_tagged_literal("hello", "123")
+    false
+  } catch {
+    _ => true
   }
+  assert_true(rejected)
 }
 
 ///|
@@ -98,41 +96,35 @@ test "language-tagged literal without direction" {
 
 ///|
 test "directional language-tagged literal ltr" {
-  let lit = LiteralRef::new_directional_language_tagged_literal(
+  let l = LiteralRef::new_directional_language_tagged_literal(
     "hello",
     "en",
     BaseDirection::Ltr,
-  )
-  match lit {
-    Ok(l) => {
-      @debug.assert_eq(l.value(), "hello")
-      @debug.assert_eq(l.language(), Some("en"))
-      @debug.assert_eq(l.direction(), Some(BaseDirection::Ltr))
-    }
-    Err(e) => fail("Failed: \{e}")
+  ) catch {
+    e => fail("Failed: \{e}")
   }
+  @debug.assert_eq(l.value(), "hello")
+  @debug.assert_eq(l.language(), Some("en"))
+  @debug.assert_eq(l.direction(), Some(BaseDirection::Ltr))
 }
 
 ///|
 test "directional language-tagged literal rtl" {
-  let lit = LiteralRef::new_directional_language_tagged_literal(
+  let l = LiteralRef::new_directional_language_tagged_literal(
     "مرحبا",
     "ar",
     BaseDirection::Rtl,
-  )
-  match lit {
-    Ok(l) => {
-      @debug.assert_eq(l.value(), "مرحبا")
-      @debug.assert_eq(l.language(), Some("ar"))
-      @debug.assert_eq(l.direction(), Some(BaseDirection::Rtl))
-    }
-    Err(e) => fail("Failed: \{e}")
+  ) catch {
+    e => fail("Failed: \{e}")
   }
+  @debug.assert_eq(l.value(), "مرحبا")
+  @debug.assert_eq(l.language(), Some("ar"))
+  @debug.assert_eq(l.direction(), Some(BaseDirection::Rtl))
 }
 
 ///|
 test "directional language-tagged literal unchecked" {
-  let tag = LanguageTag::parse("en").unwrap()
+  let tag = LanguageTag::parse("en")
   let lit = LiteralRef::new_directional_language_tagged_literal_unchecked(
     "hello",
     tag,
@@ -160,7 +152,7 @@ test "literal value extraction for typed literal" {
 
 ///|
 test "literal value extraction for language-tagged" {
-  let lit = LiteralRef::new_language_tagged_literal("test", "en").unwrap()
+  let lit = LiteralRef::new_language_tagged_literal("test", "en")
   @debug.assert_eq(lit.value(), "test")
 }
 
@@ -181,13 +173,13 @@ test "datatype for typed literal" {
 
 ///|
 test "datatype for language-tagged literal" {
-  let lit = LiteralRef::new_language_tagged_literal("test", "en").unwrap()
+  let lit = LiteralRef::new_language_tagged_literal("test", "en")
   @debug.assert_eq(lit.datatype(), rdf_lang_string)
 }
 
 ///|
 test "datatype for directional language-tagged literal" {
-  let tag = LanguageTag::parse("en").unwrap()
+  let tag = LanguageTag::parse("en")
   let lit = LiteralRef::new_directional_language_tagged_literal_unchecked(
     "test",
     tag,
@@ -221,7 +213,7 @@ test "destruct typed literal" {
 
 ///|
 test "destruct language-tagged literal" {
-  let lit = LiteralRef::new_language_tagged_literal("hello", "en").unwrap()
+  let lit = LiteralRef::new_language_tagged_literal("hello", "en")
   let (value, datatype, language, direction) = lit.destruct()
   @debug.assert_eq(value, "hello")
   @debug.assert_eq(datatype, None)
@@ -231,7 +223,7 @@ test "destruct language-tagged literal" {
 
 ///|
 test "destruct directional language-tagged literal" {
-  let tag = LanguageTag::parse("en").unwrap()
+  let tag = LanguageTag::parse("en")
   let lit = LiteralRef::new_directional_language_tagged_literal_unchecked(
     "hello",
     tag,
@@ -276,7 +268,7 @@ test "literalref language-tagged literal" {
 
 ///|
 test "literalref directional language-tagged literal" {
-  let tag = LanguageTag::parse("en").unwrap()
+  let tag = LanguageTag::parse("en")
   let literalref = LiteralRef::new_directional_language_tagged_literal_unchecked(
     "hello",
     tag,
@@ -350,13 +342,13 @@ test "literal show simple" {
 
 ///|
 test "literal show language-tagged" {
-  let lit = LiteralRef::new_language_tagged_literal("hello", "en").unwrap()
+  let lit = LiteralRef::new_language_tagged_literal("hello", "en")
   @debug.assert_eq(lit.to_string(), "hello@en")
 }
 
 ///|
 test "literal show directional language-tagged" {
-  let tag = LanguageTag::parse("en").unwrap()
+  let tag = LanguageTag::parse("en")
   let lit = LiteralRef::new_directional_language_tagged_literal_unchecked(
     "hello",
     tag,

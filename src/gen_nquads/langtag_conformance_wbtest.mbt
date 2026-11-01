@@ -20,24 +20,27 @@
 // ① W3C 官方行（引擎层字面门在 trig/nt 方言门，此处钉 LanguageTag 层判定）
 test "w3c rdf-tests langtag rows" {
   // langtagged_LONG.trig / langtagged_string.nt / langtagged_non_LONG.trig：@en 合法
-  match LanguageTag::parse_and_normalize("en") {
-    Ok(v) => @debug.assert_eq(v.to_tagstr(), "en")
-    Err(e) => fail("w3c en Err: \{e}")
+  let v = LanguageTag::parse_and_normalize("en") catch {
+    e => fail("w3c en Err: \{e}")
   }
+  @debug.assert_eq(v.to_tagstr(), "en")
+
   // langtagged_LONG_with_subtag.trig：@en-UK（结构合法；region 不做 ISO 注册表校验）
-  match LanguageTag::parse_and_normalize("en-UK") {
-    Ok(v) => {
-      @debug.assert_eq(v.to_tagstr(), "en-UK")
-      @debug.assert_eq(v.primary_language().to_owned(), "en")
-      @debug.assert_eq(v.region().map(fn(s) { s.to_owned() }), Some("UK"))
-    }
-    Err(e) => fail("w3c en-UK Err: \{e}")
+  let v = LanguageTag::parse_and_normalize("en-UK") catch {
+    e => fail("w3c en-UK Err: \{e}")
   }
+  @debug.assert_eq(v.to_tagstr(), "en-UK")
+  @debug.assert_eq(v.primary_language().to_owned(), "en")
+  @debug.assert_eq(v.region().map(fn(s) { s.to_owned() }), Some("UK"))
+
   // trig-syntax-bad-lang-01.trig / nt-syntax-bad-lang-01.nt：@1 拒收（主语言须字母）
-  match LanguageTag::parse("1") {
-    Ok(v) => fail("w3c @1 应拒收，got \{v.to_tagstr()}")
-    Err(_) => ()
+  let rejected = try {
+    let _ = LanguageTag::parse("1")
+    false
+  } catch {
+    _ => true
   }
+  assert_true(rejected)
   // trig-syntax-bad-LITERAL2_with_langtag_and_datatype：@en^^datatype 共现禁令属
   // 引擎语法门（langtag 本身合法），不在本层——见套件同名单文件。
 }
@@ -179,10 +182,10 @@ test "jena rfc5646 canonicalization battery" {
   ]
   for (input, canonical) in rows {
     for variant in [input, input.to_lower(), input.to_upper()] {
-      match LanguageTag::parse_and_normalize(variant) {
-        Ok(v) => @debug.assert_eq(v.to_tagstr(), canonical)
-        Err(e) => fail("jena(\{variant}) Err: \{e}")
+      let v = LanguageTag::parse_and_normalize(variant) catch {
+        e => fail("jena(\{variant}) Err: \{e}")
       }
+      @debug.assert_eq(v.to_tagstr(), canonical)
     }
   }
 }
@@ -199,10 +202,13 @@ test "jena bad battery" {
     "", "-", "--", "abc-xy%20", "abc def", "a12-def", "9-def",
   ]
   for b in bads {
-    match LanguageTag::parse(b) {
-      Ok(v) => fail("jena bad 应拒收: \{b} got \{v.to_tagstr()}")
-      Err(_) => ()
+    let rejected = try {
+      let _ = LanguageTag::parse(b)
+      false
+    } catch {
+      _ => true
     }
+    assert_true(rejected)
   }
 }
 
@@ -314,28 +320,26 @@ test "bcp47 fixtures battery" {
     ("zh-yue", Some("zh"), None, None, 0, 0, 0),
   ]
   for (input, lang, script, region, n_variants, n_ext, n_pu) in rows {
-    match LanguageTag::parse(input) {
-      Ok(v) => {
-        @debug.assert_eq(v.to_tagstr(), input)
-        match lang {
-          Some(l) => @debug.assert_eq(v.primary_language().to_owned(), l)
-          None => ()
-        }
-        match script {
-          Some(s) =>
-            @debug.assert_eq(v.script().map(fn(x) { x.to_owned() }), Some(s))
-          None => ()
-        }
-        match region {
-          Some(r) =>
-            @debug.assert_eq(v.region().map(fn(x) { x.to_owned() }), Some(r))
-          None => ()
-        }
-        @debug.assert_eq(v.variant_subtags().length(), n_variants)
-        @debug.assert_eq(v.has_extensions(), n_ext > 0)
-        @debug.assert_eq(v.has_private_use(), n_pu > 0)
-      }
-      Err(e) => fail("bcp47(\{input}) Err: \{e}")
+    let v = LanguageTag::parse(input) catch {
+      e => fail("bcp47(\{input}) Err: \{e}")
     }
+    @debug.assert_eq(v.to_tagstr(), input)
+    match lang {
+      Some(l) => @debug.assert_eq(v.primary_language().to_owned(), l)
+      None => ()
+    }
+    match script {
+      Some(s) =>
+        @debug.assert_eq(v.script().map(fn(x) { x.to_owned() }), Some(s))
+      None => ()
+    }
+    match region {
+      Some(r) =>
+        @debug.assert_eq(v.region().map(fn(x) { x.to_owned() }), Some(r))
+      None => ()
+    }
+    @debug.assert_eq(v.variant_subtags().length(), n_variants)
+    @debug.assert_eq(v.has_extensions(), n_ext > 0)
+    @debug.assert_eq(v.has_private_use(), n_pu > 0)
   }
 }

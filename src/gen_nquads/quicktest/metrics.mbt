@@ -224,7 +224,7 @@ test "指标·generator: 可达命令全覆盖 + 产出恒合法" {
   let reachable = reachable_command_names()
   let produced : Array[String] = []
   for seed in [1UL, 7UL, 99UL, 12345UL, 2026UL] {
-    let rng = @splitmix.new(seed~)
+    let rng = @splitmix.RandomState(seed~)
     let mut model = model_empty()
     let mut steps = 0
     while steps < 200 {
@@ -258,7 +258,7 @@ test "指标·generator: 可达命令全覆盖 + 产出恒合法" {
 test "指标·generator: 无死锁（五状态恒有合法候选）" {
   for index, state in all_states() {
     let model = ready_model(state)
-    let rng = @splitmix.new(seed=42UL)
+    let rng = @splitmix.RandomState(seed=42UL)
     match generate_command(model, 20, rng) {
       Some(command) => assert_true(valid(model, command)) // 候选恒合法
       None =>

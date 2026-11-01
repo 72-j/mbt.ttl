@@ -16,7 +16,7 @@ pub fn materialize_all(Array[QuadSpan]) -> (Array[QuadEmit], Array[ParseError])
 
 pub let owl_sameas : NamedNodeRef
 
-pub fn parse(BytesView) -> Result[Iri, ParseError]
+pub fn parse(BytesView) -> Iri
 
 pub let rdf_alt : NamedNodeRef
 
@@ -168,15 +168,15 @@ pub let rdf_xml_literal : NamedNodeRef
 
 pub let rdf_year_month_duration : NamedNodeRef
 
-pub fn scan_string_body(ArrayView[Byte], Int32, Int32, Int32) -> Result[Int32, ParseError]
+pub fn scan_string_body(ArrayView[Byte], Int32, Int32, Int32) -> Int32 raise ParseError
 
 pub fn[A : NQuadsActions] step(NQuadsContext, NQuadsEvent, A) -> Result[NQuadsEffect, NQuadsActionError]
 
-pub fn validate_bnode(ArrayView[Byte], Int32) -> Result[Unit, ParseError]
+pub fn validate_bnode(ArrayView[Byte], Int32) -> Unit raise ParseError
 
-pub fn validate_escapes_unicode(ArrayView[Byte], Int32, Int32, Int32, scalar_only? : Bool) -> Result[Unit, ParseError]
+pub fn validate_escapes_unicode(ArrayView[Byte], Int32, Int32, Int32, scalar_only? : Bool) -> Unit raise ParseError
 
-pub fn validate_iri_body(ArrayView[Byte], Int32, Int32, Int32) -> Result[Unit, ParseError]
+pub fn validate_iri_body(ArrayView[Byte], Int32, Int32, Int32) -> Unit raise ParseError
 
 // Errors
 pub(all) suberror IriError {
@@ -285,8 +285,8 @@ pub fn Iri::default() -> Self
 pub fn Iri::equal(Self, Self) -> Bool
 pub fn Iri::into_string(Self) -> String
 pub fn Iri::not_equal(Self, Self) -> Bool
-pub fn Iri::relativize(Self, Self) -> Result[Self, ParseError]
-pub fn Iri::resolve(Self, BytesView, remove_dot_segments? : Bool) -> Result[Self, ParseError]
+pub fn Iri::relativize(Self, Self) -> Self
+pub fn Iri::resolve(Self, BytesView, remove_dot_segments? : Bool) -> Self
 pub fn Iri::resolve_unchecked(Self, BytesView, remove_dot_segments? : Bool) -> Self
 pub fn Iri::to_repr(Self) -> @debug.Repr
 
@@ -309,8 +309,8 @@ pub fn LanguageTag::has_extensions(Self) -> Bool
 pub fn LanguageTag::has_private_use(Self) -> Bool
 pub fn LanguageTag::not_equal(Self, Self) -> Bool
 pub fn LanguageTag::output(Self, &Logger) -> Unit
-pub fn LanguageTag::parse(StringView) -> Result[Self, TagParseErr]
-pub fn LanguageTag::parse_and_normalize(StringView) -> Result[Self, TagParseErr]
+pub fn LanguageTag::parse(StringView) -> Self raise TagParseErr
+pub fn LanguageTag::parse_and_normalize(StringView) -> Self raise TagParseErr
 pub fn LanguageTag::primary_language(Self) -> StringView
 pub fn LanguageTag::private_use_subtags(Self) -> Array[StringView]
 pub fn LanguageTag::region(Self) -> StringView?
@@ -345,9 +345,9 @@ pub fn LiteralRef::equal(Self, Self) -> Bool
 pub fn LiteralRef::hash(Self) -> Int32
 pub fn LiteralRef::hash_combine(Self, Hasher) -> Unit
 pub fn LiteralRef::language(Self) -> StringView?
-pub fn LiteralRef::new_directional_language_tagged_literal(String, String, BaseDirection) -> Result[Self, TagParseErr]
+pub fn LiteralRef::new_directional_language_tagged_literal(String, String, BaseDirection) -> Self raise TagParseErr
 pub fn LiteralRef::new_directional_language_tagged_literal_unchecked(StringView, LanguageTag, BaseDirection) -> Self
-pub fn LiteralRef::new_language_tagged_literal(String, String) -> Result[Self, TagParseErr]
+pub fn LiteralRef::new_language_tagged_literal(String, String) -> Self raise TagParseErr
 pub fn LiteralRef::new_language_tagged_literal_unchecked(String, String) -> Self
 pub fn LiteralRef::new_simple_literal(String) -> Self
 pub fn LiteralRef::new_simple_literal_unchecked(String) -> Self
@@ -514,8 +514,8 @@ pub struct Serializer {
   only_named_graph : Bool
 }
 pub fn Serializer::new(format? : SerializeFormat, graph_policy? : GraphPolicy, only_named_graph? : Bool) -> Self
-pub fn Serializer::serialize(Self, QuadEmit) -> Result[String, ParseError]
-pub fn Serializer::serialize_all(Self, Array[QuadEmit]) -> Result[String, ParseError]
+pub fn Serializer::serialize(Self, QuadEmit) -> String raise ParseError
+pub fn Serializer::serialize_all(Self, Array[QuadEmit]) -> String raise ParseError
 
 pub struct SliceParser[L] {
   engine : NQuadsEngine[L]

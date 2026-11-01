@@ -118,7 +118,7 @@ fn TrigMaterializer::resolve_prefname(
   self : TrigMaterializer,
   span : Span,
   prefix_version : Int32,
-) -> Result[(Span, Int32)?, ParseError] {
+) -> (Span, Int32)? raise ParseError {
   let (off, len) = span
   let mut colon = -1
   for i in 0..<len {
@@ -135,14 +135,14 @@ fn TrigMaterializer::resolve_prefname(
   }
   // 前缀部尾点（PN_PREFIX 无尾点；bad-missing-ns-dot-end 口径）
   if colon > 0 && self.data[off + colon - 1] == b'.' {
-    return Err(ParseError::ValidationErr("Prefix must not end with '.'"))
+    raise ParseError::ValidationErr("Prefix must not end with '.'")
   }
   // 本地部首字符（PN_LOCAL 首字符集；bad-ln-dash-start 口径）
   if colon + 1 < len {
     let f = self.data[off + colon + 1]
     if f == b'.' || f == b'-' {
-      return Err(
-        ParseError::ValidationErr("Local name must not start with '.' or '-'"),
+      raise ParseError::ValidationErr(
+        "Local name must not start with '.' or '-'",
       )
     }
   }
@@ -152,10 +152,10 @@ fn TrigMaterializer::resolve_prefname(
     let c = self.data[off + i]
     if c == b'\\' {
       if i + 1 >= len {
-        return Err(ParseError::ValidationErr("Dangling escape"))
+        raise ParseError::ValidationErr("Dangling escape")
       }
       if !is_pn_local_esc(self.data[off + i + 1]) {
-        return Err(ParseError::ValidationErr("Invalid PN_LOCAL_ESC escape"))
+        raise ParseError::ValidationErr("Invalid PN_LOCAL_ESC escape")
       }
       i = i + 2
     } else {
@@ -184,12 +184,12 @@ fn TrigMaterializer::resolve_prefname(
         }
       }
       if same {
-        return Ok(Some((iri, colon)))
+        return Some((iri, colon))
       }
     }
     j = j - 1
   }
-  Ok(None)
+  None
 }
 
 ///|
@@ -242,33 +242,25 @@ fn TrigMaterializer::expand_prefname(
   span : Span,
   prefix_version : Int32,
   base_version : Int32,
-) -> Result[Span?, ParseError] {
+) -> Span? raise ParseError {
   match self.resolve_prefname(span, prefix_version) {
-    Err(e) => Err(e)
-    Ok(None) => Ok(None)
-    Ok(Some((iri, colon))) => {
+    None => None
+    Some((iri, colon)) => {
       let raw = self.write_prefname_iri(span, colon, iri)
       let view = slice_span(self.arena[:], raw)
       if view_has_scheme(view[1:view.length() - 1]) {
-        Ok(Some(raw))
+        Some(raw)
       } else {
         // 相对展开：按该 quad 的生效 base（base_version 折叠链 → fallback）解析
-        let base_iri = match self.quad_base(base_version) {
-          Ok(b) => b
-          Err(e) => return Err(e)
-        }
-        match
-          base_iri.resolve(Bytes::from_array(view[1:view.length() - 1])[:]) {
-          Ok(resolved) => {
-            let start = self.arena.length()
-            self.push_byte(b'<')
-            self.push_str(resolved.into_string())
-            self.push_byte(b'>')
-            Ok(Some((start, self.arena.length() - start)))
-          }
-          Err(e) =>
-            Err(ParseError::ValidationErr("IRI resolution failed: \{e}"))
-        }
+        let base_iri = self.quad_base(base_version)
+        let resolved = base_iri.resolve(
+          Bytes::from_array(view[1:view.length() - 1])[:],
+        )
+        let start = self.arena.length()
+        self.push_byte(b'<')
+        self.push_str(resolved.into_string())
+        self.push_byte(b'>')
+        Some((start, self.arena.length() - start))
       }
     }
   }
@@ -285,60 +277,48 @@ fn TrigMaterializer::iri_term(
   self : TrigMaterializer,
   span : Span,
   base_version : Int32,
-) -> Result[ArrayView[Byte], ParseError] {
+) -> ArrayView[Byte] raise ParseError {
   let view = slice_span(self.data, span)
   let len = view.length()
   // <> 包裹守卫（轻验职责的落物化层收口，条件性跳过轻验后由本层兜住）：
   // 包裹残缺不得落相对路径剥壳，否则 `<s>.` 的尾点残段会被 base 修复成合法 IRI。
   // `<>`（len==2 同文档引用）放行剥壳走相对路径
   if len < 2 || view[0] != b'<' || view[len - 1] != b'>' {
-    return Err(ParseError::ValidationErr("IRI must be wrapped in <>"))
+    raise ParseError::ValidationErr("IRI must be wrapped in <>")
   }
   // 绝对性路由：scheme 嗅探（parse_scheme 同文法）替代整段 @nquads.parse
   //（旧口径每 IRI 双整解的瓶颈点；深验在槽位由 check_iri_view 融合执行）
   if view_has_scheme(view[1:len - 1]) {
-    return Ok(view) // 绝对：零拷贝保真
+    return view // 绝对：零拷贝保真
   }
   // 相对：按该 quad 的生效 base（base_version 折叠链 → fallback）解析
-  let base_iri = match self.quad_base(base_version) {
-    Ok(b) => b
-    Err(e) => return Err(e)
-  }
+  let base_iri = self.quad_base(base_version)
   if base_iri.scheme.length() == 0 {
-    return Err(ParseError::ValidationErr("@base must be absolute"))
+    raise ParseError::ValidationErr("@base must be absolute")
   }
-  match base_iri.resolve(Bytes::from_array(view[1:len - 1])[:]) {
-    Ok(resolved) => {
-      let start = self.arena.length()
-      self.push_byte(b'<')
-      self.push_str(resolved.into_string())
-      self.push_byte(b'>')
-      Ok(slice_span(self.arena[:], (start, self.arena.length() - start)))
-    }
-    Err(e) => Err(ParseError::ValidationErr("IRI resolution failed: \{e}"))
-  }
+  let resolved = base_iri.resolve(Bytes::from_array(view[1:len - 1])[:])
+  let start = self.arena.length()
+  self.push_byte(b'<')
+  self.push_str(resolved.into_string())
+  self.push_byte(b'>')
+  slice_span(self.arena[:], (start, self.arena.length() - start))
 }
 
 ///|
 /// 外部 fallback base 解析（lazy 单次 memo，成功才记——坏 fallback 逐词项重报，
 /// 与旧口径一致）
-fn TrigMaterializer::fallback_base(
-  self : TrigMaterializer,
-) -> Result[@nquads.Iri?, ParseError] {
+fn TrigMaterializer::fallback_base(self : TrigMaterializer) -> @nquads.Iri? {
   match self.fallback_parsed {
-    Some(b) => return Ok(Some(b))
+    Some(b) => return Some(b)
     None => ()
   }
   match self.base_fallback {
-    Some(s) =>
-      match @nquads.parse(@utf8.encode(s)[:]) {
-        Ok(bi) => {
-          self.fallback_parsed = Some(bi)
-          Ok(Some(bi))
-        }
-        Err(e) => Err(ParseError::ValidationErr("Bad fallback base: \{e}"))
-      }
-    None => Ok(None)
+    Some(s) => {
+      let bi = @nquads.parse(@utf8.encode(s)[:])
+      self.fallback_parsed = Some(bi)
+      Some(bi)
+    }
+    None => None
   }
 }
 
@@ -351,12 +331,12 @@ fn TrigMaterializer::fallback_base(
 fn TrigMaterializer::base_at(
   self : TrigMaterializer,
   base_version : Int32,
-) -> Result[@nquads.Iri?, ParseError] {
+) -> @nquads.Iri? raise ParseError {
   if base_version == 0 {
-    return Ok(None)
+    return None
   }
   match self.base_memo.get(base_version) {
-    Some(b) => return Ok(Some(b))
+    Some(b) => return Some(b)
     None => ()
   }
   let mut acc : @nquads.Iri? = None
@@ -365,35 +345,25 @@ fn TrigMaterializer::base_at(
     let view = slice_span(self.data, sp)
     let blen = view.length()
     if blen < 3 || view[0] != b'<' || view[blen - 1] != b'>' {
-      return Err(ParseError::ValidationErr("Bad @base IRI"))
+      raise ParseError::ValidationErr("Bad @base IRI")
     }
     let body = view[1:blen - 1]
     if view_has_scheme(body) {
-      match @nquads.parse(Bytes::from_array(body)[:]) {
-        Ok(bi) => acc = Some(bi)
-        Err(e) => return Err(ParseError::ValidationErr("Bad @base IRI: \{e}"))
-      }
+      let bi = @nquads.parse(Bytes::from_array(body)[:])
+      acc = Some(bi)
     } else {
       let prev = match acc {
         Some(a) => Some(a)
-        None =>
-          match self.fallback_base() {
-            Ok(b) => b
-            Err(e) => return Err(e)
-          }
+        None => self.fallback_base()
       }
       match prev {
-        Some(a) =>
-          match a.resolve(Bytes::from_array(body)[:]) {
-            Ok(r) => acc = Some(r)
-            Err(e) =>
-              return Err(
-                ParseError::ValidationErr("IRI resolution failed: \{e}"),
-              )
-          }
+        Some(a) => {
+          let r = a.resolve(Bytes::from_array(body)[:])
+          acc = Some(r)
+        }
         None =>
-          return Err(
-            ParseError::ValidationErr("Relative @base with no in-scope base"),
+          raise ParseError::ValidationErr(
+            "Relative @base with no in-scope base",
           )
       }
     }
@@ -401,9 +371,9 @@ fn TrigMaterializer::base_at(
   match acc {
     Some(b) => {
       self.base_memo[base_version] = b
-      Ok(Some(b))
+      Some(b)
     }
-    None => Ok(None)
+    None => None
   }
 }
 
@@ -413,20 +383,16 @@ fn TrigMaterializer::base_at(
 fn TrigMaterializer::quad_base(
   self : TrigMaterializer,
   base_version : Int32,
-) -> Result[@nquads.Iri, ParseError] {
-  let b = match self.base_at(base_version) {
-    Ok(b) => b
-    Err(e) => return Err(e)
+) -> @nquads.Iri raise ParseError {
+  let b = self.base_at(base_version)
+  let fb = match b {
+    Some(b) => Some(b)
+    None => self.fallback_base()
   }
-  match b {
-    Some(b) => Ok(b)
+  match fb {
+    Some(b) => b
     None =>
-      match self.fallback_base() {
-        Ok(Some(b)) => Ok(b)
-        Ok(None) =>
-          Err(ParseError::ValidationErr("Relative IRI with no in-scope @base"))
-        Err(e) => Err(e)
-      }
+      raise ParseError::ValidationErr("Relative IRI with no in-scope @base")
   }
 }
 
@@ -492,7 +458,7 @@ fn TrigMaterializer::materialize_literal(
   self : TrigMaterializer,
   span : Span,
   prefix_version : Int32,
-) -> Result[ArrayView[Byte], ParseError] {
+) -> ArrayView[Byte] raise ParseError {
   let (off, len) = span
   let body_end = literal_body_end(self.data, span)
   if body_end + 2 < off + len &&
@@ -501,19 +467,18 @@ fn TrigMaterializer::materialize_literal(
     self.data[body_end + 2] != b'<' {
     let dt_span : Span = (body_end + 2, off + len - (body_end + 2))
     match self.resolve_prefname(dt_span, prefix_version) {
-      Err(e) => Err(e)
-      Ok(None) => Ok(slice_span(self.data, span)) // 未声明：保真兜底，槽位深验拒
-      Ok(Some((iri, colon))) => {
+      None => slice_span(self.data, span) // 未声明：保真兜底，槽位深验拒
+      Some((iri, colon)) => {
         let start = self.arena.length()
         self.push_view(self.data[off:body_end])
         self.push_byte(b'^')
         self.push_byte(b'^')
         let _ = self.write_prefname_iri(dt_span, colon, iri) // 展开追加 arena 尾
-        Ok(slice_span(self.arena[:], (start, self.arena.length() - start)))
+        slice_span(self.arena[:], (start, self.arena.length() - start))
       }
     }
   } else {
-    Ok(slice_span(self.data, span)) // 保真路径：原 data 零拷贝
+    slice_span(self.data, span) // 保真路径：原 data 零拷贝
   }
 }
 
@@ -522,7 +487,7 @@ fn TrigMaterializer::materialize_literal(
 pub fn TrigMaterializer::materialize_quad(
   self : TrigMaterializer,
   quad : QuadSpan,
-) -> Result[@nquads.QuadEmit, ParseError] {
+) -> @nquads.QuadEmit raise ParseError {
   // 主语位：Iri / BNode / TT 壳 / PrefName。融合深验（deep_validate 门）在词项
   // 构造点就地执行：Iri→check_iri_view / BNode→validate_bnode / TT 壳→deep_check_tt
   // （独立成句的壳已在组装层拆成普通槽位，此臂承接"壳+后续链"形态）。
@@ -553,53 +518,37 @@ pub fn TrigMaterializer::materialize_quad(
       if quad.s.1 >= 4 && self.data[quad.s.0 + 1] == b'<' {
         // RDF 1.2 引用三元组壳做主语：整段原文持有，字节保真（同宾语位面）
         let v = slice_span(self.data, quad.s)
-        match self.gate_tt(v) {
-          Ok(v) => {
-            s_kind = @nquads.TermKind::TripleTerm
-            s_view = v
-          }
-          Err(e) => return Err(e)
-        }
+        let v = self.gate_tt(v)
+        s_kind = @nquads.TermKind::TripleTerm
+        s_view = v
       } else {
-        match self.iri_term(quad.s, quad.base_version) {
-          Ok(v) =>
-            match self.gate_iri(v) {
-              Ok(v) => {
-                s_kind = @nquads.TermKind::Iri
-                s_view = v
-              }
-              Err(e) => return Err(e)
-            }
-          Err(e) => return Err(e)
-        }
+        let v = self.iri_term(quad.s, quad.base_version)
+        let v = self.gate_iri(v)
+        s_kind = @nquads.TermKind::Iri
+        s_view = v
       }
     } else if c0 == b'_' {
       let v = slice_span(self.data, quad.s)
-      match self.gate_bnode(v) {
-        Ok(v) => {
-          s_kind = @nquads.TermKind::BNode
-          s_view = v
-        }
-        Err(e) => return Err(e)
-      }
+      let v = self.gate_bnode(v)
+      s_kind = @nquads.TermKind::BNode
+      s_view = v
     } else if c0 == b'[' || c0 == b'(' {
       // ★3 fresh 结构节点：开括号 offset memo `_:genid<N>`，可信构造免深验
       s_kind = @nquads.TermKind::BNode
       s_view = self.fresh_bnode(quad.s)
     } else {
-      match
-        self.expand_prefname(quad.s, quad.prefix_version, quad.base_version) {
-        Ok(Some(expanded)) =>
-          match self.gate_iri(slice_span(self.arena[:], expanded)) {
-            Ok(v) => {
-              s_kind = @nquads.TermKind::Iri
-              s_view = v
-            }
-            Err(e) => return Err(e)
-          }
-        Ok(None) =>
-          return Err(ParseError::ValidationErr("Subject has undeclared prefix"))
-        Err(e) => return Err(e)
+      let hit = self.expand_prefname(
+        quad.s,
+        quad.prefix_version,
+        quad.base_version,
+      )
+      match hit {
+        Some(expanded) => {
+          let v = self.gate_iri(slice_span(self.arena[:], expanded))
+          s_kind = @nquads.TermKind::Iri
+          s_view = v
+        }
+        None => raise ParseError::ValidationErr("Subject has undeclared prefix")
       }
     }
   }
@@ -624,24 +573,17 @@ pub fn TrigMaterializer::materialize_quad(
     let pspan = (start, self.arena.length() - start)
     slice_span(self.arena[:], pspan) // 词表构造可信，免深验
   } else if self.data[quad.p.0] == b'<' {
-    match self.iri_term(quad.p, quad.base_version) {
-      Ok(v) =>
-        match self.gate_iri(v) {
-          Ok(v) => v
-          Err(e) => return Err(e)
-        }
-      Err(e) => return Err(e)
-    }
+    let v = self.iri_term(quad.p, quad.base_version)
+    self.gate_iri(v)
   } else {
-    match self.expand_prefname(quad.p, quad.prefix_version, quad.base_version) {
-      Ok(Some(expanded)) =>
-        match self.gate_iri(slice_span(self.arena[:], expanded)) {
-          Ok(v) => v
-          Err(e) => return Err(e)
-        }
-      Ok(None) =>
-        return Err(ParseError::ValidationErr("Predicate has undeclared prefix"))
-      Err(e) => return Err(e)
+    let hit = self.expand_prefname(
+      quad.p,
+      quad.prefix_version,
+      quad.base_version,
+    )
+    match hit {
+      Some(expanded) => self.gate_iri(slice_span(self.arena[:], expanded))
+      None => raise ParseError::ValidationErr("Predicate has undeclared prefix")
     }
   }
   // 宾语位：Iri / BNode / Literal（保真或 ^^ 展开）/ 数值 / 布尔 / PrefName / TT。
@@ -666,51 +608,29 @@ pub fn TrigMaterializer::materialize_quad(
       if quad.o.1 > 1 && self.data[quad.o.0 + 1] == b'<' {
         // 引用三元组壳：整段原文持有，字节保真；壳内 term-kind 深验就地执行
         let v = slice_span(self.data, quad.o)
-        match self.gate_tt(v) {
-          Ok(v) => {
-            o_kind = @nquads.TermKind::TripleTerm
-            o_view = v
-          }
-          Err(e) => return Err(e)
-        }
+        let v = self.gate_tt(v)
+        o_kind = @nquads.TermKind::TripleTerm
+        o_view = v
       } else {
-        match self.iri_term(quad.o, quad.base_version) {
-          Ok(v) =>
-            match self.gate_iri(v) {
-              Ok(v) => {
-                o_kind = @nquads.TermKind::Iri
-                o_view = v
-              }
-              Err(e) => return Err(e)
-            }
-          Err(e) => return Err(e)
-        }
+        let v = self.iri_term(quad.o, quad.base_version)
+        let v = self.gate_iri(v)
+        o_kind = @nquads.TermKind::Iri
+        o_view = v
       }
     } else if c0 == b'_' {
       let v = slice_span(self.data, quad.o)
-      match self.gate_bnode(v) {
-        Ok(v) => {
-          o_kind = @nquads.TermKind::BNode
-          o_view = v
-        }
-        Err(e) => return Err(e)
-      }
+      let v = self.gate_bnode(v)
+      o_kind = @nquads.TermKind::BNode
+      o_view = v
     } else if c0 == b'[' || c0 == b'(' {
       // ★3 fresh 结构节点：开括号 offset memo `_:genid<N>`，可信构造免深验
       o_kind = @nquads.TermKind::BNode
       o_view = self.fresh_bnode(quad.o)
     } else if c0 == b'"' || c0 == b'\'' {
-      match self.materialize_literal(quad.o, quad.prefix_version) {
-        Ok(v) =>
-          match self.gate_literal(v) {
-            Ok(v) => {
-              o_kind = @nquads.TermKind::Literal
-              o_view = v
-            }
-            Err(e) => return Err(e)
-          }
-        Err(e) => return Err(e)
-      }
+      let v = self.materialize_literal(quad.o, quad.prefix_version)
+      let v = self.gate_literal(v)
+      o_kind = @nquads.TermKind::Literal
+      o_view = v
     } else if is_num {
       // 数值族：词形已由 is_numeric_span 全验，展开为可信构造，免深验
       // 注意：先展开、后取 arena 视图——内联写 slice_span(self.arena[:], self.expand_…)
@@ -723,19 +643,18 @@ pub fn TrigMaterializer::materialize_quad(
       o_kind = @nquads.TermKind::Literal
       o_view = slice_span(self.arena[:], bspan) // 静态词可信，免深验
     } else {
-      match
-        self.expand_prefname(quad.o, quad.prefix_version, quad.base_version) {
-        Ok(Some(expanded)) =>
-          match self.gate_iri(slice_span(self.arena[:], expanded)) {
-            Ok(v) => {
-              o_kind = @nquads.TermKind::Iri
-              o_view = v
-            }
-            Err(e) => return Err(e)
-          }
-        Ok(None) =>
-          return Err(ParseError::ValidationErr("Object has undeclared prefix"))
-        Err(e) => return Err(e)
+      let hit = self.expand_prefname(
+        quad.o,
+        quad.prefix_version,
+        quad.base_version,
+      )
+      match hit {
+        Some(expanded) => {
+          let v = self.gate_iri(slice_span(self.arena[:], expanded))
+          o_kind = @nquads.TermKind::Iri
+          o_view = v
+        }
+        None => raise ParseError::ValidationErr("Object has undeclared prefix")
       }
     }
   }
@@ -745,50 +664,34 @@ pub fn TrigMaterializer::materialize_quad(
   if quad.g is Some(g) {
     let c0 = self.data[g.0]
     if c0 == b'<' {
-      match self.iri_term(g, quad.base_version) {
-        Ok(v) =>
-          match self.gate_iri(v) {
-            Ok(v) => {
-              g_kind = @nquads.TermKind::Iri
-              g_view = v
-            }
-            Err(e) => return Err(e)
-          }
-        Err(e) => return Err(e)
-      }
+      let v = self.iri_term(g, quad.base_version)
+      let v = self.gate_iri(v)
+      g_kind = @nquads.TermKind::Iri
+      g_view = v
     } else if c0 == b'_' {
       let v = slice_span(self.data, g)
-      match self.gate_bnode(v) {
-        Ok(v) => {
-          g_kind = @nquads.TermKind::BNode
-          g_view = v
-        }
-        Err(e) => return Err(e)
-      }
+      let v = self.gate_bnode(v)
+      g_kind = @nquads.TermKind::BNode
+      g_view = v
     } else if c0 == b'[' || c0 == b'(' {
       // ★3 fresh 结构节点（图名位不可为 fresh——表保证图名位只有 Iri/PrefName/
       // BlankNode 三事件；防御位照接）
       g_kind = @nquads.TermKind::BNode
       g_view = self.fresh_bnode(g)
     } else {
-      match self.expand_prefname(g, quad.prefix_version, quad.base_version) {
-        Ok(Some(expanded)) =>
-          match self.gate_iri(slice_span(self.arena[:], expanded)) {
-            Ok(v) => {
-              g_kind = @nquads.TermKind::Iri
-              g_view = v
-            }
-            Err(e) => return Err(e)
-          }
-        Ok(None) =>
-          return Err(
-            ParseError::ValidationErr("Graph name has undeclared prefix"),
-          )
-        Err(e) => return Err(e)
+      let hit = self.expand_prefname(g, quad.prefix_version, quad.base_version)
+      match hit {
+        Some(expanded) => {
+          let v = self.gate_iri(slice_span(self.arena[:], expanded))
+          g_kind = @nquads.TermKind::Iri
+          g_view = v
+        }
+        None =>
+          raise ParseError::ValidationErr("Graph name has undeclared prefix")
       }
     }
   }
-  Ok({ s_kind, s_view, predicate, o_kind, o_view, g_kind, g_view, })
+  { s_kind, s_view, predicate, o_kind, o_view, g_kind, g_view, }
 }
 
 ///|
@@ -805,9 +708,11 @@ pub fn TrigMaterializer::materialize_all(
   let results : Array[@nquads.QuadEmit] = []
   let errors : Array[ParseError] = []
   for quad in quads {
-    match self.materialize_quad(quad) {
-      Ok(q) => results.push(q)
-      Err(e) => errors.push(e)
+    try {
+      let q = self.materialize_quad(quad)
+      results.push(q)
+    } catch {
+      e => errors.push(e)
     }
   }
   (results, errors)
@@ -839,14 +744,12 @@ pub fn TrigMaterializer::materialize_all(
 fn TrigMaterializer::gate_iri(
   self : TrigMaterializer,
   view : ArrayView[Byte],
-) -> Result[ArrayView[Byte], ParseError] {
+) -> ArrayView[Byte] raise ParseError {
   if self.deep_validate {
-    match check_iri_view(view) {
-      Ok(_) => Ok(view)
-      Err(e) => Err(e)
-    }
+    check_iri_view(view)
+    view
   } else {
-    Ok(view)
+    view
   }
 }
 
@@ -854,14 +757,12 @@ fn TrigMaterializer::gate_iri(
 fn TrigMaterializer::gate_bnode(
   self : TrigMaterializer,
   view : ArrayView[Byte],
-) -> Result[ArrayView[Byte], ParseError] {
+) -> ArrayView[Byte] raise ParseError {
   if self.deep_validate {
-    match check_bnode_view(view) {
-      Ok(_) => Ok(view)
-      Err(e) => Err(e)
-    }
+    check_bnode_view(view)
+    view
   } else {
-    Ok(view)
+    view
   }
 }
 
@@ -869,14 +770,12 @@ fn TrigMaterializer::gate_bnode(
 fn TrigMaterializer::gate_tt(
   self : TrigMaterializer,
   view : ArrayView[Byte],
-) -> Result[ArrayView[Byte], ParseError] {
+) -> ArrayView[Byte] raise ParseError {
   if self.deep_validate {
-    match deep_check_tt(view) {
-      Ok(_) => Ok(view)
-      Err(e) => Err(e)
-    }
+    deep_check_tt(view)
+    view
   } else {
-    Ok(view)
+    view
   }
 }
 
@@ -884,14 +783,12 @@ fn TrigMaterializer::gate_tt(
 fn TrigMaterializer::gate_literal(
   self : TrigMaterializer,
   view : ArrayView[Byte],
-) -> Result[ArrayView[Byte], ParseError] {
+) -> ArrayView[Byte] raise ParseError {
   if self.deep_validate {
-    match deep_check_literal(view, self.rdf12) {
-      Ok(_) => Ok(view)
-      Err(e) => Err(e)
-    }
+    deep_check_literal(view, self.rdf12)
+    view
   } else {
-    Ok(view)
+    view
   }
 }
 

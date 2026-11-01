@@ -48,9 +48,14 @@ async fn demo(content : String) -> Unit {
   for err in mat_errors {
     println("   MAT-ERR: \{err}")
   }
-  match @gen_n3v2.N3Serializer::new().serialize(emits) {
-    Ok(text) => if text.length() > 0 { println(text) }
-    Err(err) => println("   SER-ERR: \{err}")
+  let text = @gen_n3v2.N3Serializer::new().serialize(emits) catch {
+    err => {
+      println("   SER-ERR: \{err}")
+      ""
+    }
+  }
+  if text.length() > 0 {
+    println(text)
   }
 }
 

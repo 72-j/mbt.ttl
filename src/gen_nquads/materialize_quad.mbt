@@ -1,16 +1,16 @@
 ///|
 /// 物化 Quad（P3 平化：类型已由 validate 探测，此处纯标注搬运——view 零拷贝。
 /// kind 轴零箱（常量 tag），QuadEmit 本体 = 每 quad 唯一箱；错误臂只留主语位防御钉）
-fn materialize_quad(quad : QuadSpan) -> Result[QuadEmit, ParseError] {
+fn materialize_quad(quad : QuadSpan) -> QuadEmit raise ParseError {
   // 谓语必须是 IRI——校验已在 validate_helper（严格模式）完成，物化层只搬运
   let s_kind : TermKind = match quad.subj_type {
     TermType::Iri => TermKind::Iri
     TermType::BNode => TermKind::BNode
     TermType::Literal =>
-      return Err(ParseError::ValidationErr("Subject cannot be literal"))
+      raise ParseError::ValidationErr("Subject cannot be literal")
     // 表只开宾语位 TripleTerm，主语位不可达；防御性报错钉住不变量
     TermType::TripleTerm =>
-      return Err(ParseError::ValidationErr("Subject cannot be triple term"))
+      raise ParseError::ValidationErr("Subject cannot be triple term")
   }
   let o_kind : TermKind = match quad.obj_type {
     TermType::Iri => TermKind::Iri
@@ -35,7 +35,7 @@ fn materialize_quad(quad : QuadSpan) -> Result[QuadEmit, ParseError] {
   } else {
     quad.pred[0:0]
   }
-  Ok({
+  {
     s_kind,
     s_view: quad.subj,
     predicate: quad.pred,
@@ -43,7 +43,7 @@ fn materialize_quad(quad : QuadSpan) -> Result[QuadEmit, ParseError] {
     o_view: quad.obj,
     g_kind,
     g_view,
-  })
+  }
 }
 
 ///|
@@ -56,9 +56,15 @@ pub fn materialize_all(
   let errors = []
 
   for quad in quads {
-    match materialize_quad(quad) {
-      Ok(q) => results.push(q)
-      Err(e) => errors.push(e)
+    let mut emit : QuadEmit? = None
+    // 错误照旧作数据收集（materialize_quad 已 raise 化，try/catch 收口）
+    try {
+      emit = Some(materialize_quad(quad))
+    } catch {
+      e => errors.push(e)
+    }
+    if emit is Some(q) {
+      results.push(q)
     }
   }
 
@@ -80,8 +86,6 @@ test "物化: bnode 图名如实标注 + 全链路往返" {
   assert_true(emits[1].g_kind is TermKind::DefaultGraph)
   // 全链路：序列化回原文，字节一致
   let s = Serializer::new(format=Quad)
-  match s.serialize_all(emits) {
-    Ok(out) => assert_eq(out, input)
-    Err(_) => assert_true(false)
-  }
+  let out = s.serialize_all(emits)
+  assert_eq(out, input)
 }

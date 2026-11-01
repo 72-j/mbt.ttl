@@ -93,7 +93,7 @@ priv struct GraphGroup {
 fn append_terms(
   quad : @nquads.QuadEmit,
   buf : StringBuilder,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   match quad.s_kind {
     @nquads.TermKind::Iri | @nquads.TermKind::BNode =>
       trig_ser_span(quad.s_view, buf)
@@ -101,42 +101,32 @@ fn append_terms(
     @nquads.TermKind::TripleTerm => trig_ser_span(quad.s_view, buf)
     // Turtle/TriG 语法无前缀名：物化层已展开，残留即不变量破坏，报错钉住
     @nquads.TermKind::PrefName =>
-      return Err(
-        ParseError::SyntaxErr(
-          "Prefixed names are not valid in serialized output",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Prefixed names are not valid in serialized output",
+        (0, 0),
       )
     // Turtle/TriG 无变量/字面量主语/公式（N3 方言专属，方言不产出）：透传会
     // 写出上层语言语法，报错钉住不变量
     @nquads.TermKind::Variable =>
-      return Err(
-        ParseError::SyntaxErr(
-          "Variables are not valid in serialized output",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Variables are not valid in serialized output",
+        (0, 0),
       )
     @nquads.TermKind::Literal =>
-      return Err(
-        ParseError::SyntaxErr(
-          "Literal subjects are not valid in serialized output",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Literal subjects are not valid in serialized output",
+        (0, 0),
       )
     @nquads.TermKind::Formula =>
-      return Err(
-        ParseError::SyntaxErr(
-          "Formulas are not valid in serialized output",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Formulas are not valid in serialized output",
+        (0, 0),
       )
     // 位-种类非法组合：DefaultGraph 只许图名位，主语位出现即不变量破坏
     @nquads.TermKind::DefaultGraph =>
-      return Err(
-        ParseError::SyntaxErr(
-          "DefaultGraph is not valid in subject position",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "DefaultGraph is not valid in subject position",
+        (0, 0),
       )
   }
   buf.write_char(' ')
@@ -149,38 +139,30 @@ fn append_terms(
     // 引用三元组壳整段原文回写（RDF 1.2；round-trip 不变量）
     @nquads.TermKind::TripleTerm => trig_ser_span(quad.o_view, buf)
     @nquads.TermKind::PrefName =>
-      return Err(
-        ParseError::SyntaxErr(
-          "Prefixed names are not valid in serialized output",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Prefixed names are not valid in serialized output",
+        (0, 0),
       )
     @nquads.TermKind::Variable =>
-      return Err(
-        ParseError::SyntaxErr(
-          "Variables are not valid in serialized output",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Variables are not valid in serialized output",
+        (0, 0),
       )
     // Turtle/TriG 无公式词项（N3 方言专属，ADR-002）：透传会写出上层语言
     // 语法，报错钉住不变量
     @nquads.TermKind::Formula =>
-      return Err(
-        ParseError::SyntaxErr(
-          "Formulas are not valid in serialized output",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Formulas are not valid in serialized output",
+        (0, 0),
       )
     // 位-种类非法组合：DefaultGraph 只许图名位，宾语位出现即不变量破坏
     @nquads.TermKind::DefaultGraph =>
-      return Err(
-        ParseError::SyntaxErr(
-          "DefaultGraph is not valid in object position",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "DefaultGraph is not valid in object position",
+        (0, 0),
       )
   }
-  Ok(())
+  ()
 }
 
 ///|
@@ -190,7 +172,7 @@ fn append_terms(
 pub fn TrigSerializer::serialize(
   self : TrigSerializer,
   quads : Array[@nquads.QuadEmit],
-) -> Result[String, ParseError] {
+) -> String raise ParseError {
   let buf = StringBuilder()
   let default_graph : Array[@nquads.QuadEmit] = []
   let groups : Array[GraphGroup] = []
@@ -214,11 +196,9 @@ pub fn TrigSerializer::serialize(
       }
       // 图位封闭门：结构非法，Turtle/TriG 策略之外无处可落
       _ =>
-        return Err(
-          ParseError::SyntaxErr(
-            "Graph term kind is not valid in graph position (only IRI/blank node/default graph)",
-            (0, 0),
-          ),
+        raise ParseError::SyntaxErr(
+          "Graph term kind is not valid in graph position (only IRI/blank node/default graph)",
+          (0, 0),
         )
     }
   }
@@ -226,21 +206,16 @@ pub fn TrigSerializer::serialize(
   if self.format is Turtle && groups.length() > 0 {
     match self.graph_policy {
       Strict =>
-        return Err(
-          ParseError::SyntaxErr(
-            "Graph term is not representable in Turtle (use TriG format or Drop policy)",
-            (0, 0),
-          ),
+        raise ParseError::SyntaxErr(
+          "Graph term is not representable in Turtle (use TriG format or Drop policy)",
+          (0, 0),
         )
       Drop => ()
     }
   }
   // 1) 默认图：顶层三元组语句
   for quad in default_graph {
-    match append_terms(quad, buf) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
+    append_terms(quad, buf)
     buf.write_string(" .\n")
   }
   // 2) 命名图：TriG 照写图块区；Turtle+Drop 降级为顶层三元组
@@ -251,10 +226,7 @@ pub fn TrigSerializer::serialize(
       buf.write_string(" {\n")
       for quad in group.triples {
         buf.write_string("  ")
-        match append_terms(quad, buf) {
-          Ok(_) => ()
-          Err(e) => return Err(e)
-        }
+        append_terms(quad, buf)
         buf.write_string(" .\n")
       }
       buf.write_string("}\n")
@@ -262,13 +234,10 @@ pub fn TrigSerializer::serialize(
   } else {
     for group in groups {
       for quad in group.triples {
-        match append_terms(quad, buf) {
-          Ok(_) => ()
-          Err(e) => return Err(e)
-        }
+        append_terms(quad, buf)
         buf.write_string(" .\n")
       }
     }
   }
-  Ok(buf.to_string())
+  buf.to_string()
 }

@@ -316,7 +316,7 @@ fn validate_prefname(data : ArrayView[Byte], span : Span) -> ParseError? {
 fn[L] N3SliceParser::assemble(
   self : N3SliceParser[L],
   pending : N3PendingQuad,
-) -> Result[QuadSpan, ParseError] {
+) -> QuadSpan raise ParseError {
   // 合成谓词归一（同构保留位）：链 quad 谓词无字节时以 (0,0) 占位过缺槽检测
   //（N3 引擎 pk 恒 Normal，ADR-003b 显式链接表后启用）
   let pending = if pending.pk is PredKind::Normal {
@@ -332,28 +332,28 @@ fn[L] N3SliceParser::assemble(
         // 分量已在主 quad（AnnotStart 出账）组装点各自过验；物化层据此合成壳
         if !pending.subj_shell {
           match validate_term(self.data, prefixes, s, false) {
-            Some(e) => return Err(e)
+            Some(e) => raise e
             None => ()
           }
         }
         match validate_term(self.data, prefixes, p, true) {
-          Some(e) => return Err(e)
+          Some(e) => raise e
           None => ()
         }
         match validate_term(self.data, prefixes, o, false) {
-          Some(e) => return Err(e)
+          Some(e) => raise e
           None => ()
         }
         match pending.graph {
           Some(g) =>
             match validate_term(self.data, prefixes, g, false) {
-              Some(e) => return Err(e)
+              Some(e) => raise e
               None => ()
             }
           None => ()
         }
       }
-      Ok({
+      {
         s,
         p,
         o,
@@ -363,7 +363,7 @@ fn[L] N3SliceParser::assemble(
         base_version: pending.base_version,
         iri_version: pending.iri_version,
         subj_shell: pending.subj_shell,
-      })
+      }
     }
     // RDF 1.2 triple-term shell standalone statement: `<< s p o >> .` --
     // shell lands in subject slot with no pred/obj; the statement IS the
@@ -377,27 +377,27 @@ fn[L] N3SliceParser::assemble(
         if !self.lenient {
           let prefixes = self.engine.ctx.prefixes
           match validate_term(self.data, prefixes, ts, false) {
-            Some(e) => return Err(e)
+            Some(e) => raise e
             None => ()
           }
           match validate_term(self.data, prefixes, tp, true) {
-            Some(e) => return Err(e)
+            Some(e) => raise e
             None => ()
           }
           match validate_term(self.data, prefixes, to, false) {
-            Some(e) => return Err(e)
+            Some(e) => raise e
             None => ()
           }
           match pending.graph {
             Some(g) =>
               match validate_term(self.data, prefixes, g, false) {
-                Some(e) => return Err(e)
+                Some(e) => raise e
                 None => ()
               }
             None => ()
           }
         }
-        Ok({
+        {
           s: ts,
           p: tp,
           o: to,
@@ -407,19 +407,17 @@ fn[L] N3SliceParser::assemble(
           base_version: pending.base_version,
           iri_version: pending.iri_version,
           subj_shell: false,
-        })
+        }
       } else {
-        Err(ParseError::SyntaxErr("Incomplete quad at emission", s))
+        raise ParseError::SyntaxErr("Incomplete quad at emission", s)
       }
     }
     _ =>
       // N3 无壳独立成句形态（表无主语位壳行；`[] .` 空属性列表已在
       // parse_next 静默跳过）；缺谓/宾 = 缺槽
-      Err(
-        ParseError::SyntaxErr(
-          "Incomplete quad at emission",
-          pending.subj.unwrap_or((0, 0)),
-        ),
+      raise ParseError::SyntaxErr(
+        "Incomplete quad at emission",
+        pending.subj.unwrap_or((0, 0)),
       )
   }
 }
@@ -457,13 +455,16 @@ pub fn[L : LexerSource] N3SliceParser::parse_next(
         }
         None => ()
       }
-      match self.assemble(pending) {
-        Ok(quad) => Some(Ok(quad))
-        Err(e) => {
-          self.errors.push(e)
-          self.parse_next() // 组装/校验失败：记错误继续下一条
-        }
-      }
+      Some(
+        Ok(
+          self.assemble(pending) catch {
+            e => {
+              self.errors.push(e)
+              return self.parse_next() // 组装/校验失败：记错误继续下一条
+            }
+          },
+        ),
+      )
     }
   }
 }

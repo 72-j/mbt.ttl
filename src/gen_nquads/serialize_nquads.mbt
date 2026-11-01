@@ -66,12 +66,10 @@ pub fn Serializer::new(
 pub fn Serializer::serialize(
   self : Serializer,
   quad : QuadEmit,
-) -> Result[String, ParseError] {
+) -> String raise ParseError {
   let buf = StringBuilder()
-  match self.append_dispatch(quad, buf) {
-    Ok(_) => Ok(buf.to_string())
-    Err(e) => Err(e)
-  }
+  self.append_dispatch(quad, buf)
+  buf.to_string()
 }
 
 ///|
@@ -79,15 +77,12 @@ pub fn Serializer::serialize(
 pub fn Serializer::serialize_all(
   self : Serializer,
   quads : Array[QuadEmit],
-) -> Result[String, ParseError] {
+) -> String raise ParseError {
   let buf = StringBuilder()
   for quad in quads {
-    match self.append_dispatch(quad, buf) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
+    self.append_dispatch(quad, buf)
   }
-  Ok(buf.to_string())
+  buf.to_string()
 }
 
 ///|
@@ -111,62 +106,52 @@ fn Serializer::append_subject(
   kind : TermKind,
   view : ArrayView[Byte],
   buf : StringBuilder,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   match kind {
     TermKind::Iri => {
       self.append_span(view, buf)
-      Ok(())
+      ()
     }
     TermKind::BNode => {
       self.append_span(view, buf)
-      Ok(())
+      ()
     }
     // RDF 1.2 引用三元组壳：整段原样写出（与宾语位 TripleTerm 同口径）
     TermKind::TripleTerm => {
       self.append_span(view, buf)
-      Ok(())
+      ()
     }
     // N-Triples/N-Quads 语法无前缀名：解析侧已挡死，此处不可达；
     // 透传会把非法语法写出，故报错钉住不变量
     TermKind::PrefName =>
-      Err(
-        ParseError::SyntaxErr(
-          "Prefixed names are not valid in N-Triples/N-Quads",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Prefixed names are not valid in N-Triples/N-Quads",
+        (0, 0),
       )
     // N-Triples/N-Quads 无变量（guides/nquads/terms/variable-reserved.md）：
     // 方言不产出，透传会写出上层语言语法，报错钉住不变量
     TermKind::Variable =>
-      Err(
-        ParseError::SyntaxErr(
-          "Variables are not valid in N-Triples/N-Quads",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Variables are not valid in N-Triples/N-Quads",
+        (0, 0),
       )
     // N-Triples/N-Quads 无字面量主语/公式词项（N3 方言专属）：
     // 方言不产出，透传会写出上层语言语法，报错钉住不变量
     TermKind::Literal =>
-      Err(
-        ParseError::SyntaxErr(
-          "Literal subjects are not valid in N-Triples/N-Quads",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Literal subjects are not valid in N-Triples/N-Quads",
+        (0, 0),
       )
     TermKind::Formula =>
-      Err(
-        ParseError::SyntaxErr(
-          "Formulas are not valid in N-Triples/N-Quads",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Formulas are not valid in N-Triples/N-Quads",
+        (0, 0),
       )
     // 位-种类非法组合：DefaultGraph 只许图名位，主语位出现即不变量破坏
     TermKind::DefaultGraph =>
-      Err(
-        ParseError::SyntaxErr(
-          "DefaultGraph is not valid in subject position",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "DefaultGraph is not valid in subject position",
+        (0, 0),
       )
   }
 }
@@ -179,55 +164,47 @@ fn Serializer::append_object(
   kind : TermKind,
   view : ArrayView[Byte],
   buf : StringBuilder,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   match kind {
     TermKind::Iri => {
       self.append_span(view, buf)
-      Ok(())
+      ()
     }
     TermKind::BNode => {
       self.append_span(view, buf)
-      Ok(())
+      ()
     }
     TermKind::Literal => {
       self.append_span(view, buf)
-      Ok(())
+      ()
     }
     // 三元组词项整段原文回写（round-trip 不变量；内部拆解属下游语义层职责）
     TermKind::TripleTerm => {
       self.append_span(view, buf)
-      Ok(())
+      ()
     }
     TermKind::PrefName =>
-      Err(
-        ParseError::SyntaxErr(
-          "Prefixed names are not valid in N-Triples/N-Quads",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Prefixed names are not valid in N-Triples/N-Quads",
+        (0, 0),
       )
     TermKind::Variable =>
-      Err(
-        ParseError::SyntaxErr(
-          "Variables are not valid in N-Triples/N-Quads",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Variables are not valid in N-Triples/N-Quads",
+        (0, 0),
       )
     // N-Triples/N-Quads 无公式词项（N3 方言专属，n3v2 ADR-002 GraphTerm 不透明）：
     // 方言不产出，透传会写出上层语言语法，报错钉住不变量
     TermKind::Formula =>
-      Err(
-        ParseError::SyntaxErr(
-          "Formulas are not valid in N-Triples/N-Quads",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "Formulas are not valid in N-Triples/N-Quads",
+        (0, 0),
       )
     // 位-种类非法组合：DefaultGraph 只许图名位，宾语位出现即不变量破坏
     TermKind::DefaultGraph =>
-      Err(
-        ParseError::SyntaxErr(
-          "DefaultGraph is not valid in object position",
-          (0, 0),
-        ),
+      raise ParseError::SyntaxErr(
+        "DefaultGraph is not valid in object position",
+        (0, 0),
       )
   }
 }
@@ -238,19 +215,13 @@ fn Serializer::append_terms(
   self : Serializer,
   quad : QuadEmit,
   buf : StringBuilder,
-) -> Result[Unit, ParseError] {
-  match self.append_subject(quad.s_kind, quad.s_view, buf) {
-    Ok(_) => ()
-    Err(e) => return Err(e)
-  }
+) -> Unit raise ParseError {
+  self.append_subject(quad.s_kind, quad.s_view, buf)
   buf.write_char(' ')
   self.append_span(quad.predicate, buf)
   buf.write_char(' ')
-  match self.append_object(quad.o_kind, quad.o_view, buf) {
-    Ok(_) => ()
-    Err(e) => return Err(e)
-  }
-  Ok(())
+  self.append_object(quad.o_kind, quad.o_view, buf)
+  ()
 }
 
 ///|
@@ -262,18 +233,15 @@ fn Serializer::append_dispatch(
   self : Serializer,
   quad : QuadEmit,
   buf : StringBuilder,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   // 行选择：仅带图名的行（查询语义，独立于格式）
   if self.only_named_graph && quad.g_kind is TermKind::DefaultGraph {
-    return Ok(())
+    return ()
   }
   match self.format {
     Quad => {
       // N-Quads：graph 照写
-      match self.append_terms(quad, buf) {
-        Ok(_) => ()
-        Err(e) => return Err(e)
-      }
+      self.append_terms(quad, buf)
       match quad.g_kind {
         // BNode 图名与 IRI 一样原文回写（字节保真）
         TermKind::Iri | TermKind::BNode => {
@@ -283,53 +251,41 @@ fn Serializer::append_dispatch(
         TermKind::DefaultGraph => ()
         // 图位封闭门：结构非法（如 Literal 塞图名位），策略再宽也不放行
         _ =>
-          return Err(
-            ParseError::SyntaxErr(
-              "Graph term kind is not valid in graph position (only IRI/blank node/default graph)",
-              (0, 0),
-            ),
+          raise ParseError::SyntaxErr(
+            "Graph term kind is not valid in graph position (only IRI/blank node/default graph)",
+            (0, 0),
           )
       }
       buf.write_string(" .\n")
-      Ok(())
+      ()
     }
     Triple =>
       // N-Triples：graph 字段按策略裁决
       match quad.g_kind {
         TermKind::DefaultGraph => {
-          match self.append_terms(quad, buf) {
-            Ok(_) => ()
-            Err(e) => return Err(e)
-          }
+          self.append_terms(quad, buf)
           buf.write_string(" .\n")
-          Ok(())
+          ()
         }
         TermKind::Iri | TermKind::BNode =>
           match self.graph_policy {
             Strict =>
-              Err(
-                ParseError::SyntaxErr(
-                  "Graph term is not representable in N-Triples (use Quad format or Drop policy)",
-                  (0, 0),
-                ),
+              raise ParseError::SyntaxErr(
+                "Graph term is not representable in N-Triples (use Quad format or Drop policy)",
+                (0, 0),
               )
             Drop => {
               // 有损：显式选择的 Drop
-              match self.append_terms(quad, buf) {
-                Ok(_) => ()
-                Err(e) => return Err(e)
-              }
+              self.append_terms(quad, buf)
               buf.write_string(" .\n")
-              Ok(())
+              ()
             }
           }
         // 图位封闭门：结构非法，Strict/Drop 之外无处可落
         _ =>
-          Err(
-            ParseError::SyntaxErr(
-              "Graph term kind is not valid in graph position (only IRI/blank node/default graph)",
-              (0, 0),
-            ),
+          raise ParseError::SyntaxErr(
+            "Graph term kind is not valid in graph position (only IRI/blank node/default graph)",
+            (0, 0),
           )
       }
   }
@@ -351,13 +307,10 @@ test "序列化: Quad 往返（BNode 原文回写 + UTF-8 字节保真）" {
     g_kind: TermKind::Iri,
     g_view: graph[:],
   }
-  match s.serialize(quad) {
-    Ok(out) =>
-      assert_eq(
-        out, "_:b0 <http://e.org/p> \"中文 \\u00e9\" <http://e.org/g> .\n",
-      )
-    Err(_) => assert_true(false)
-  }
+  let out = s.serialize(quad)
+  assert_eq(
+    out, "_:b0 <http://e.org/p> \"中文 \\u00e9\" <http://e.org/g> .\n",
+  )
 }
 
 ///|
@@ -376,8 +329,20 @@ test "序列化: N-Triples + Strict（默认）拒绝带图名 quad，单条/批
     g_view: graph[:],
   }
   let s = Serializer::new() // 默认 Triple + Strict
-  assert_true(s.serialize(quad) is Err(_))
-  assert_true(s.serialize_all([quad]) is Err(_))
+  let rejected_one = try {
+    let _ = s.serialize(quad)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected_one)
+  let rejected_all = try {
+    let _ = s.serialize_all([quad])
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected_all)
 }
 
 ///|
@@ -405,13 +370,10 @@ test "序列化: N-Triples + Drop 显式有损（graph 丢弃，无图名行不�
     g_view: pred[0:0],
   }
   let s = Serializer::new(format=Triple, graph_policy=Drop)
-  match s.serialize_all([named, plain]) {
-    Ok(out) =>
-      assert_eq(
-        out, "<http://e.org/s> <http://e.org/p> <http://e.org/o> .\n<http://e.org/s> <http://e.org/p> <http://e.org/o> .\n",
-      )
-    Err(_) => assert_true(false)
-  }
+  let out = s.serialize_all([named, plain])
+  assert_eq(
+    out, "<http://e.org/s> <http://e.org/p> <http://e.org/o> .\n<http://e.org/s> <http://e.org/p> <http://e.org/o> .\n",
+  )
 }
 
 ///|
@@ -439,13 +401,10 @@ test "序列化: 行选择 only_named_graph 独立于格式（丢行，不是丢
     g_view: graph[:],
   }
   let s = Serializer::new(format=Quad, only_named_graph=true)
-  match s.serialize_all([plain, named]) {
-    Ok(out) =>
-      assert_eq(
-        out, "<http://e.org/s> <http://e.org/p> <http://e.org/o> <http://e.org/g> .\n",
-      )
-    Err(_) => assert_true(false)
-  }
+  let out = s.serialize_all([plain, named])
+  assert_eq(
+    out, "<http://e.org/s> <http://e.org/p> <http://e.org/o> <http://e.org/g> .\n",
+  )
 }
 
 ///|
@@ -463,7 +422,13 @@ test "序列化: PrefName 不可达不变量（报错而非透传非法语法）
     g_view: pred[0:0],
   }
   let s = Serializer::new(format=Quad)
-  assert_true(s.serialize(quad) is Err(_))
+  let rejected = try {
+    let _ = s.serialize(quad)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
 }
 
 ///|
@@ -482,9 +447,19 @@ test "图位封闭门: Literal 塞图名位必须报错（Quad/Triple 同拒，D
     g_view: lit[:],
   }
   // Quad 格式：照写路径上的结构门
-  assert_true(Serializer::new(format=Quad).serialize(bad) is Err(_))
+  let rejected_quad = try {
+    let _ = Serializer::new(format=Quad).serialize(bad)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected_quad)
   // Triple 格式：Drop 策略也越不过结构门（有损选择 ≠ 结构放行）
-  assert_true(
-    Serializer::new(format=Triple, graph_policy=Drop).serialize(bad) is Err(_),
-  )
+  let rejected_drop = try {
+    let _ = Serializer::new(format=Triple, graph_policy=Drop).serialize(bad)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected_drop)
 }

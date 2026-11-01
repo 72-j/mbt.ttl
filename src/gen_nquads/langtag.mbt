@@ -481,14 +481,14 @@ fn make_grandfathered(tag : StringView) -> LanguageTag {
 
 ///|
 /// 解析语言标签
-pub fn LanguageTag::parse(tag : StringView) -> Result[LanguageTag, TagParseErr] {
+pub fn LanguageTag::parse(tag : StringView) -> LanguageTag raise TagParseErr {
   if tag.is_empty() {
-    return Err(TagParseErr::EmptyTag)
+    raise TagParseErr::EmptyTag
   }
 
   // 检查祖父标签
   if is_grandfathered(tag) {
-    return Ok(make_grandfathered(tag))
+    return make_grandfathered(tag)
   }
 
   // 私有使用前缀大小写不敏感（RFC 5646 singleton 不区分大小写）
@@ -500,22 +500,15 @@ pub fn LanguageTag::parse(tag : StringView) -> Result[LanguageTag, TagParseErr] 
 
 ///|
 /// 纯解析（不含祖父标签检查）
-fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
+fn parse_tag(tag : StringView) -> LanguageTag raise TagParseErr {
   // 第一步：扫描所有子标签
   let subtags = scan_subtags(tag)
   if subtags.is_empty() {
-    return Err(TagParseErr::EmptySubtag)
+    raise TagParseErr::EmptySubtag
   }
-  // 先验证字符
-  match validate_tag_chars(tag) {
-    Err(e) => return Err(e)
-    _ => ()
-  }
-  // 验证格式
-  match validate_tag_format(tag) {
-    Err(e) => return Err(e)
-    _ => ()
-  }
+  // 先验证字符，再验证格式（两道均 raise 化，直调透传）
+  validate_tag_chars(tag)
+  validate_tag_format(tag)
   let mut i = 0
 
   // 1. 语言（必选，第一个子标签）
@@ -525,10 +518,10 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
   // ⇒ **4 位合法**（旧注释"4 位无效"系 ISO 639-1/2 口径误植）
   let is_valid_length = lang_len >= 2 && lang_len <= 8
   if !is_valid_length {
-    return Err(TagParseErr::InvalidLanguageLength)
+    raise TagParseErr::InvalidLanguageLength
   }
   if !is_alphabetic_span(tag, lang) {
-    return Err(TagParseErr::ForbiddenChar)
+    raise TagParseErr::ForbiddenChar
   }
   i += 1
 
@@ -617,7 +610,7 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
       // 依据 RFC 5646：variant = 5*8alphanum / (DIGIT 3alphanum)；`en-abcdefghz`（9 字母）等
       // 越界形态在此被挡（旧实现 break 后落兜底，被静默收下）。
       if !is_extension_ident(tag, s) && !is_private_use_prefix(tag, s) {
-        return Err(TagParseErr::InvalidSubtag(s, sub(tag, s)))
+        raise TagParseErr::InvalidSubtag(s, sub(tag, s))
       }
       break
     }
@@ -636,19 +629,19 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
       let s = subtags[i]
       // 验证扩展子标签：1-8位字母数字
       if !is_valid_private_use_subtag(tag, s) {
-        return Err(TagParseErr::InvalidSubtag(s, sub(tag, s)))
+        raise TagParseErr::InvalidSubtag(s, sub(tag, s))
       }
       ext_subtags.push(subtags[i])
       i += 1
     }
     if ext_subtags.is_empty() {
-      return Err(TagParseErr::EmptyExtension)
+      raise TagParseErr::EmptyExtension
     }
     // RFC 5646：**每个 singleton 只能出现一次**（`en-a-bbb-a-ccc` 形态拒）
     for e in extensions {
       // 比的是**字符**（大小写不敏感），不是 span 元组——两次 `a` 的 span 天然不同
       if sub(tag, e.ident).to_lower() == sub(tag, ident).to_lower() {
-        return Err(TagParseErr::InvalidSubtag(ident, sub(tag, ident)))
+        raise TagParseErr::InvalidSubtag(ident, sub(tag, ident))
       }
     }
     extensions.push({ ident, subtags: ext_subtags, })
@@ -663,14 +656,14 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
     while i < subtags.length() {
       // RFC 5646：私有使用子标签 **1..8** alnum（旧实现无条件收下 ⇒ `x-abcdefghz`（9）漏过）
       if !is_valid_private_use_subtag(tag, subtags[i]) {
-        return Err(TagParseErr::InvalidSubtag(subtags[i], sub(tag, subtags[i])))
+        raise TagParseErr::InvalidSubtag(subtags[i], sub(tag, subtags[i]))
       }
       subs.push(subtags[i])
       i += 1
     }
     // RFC 5646：私有使用前缀 `x` **必须跟随 ≥1 个子标签**（`sss-x` 形态拒）
     if subs.is_empty() {
-      return Err(TagParseErr::InvalidSubtag(prefix, sub(tag, prefix)))
+      raise TagParseErr::InvalidSubtag(prefix, sub(tag, prefix))
     }
     Some({ prefix, subtags: subs, })
   } else {
@@ -679,10 +672,10 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
 
   if i != subtags.length() {
     let s = subtags[i]
-    return Err(TagParseErr::InvalidSubtag(s, sub(tag, s)))
+    raise TagParseErr::InvalidSubtag(s, sub(tag, s))
   }
 
-  Ok({
+  {
     tag,
     state: TagState::{
       language: lang,
@@ -694,7 +687,7 @@ fn parse_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
       private_use,
       is_grandfathered: false,
     },
-  })
+  }
 }
 
 ///|
@@ -731,11 +724,8 @@ fn scan_subtags(tag : StringView) -> Array[TagSpan] {
 /// 解析并归一化语言标签
 pub fn LanguageTag::parse_and_normalize(
   tag : StringView,
-) -> Result[LanguageTag, TagParseErr] {
-  match LanguageTag::parse(tag) {
-    Ok(parsed) => Ok(parsed.normalize())
-    Err(e) => Err(e)
-  }
+) -> LanguageTag raise TagParseErr {
+  LanguageTag::parse(tag).normalize()
 }
 
 ///|
@@ -827,22 +817,21 @@ fn LanguageTag::normalize(self : LanguageTag) -> LanguageTag {
   // 重新解析归一化后的标签
   let normalized = result.to_string()
   // debug(("normalized: \{normalized}") // 添加调试
-  match LanguageTag::parse(normalized) {
-    Ok(t) => t
-    Err(_) => self
+  LanguageTag::parse(normalized) catch {
+    _ => self
   }
 }
 
 ///|
-fn parse_private_use_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
+fn parse_private_use_tag(tag : StringView) -> LanguageTag raise TagParseErr {
   let subtags = scan_subtags(tag)
   if subtags.is_empty() {
-    return Err(TagParseErr::EmptyPrivateUse)
+    raise TagParseErr::EmptyPrivateUse
   }
 
   let prefix = subtags[0]
   if !is_private_use_prefix(tag, prefix) {
-    return Err(TagParseErr::InvalidPrivateUsePrefix)
+    raise TagParseErr::InvalidPrivateUsePrefix
   }
 
   let subs : Array[TagSpan] = []
@@ -850,17 +839,17 @@ fn parse_private_use_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
   while i < subtags.length() {
     let s = subtags[i]
     if !is_valid_private_use_subtag(tag, s) {
-      return Err(TagParseErr::InvalidSubtag(s, sub(tag, s)))
+      raise TagParseErr::InvalidSubtag(s, sub(tag, s))
     }
     subs.push(s)
     i += 1
   }
 
   if subs.is_empty() {
-    return Err(TagParseErr::EmptyPrivateUse)
+    raise TagParseErr::EmptyPrivateUse
   }
 
-  Ok({
+  {
     tag,
     state: {
       language: (0, tag.length()), // 整个标签作为 language
@@ -872,7 +861,7 @@ fn parse_private_use_tag(tag : StringView) -> Result[LanguageTag, TagParseErr] {
       private_use: Some({ prefix, subtags: subs, }),
       is_grandfathered: false,
     },
-  })
+  }
 }
 
 // ============================================================
@@ -1038,21 +1027,21 @@ pub fn ExtensionIter::to_array(
 
 ///|
 /// 验证标签格式（无连续 '-'，无首尾 '-'）
-fn validate_tag_format(tag : StringView) -> Result[Unit, TagParseErr] {
+fn validate_tag_format(tag : StringView) -> Unit raise TagParseErr {
   if tag.length() == 0 {
-    return Ok(())
+    return ()
   }
   if tag[0] == '-' || tag[tag.length() - 1] == '-' {
-    return Err(TagParseErr::EmptySubtag)
+    raise TagParseErr::EmptySubtag
   }
   let mut i = 1
   while i < tag.length() {
     if tag[i] == '-' && tag[i - 1] == '-' {
-      return Err(TagParseErr::EmptySubtag)
+      raise TagParseErr::EmptySubtag
     }
     i += 1
   }
-  Ok(())
+  ()
 }
 
 ///|
@@ -1063,15 +1052,15 @@ fn is_valid_char(c : Int32) -> Bool {
 
 ///|
 /// 验证标签字符（只允许字母、数字、'-'）
-fn validate_tag_chars(tag : StringView) -> Result[Unit, TagParseErr] {
+fn validate_tag_chars(tag : StringView) -> Unit raise TagParseErr {
   let mut i = 0
   while i < tag.length() {
     if !is_valid_char(tag[i].to_int()) {
-      return Err(TagParseErr::ForbiddenChar)
+      raise TagParseErr::ForbiddenChar
     }
     i += 1
   }
-  Ok(())
+  ()
 }
 
 ///|

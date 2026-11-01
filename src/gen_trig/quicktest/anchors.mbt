@@ -23,20 +23,16 @@
 fn scripted_check(
   script : Array[Command],
   system_call~ : (Command, System) -> Response = run_command,
-) -> Result[@qcs.RunReport[Command, Response, Command, Response], Error] {
+) -> @qcs.RunReport[Command, Response, Command, Response] raise Error {
   let config : @qcs.RunConfig = {
     ..quick_run_config(),
     cases: 1,
     max_commands: script.length(),
   }
-  Ok(
-    @qcs.assert_check(
-      quick_state_machine(script=Some(script), system_call~),
-      config~,
-    ),
-  ) catch {
-    err => Err(err)
-  }
+  @qcs.assert_check(
+    quick_state_machine(script=Some(script), system_call~),
+    config~,
+  )
 }
 
 ///|
@@ -229,8 +225,8 @@ test "锚点·注入: 约定外错误码必须被检出（unexpected error code�
       other => other
     }
   }
-  match
-    scripted_check(
+  let rejected = try {
+    let _ = scripted_check(
       [
         Iri(Concrete({ id: 1, })),
         Iri(Concrete({ id: 2, })),
@@ -238,11 +234,12 @@ test "锚点·注入: 约定外错误码必须被检出（unexpected error code�
         Dot,
       ],
       system_call=code_flipping,
-    ) {
-    Ok(_) =>
-      fail("约定外错误码必须被检出（unexpected error code）")
-    Err(_) => () // 检出 ✓
+    )
+    false
+  } catch {
+    _ => true // 检出 ✓
   }
+  assert_true(rejected)
 }
 
 ///|
@@ -255,18 +252,21 @@ test "锚点·注入: quad 载荷篡改必须被检出" {
       other => other
     }
   }
-  match scripted_check(scopes_script(), system_call=quad_tamper) {
-    Ok(_) => fail("quad 载荷篡改必须被检出")
-    Err(_) => () // 检出 ✓
+  let rejected = try {
+    let _ = scripted_check(scopes_script(), system_call=quad_tamper)
+    false
+  } catch {
+    _ => true // 检出 ✓
   }
+  assert_true(rejected)
 }
 
 ///|
 /// 对照组（门的负控）：未注入的 scopes 脚本经 qcs 全组装（script 模式 +
 /// assert_check）必须通过——证明注入门的"检出"来自注入本身，不是组装面自带漂移。
 test "锚点·负控: 未注入脚本经全组装通过" {
-  match scripted_check(scopes_script()) {
-    Ok(report) => assert_eq(report.commands_run, scopes_script().length())
-    Err(failure) => fail("负控失败（组装面自带漂移）: \{failure}")
+  let report = scripted_check(scopes_script()) catch {
+    failure => fail("负控失败（组装面自带漂移）: \{failure}")
   }
+  assert_eq(report.commands_run, scopes_script().length())
 }

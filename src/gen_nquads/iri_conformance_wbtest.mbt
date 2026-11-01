@@ -6,10 +6,7 @@
 ///|
 // iri.mbt 一致性钉（2026-09-27 评审役）：RFC 3986 官方口径 + 六处分叉/缺口收口
 fn conf_iri(s : String) -> Iri {
-  match parse(@utf8.encode(s)[:]) {
-    Ok(v) => v
-    Err(_) => Iri::default()
-  }
+  parse(@utf8.encode(s)[:])
 }
 
 ///|
@@ -39,10 +36,8 @@ test "rfc3986 5.4.1 normal table (base http://a/b/c)" {
     ("../../g", "http://a/g"),
   ]
   for (ref_iri, expected) in cases {
-    match base.resolve(@utf8.encode(ref_iri)[:]) {
-      Ok(v) => @debug.assert_eq(v.into_string(), expected)
-      Err(e) => fail("resolve(\{ref_iri}) Err: \{e}")
-    }
+    let v = base.resolve(@utf8.encode(ref_iri)[:])
+    @debug.assert_eq(v.into_string(), expected)
   }
 }
 
@@ -61,10 +56,8 @@ test "rfc3986 5.4.2 abnormal table (base http://a/b/c)" {
     ("http:g", "http:g"),
   ]
   for (ref_iri, expected) in cases {
-    match base.resolve(@utf8.encode(ref_iri)[:]) {
-      Ok(v) => @debug.assert_eq(v.into_string(), expected)
-      Err(e) => fail("resolve(\{ref_iri}) Err: \{e}")
-    }
+    let v = base.resolve(@utf8.encode(ref_iri)[:])
+    @debug.assert_eq(v.into_string(), expected)
   }
 }
 
@@ -86,43 +79,33 @@ test "remove_dot_segments tail-slash pins (5.2.4 B/C)" {
 test "relativize branch table" {
   let base = conf_iri("https://e.com/a/b/")
   // 同文档 → 空 path
-  match base.relativize(conf_iri("https://e.com/a/b/")) {
-    Ok(v) => {
-      @debug.assert_eq(v.scheme, "")
-      @debug.assert_eq(v.path, "")
-    }
-    Err(e) => fail("relativize Err: \{e}")
-  }
+  let v = base.relativize(conf_iri("https://e.com/a/b/"))
+  @debug.assert_eq(v.scheme, "")
+  @debug.assert_eq(v.path, "")
+
   // 子路径 → "./" 前缀
-  match base.relativize(conf_iri("https://e.com/a/b/c")) {
-    Ok(v) => @debug.assert_eq(v.path, "./c")
-    Err(e) => fail("relativize Err: \{e}")
-  }
+  let v = base.relativize(conf_iri("https://e.com/a/b/c"))
+  @debug.assert_eq(v.path, "./c")
+
   // 深子路径
-  match base.relativize(conf_iri("https://e.com/a/b/c/d")) {
-    Ok(v) => @debug.assert_eq(v.path, "./c/d")
-    Err(e) => fail("relativize Err: \{e}")
-  }
+  let v = base.relativize(conf_iri("https://e.com/a/b/c/d"))
+  @debug.assert_eq(v.path, "./c/d")
+
   // 兄弟 → 全 path
-  match base.relativize(conf_iri("https://e.com/a/x")) {
-    Ok(v) => @debug.assert_eq(v.path, "/a/x")
-    Err(e) => fail("relativize Err: \{e}")
-  }
+  let v = base.relativize(conf_iri("https://e.com/a/x"))
+  @debug.assert_eq(v.path, "/a/x")
+
   // query/fragment 透传
-  match base.relativize(conf_iri("https://e.com/a/b/c?q#f")) {
-    Ok(v) => {
-      @debug.assert_eq(v.path, "./c")
-      @debug.assert_eq(v.query, Some("q"[:]))
-      @debug.assert_eq(v.fragment, Some("f"[:]))
-    }
-    Err(e) => fail("relativize Err: \{e}")
-  }
+  let v = base.relativize(conf_iri("https://e.com/a/b/c?q#f"))
+  @debug.assert_eq(v.path, "./c")
+  @debug.assert_eq(v.query, Some("q"[:]))
+  @debug.assert_eq(v.fragment, Some("f"[:]))
+
   // 异 scheme/authority → 原样透传 target
-  match
-    conf_iri("https://e.com/a/b/").relativize(conf_iri("http://e.com/a/b/c")) {
-    Ok(v) => @debug.assert_eq(v.scheme, "http")
-    Err(e) => fail("relativize Err: \{e}")
-  }
+  let v = conf_iri("https://e.com/a/b/").relativize(
+    conf_iri("http://e.com/a/b/c"),
+  )
+  @debug.assert_eq(v.scheme, "http")
 }
 
 ///|
@@ -132,14 +115,11 @@ test "resolve checked/unchecked lockstep" {
     "rel", "rel/deep", "/abs", "//g.com/x", "//g.com", "?q", "#f", "?q#f", "", "../r",
   ]
   for ref_iri in refs {
-    match base.resolve(@utf8.encode(ref_iri)[:]) {
-      Ok(v) =>
-        @debug.assert_eq(
-          v.into_string(),
-          base.resolve_unchecked(@utf8.encode(ref_iri)[:]).into_string(),
-        )
-      Err(e) => fail("resolve(\{ref_iri}) Err: \{e}")
-    }
+    let v = base.resolve(@utf8.encode(ref_iri)[:])
+    @debug.assert_eq(
+      v.into_string(),
+      base.resolve_unchecked(@utf8.encode(ref_iri)[:]).into_string(),
+    )
   }
 }
 
@@ -158,13 +138,9 @@ test "nonascii component split" {
   @debug.assert_eq(h.authority, Some("例.jp"[:]))
   @debug.assert_eq(h.path, "/π")
   // 解析链上非 ASCII + 点段
-  match conf_iri("http://a/b/c").resolve(@utf8.encode("../中文#x")[:]) {
-    Ok(v) => {
-      @debug.assert_eq(v.into_string(), "http://a/中文#x")
-      @debug.assert_eq(v.fragment, Some("x"[:]))
-    }
-    Err(e) => fail("resolve Err: \{e}")
-  }
+  let v = conf_iri("http://a/b/c").resolve(@utf8.encode("../中文#x")[:])
+  @debug.assert_eq(v.into_string(), "http://a/中文#x")
+  @debug.assert_eq(v.fragment, Some("x"[:]))
 }
 
 ///|
@@ -243,10 +219,8 @@ test "w3c iri-resolution-01 extraction" {
   for (base_iri, cases) in blocks {
     let base = conf_iri(base_iri)
     for (ref_iri, expected) in cases {
-      match base.resolve(@utf8.encode(ref_iri)[:]) {
-        Ok(v) => @debug.assert_eq(v.into_string(), expected)
-        Err(e) => fail("resolve(\{ref_iri}) Err: \{e}")
-      }
+      let v = base.resolve(@utf8.encode(ref_iri)[:])
+      @debug.assert_eq(v.into_string(), expected)
     }
   }
 }
@@ -305,10 +279,8 @@ test "w3c iri-resolution-02 extraction" {
   for (base_iri, cases) in blocks {
     let base = conf_iri(base_iri)
     for (ref_iri, expected) in cases {
-      match base.resolve(@utf8.encode(ref_iri)[:]) {
-        Ok(v) => @debug.assert_eq(v.into_string(), expected)
-        Err(e) => fail("resolve(\{ref_iri}) Err: \{e}")
-      }
+      let v = base.resolve(@utf8.encode(ref_iri)[:])
+      @debug.assert_eq(v.into_string(), expected)
     }
   }
 }
@@ -368,10 +340,8 @@ test "w3c iri-resolution-07 extraction" {
   for (base_iri, cases) in blocks {
     let base = conf_iri(base_iri)
     for (ref_iri, expected) in cases {
-      match base.resolve(@utf8.encode(ref_iri)[:]) {
-        Ok(v) => @debug.assert_eq(v.into_string(), expected)
-        Err(e) => fail("resolve(\{ref_iri}) Err: \{e}")
-      }
+      let v = base.resolve(@utf8.encode(ref_iri)[:])
+      @debug.assert_eq(v.into_string(), expected)
     }
   }
 }
@@ -411,10 +381,8 @@ test "w3c iri-resolution-08 extraction" {
   for (base_iri, cases) in blocks {
     let base = conf_iri(base_iri)
     for (ref_iri, expected) in cases {
-      match base.resolve(@utf8.encode(ref_iri)[:]) {
-        Ok(v) => @debug.assert_eq(v.into_string(), expected)
-        Err(e) => fail("resolve(\{ref_iri}) Err: \{e}")
-      }
+      let v = base.resolve(@utf8.encode(ref_iri)[:])
+      @debug.assert_eq(v.into_string(), expected)
     }
   }
 }

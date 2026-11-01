@@ -336,13 +336,13 @@ test "役2: 全链路 round-trip——变量字节保真回写" {
   let (emits, errors) = parse_materialize("?s <http://p> ?o .\n")
   assert_eq(errors.length(), 0)
   assert_eq(emits.length(), 1)
-  match N3Serializer::new().serialize(emits) {
-    Ok(out) => assert_eq(out, "?s <http://p> ?o .\n")
-    Err(e) => {
+  let out = N3Serializer::new().serialize(emits) catch {
+    e => {
       debug("serialize error: \{e}")
-      assert_false(true)
+      fail("serialize failed")
     }
   }
+  assert_eq(out, "?s <http://p> ?o .\n")
 }
 
 ///|

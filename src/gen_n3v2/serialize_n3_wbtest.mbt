@@ -14,11 +14,10 @@ test "序列化: 基本语句回写" {
     g_kind: @nquads.TermKind::DefaultGraph,
     g_view: p[0:0],
   }
-  match N3Serializer::new().serialize([quad]) {
-    Ok(out) =>
-      assert_eq(out, "<http://e.org/s> <http://e.org/p> <http://e.org/o> .\n")
-    Err(_) => assert_false(true)
+  let out = N3Serializer::new().serialize([quad]) catch {
+    _ => fail("serialize failed")
   }
+  assert_eq(out, "<http://e.org/s> <http://e.org/p> <http://e.org/o> .\n")
 }
 
 ///|
@@ -35,7 +34,13 @@ test "序列化: PrefName 残留报错钉住" {
     g_kind: @nquads.TermKind::DefaultGraph,
     g_view: p[0:0],
   }
-  assert_true(N3Serializer::new().serialize([bad]) is Err(_))
+  let rejected = try {
+    let _ = N3Serializer::new().serialize([bad])
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
 }
 
 ///|
@@ -53,7 +58,13 @@ test "序列化: 图名残留报错钉住（N3 无图语法）" {
     g_kind: @nquads.TermKind::Iri,
     g_view: g[:],
   }
-  assert_true(N3Serializer::new().serialize([bad]) is Err(_))
+  let rejected = try {
+    let _ = N3Serializer::new().serialize([bad])
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
 }
 
 ///|
@@ -62,12 +73,11 @@ test "序列化: 全链路 解析→物化→N3Serializer（前缀展开 + 集�
     "@prefix ex: <http://example/> .\nex:s ex:p ( 1 2 ) .\n",
   )
   assert_eq(errors.length(), 0)
-  match N3Serializer::new().serialize(emits) {
-    Ok(out) =>
-      assert_eq(out, "<http://example/s> <http://example/p> _:genid42 .\n")
-    Err(e) => {
+  let out = N3Serializer::new().serialize(emits) catch {
+    e => {
       debug("serialize error: \{e}")
-      assert_false(true)
+      fail("serialize failed")
     }
   }
+  assert_eq(out, "<http://example/s> <http://example/p> _:genid42 .\n")
 }

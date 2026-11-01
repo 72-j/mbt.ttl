@@ -138,9 +138,14 @@ async fn demo(content : String, ser : @gen_trig.TrigSerializer) -> Unit {
   for err in mat_errors {
     println("   MAT-ERR: \{err}")
   }
-  match ser.serialize(emits) {
-    Ok(text) => if text.length() > 0 { println(text) }
-    Err(err) => println("   SER-ERR: \{err}")
+  let text = ser.serialize(emits) catch {
+    err => {
+      println("   SER-ERR: \{err}")
+      ""
+    }
+  }
+  if text.length() > 0 {
+    println(text)
   }
 }
 

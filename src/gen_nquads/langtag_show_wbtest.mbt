@@ -11,7 +11,7 @@ test "langtag: Show 四件（Extension / PrivateUse / TagState / LanguageTag）"
   assert_true(extension_text.contains("subtags:"))
   let private_use : PrivateUse = { prefix: (5, 1), subtags: [(7, 4)], }
   assert_true(Show::to_string(private_use).has_prefix("PrivateUse:"))
-  let tag = LanguageTag::parse("sl-afb-Latn-005-nedis"[:]).unwrap()
+  let tag = LanguageTag::parse("sl-afb-Latn-005-nedis"[:])
   let tag_text = Show::to_string(tag)
   assert_true(tag_text.has_prefix("LanguageTag:"))
   assert_true(tag_text.contains("tag: sl-afb-Latn-005-nedis"))
@@ -20,7 +20,7 @@ test "langtag: Show 四件（Extension / PrivateUse / TagState / LanguageTag）"
 
 ///|
 test "langtag: 扩展与私有使用访问器（has_* / extensions / private_use_subtags）" {
-  let with_extension = LanguageTag::parse("en-u-nu-latn"[:]).unwrap()
+  let with_extension = LanguageTag::parse("en-u-nu-latn"[:])
   assert_true(with_extension.has_extensions())
   assert_false(with_extension.has_private_use())
   // 迭代器两条使用面：`extension_subtags()` 手动 next（to_array 内部亦走它）与 `extensions()`
@@ -31,7 +31,7 @@ test "langtag: 扩展与私有使用访问器（has_* / extensions / private_use
   assert_eq(subtags.length(), 2)
   assert_eq(subtags[0].to_owned(), "nu")
   assert_eq(with_extension.extensions().to_array().length(), 1)
-  let with_private_use = LanguageTag::parse("en-x-corp-private"[:]).unwrap()
+  let with_private_use = LanguageTag::parse("en-x-corp-private"[:])
   assert_true(with_private_use.has_private_use())
   assert_false(with_private_use.has_extensions())
   assert_eq(with_private_use.private_use_subtags().length(), 2)
@@ -41,20 +41,48 @@ test "langtag: 扩展与私有使用访问器（has_* / extensions / private_use
 ///|
 test "langtag: 解析失败面（EmptySubtag / 扩展非法子标签 / 私有使用非法子标签）" {
   // scan_subtags 拿不到子标签（本用例走 parse_tag 的空表分支）
-  assert_true(LanguageTag::parse("-"[:]) is Err(_))
+  let rejected = try {
+    let _ = LanguageTag::parse("-"[:])
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
   // 扩展子标签超 8 位（is_valid_private_use_subtag 拒）
   let long_subtag = "en-u-toolongsubtag"
-  match LanguageTag::parse(long_subtag[:]) {
-    Err(TagParseErr::InvalidSubtag(_, view)) =>
+  let err = try {
+    let tag = LanguageTag::parse(long_subtag[:])
+    fail(
+      "扩展非法子标签必须报 InvalidSubtag：got \{tag.to_tagstr()}",
+    )
+  } catch {
+    e => e
+  }
+  match err {
+    TagParseErr::InvalidSubtag(_, view) =>
       assert_eq(view.to_owned(), "toolongsubtag")
-    _ => fail("扩展非法子标签必须报 InvalidSubtag：\{long_subtag}")
+    _ => fail("期望 InvalidSubtag")
   }
   // 私有使用子标签超 8 位（与扩展两条分支相对）
-  match LanguageTag::parse("x-toolongsubtag"[:]) {
-    Err(TagParseErr::InvalidSubtag(_, view)) =>
+  let err2 = try {
+    let tag2 = LanguageTag::parse("x-toolongsubtag"[:])
+    fail(
+      "私有使用非法子标签必须报 InvalidSubtag：got \{tag2.to_tagstr()}",
+    )
+  } catch {
+    e => e
+  }
+  match err2 {
+    TagParseErr::InvalidSubtag(_, view) =>
       assert_eq(view.to_owned(), "toolongsubtag")
-    _ => fail("私有使用非法子标签必须报 InvalidSubtag")
+    _ => fail("期望 InvalidSubtag")
   }
   // normalize 透传 Err（不吞错）
-  assert_true(LanguageTag::parse_and_normalize(long_subtag[:]) is Err(_))
+  let rejected = try {
+    let _ = LanguageTag::parse_and_normalize(long_subtag[:])
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
 }

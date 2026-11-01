@@ -61,11 +61,9 @@ pub extend IriSpan with Eq::{equal, not_equal}
 
 ///|
 /// 解析 IRI
-pub fn parse(view : BytesView) -> Result[Iri, ParseError] {
-  match parse_iri(view, 0) {
-    Ok(span) => Ok(span.build(view))
-    Err(e) => Err(ParseError::IriErr(ErrOut::message(e)))
-  }
+/// 结构解析是全扫描器（不判定合法字符；字符门在 validate_iri），故无失败通道
+pub fn parse(view : BytesView) -> Iri {
+  parse_iri(view, 0).build(view)
 }
 
 ///|
@@ -87,14 +85,11 @@ pub fn Iri::resolve(
   self : Iri,
   ref_iri : BytesView,
   remove_dot_segments~ : Bool = true,
-) -> Result[Iri, ParseError] {
-  let ref_parsed = match parse(ref_iri) {
-    Ok(r) => r
-    Err(e) => return Err(e)
-  }
+) -> Iri {
+  let ref_parsed = parse(ref_iri)
 
   if ref_parsed.scheme.length() > 0 {
-    return Ok(ref_parsed)
+    return ref_parsed
   }
 
   let scheme = self.scheme
@@ -143,14 +138,14 @@ pub fn Iri::resolve(
   }
   let fragment = ref_parsed.fragment
 
-  Ok(Iri::{ scheme, authority, path, query, fragment, })
+  Iri::{ scheme, authority, path, query, fragment, }
 }
 
 ///|
 /// 计算相对 IRI
-pub fn Iri::relativize(self : Iri, target : Iri) -> Result[Iri, ParseError] {
+pub fn Iri::relativize(self : Iri, target : Iri) -> Iri {
   if self.scheme != target.scheme || self.authority != target.authority {
-    return Ok(target)
+    return target
   }
 
   let path = if self.path == target.path {
@@ -166,13 +161,13 @@ pub fn Iri::relativize(self : Iri, target : Iri) -> Result[Iri, ParseError] {
     target.path.to_owned()
   }
 
-  Ok(Iri::{
+  Iri::{
     scheme: "",
     authority: None,
     path,
     query: target.query,
     fragment: target.fragment,
-  })
+  }
 }
 
 ///|
@@ -488,7 +483,7 @@ fn IriSpan::parse_fragment(self : IriSpan, data : BytesView) -> Unit {
 
 ///|
 /// 主解析函数
-fn parse_iri(data : BytesView, start : Int32) -> Result[IriSpan, ParseError] {
+fn parse_iri(data : BytesView, start : Int32) -> IriSpan {
   let span : IriSpan = Default::default()
   span.pos = start
   let len = data.length()
@@ -527,7 +522,7 @@ fn parse_iri(data : BytesView, start : Int32) -> Result[IriSpan, ParseError] {
     }
   }
 
-  Ok(span)
+  span
 }
 
 ///|

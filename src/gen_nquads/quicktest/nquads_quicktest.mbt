@@ -379,7 +379,7 @@ fn quick_state_machine(
 
 ///|
 test "nquads quick machine generate respects valid table" {
-  let rng = @splitmix.new(seed=12345UL)
+  let rng = @splitmix.RandomState(seed=12345UL)
   let mut model = model_empty()
   let mut steps = 0
   for ;; {
@@ -419,7 +419,7 @@ fn generated_prefix(
   size : Int32,
   steps : Int32,
 ) -> Array[Command] {
-  let rng = @splitmix.new(seed~)
+  let rng = @splitmix.RandomState(seed~)
   let out : Array[Command] = []
   let mut model = model_empty()
   let mut taken = 0

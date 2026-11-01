@@ -260,10 +260,20 @@ test "validate_escapes_unicode: 转义反斜杠对不启 UCHAR（T22 manifest �
   // 体 `a\\u then \\U`：`\\` 成对先行消费，后随 u/U 是内容而非 UCHAR——
   // 修复前第二道 `\` 落单、`u` 被误判 UCHAR 起始把内容字节当十六进制读
   let lit = bytes_of("\"a\\\\u then \\\\U\"")
-  assert_true(validate_escapes_unicode(lit[:], 0, 1, lit.length() - 1) is Ok(_))
+  let accepted = try {
+    let _ = validate_escapes_unicode(lit[:], 0, 1, lit.length() - 1)
+    true
+  } catch {
+    _ => false
+  }
+  assert_true(accepted)
   // 孤高位代理仍拒（修复不松真负例）
   let lone = bytes_of("\"\\uD800\"")
-  assert_true(
-    validate_escapes_unicode(lone[:], 0, 1, lone.length() - 1) is Err(_),
-  )
+  let rejected = try {
+    let _ = validate_escapes_unicode(lone[:], 0, 1, lone.length() - 1)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
 }

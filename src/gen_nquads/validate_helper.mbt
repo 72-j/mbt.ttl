@@ -7,7 +7,7 @@
 fn[L] SliceParser::validate(
   self : SliceParser[L],
   pending : NQuadsPendingQuad,
-) -> Result[QuadSpan, ParseError] {
+) -> QuadSpan raise ParseError {
   // 提取 span 并切分 data（零拷贝视图；失败路径只报错不持数据）
   let (subj_off, subj_len) = pending.subj.unwrap_or((0, 0))
   let (pred_off, pred_len) = pending.pred.unwrap_or((0, 0))
@@ -15,27 +15,21 @@ fn[L] SliceParser::validate(
 
   // 边界检查（短路序：先界后索引）
   if subj_len <= 0 || subj_off < 0 || subj_off + subj_len > self.data.length() {
-    return Err(
-      ParseError::SyntaxErr(
-        "Invalid subject span",
-        pending.subj.unwrap_or((0, 0)),
-      ),
+    raise ParseError::SyntaxErr(
+      "Invalid subject span",
+      pending.subj.unwrap_or((0, 0)),
     )
   }
   if pred_len <= 0 || pred_off < 0 || pred_off + pred_len > self.data.length() {
-    return Err(
-      ParseError::SyntaxErr(
-        "Invalid predicate span",
-        pending.pred.unwrap_or((0, 0)),
-      ),
+    raise ParseError::SyntaxErr(
+      "Invalid predicate span",
+      pending.pred.unwrap_or((0, 0)),
     )
   }
   if obj_len <= 0 || obj_off < 0 || obj_off + obj_len > self.data.length() {
-    return Err(
-      ParseError::SyntaxErr(
-        "Invalid object span",
-        pending.obj.unwrap_or((0, 0)),
-      ),
+    raise ParseError::SyntaxErr(
+      "Invalid object span",
+      pending.obj.unwrap_or((0, 0)),
     )
   }
 
@@ -64,41 +58,20 @@ fn[L] SliceParser::validate(
 
   // 严格模式：逐词项验证（谓语恒为 IRI）
   if !self.lenient {
-    match validate_iri(predicate, pred_off) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
+    validate_iri(predicate, pred_off)
     if subj_type == TermType::BNode {
-      match validate_bnode(subject, subj_off) {
-        Ok(_) => ()
-        Err(e) => return Err(e)
-      }
+      validate_bnode(subject, subj_off)
     } else {
-      match validate_iri(subject, subj_off) {
-        Ok(_) => ()
-        Err(e) => return Err(e)
-      }
+      validate_iri(subject, subj_off)
     }
     if obj_type == TermType::BNode {
-      match validate_bnode(object, obj_off) {
-        Ok(_) => ()
-        Err(e) => return Err(e)
-      }
+      validate_bnode(object, obj_off)
     } else if obj_type == TermType::Literal {
-      match validate_literal(object, obj_off, self.rdf12) {
-        Ok(_) => ()
-        Err(e) => return Err(e)
-      }
+      validate_literal(object, obj_off, self.rdf12)
     } else if obj_type == TermType::TripleTerm {
-      match validate_triple_term(object, obj_off, self.rdf12) {
-        Ok(_) => ()
-        Err(e) => return Err(e)
-      }
+      validate_triple_term(object, obj_off, self.rdf12)
     } else {
-      match validate_iri(object, obj_off) {
-        Ok(_) => ()
-        Err(e) => return Err(e)
-      }
+      validate_iri(object, obj_off)
     }
   }
 
@@ -111,37 +84,22 @@ fn[L] SliceParser::validate(
   }
   if g_len > 0 {
     if g_off < 0 || g_off + g_len > self.data.length() {
-      return Err(
-        ParseError::SyntaxErr(
-          "Invalid graph span",
-          pending.graph.unwrap_or((0, 0)),
-        ),
+      raise ParseError::SyntaxErr(
+        "Invalid graph span",
+        pending.graph.unwrap_or((0, 0)),
       )
     }
     if !self.lenient {
       if graph_view[0] == b'_' {
-        match validate_bnode(graph_view, g_off) {
-          Ok(_) => ()
-          Err(e) => return Err(e)
-        }
+        validate_bnode(graph_view, g_off)
       } else {
-        match validate_iri(graph_view, g_off) {
-          Ok(_) => ()
-          Err(e) => return Err(e)
-        }
+        validate_iri(graph_view, g_off)
       }
     }
   }
   let graph = if g_len > 0 { Some(graph_view) } else { None }
 
-  Ok({
-    subj: subject,
-    pred: predicate,
-    obj: object,
-    graph,
-    subj_type,
-    obj_type,
-  })
+  { subj: subject, pred: predicate, obj: object, graph, subj_type, obj_type, }
 }
 
 ///|
@@ -189,23 +147,18 @@ let iri_cls : FixedArray[Byte] = {
 /// IRI 验证（view 直查 + 全局基偏移定位）：
 /// <> 包裹非空 + 绝对 scheme（[A-Za-z][A-Za-z0-9+.-]*:）+ RFC 3986 禁用字符集外。
 /// 相对 IRI（<g> <p> <dt> 等）在此拒绝
-fn validate_iri(
-  iri : ArrayView[Byte],
-  base : Int32,
-) -> Result[Unit, ParseError] {
+fn validate_iri(iri : ArrayView[Byte], base : Int32) -> Unit raise ParseError {
   let len = iri.length()
   if len < 2 || iri[0] != b'<' || iri[len - 1] != b'>' {
-    return Err(ParseError::SyntaxErr("IRI must be wrapped in <>", (base, len)))
+    raise ParseError::SyntaxErr("IRI must be wrapped in <>", (base, len))
   }
   if len == 2 {
-    return Err(ParseError::SyntaxErr("IRI cannot be empty", (base, len)))
+    raise ParseError::SyntaxErr("IRI cannot be empty", (base, len))
   }
   if !is_alpha(iri[1]) {
-    return Err(
-      ParseError::SyntaxErr(
-        "IRI must be absolute (scheme required)",
-        (base + 1, 1),
-      ),
+    raise ParseError::SyntaxErr(
+      "IRI must be absolute (scheme required)",
+      (base + 1, 1),
     )
   }
   // scheme 尾：256 项字节类表单遍（类 0 = scheme 兼通字元，类 3 = 冒号收束）
@@ -216,28 +169,21 @@ fn validate_iri(
       break
     }
     if cls != 0 {
-      return Err(
-        ParseError::SyntaxErr(
-          "IRI must be absolute (scheme required)",
-          (base + i, 1),
-        ),
+      raise ParseError::SyntaxErr(
+        "IRI must be absolute (scheme required)",
+        (base + i, 1),
       )
     }
     i = i + 1
   }
   if i >= len - 1 {
-    return Err(
-      ParseError::SyntaxErr(
-        "IRI must be absolute (scheme required)",
-        (base + 1, len - 2),
-      ),
+    raise ParseError::SyntaxErr(
+      "IRI must be absolute (scheme required)",
+      (base + 1, len - 2),
     )
   }
   // scheme 之后：禁字符/转义扫描抽为可复用原语（trig 侧相对 IRI 也走此段）
-  match validate_iri_body(iri, base, i, len) {
-    Ok(_) => Ok(())
-    Err(e) => Err(e)
-  }
+  validate_iri_body(iri, base, i, len)
 }
 
 ///|
@@ -250,7 +196,7 @@ pub fn validate_iri_body(
   base : Int32,
   start : Int32,
   end : Int32,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   // 边界约定：iri[end-1] 是闭 '>'，内容区 = [start, end-1)（与 nquads span 同构）
   let body_end = end - 1
   let mut i = start
@@ -258,11 +204,9 @@ pub fn validate_iri_body(
     let c = iri.unsafe_get(i)
     if iri_cls.unsafe_get(c.to_int()) == 2 {
       if i + 1 >= body_end {
-        return Err(
-          ParseError::SyntaxErr(
-            "IRI contains forbidden character",
-            (base + i, 1),
-          ),
+        raise ParseError::SyntaxErr(
+          "IRI contains forbidden character",
+          (base + i, 1),
         )
       }
       let e = iri[i + 1]
@@ -271,16 +215,14 @@ pub fn validate_iri_body(
       } else if e == b'U' {
         8
       } else {
-        return Err(ParseError::SyntaxErr("Bad IRI escape", (base + i, 2)))
+        raise ParseError::SyntaxErr("Bad IRI escape", (base + i, 2))
       }
       if i + 1 + n > body_end - 1 {
-        return Err(ParseError::SyntaxErr("Bad IRI escape", (base + i, n + 2)))
+        raise ParseError::SyntaxErr("Bad IRI escape", (base + i, n + 2))
       }
       for k in 1..<=n {
         if !is_hex_byte(iri[i + 1 + k]) {
-          return Err(
-            ParseError::SyntaxErr("Bad IRI escape", (base + i + 1 + k, 1)),
-          )
+          raise ParseError::SyntaxErr("Bad IRI escape", (base + i + 1 + k, 1))
         }
       }
       // 解码码点复核（eval-bad-01..03 "good escape, bad character" /
@@ -299,11 +241,9 @@ pub fn validate_iri_body(
         cp = cp * 16 + v
       }
       if (cp >= 0xD800 && cp <= 0xDFFF) || cp > 0x10FFFF {
-        return Err(
-          ParseError::SyntaxErr(
-            "IRI escape must be a Unicode scalar value",
-            (base + i, n + 2),
-          ),
+        raise ParseError::SyntaxErr(
+          "IRI escape must be a Unicode scalar value",
+          (base + i, n + 2),
         )
       }
       if cp < 0x21 ||
@@ -316,23 +256,22 @@ pub fn validate_iri_body(
         cp == 0x7D || // }
         cp == 0x5E || // ^
         cp == 0x60 { // `
-        return Err(
-          ParseError::SyntaxErr(
-            "IRI escape decodes to forbidden character",
-            (base + i, n + 2),
-          ),
+        raise ParseError::SyntaxErr(
+          "IRI escape decodes to forbidden character",
+          (base + i, n + 2),
         )
       }
       i = i + n + 2
     } else if iri_cls.unsafe_get(c.to_int()) == 1 {
-      return Err(
-        ParseError::SyntaxErr("IRI contains forbidden character", (base + i, 1)),
+      raise ParseError::SyntaxErr(
+        "IRI contains forbidden character",
+        (base + i, 1),
       )
     } else {
       i = i + 1
     }
   }
-  Ok(())
+  ()
 }
 
 ///|
@@ -341,35 +280,29 @@ pub fn validate_iri_body(
 pub fn validate_bnode(
   bnode : ArrayView[Byte],
   base : Int32,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   let len = bnode.length()
   if len < 3 || bnode[0] != b'_' || bnode[1] != b':' {
-    return Err(
-      ParseError::SyntaxErr("Blank node must start with _:", (base, len)),
-    )
+    raise ParseError::SyntaxErr("Blank node must start with _:", (base, len))
   }
   let first = bnode[2]
   if !((first >= b'a' && first <= b'z') ||
     (first >= b'A' && first <= b'Z') ||
     (first >= b'0' && first <= b'9') ||
     first == b'_') {
-    return Err(
-      ParseError::SyntaxErr(
-        "Blank node label must start with letter, digit or underscore",
-        (base + 2, 1),
-      ),
+    raise ParseError::SyntaxErr(
+      "Blank node label must start with letter, digit or underscore",
+      (base + 2, 1),
     )
   }
   // 正常应被引擎尾点裁决掉，此处双保险
   if bnode[len - 1] == b'.' {
-    return Err(
-      ParseError::SyntaxErr(
-        "Blank node label must not end with '.'",
-        (base + len - 1, 1),
-      ),
+    raise ParseError::SyntaxErr(
+      "Blank node label must not end with '.'",
+      (base + len - 1, 1),
     )
   }
-  Ok(())
+  ()
 }
 
 ///|
@@ -390,7 +323,7 @@ pub fn scan_string_body(
   base : Int32,
   start : Int32,
   quote_run : Int32,
-) -> Result[Int32, ParseError] {
+) -> Int32 raise ParseError {
   let len = lit.length()
   let q = lit[0]
   let mut i = start
@@ -398,7 +331,7 @@ pub fn scan_string_body(
     let c = lit[i]
     if c == b'\\' {
       if i + 1 >= len {
-        return Err(ParseError::SyntaxErr("Bad string escape", (base + i, 1)))
+        raise ParseError::SyntaxErr("Bad string escape", (base + i, 1))
       }
       let e = lit[i + 1]
       if e == b'"' ||
@@ -412,34 +345,26 @@ pub fn scan_string_body(
         i = i + 2
       } else if e == b'u' {
         if i + 6 > len {
-          return Err(
-            ParseError::SyntaxErr("Bad string escape", (base + i, len - i)),
-          )
+          raise ParseError::SyntaxErr("Bad string escape", (base + i, len - i))
         }
         for k in 2..<6 {
           if !is_hex_byte(lit[i + k]) {
-            return Err(
-              ParseError::SyntaxErr("Bad string escape", (base + i + k, 1)),
-            )
+            raise ParseError::SyntaxErr("Bad string escape", (base + i + k, 1))
           }
         }
         i = i + 6
       } else if e == b'U' {
         if i + 10 > len {
-          return Err(
-            ParseError::SyntaxErr("Bad string escape", (base + i, len - i)),
-          )
+          raise ParseError::SyntaxErr("Bad string escape", (base + i, len - i))
         }
         for k in 2..<10 {
           if !is_hex_byte(lit[i + k]) {
-            return Err(
-              ParseError::SyntaxErr("Bad string escape", (base + i + k, 1)),
-            )
+            raise ParseError::SyntaxErr("Bad string escape", (base + i + k, 1))
           }
         }
         i = i + 10
       } else {
-        return Err(ParseError::SyntaxErr("Bad string escape", (base + i, 2)))
+        raise ParseError::SyntaxErr("Bad string escape", (base + i, 2))
       }
     } else if c == q {
       let mut r = 1
@@ -447,14 +372,14 @@ pub fn scan_string_body(
         r = r + 1
       }
       if r == quote_run {
-        return Ok(i)
+        return i
       }
       i = i + 1
     } else {
       i = i + 1
     }
   }
-  Err(ParseError::SyntaxErr("Unterminated literal", (base, len)))
+  raise ParseError::SyntaxErr("Unterminated literal", (base, len))
 }
 
 ///|
@@ -468,14 +393,12 @@ fn validate_lang_suffix(
   at : Int32,
   len : Int32,
   rdf12 : Bool,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   let tail = at + 1
   if tail >= len {
-    return Err(
-      ParseError::SyntaxErr(
-        "Language tag must start with a letter",
-        (base + at, 1),
-      ),
+    raise ParseError::SyntaxErr(
+      "Language tag must start with a letter",
+      (base + at, 1),
     )
   }
   let mut i = tail
@@ -485,19 +408,15 @@ fn validate_lang_suffix(
   }
   let n = i - tail
   if n == 0 {
-    return Err(
-      ParseError::SyntaxErr(
-        "Language tag must start with a letter",
-        (base + at, 1),
-      ),
+    raise ParseError::SyntaxErr(
+      "Language tag must start with a letter",
+      (base + at, 1),
     )
   }
   if !(n >= 2 && n <= 3) && !(n >= 5 && n <= 8) {
-    return Err(
-      ParseError::SyntaxErr(
-        "Language tag primary subtag length must be 2-3 or 5-8 (BCP47)",
-        (base + tail, n),
-      ),
+    raise ParseError::SyntaxErr(
+      "Language tag primary subtag length must be 2-3 or 5-8 (BCP47)",
+      (base + tail, n),
     )
   }
   // '-' 子标签；空子标签（'--'）跳出交给方向后缀裁决
@@ -514,11 +433,9 @@ fn validate_lang_suffix(
       break
     }
     if m > 8 {
-      return Err(
-        ParseError::SyntaxErr(
-          "Language tag subtag must be at most 8 characters",
-          (base + i + 1, m),
-        ),
+      raise ParseError::SyntaxErr(
+        "Language tag subtag must be at most 8 characters",
+        (base + i + 1, m),
       )
     }
     i = i + 1 + m
@@ -537,19 +454,17 @@ fn validate_lang_suffix(
       } else {
         "Directional language tags are not allowed in RDF 1.1"
       }
-      return Err(ParseError::SyntaxErr(msg, (base + i, len - i)))
+      raise ParseError::SyntaxErr(msg, (base + i, len - i))
     }
     i = len
   }
   if i != len {
-    return Err(
-      ParseError::SyntaxErr(
-        "Unexpected content after language tag",
-        (base + i, len - i),
-      ),
+    raise ParseError::SyntaxErr(
+      "Unexpected content after language tag",
+      (base + i, len - i),
     )
   }
-  Ok(())
+  ()
 }
 
 ///|
@@ -565,7 +480,7 @@ pub fn validate_escapes_unicode(
   start : Int32,
   end : Int32,
   scalar_only~ : Bool = false,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   let mut i = start
   while i < end {
     let c = lit[i]
@@ -578,20 +493,16 @@ pub fn validate_escapes_unicode(
       (lit[i + 1] == b'u' || lit[i + 1] == b'U') {
       let n = if lit[i + 1] == b'u' { 4 } else { 8 }
       if i + 2 + n > end {
-        return Err(
-          ParseError::SyntaxErr("Bad string escape", (base + i, end - i)),
-        )
+        raise ParseError::SyntaxErr("Bad string escape", (base + i, end - i))
       }
       let mut cp = 0
       for k in 0..<n {
         cp = cp * 16 + hex_val(lit[i + 2 + k])
       }
       if scalar_only && cp >= 0xD800 && cp <= 0xDFFF {
-        return Err(
-          ParseError::SyntaxErr(
-            "Surrogate escape is not a Unicode scalar value",
-            (base + i, n + 2),
-          ),
+        raise ParseError::SyntaxErr(
+          "Surrogate escape is not a Unicode scalar value",
+          (base + i, n + 2),
         )
       }
       if cp >= 0xD800 && cp <= 0xDBFF {
@@ -614,20 +525,16 @@ pub fn validate_escapes_unicode(
           }
         }
         if !ok {
-          return Err(
-            ParseError::SyntaxErr(
-              "Lone high surrogate in escape",
-              (base + i, n + 2),
-            ),
+          raise ParseError::SyntaxErr(
+            "Lone high surrogate in escape",
+            (base + i, n + 2),
           )
         }
         i = j + 2 + n2 // 成对代理一并消费，防低代理被下一轮误判孤侧
       } else if cp >= 0xDC00 && cp <= 0xDFFF {
-        return Err(
-          ParseError::SyntaxErr(
-            "Lone low surrogate in escape",
-            (base + i, n + 2),
-          ),
+        raise ParseError::SyntaxErr(
+          "Lone low surrogate in escape",
+          (base + i, n + 2),
         )
       } else {
         i = i + 2 + n
@@ -636,7 +543,7 @@ pub fn validate_escapes_unicode(
       i = i + 1
     }
   }
-  Ok(())
+  ()
 }
 
 ///|
@@ -662,64 +569,50 @@ fn validate_literal(
   lit : ArrayView[Byte],
   base : Int32,
   rdf12 : Bool,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   let len = lit.length()
   if len < 2 || (lit[0] != b'"' && lit[0] != b'\'') {
-    return Err(ParseError::SyntaxErr("Malformed literal", (base, len)))
+    raise ParseError::SyntaxErr("Malformed literal", (base, len))
   }
   let q = lit[0]
   if len >= 3 && lit[1] == q && lit[2] == q {
-    return Err(
-      ParseError::SyntaxErr("Long strings are not valid in N-Quads", (base, 3)),
+    raise ParseError::SyntaxErr(
+      "Long strings are not valid in N-Quads",
+      (base, 3),
     )
   }
   // 内容扫描：转义成对消费，定位配对闭引号（原语复用：单引号口径 quote_run=1）
-  let close = match scan_string_body(lit, base, 1, 1) {
-    Ok(c) => c
-    Err(e) => return Err(e)
-  }
+  let close = scan_string_body(lit, base, 1, 1)
   // 闭引号之后：@lang / ^^<datatype>，其余残余一律拒绝
   if close + 1 < len {
     let s = lit[close + 1]
     if s == b'@' {
       // BCP47 口径（与对象级 LanguageTag 一致），原语复用（验证热路径零分配）
-      match validate_lang_suffix(lit, base, close + 1, len, rdf12) {
-        Ok(_) => ()
-        Err(e) => return Err(e)
-      }
+      validate_lang_suffix(lit, base, close + 1, len, rdf12)
     } else if s == b'^' {
       if close + 3 >= len || lit[close + 2] != b'^' || lit[close + 3] != b'<' {
-        return Err(
-          ParseError::SyntaxErr(
-            "Datatype must be an IRI (^^<...>)",
-            (base + close + 1, 2),
-          ),
+        raise ParseError::SyntaxErr(
+          "Datatype must be an IRI (^^<...>)",
+          (base + close + 1, 2),
         )
       }
-      match validate_iri(lit[close + 3:len], base + close + 3) {
-        Ok(_) => ()
-        Err(e) => return Err(e)
-      }
+      validate_iri(lit[close + 3:len], base + close + 3)
       // RDF 1.2：langString/dirLangString 只能由 @lang 派生，显式 ^^ 写法非法
       // （口径：按 #后缀 判定，与 rdf: 命名空间约定一致）
       if rdf12 && is_banned_langstring_iri(lit[close + 3:len]) {
-        return Err(
-          ParseError::SyntaxErr(
-            "langString/dirLangString cannot be written explicitly (use @lang)",
-            (base + close + 3, len - close - 3),
-          ),
+        raise ParseError::SyntaxErr(
+          "langString/dirLangString cannot be written explicitly (use @lang)",
+          (base + close + 3, len - close - 3),
         )
       }
     } else {
-      return Err(
-        ParseError::SyntaxErr(
-          "Unexpected content after literal",
-          (base + close + 1, 1),
-        ),
+      raise ParseError::SyntaxErr(
+        "Unexpected content after literal",
+        (base + close + 1, 1),
       )
     }
   }
-  Ok(())
+  ()
 }
 
 ///|
@@ -917,7 +810,7 @@ fn validate_triple_term(
   tt : ArrayView[Byte],
   base : Int32,
   rdf12 : Bool,
-) -> Result[Unit, ParseError] {
+) -> Unit raise ParseError {
   let len = tt.length()
   // 壳检查：<<( ... )>>
   if len < 6 ||
@@ -927,11 +820,9 @@ fn validate_triple_term(
     tt[len - 3] != b')' ||
     tt[len - 2] != b'>' ||
     tt[len - 1] != b'>' {
-    return Err(
-      ParseError::SyntaxErr(
-        "Triple term must be wrapped in <<( )>>",
-        (base, len),
-      ),
+    raise ParseError::SyntaxErr(
+      "Triple term must be wrapped in <<( )>>",
+      (base, len),
     )
   }
   let inner_base = base + 3
@@ -941,105 +832,78 @@ fn validate_triple_term(
   // --- 主语：IRI | BNode（字面量按 IRI 校验必败，与外层同口径） ---
   i = tt_skip_ws(inner, i)
   if i >= n {
-    return Err(ParseError::SyntaxErr("Triple term is empty", (inner_base, n)))
+    raise ParseError::SyntaxErr("Triple term is empty", (inner_base, n))
   }
   let s_start = i
   let s_end = tt_term_end(inner, i)
   if s_end == s_start {
-    return Err(
-      ParseError::SyntaxErr(
-        "Bad triple term subject",
-        (inner_base + s_start, 1),
-      ),
+    raise ParseError::SyntaxErr(
+      "Bad triple term subject",
+      (inner_base + s_start, 1),
     )
   }
   let sv = inner[s_start:s_end]
   if sv[0] == b'_' {
-    match validate_bnode(sv, inner_base + s_start) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
+    validate_bnode(sv, inner_base + s_start)
   } else {
-    match validate_iri(sv, inner_base + s_start) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
+    validate_iri(sv, inner_base + s_start)
   }
   i = s_end
   // --- 谓语：IRI ---
   i = tt_skip_ws(inner, i)
   if i >= n {
-    return Err(
-      ParseError::SyntaxErr(
-        "Triple term missing predicate",
-        (inner_base + i, 1),
-      ),
+    raise ParseError::SyntaxErr(
+      "Triple term missing predicate",
+      (inner_base + i, 1),
     )
   }
   let p_start = i
   let p_end = tt_term_end(inner, i)
   if p_end == p_start {
-    return Err(
-      ParseError::SyntaxErr(
-        "Bad triple term predicate",
-        (inner_base + p_start, 1),
-      ),
+    raise ParseError::SyntaxErr(
+      "Bad triple term predicate",
+      (inner_base + p_start, 1),
     )
   }
-  match validate_iri(inner[p_start:p_end], inner_base + p_start) {
-    Ok(_) => ()
-    Err(e) => return Err(e)
-  }
+  validate_iri(inner[p_start:p_end], inner_base + p_start)
   i = p_end
   // --- 宾语：IRI | BNode | Literal | TripleTerm（嵌套递归） ---
   i = tt_skip_ws(inner, i)
   if i >= n {
-    return Err(
-      ParseError::SyntaxErr("Triple term missing object", (inner_base + i, 1)),
+    raise ParseError::SyntaxErr(
+      "Triple term missing object",
+      (inner_base + i, 1),
     )
   }
   let o_start = i
   let o_end = tt_term_end(inner, i)
   if o_end == o_start {
-    return Err(
-      ParseError::SyntaxErr("Bad triple term object", (inner_base + o_start, 1)),
+    raise ParseError::SyntaxErr(
+      "Bad triple term object",
+      (inner_base + o_start, 1),
     )
   }
   let ov = inner[o_start:o_end]
   let oc = ov[0]
   if oc == b'_' {
-    match validate_bnode(ov, inner_base + o_start) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
+    validate_bnode(ov, inner_base + o_start)
   } else if oc == b'"' || oc == b'\'' {
-    match validate_literal(ov, inner_base + o_start, rdf12) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
+    validate_literal(ov, inner_base + o_start, rdf12)
   } else if ov.length() >= 3 && oc == b'<' && ov[1] == b'<' && ov[2] == b'(' {
-    match validate_triple_term(ov, inner_base + o_start, rdf12) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
+    validate_triple_term(ov, inner_base + o_start, rdf12)
   } else {
-    match validate_iri(ov, inner_base + o_start) {
-      Ok(_) => ()
-      Err(e) => return Err(e)
-    }
+    validate_iri(ov, inner_base + o_start)
   }
   i = o_end
   // --- 收尾：恰三词项，残余一律拒绝 ---
   i = tt_skip_ws(inner, i)
   if i != n {
-    return Err(
-      ParseError::SyntaxErr(
-        "Unexpected content after triple term object",
-        (inner_base + i, n - i),
-      ),
+    raise ParseError::SyntaxErr(
+      "Unexpected content after triple term object",
+      (inner_base + i, n - i),
     )
   }
-  Ok(())
+  ()
 }
 
 ///|

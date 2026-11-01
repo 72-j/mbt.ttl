@@ -192,16 +192,15 @@ test "物化: 全链路 → nquads Serializer(format=Quad) 输出" {
   let (emits, merrs) = mat.materialize_all(quads)
   assert_eq(merrs.length(), 0)
   let ser = @nquads.Serializer::new(format=@nquads.SerializeFormat::Quad)
-  match ser.serialize_all(emits) {
-    Ok(out) =>
-      assert_eq(
-        out, "<http://example/s> <http://example/p> <http://example/o> .\n<http://example/s> <http://example/i> \"42\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n",
-      )
-    Err(e) => {
+  let out = ser.serialize_all(emits) catch {
+    e => {
       debug("serialize error: \{e}")
-      assert_false(true)
+      fail("serialize failed")
     }
   }
+  assert_eq(
+    out, "<http://example/s> <http://example/p> <http://example/o> .\n<http://example/s> <http://example/i> \"42\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n",
+  )
 }
 
 ///|

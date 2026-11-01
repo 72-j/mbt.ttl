@@ -510,7 +510,7 @@ test "指标·generator: 可达状态恒有候选（多种子）+ 双死态 None
     match state_model_of(state_models, state) {
       Some(model) =>
         for seed in [1UL, 7UL, 42UL, 99UL, 2026UL] {
-          let rng = @splitmix.new(seed~)
+          let rng = @splitmix.RandomState(seed~)
           match generate_command(model, 20, rng) {
             Some(command) => assert_true(valid(model, command)) // 候选恒合法（valid 过滤生效）
             None =>
@@ -530,12 +530,16 @@ test "指标·generator: 可达状态恒有候选（多种子）+ 双死态 None
     generate_command(
       blank_model(ExpectVerbRequired),
       20,
-      @splitmix.new(seed=1UL),
+      @splitmix.RandomState(seed=1UL),
     )
     is Some(_),
   )
   assert_true(
-    generate_command(blank_model(ListAfterElem), 20, @splitmix.new(seed=1UL))
+    generate_command(
+      blank_model(ListAfterElem),
+      20,
+      @splitmix.RandomState(seed=1UL),
+    )
     is Some(_),
   )
 }

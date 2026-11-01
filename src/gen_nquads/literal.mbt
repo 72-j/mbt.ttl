@@ -128,18 +128,10 @@ pub fn LiteralRef::new_simple_literal(value : String) -> LiteralRef {
 pub fn LiteralRef::new_language_tagged_literal(
   value : String,
   language : String,
-) -> Result[LiteralRef, TagParseErr] {
+) -> LiteralRef raise TagParseErr {
   let language = String::to_lower(language)
-  match LanguageTag::parse(language) {
-    Ok(lang_tag) =>
-      Ok(
-        LiteralRef::new_language_tagged_literal_unchecked(
-          value,
-          lang_tag.to_tagstr(),
-        ),
-      )
-    Err(e) => Err(e)
-  }
+  let lang_tag = LanguageTag::parse(language)
+  LiteralRef::new_language_tagged_literal_unchecked(value, lang_tag.to_tagstr())
 }
 
 ///|
@@ -157,17 +149,12 @@ pub fn LiteralRef::new_directional_language_tagged_literal(
   value : String,
   language : String,
   direction : BaseDirection,
-) -> Result[LiteralRef, TagParseErr] {
+) -> LiteralRef raise TagParseErr {
   let language = String::to_lower(language)
-  match LanguageTag::parse(language) {
-    Ok(lang_tag) =>
-      Ok(
-        LiteralRef::new_directional_language_tagged_literal_unchecked(
-          value, lang_tag, direction,
-        ),
-      )
-    Err(e) => Err(e)
-  }
+  let lang_tag = LanguageTag::parse(language)
+  LiteralRef::new_directional_language_tagged_literal_unchecked(
+    value, lang_tag, direction,
+  )
 }
 
 ///|

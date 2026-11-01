@@ -102,12 +102,10 @@ async fn demo_all() -> Unit {
     println("")
     println("=== Serialized Output ===")
 
-    let output = match
-      @gen_nquads.Serializer::new(format=@gen_nquads.SerializeFormat::Quad).serialize_all(
-        quads,
-      ) {
-      Ok(value) => value
-      Err(error) => {
+    let output = @gen_nquads.Serializer::new(
+      format=@gen_nquads.SerializeFormat::Quad,
+    ).serialize_all(quads) catch {
+      error => {
         println("Serialize Error: \{error}")
         ""
       }
