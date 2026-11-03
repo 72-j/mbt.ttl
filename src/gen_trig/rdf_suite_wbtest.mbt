@@ -144,10 +144,19 @@ async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底�
 }
 
 ///|
-/// Turtle 1.2 eval 摸底门（U3 前哨）：manifest 驱动（条目 `rdft:TestTurtleEval`），
-/// parse → 物化 → 行四元组 → 与期望 .nt 行四元组 rows_isomorphic 对拍。
-/// 摸底不 pin——先出失败清单定切分（知情刀：先证据后刀）。
-async fn run_turtle12_eval_suite(test_dir : String, label : String) -> Unit {
+/// RDF 1.2 eval 门（U3 前哨摸底 → U3c pin；U4 复用双档）：manifest 驱动
+/// （条目 tag 形参：`rdft:TestTurtleEval` / `rdft:TestTrigEval`），parse →
+/// 物化 → 行四元组（含 graph 槽）→ 与期望 .nt/.nq 行四元组 rows_isomorphic
+/// 对拍。pin=true：failed==0 **且桶闭合**（passed+failed==cases.length()），
+/// 逐案必须落桶——manifest 增删文件或任何漂移即红（套件纪律钉）。
+async fn run_rdf12_eval_suite(
+  test_dir : String,
+  label : String,
+  tag~ : String = "rdft:TestTurtleEval",
+  dialect~ : TrigDialect = Turtle,
+  base~ : String = "https://w3c.github.io/rdf-tests/rdf/rdf12/rdf-turtle/eval/",
+  pin~ : Bool = false,
+) -> Unit {
   let text = @fs.read_file("\{test_dir}/manifest.ttl").text()
   let cases : Array[(String, String)] = []
   let mut cur_action = ""
@@ -162,7 +171,7 @@ async fn run_turtle12_eval_suite(test_dir : String, label : String) -> Unit {
     if k < units && line[k] == '#' {
       continue
     }
-    if k == 0 && line.contains("rdft:TestTurtleEval") {
+    if k == 0 && line.contains(tag) {
       cur_action = ""
       cur_result = ""
       continue
@@ -189,16 +198,14 @@ async fn run_turtle12_eval_suite(test_dir : String, label : String) -> Unit {
     let result_file = case.1
     let data = @fs.read_file("\{test_dir}/\{action_file}").binary().to_array()
     let sec = data[:]
-    let engine = TrigEngine::from_bytes(data, dialect=Turtle)
+    let engine = TrigEngine::from_bytes(data, dialect~)
     let slice = TrigSliceParser::new(engine, sec, lenient=true)
     let (quads, perrs) = slice.parse_all()
     let mat = TrigMaterializer::new(
       sec,
       slice.engine.ctx.prefixes,
       bases=slice.engine.ctx.bases,
-      base_fallback=Some(
-        "https://w3c.github.io/rdf-tests/rdf/rdf12/rdf-turtle/eval/",
-      ),
+      base_fallback=Some(base),
       rdf12=true,
     )
     let (emits, merrs) = mat.materialize_all(quads)
@@ -256,6 +263,11 @@ async fn run_turtle12_eval_suite(test_dir : String, label : String) -> Unit {
   if detail != "" {
     debug(detail)
   }
+  if pin {
+    // U3c 钉：桶闭合（逐案落桶，manifest 增删即红）+ 零败
+    assert_eq(passed + failed, cases.length())
+    assert_eq(failed, 0)
+  }
 }
 
 ///|
@@ -297,8 +309,22 @@ fn angle_after_trig(line : String, anchor : String) -> String? {
 }
 
 ///|
-async test "turtle12 eval 套件: 摸底（U3 前哨，不 pin）" {
-  run_turtle12_eval_suite(
-    ".rdf-tests/trig/rdf12/rdf-turtle/eval", "turtle12-eval",
+async test "turtle12 eval 套件: U3c pin（29 案桶闭合零败）" {
+  run_rdf12_eval_suite(
+    ".rdf-tests/trig/rdf12/rdf-turtle/eval",
+    "turtle12-eval",
+    pin=true,
+  )
+}
+
+///|
+async test "trig12 eval 套件: U4 pin（25 案桶闭合零败，前哨一轮满堂）" {
+  run_rdf12_eval_suite(
+    ".rdf-tests/trig/rdf12/rdf-trig/eval",
+    "trig12-eval",
+    tag="rdft:TestTrigEval",
+    dialect=TriG,
+    base="https://w3c.github.io/rdf-tests/rdf/rdf12/rdf-trig/eval/",
+    pin=true,
   )
 }
