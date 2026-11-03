@@ -141,3 +141,163 @@ async test "W3C 套件: 循环读文件（rdf11 已收口钉死；rdf12 摸底�
     dialect=Turtle,
   )
 }
+
+///|
+/// Turtle 1.2 eval 摸底门（U3 前哨）：manifest 驱动（条目 `rdft:TestTurtleEval`），
+/// parse → 物化 → 行四元组 → 与期望 .nt 行四元组 rows_isomorphic 对拍。
+/// 摸底不 pin——先出失败清单定切分（知情刀：先证据后刀）。
+async fn run_turtle12_eval_suite(test_dir : String, label : String) -> Unit {
+  let text = @fs.read_file("\{test_dir}/manifest.ttl").text()
+  let cases : Array[(String, String)] = []
+  let mut cur_action = ""
+  let mut cur_result = ""
+  for line_view in text.split("\n") {
+    let line = line_view.to_owned()
+    let mut k = 0
+    let units = line.length()
+    while k < units && line[k] == ' ' {
+      k += 1
+    }
+    if k < units && line[k] == '#' {
+      continue
+    }
+    if k == 0 && line.contains("rdft:TestTurtleEval") {
+      cur_action = ""
+      cur_result = ""
+      continue
+    }
+    match angle_after_trig(line, "mf:action") {
+      Some(v) => cur_action = v
+      None => ()
+    }
+    match angle_after_trig(line, "mf:result") {
+      Some(v) => cur_result = v
+      None => ()
+    }
+    if cur_action != "" && cur_result != "" {
+      cases.push((cur_action, cur_result))
+      cur_action = ""
+      cur_result = ""
+    }
+  }
+  let mut passed = 0
+  let mut failed = 0
+  let mut detail = ""
+  for case in cases {
+    let action_file = case.0
+    let result_file = case.1
+    let data = @fs.read_file("\{test_dir}/\{action_file}").binary().to_array()
+    let sec = data[:]
+    let engine = TrigEngine::from_bytes(data, dialect=Turtle)
+    let slice = TrigSliceParser::new(engine, sec, lenient=true)
+    let (quads, perrs) = slice.parse_all()
+    let mat = TrigMaterializer::new(
+      sec,
+      slice.engine.ctx.prefixes,
+      bases=slice.engine.ctx.bases,
+      base_fallback=Some(
+        "https://w3c.github.io/rdf-tests/rdf/rdf12/rdf-turtle/eval/",
+      ),
+      rdf12=true,
+    )
+    let (emits, merrs) = mat.materialize_all(quads)
+    if perrs.length() > 0 || merrs.length() > 0 {
+      failed += 1
+      detail = "\{detail}\{label}/\{action_file}: parse \{perrs.length()} mat \{merrs.length()} err\n"
+      continue
+    }
+    let got_rows : Array[(String, String, String, String)] = emits.map(fn(q) {
+      (
+        quad_text(q.g_view),
+        quad_text(q.s_view),
+        quad_text(q.predicate),
+        quad_text(q.o_view),
+      )
+    })
+    let exp_data = @fs.read_file("\{test_dir}/\{result_file}")
+      .binary()
+      .to_array()
+    let exp_sec = exp_data[:]
+    let exp_engine = @nquads.NQuadsEngine::new(@nquads.Lexermoon::new(exp_sec))
+    let exp_slice = @nquads.SliceParser::new(exp_engine, exp_sec, lenient=false)
+    let (exp_quads, exp_errs) = exp_slice.parse_all()
+    if exp_errs.length() > 0 {
+      failed += 1
+      detail = "\{detail}\{label}/\{action_file}: expected file unparsable\n"
+      continue
+    }
+    let exp_mat = @nquads.materialize_all(exp_quads)
+    let exp_rows : Array[(String, String, String, String)] = exp_mat.0.map(fn(
+      q,
+    ) {
+      (
+        quad_text(q.g_view),
+        quad_text(q.s_view),
+        quad_text(q.predicate),
+        quad_text(q.o_view),
+      )
+    })
+    let mut same = false
+    let mut iso_err = ""
+    try {
+      same = @nquads.rows_isomorphic(got_rows, exp_rows)
+    } catch {
+      _ => iso_err = " (iso raise: tt 分解败=复合未展开)"
+    }
+    if same {
+      passed += 1
+    } else {
+      failed += 1
+      detail = "\{detail}\{label}/\{action_file}: not isomorphic\{iso_err}\n"
+    }
+  }
+  debug("=== \{label}: \{passed}/\{passed + failed} (failed \{failed}) ===")
+  if detail != "" {
+    debug(detail)
+  }
+}
+
+///|
+/// 行槽词项原文（span 视图 → String）
+fn quad_text(view : ArrayView[Byte]) -> String {
+  @utf8.decode_lossy(Bytes::from_array(view))
+}
+
+///|
+/// 行内锚点后第一个 `<...>` 提取（gen_trig 侧本地复刻 U1 同名件——测试件不跨包）
+fn angle_after_trig(line : String, anchor : String) -> String? {
+  let anchor_units = anchor.length()
+  let line_units = line.length()
+  let mut i = 0
+  while i + anchor_units <= line_units {
+    let mut k = 0
+    while k < anchor_units && line[i + k] == anchor[k] {
+      k += 1
+    }
+    if k == anchor_units {
+      let mut j = i + anchor_units
+      while j < line_units && line[j] != '<' {
+        j += 1
+      }
+      if j < line_units {
+        let mut end = j + 1
+        while end < line_units && line[end] != '>' {
+          end += 1
+        }
+        if end < line_units {
+          return Some(line[j + 1:end].to_owned())
+        }
+      }
+      return None
+    }
+    i += 1
+  }
+  None
+}
+
+///|
+async test "turtle12 eval 套件: 摸底（U3 前哨，不 pin）" {
+  run_turtle12_eval_suite(
+    ".rdf-tests/trig/rdf12/rdf-turtle/eval", "turtle12-eval",
+  )
+}
