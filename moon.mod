@@ -5,6 +5,7 @@ version = "0.3.0"
 import {
   "moonbitlang/async@0.20.3",
   "moonbit-community/quickcheck_statemachine@0.0.1",
+  "moonbitlang/quickcheck@0.15.1",
 }
 
 readme = "README.md"
