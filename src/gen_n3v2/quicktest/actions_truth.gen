@@ -17,12 +17,14 @@ ExpectSubject+Iri	set_subject	Continue	-	-	false	-
 BnpExpectObject+Iri	set_object	Continue	-	-	false	-
 ExpectIsProp+Iri	set_predicate	Continue	-	-	false	-
 ExpectSubject+Anon	set_subject	Continue	-	-	false	-
+ExpectTildeEnd+Iri	set_reifier	Continue	-	-	false	-
 BnpExpectObject+Anon	set_object	Continue	-	-	false	-
 ExpectObject+Literal	set_object	Continue	-	-	false	-
 AnnotExpectObject+Iri	set_object	Continue	-	-	false	-
 ExpectObject+KeywordX	set_object	Continue	-	-	false	-
 ExpectObject+PrefName	set_object	Continue	-	-	false	-
 ExpectObject+Variable	set_object	Continue	-	-	false	-
+AnnotExpectEnd+AnnotEnd	annot_end	Sequence	-	-	false	-
 AnnotExpectObject+Anon	set_object	Continue	-	-	false	-
 BnpExpectIsProp+Iri	set_predicate	Continue	-	-	false	-
 ExpectObject+BlankNode	set_object	Continue	-	-	false	-
@@ -49,11 +51,13 @@ ExpectIsProp+KeywordA	set_predicate	Continue	-	-	false	-
 ExpectIsProp+KeywordX	set_predicate	Continue	-	-	false	-
 ExpectIsProp+PrefName	set_predicate	Continue	-	-	false	-
 ExpectSubject+BlankNode	set_subject	Continue	-	-	false	-
+ExpectTildeEnd+PrefName	set_reifier	Continue	-	-	false	-
 FormulaExpectObject+Anon	set_object	Continue	-	-	false	-
 AnnotExpectObject+Literal	set_object	Continue	-	-	false	-
 BnpExpectObject+BlankNode	set_object	Continue	-	-	false	-
 BnpExpectPredicate+Iri	set_predicate	Continue	-	-	false	-
 ExpectSubject+TripleTerm	set_subject	Continue	-	-	false	-
+ExpectTildeEnd+BlankNode	set_reifier	Continue	-	-	false	-
 ExpectVerbRequired+Iri	set_predicate	Continue	-	-	false	-
 FormulaExpectSubject+Iri	set_subject	Continue	-	-	false	-
 AnnotExpectObject+KeywordX	set_object	Continue	-	-	false	-
@@ -122,7 +126,6 @@ FormulaExpectPredicate+Rbrace	close_formula	PopBnp	-	-	false	-
 FormulaExpectSubject+KeywordX	set_subject	Continue	-	-	false	-
 FormulaExpectSubject+PrefName	set_subject	Continue	-	-	false	-
 FormulaExpectSubject+Variable	set_subject	Continue	-	-	false	-
-AnnotExpectEnd+AnnotEnd	annot_end	EmitQuad(PredObj)	-	-	false	-
 ExpectKeywordsList+Unknown	declare_keyword	Continue	-	-	false	-
 ExpectVerbRequired+ImpliedBy	set_predicate	Continue	-	-	false	-
 FormulaExpectIsProp+KeywordA	set_predicate	Continue	-	-	false	-
@@ -134,7 +137,6 @@ ExpectKeywordsList+KeywordX	declare_keyword	Continue	-	-	false	-
 BnpExpectObject+BracketTripleTerm	set_object	Continue	-	-	false	-
 FormulaExpectPredicate+Implies	set_predicate	Continue	-	-	false	-
 FormulaExpectPredicate+Literal	set_predicate	Continue	-	-	false	-
-ExpectTildeEnd+AnnotStart	annot_open	EmitQuad(PredObj)	-	-	false	-
 FormulaExpectPredicate+KeywordA	set_predicate	Continue	-	-	false	-
 FormulaExpectPredicate+KeywordX	set_predicate	Continue	-	-	false	-
 FormulaExpectPredicate+PrefName	set_predicate	Continue	-	-	false	-
@@ -142,7 +144,6 @@ FormulaExpectPredicate+Variable	set_predicate	Continue	-	-	false	-
 AnnotExpectObject+BracketTripleTerm	set_object	Continue	-	-	false	-
 FormulaExpectPredicate+ImpliedBy	set_predicate	Continue	-	-	false	-
 AnnotExpectVerbTail+AnnotEnd	annot_close_silent	Continue	-	-	false	-
-ExpectDotOrGraph+AnnotStart	annot_open	EmitQuad(PredObj)	-	-	false	-
 PathExpectVerb+Iri	path_step	Continue	path_pend=arg0	-	false	payload
 FormulaExpectObject+BracketTripleTerm	set_object	Continue	-	-	false	-
 ListPathExpectVerb+Iri	path_step	Continue	path_pend=arg0	-	false	payload
@@ -184,10 +185,13 @@ AnnotExpectVerbTail+PrefName	annot_body_verb	Continue	predicate=arg0	-	false	pay
 FormulaExpectIsOf+Of	is_of	Continue	is_src=ctx.subject,is_depth=frames_len	-	false	-
 ListAfterElem+TripleTerm	list_next	Continue	frame.top.prev_node=arg0	-	false	payload
 ListExpectElemOrEnd+Iri	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
+AnnotExpectEnd+AnnotStart	annot_open	EmitQuad(PredObj)	-	-	false	state:AnnotExpectEnd
 ListExpectElemOrEnd+Anon	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
 SubjTrailExpectVerbFormula+PrefName	path_step	Continue	path_pend=arg0	-	false	payload
+ExpectTildeEnd+AnnotStart	annot_open	EmitQuad(PredObj)	-	-	false	state:ExpectDotOrGraph
 FormulaExpectObject+Bang	path_fwd	Continue	path_pend=none,path_src=ctx.subject	-	false	-
 ListExpectElemOrEnd+Literal	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
+ExpectDotOrGraph+AnnotStart	annot_open	EmitQuad(PredObj)	-	-	false	state:ExpectDotOrGraph
 FormulaExpectObject+Caret	path_bwd	Continue	path_pend=none,path_src=ctx.subject	-	false	-
 ListExpectElemOrEnd+KeywordX	list_first	Continue	frame.top.prev_node=arg0	-	false	payload
 ListExpectElemOrEnd+PrefName	list_first	Continue	frame.top.prev_node=arg0	-	false	payload

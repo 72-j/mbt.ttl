@@ -51,6 +51,16 @@ impl N3EffectHandler for N3ProbeHandler with fn on_open_slot(
 }
 
 ///|
+/// U5 补覆写（quicktest 清偿役实证，trig 同款：默认空操作吞 AnnotPop——probe 径
+/// 闭后态停名义靶、槽位残，二次开壳读 None 谓词 = BusinessFailed）：弹帧机械同引擎径
+impl N3EffectHandler for N3ProbeHandler with fn on_annot_pop(
+  _self : N3ProbeHandler,
+  ctx : N3Context,
+) -> Unit {
+  ctx.annot_pop_frame()
+}
+
+///|
 /// 测试驱动把手：持有 ctx（状态跨事件保持）+ handler（真 Actions + 真 interpret）
 pub struct N3Probe {
   priv ctx : N3Context

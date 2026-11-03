@@ -86,6 +86,16 @@ impl TrigEffectHandler for TrigProbeHandler with fn on_open_slot(
 }
 
 ///|
+/// U5 补覆写（quicktest 清偿役实证：默认空操作吞 AnnotPop——probe 径闭后态停
+/// 名义靶、槽位残，二次开壳读 None 谓词 = BusinessFailed）：弹帧机械同引擎径
+impl TrigEffectHandler for TrigProbeHandler with fn on_annot_pop(
+  _self : TrigProbeHandler,
+  ctx : TrigContext,
+) -> Unit {
+  ctx.annot_pop_frame()
+}
+
+///|
 /// 测试驱动把手：持有 ctx（状态跨事件保持）+ handler（真 Actions + 真 interpret）
 pub struct TrigProbe {
   priv ctx : TrigContext

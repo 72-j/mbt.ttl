@@ -73,6 +73,7 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (ExpectTildeEnd, Iri(_)) => true
     (ExpectTildeEnd, PrefName(_)) => true
     (ExpectTildeEnd, BlankNode(_)) => true
+    (ExpectTildeEnd, Tilde) => true // U5 表刀新行：链自环（~ :r1 ~ :r2 多 reifier）
     (ExpectTildeEnd, Dot) => true
     (ExpectTildeEnd, Semicolon) => true
     (ExpectTildeEnd, Comma) => true
@@ -101,6 +102,7 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (AnnotExpectEnd, Comma) => true
     (AnnotExpectEnd, Semicolon) => true
     (AnnotExpectEnd, AnnotEnd) => true
+    (AnnotExpectEnd, AnnotStart) => true // U5 表刀新行：嵌套注解入口（内块注解外块刚成形行）
     // ExpectDirectiveKind
     (ExpectDirectiveKind, PrefixKw) => true
     (ExpectDirectiveKind, BaseKw) => true
@@ -189,6 +191,7 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (GraphExpectTildeEnd, Iri(_)) => true
     (GraphExpectTildeEnd, PrefName(_)) => true
     (GraphExpectTildeEnd, BlankNode(_)) => true
+    (GraphExpectTildeEnd, Tilde) => true // U5 表刀新行：链自环（图块孪生）
     (GraphExpectTildeEnd, Dot) => true
     (GraphExpectTildeEnd, Semicolon) => true
     (GraphExpectTildeEnd, Comma) => true
@@ -218,6 +221,7 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (GraphAnnotExpectEnd, Comma) => true
     (GraphAnnotExpectEnd, Semicolon) => true
     (GraphAnnotExpectEnd, AnnotEnd) => true
+    (GraphAnnotExpectEnd, AnnotStart) => true // U5 表刀新行：嵌套注解入口（图块孪生）
     // BnpExpectPredicate
     (BnpExpectPredicate, Rbracket) => true
     (BnpExpectPredicate, Iri(_)) => true

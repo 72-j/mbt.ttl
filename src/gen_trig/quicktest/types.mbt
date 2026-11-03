@@ -135,6 +135,17 @@ priv struct Model {
   graph : RefId?
   directive_at : Bool
   frames : Array[Frame]
+  annot_frames : Array[AnnotFrameM] // U5 帧栈律：注解簿记帧（镜面机械的观测投影）
+} derive(Eq, Debug)
+
+///|
+/// AnnotFrameM - 注解簿记帧（U5 官方律镜像，trig AnnotFrame 的观测投影）：
+/// 捕获锚行谓宾（弹帧回填槽 = 块透明不变量）+ 收口返回态（表靶由弹帧覆写）。
+/// 镜面壳旗/块身份/绑定 reifier 不进观测面（响应/状态/四槽指纹），不入帧。
+priv struct AnnotFrameM {
+  anchor_p : RefId?
+  anchor_o : RefId?
+  ret_state : ModelState
 } derive(Eq, Debug)
 
 ///|
@@ -148,7 +159,9 @@ priv struct Frame {
   ret_state : ModelState
   as_subject : Bool
 } derive(Eq, Debug)
-// 未进模型的 Context 字段: emit_queue (Array[TrigPendingQuad]), directive_at (Bool), prefixes (Array[(Span, Span)]), bases (Array[Span]), kw_ledger (Array[Span]), kw_directive_seen (Bool), slot_stack (Array[Slot]), pred_kind (PredKind), subj_shell (Bool), annot_close (Bool)
+// 未进模型的 Context 字段: emit_queue (Array[TrigPendingQuad]), directive_at (Bool), prefixes (Array[(Span, Span)]), bases (Array[Span]), kw_ledger (Array[Span]), kw_directive_seen (Bool), slot_stack (Array[Slot]), pred_kind (PredKind), subj_shell (Bool), annot_s (Span?), annot_p (Span?), annot_o (Span?), annot_seq (Int32), s_shell_seq (Int32?), bound_reifier (Span?), reifiers (Array[Span])
+//（U5 注：annot_close 已随旧役8律退役；annot 帧栈的观测投影 = annot_frames——
+//  镜面六件中只有锚行谓宾/返回态可观测，其余不入模型）
 
 ///|
 /// 初始模型：ExpectSubject，槽位全空
@@ -161,6 +174,7 @@ fn model_empty() -> Model {
     graph: None,
     directive_at: false,
     frames: [],
+    annot_frames: [],
   }
 }
 

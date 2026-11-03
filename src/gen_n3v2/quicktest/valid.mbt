@@ -442,10 +442,12 @@ fn valid(model : Model, cmd : Command) -> Bool {
     (AnnotExpectEnd, Comma) => true
     (AnnotExpectEnd, Semicolon) => true
     (AnnotExpectEnd, AnnotEnd) => true
+    (AnnotExpectEnd, AnnotStart) => true // U5 表刀新行：嵌套注解入口（内块注解外块刚成形行）
     // ExpectTildeEnd
     (ExpectTildeEnd, Iri(_)) => true
     (ExpectTildeEnd, PrefName(_)) => true
     (ExpectTildeEnd, BlankNode(_)) => true
+    (ExpectTildeEnd, Tilde) => true // U5 表刀新行：链自环（~ :r1 ~ :r2 多 reifier）
     (ExpectTildeEnd, Dot) => true
     (ExpectTildeEnd, Semicolon) => true
     (ExpectTildeEnd, Comma) => true

@@ -385,7 +385,10 @@ fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectDotOrGraph+Tilde
     (ExpectDotOrGraph, Tilde) => ({ ..model, state: ExpectTildeEnd, }, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectDotOrGraph+AnnotStart
-    (ExpectDotOrGraph, AnnotStart) => emit_predobj(model, AnnotExpectVerb)
+    // U5 帧栈律：开壳 = 捕获锚行谓宾入帧（ret=ExpectDotOrGraph）+ 出账锚行 +
+    // 谓宾槽复位（EmitQuad(PredObj) 快照先、清槽后）
+    (ExpectDotOrGraph, AnnotStart) =>
+      annot_open_frame(model, ExpectDotOrGraph, AnnotExpectVerb)
     // @arm ExpectDotOrGraph+Bang
     (ExpectDotOrGraph, Bang(r)) =>
       (
@@ -1423,8 +1426,10 @@ fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
     // @arm AnnotExpectVerbTail+Semicolon
     (AnnotExpectVerbTail, Semicolon) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm AnnotExpectVerbTail+AnnotEnd
+    // U5 帧栈律：静默收口 = 弹帧还返回态 + 锚行谓宾槽回填，零发射（表靶
+    // ExpectDotOrGraph 由弹帧覆写；空栈防御 = 落表靶）
     (AnnotExpectVerbTail, AnnotEnd) =>
-      ({ ..model, state: ExpectVerbOrEnd, }, Continue)
+      (annot_pop(model, ExpectDotOrGraph), Continue)
     // --- BnpExpectObject ---
     // @arm BnpExpectObject+Anon
     (BnpExpectObject, Anon(r)) =>
@@ -4439,14 +4444,26 @@ fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
     // @arm AnnotExpectEnd+Semicolon
     (AnnotExpectEnd, Semicolon) => emit_predobj(model, AnnotExpectVerbTail)
     // @arm AnnotExpectEnd+AnnotEnd
-    (AnnotExpectEnd, AnnotEnd) => emit_predobj(model, ExpectVerbOrEnd)
+    // U5 帧栈律：收口出账 = 末体行快照先、弹帧后（Sequence 序不倒挂）；弹帧
+    // 还返回态 + 锚槽回填——重复主行靠数据面集合语义塌缩，响应面如实多发
+    (AnnotExpectEnd, AnnotEnd) => annot_close(model, ExpectDotOrGraph)
+    // @arm AnnotExpectEnd+AnnotStart
+    // U5 嵌套注解入口（表刀新行）：锚 = 外块刚成形体行（当前槽谓宾），ret =
+    // 外层体对完成态——内块闭还外块 AnnotExpectEnd
+    (AnnotExpectEnd, AnnotStart) =>
+      annot_open_frame(model, AnnotExpectEnd, AnnotExpectVerb)
     // --- ExpectTildeEnd ---
     // @arm ExpectTildeEnd+Iri
     (ExpectTildeEnd, Iri(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectTildeEnd+PrefName
     (ExpectTildeEnd, PrefName(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
     // @arm ExpectTildeEnd+BlankNode
-    (ExpectTildeEnd, BlankNode(_)) => (model, Continue) // TODO(P0): 未识别 action none，默认响应请人工确认
+    // U5：set_reifier 捕获（链账不入观测面）——响应/状态/槽位全不变，与旧臂同形
+    (ExpectTildeEnd, BlankNode(_)) => (model, Continue)
+    // @arm ExpectTildeEnd+Tilde
+    // U5 表刀新行：链自环——`~ :r1 ~ :r2` 多 reifier（每 ~ 一条 reifies 行，
+    // 物化层面貌，模型零槽位写）
+    (ExpectTildeEnd, Tilde) => ({ ..model, state: ExpectTildeEnd, }, Continue)
     // @arm ExpectTildeEnd+Dot
     (ExpectTildeEnd, Dot) => emit_spo(model, ExpectSubject)
     // @arm ExpectTildeEnd+Semicolon
@@ -4454,7 +4471,10 @@ fn model_execute_core(model : Model, cmd : Command) -> (Model, Response) {
     // @arm ExpectTildeEnd+Comma
     (ExpectTildeEnd, Comma) => emit_object(model, ExpectObject)
     // @arm ExpectTildeEnd+AnnotStart
-    (ExpectTildeEnd, AnnotStart) => emit_predobj(model, AnnotExpectVerb)
+    // U5 帧栈律（~ 驻留位注解，ret 仍 = ExpectDotOrGraph）：链账不入观测面，
+    // 开壳机械与平地同形
+    (ExpectTildeEnd, AnnotStart) =>
+      annot_open_frame(model, ExpectDotOrGraph, AnnotExpectVerb)
     // 兜底: 非法转移（valid 已过滤, 防御性保留）
     (_, _) => (model, Error(0))
   }
@@ -4690,6 +4710,59 @@ fn frame_pop(model : Model) -> Model {
     }
     None => model
   }
+}
+
+///|
+/// U5 帧栈律·开壳（平地/嵌套/~ 驻留位同械，trig annot_open 镜像；N3 无图块
+/// 无孪生）：捕获当前槽谓宾入帧（锚主语 = 主语槽直通不捕获），出账锚行
+///（EmitQuad(PredObj)——快照先、清槽后），谓宾槽复位，状态进体区；`ret_state`
+/// 弹帧时兑现（表靶由弹帧覆写，"状态由表管理"的唯一例外同 frame_pop 口径）。
+/// 槽残防御径（镜面复用）不可达：见证路径与随机驱动到达 ExpectDotOrGraph/
+/// ExpectTildeEnd 恒槽全——模型照抄槽位快照，None 随账。
+fn annot_open_frame(
+  model : Model,
+  ret_state : ModelState,
+  to : ModelState,
+) -> (Model, Response) {
+  // 引擎序：annot_open 先捕获锚（文法序槽位）→ EmitQuad(PredObj) 在 take_pending
+  // 里倒装交换 + 倒装结算 + 谓宾复位——出账 quad = 语义序（N3 特有，trig 无倒装）
+  let quad = inversion_swap(model, take_quad(model))
+  let frames = model.annot_frames.copy()
+  frames.push({ anchor_p: model.predicate, anchor_o: model.object, ret_state, })
+  let model = inversion_settle(
+    { ..model, state: to, predicate: None, object: None, annot_frames: frames, },
+    false,
+  )
+  (model, EmitQuad(quad))
+}
+
+///|
+/// U5 帧栈律·弹帧（annot_pop_frame 镜像）：还返回态 + 锚行谓宾槽回填
+///（块透明不变量：收口后槽位 = 开壳前快照——句界续链/`,`/`;` 与收口 `.`
+/// 的重复主行靠数据面集合语义塌缩）；空栈防御 = 落表靶 nominal（引擎
+/// step 先写表靶、弹帧覆写的序，模型同构）。
+fn annot_pop(model : Model, nominal : ModelState) -> Model {
+  let frames = model.annot_frames.copy()
+  match frames.pop() {
+    Some(fr) =>
+      {
+        ..model,
+        state: fr.ret_state,
+        predicate: fr.anchor_p,
+        object: fr.anchor_o,
+        annot_frames: frames,
+      }
+    None => { ..model, state: nominal, }
+  }
+}
+
+///|
+/// U5 帧栈律·收口出账（annot_end Sequence([EmitQuad(PredObj), AnnotPop]) 镜像）：
+/// 末体行快照先（倒装交换 + 结算同 take_pending 序）、弹帧后——序不倒挂。
+fn annot_close(model : Model, nominal : ModelState) -> (Model, Response) {
+  let quad = inversion_swap(model, take_quad(model))
+  let model = inversion_settle(model, false)
+  (annot_pop(model, nominal), EmitQuad(quad))
 }
 
 ///|

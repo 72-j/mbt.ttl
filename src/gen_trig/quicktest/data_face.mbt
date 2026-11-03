@@ -381,8 +381,10 @@ async test "数据面⟷引擎·trig 值级对拍：可比行逐槽等值 + 台�
   let rows = parse_data_face_rows(snapshot)
   // `@keywords` 表源化后 +10 带 action 的行（`kw_begin` 1 + `declare_keyword` 3 + `KeywordX`
   // 词位 6；`ExpectKeywordsList+Dot` 无 action 故不入快照）⇒ 136 → 146；
-  // T22（2026-10-31）：`BnpExpectObject+Anon`（嵌套 [] 宾位）+1 ⇒ 146 → 147
-  assert_eq(rows.length(), 147)
+  // T22（2026-10-31）：`BnpExpectObject+Anon`（嵌套 [] 宾位）+1 ⇒ 146 → 147；
+  // U5/quicktest 清偿役（2026-11-03）+8：Tilde 链自环 ×2（set_reifier）+ 嵌套注解入口 ×2
+  //（annot_open）+ 块闭改靶重排的 action 行族 ⇒ 147 → 155
+  assert_eq(rows.length(), 155)
   let (compared, incomparable, unreachable_rows, mismatches) = data_face_compare(
     rows,
   )

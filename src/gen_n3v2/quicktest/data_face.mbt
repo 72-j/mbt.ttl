@@ -655,7 +655,9 @@ fn data_face_compare(
 async test "数据面⟷引擎·值级对拍（首片）：可比行逐槽等值 + 台账钉死" {
   let snapshot = @fs.read_file("src/gen_n3v2/quicktest/actions_truth.gen").text()
   let rows = parse_data_face_rows(snapshot)
-  assert_eq(rows.length(), 319)
+  // U5/quicktest 清偿役（2026-11-03）：Tilde 链自环（set_reifier）+ 嵌套注解入口
+  //（annot_open）+ 块闭改靶的 action 行族入快照 ⇒ 319 → 323
+  assert_eq(rows.length(), 323)
   let (compared, incomparable, unreachable_rows, mismatches) = data_face_compare(
     rows,
   )
