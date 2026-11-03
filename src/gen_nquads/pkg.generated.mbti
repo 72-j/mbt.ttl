@@ -170,6 +170,8 @@ pub let rdf_xml_literal : NamedNodeRef
 
 pub let rdf_year_month_duration : NamedNodeRef
 
+pub fn rows_isomorphic(Array[(String, String, String, String)], Array[(String, String, String, String)]) -> Bool raise
+
 pub fn scan_string_body(ArrayView[Byte], Int32, Int32, Int32) -> Int32 raise ParseError
 
 pub fn[A : NQuadsActions] step(NQuadsContext, NQuadsEvent, A) -> Result[NQuadsEffect, NQuadsActionError]
