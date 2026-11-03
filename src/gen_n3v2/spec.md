@@ -30,9 +30,9 @@
 |---|---|---|---|
 | 词法复用 | `@nquads.Lexermoon`（gen_nquads 包） | bytes → token；与 C 版 `lexerc_ffi.c` 同型同宽 | `Token` |
 | 事件适配 | `lexer_adapter.mbt` | token → 事件；`?x`/`[]` 合并、`@prefix:`/`<-` 拆字、langtag 子 span | `N3Event` |
-| 状态机（生成） | `n3.mbt` | 41 事件 × 55 状态 × 384 转移的 `step`；类型/ctx/三业务面 trait | `N3Effect` |
+| 状态机（生成） | `n3.mbt` | 41 事件 × 55 状态 × 391 转移的 `step`；类型/ctx/三业务面 trait | `N3Effect` |
 | 主循环（装配层） | `engine.mbt` | 驱动 step、解释 Effect、尾标点合成、错误恢复、EOF 判脏 | `N3PendingQuad` |
-| 语义实现（装配层） | `actions.mbt` | 48 个 action：落槽 / 压栈 / 路径 desugar / 倒装 / 注解 | 槽位与账本 |
+| 语义实现（装配层） | `actions.mbt` | 50 个 action：落槽 / 压栈 / 路径 desugar / 倒装 / 注解（U5 +set_reifier；annot_open 加 ret_state 参） | 槽位与账本 |
 | 组装校验 | `parser_slice.mbt` | 缺槽检测 + 轻验（IRI/BNode/PrefName/TT 壳） | `QuadSpan` |
 | 物化 | `materialize_n3.mbt` | span → `QuadEmit`；四门深验在构词点就地执行 | `QuadEmit` |
 | 序列化 | `serialize_n3.mbt` | 字节保真回写；拒绝 PrefName/图名残留 | `String` |
@@ -55,9 +55,10 @@ rdf/n3gen/{n3v2_base.toml, n3v2_trans.toml}
   → cp → moonttl/src/gen_n3v2/n3.mbt   （G9 逐字节黄金门 + 强幂等）
 ```
 
-规模事实：41 事件 / 55 状态 / 384 转移 / 48 动作 / 27 ctx 字段（役26 删 variable_name/rule_side）/ 5 快照 extras
-（`pk`/`pver`/`bver`/`iver`/`subj_shell`）/ capabilities 14 项。生成面 2.2k 行、装配面约 5.2k 行、
-测试 116 个 test 块 + 4 个套件 runner。
+规模事实：41 事件 / 55 状态 / 391 转移 / 50 动作 / 31 ctx 字段（役26 删 variable_name/rule_side；
+U5 官方律 +六 buffer −annot_close）/ 11 快照 extras（`pk`/`pver`/`bver`/`iver`/`subj_shell` +
+U5 镜像族六件：`anchor_p`/`anchor_o`/`annot_seq`/`s_shell_seq`/`bound_reifier`/`reifiers`）/
+capabilities 14 项。生成面 2.2k 行、装配面约 5.2k 行、测试 116 个 test 块 + 4 个套件 runner。
 
 ---
 
@@ -291,46 +292,50 @@ A13/B0/C0 + 影子 strict-gap 13。R-01 专项：`grep -c "ctx.state = " actions
 **结论先行**：384 行转移中 **232 行（60%）是"机制 × 语境窗"求积的手列产物**；
 手列模式下每开一个新语境窗 ≈ **+7~11 态 +34~75 行**，每加一个多窗特性 ≈ **+2 态/窗 +6~15 行/窗**。
 本节全部数字可由下列命令复算（验收口径）。
+**沿革**（2026-11-03 勘注）：基线后增量 = Id/Invert 深切片（役26 后）与 U5 官方律表刀 +2
+（Tilde 链自环 / 嵌套注解入口）⇒ 现 **391 行**；且 R-14 子机化后行源已移 `[[submachines]]`，
+行数真源 = 展开 dump `rdf/fsm_out/n3_fsm.toml`（下 10.1 命令同笔改读 dump）。
 
 ### 10.1 基线与族分布
 
 ```sh
-cd ../../src/rdf/n3gen
-grep -c '^\[\[states\]\]' n3v2_base.toml        # 55 态
-grep -c '^\[\[events\]\]'  n3v2_base.toml        # 41 事件
-grep -c '^\[\[transitions\]\]' n3v2_trans.toml   # 384 转移行
+# 现行径（2026-11-01 孵化迁移后：rdf 住 bitbang 主仓；行数真源 = 展开 dump）
+grep -c '^\[\[states\]\]' /home/thy/bitbang/rdf/n3gen/n3v2_base.toml        # 55 态
+grep -c '^\[\[events\]\]'  /home/thy/bitbang/rdf/n3gen/n3v2_base.toml        # 41 事件
+grep -c '^\[\[transitions\]\]' /home/thy/bitbang/rdf/fsm_out/n3_fsm.toml     # 391 转移行（展开）
 ```
 
 族分布（按状态名前缀归族；`from` 归族计行）：
 
 | 族 | 态 | 行 | 行/态 | 组成（机制分解见 §10.2） |
 |---|---|---|---|---|
-| Core | 17 | 142 | 8.4 | 顶层指令 7 + 语句核心 7 + is/of 顶层 2 + 尾件 1 |
-| Formula | 11 | 75 | 6.8 | 公式 `{…}` 窗：核心 4 + is/of 2 + 量化 3 + 路径 2 |
+| Core | 17 | 147 | 8.6 | 顶层指令 7 + 语句核心 7 + is/of 顶层 2 + 尾件 1（+ U5 Tilde 链自环） |
+| Formula | 11 | 76 | 6.9 | 公式 `{…}` 窗：核心 4 + is/of 2 + 量化 3 + 路径 2 |
 | SubjTrail | 6 | 39 | 6.5 | 路径×主位：顶层 3 + 公式 3 |
 | Bnp | 7 | 34 | 4.9 | bnp `[…]` 窗：核心 3 + is/of 2 + id 2 |
-| Annot | 4 | 27 | 6.8 | 注解体 `{\| \|}` 窗（特性本体） |
+| Annot | 4 | 28 | 7.0 | 注解体 `{\| \|}` 窗（特性本体；+ U5 嵌套注解入口） |
 | List | 2 | 27 | 13.5 | 集合 `(…)` 窗本体 |
 | Path | 2 | 15 | 7.5 | 路径×宾位·顶层 |
 | ListPath | 2 | 15 | 7.5 | 路径×集合窗 |
 | ObjTrail | 2 | 7 | 3.5 | 路径×宾位基动词 |
 | Quant | 2 | 3 | 1.5 | 量化×顶层窗（本体位） |
-| **合计** | **55** | **384** | 7.0 | |
+| **合计** | **55** | **391** | 7.1 | |
 
-复算命令（块作用域解析，防 `name =` 误吸 events/actions 段）：
+复算命令（块作用域解析，防 `name =` 误吸 events/actions 段；行数读**展开 dump**——
+R-14 子机化后 `[[submachines]]` 行在 base，展开真源 = `fsm_out/n3_fsm.toml`）：
 
 ```sh
 python3 - << 'EOF'
 import re, collections
-base = open('../../src/rdf/n3gen/n3v2_base.toml', encoding='utf-8').read()
+base = open('/home/thy/bitbang/rdf/n3gen/n3v2_base.toml', encoding='utf-8').read()
 blocks = re.findall(r'^\[\[(states|events)\]\]\n(.*?)(?=^\[\[|\Z)', base, re.M | re.S)
 agg = collections.defaultdict(str)
 for t, c in blocks: agg[t] += c
 states = re.findall(r'name = "([A-Za-z]+)"', agg["states"])
 fam_order = ["Formula","Bnp","SubjTrail","Annot","Quant","Path","ListPath","List","ObjTrail"]
 fam = lambda n: next((f for f in fam_order if n.startswith(f)), "Core")
-trans = open('../../src/rdf/n3gen/n3v2_trans.toml', encoding='utf-8').read()
-cs, ct = collections.Counter(map(fam, states)), collections.Counter(map(fam, re.findall(r'^from = "(\w+)"', trans, re.M)))
+dump = open('/home/thy/bitbang/rdf/fsm_out/n3_fsm.toml', encoding='utf-8').read()
+cs, ct = collections.Counter(map(fam, states)), collections.Counter(map(fam, re.findall(r'^from = "(\w+)"', dump, re.M)))
 for f in fam_order + ["Core"]: print(f, cs[f], ct[f])
 print("TOTAL", sum(cs.values()), sum(ct.values()))
 EOF
