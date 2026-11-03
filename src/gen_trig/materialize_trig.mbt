@@ -44,6 +44,11 @@ pub struct TrigMaterializer {
   mut deep_validate : Bool // 深验融合开关（materialize_all 参数落位，materialize_quad 单入口读）
   fresh_ids : Map[Span, Span] // ★3 fresh 节点 memo：开括号全 span → arena 内 `_:genid<N>` span（链节点同 offset 不同长度，键含长度）
   arena : Array[Byte] // 展开字节缓冲（PrefName/'a'/数值/布尔/^^PrefName/相对 IRI 落这里）
+  // U3b reifies 行挂账池（物化器字段非局部）：注解壳行/链行/组件内裸壳 R 化
+  // 都在 TT 组合递归深处 push（shell_term_view rify 支），materialize_quad
+  // 出口统一冲洗——局部累计器够不着递归深处，故上提（只 push/clear 不重绑，
+  // 无 mut——[0015] 家法）
+  shell_rows : Array[(@nquads.TermKind, ArrayView[Byte], ArrayView[Byte])]
 }
 
 ///|
@@ -70,6 +75,7 @@ pub fn TrigMaterializer::new(
     deep_validate: true,
     fresh_ids: Map([]),
     arena: [],
+    shell_rows: [],
   }
 }
 
@@ -483,19 +489,62 @@ fn TrigMaterializer::materialize_literal(
 }
 
 ///|
-/// 物化单个 quad：span 四元组 → QuadEmit 行数组（U3a 官方律：壳语句追加
-/// reifies 行）。主语位三臂：
-///   · subj_shell（注解壳行）→ R = fresh_bnode(锚 span memo，同锚多行同 R)，
-///     主语换 R + 追加 (R, rdf:reifies, tt(展开三成分))；
+/// 物化单个 quad：span 四元组 → QuadEmit 行数组（U3a/U3b 官方律：壳语句追加
+/// reifies 行）。主语位臂：
+///   · subj_shell（注解壳行）→ R = 显式 reifier-or-fresh(块身份键)，
+///     TT = 锚行三 span 直过槽位臂（U3b 三 span 直传，锚文重扫全废）；
 ///   · 裸壳 `<< s p o [~ r] >>` 词项 → R = 显式 reifier 展开-or-fresh(壳 span memo)，
 ///     主语换 R + 追加 reifies 行（官方判：bare 壳不自断言）；
 ///   · 括号壳 `<<( s p o )>>` 词项 → 剥壳展开重编（词项本尊，无 reifies 行）。
+/// 链行：quad.reifiers 每 ~ 一条 reifies 行（U3b 语句级 ~ 链）；chain_only
+/// 载体行只发链行。
 pub fn TrigMaterializer::materialize_quad(
   self : TrigMaterializer,
   quad : QuadSpan,
 ) -> Array[@nquads.QuadEmit] raise ParseError {
-  // 追加 reifies 行的挂账（R kind, R view, tt view）——图名位物化后统一造行
-  let shell_rows : Array[(@nquads.TermKind, ArrayView[Byte], ArrayView[Byte])] = []
+  // U3b reifies 行挂账池：每 quad 起点清池（递归深处 push、出口统一冲洗）
+  self.shell_rows.clear()
+  let shell_rows = self.shell_rows
+  // U3b 链载体行（块后 ~ 链，annotation-11）：主行已随块发射，只发链行
+  if quad.chain_only {
+    let anchor_p = match quad.anchor_p {
+      Some(v) => v
+      None => raise ParseError::ValidationErr("chain: missing anchor predicate")
+    }
+    let anchor_o = match quad.anchor_o {
+      Some(v) => v
+      None => raise ParseError::ValidationErr("chain: missing anchor object")
+    }
+    let tt_view = self.compose_anchor_tt(
+      quad.s,
+      anchor_p,
+      anchor_o,
+      quad.s_shell_seq,
+      quad.prefix_version,
+      quad.base_version,
+    )
+    let (g_kind, g_view) = self.resolve_graph_slot(quad)
+    let rows : Array[@nquads.QuadEmit] = []
+    for r in quad.reifiers {
+      let (r_kind, r_view) = self.expand_reifier_node(
+        Some(r),
+        quad.annot_seq,
+        quad.prefix_version,
+        quad.base_version,
+      )
+      let reifies_pred = self.push_reifies_pred()
+      rows.push({
+        s_kind: r_kind,
+        s_view: r_view,
+        predicate: reifies_pred,
+        o_kind: @nquads.TermKind::TripleTerm,
+        o_view: tt_view,
+        g_kind,
+        g_view,
+      })
+    }
+    return rows
+  }
   // 主语位：Iri / BNode / TT 壳 / PrefName。融合深验（deep_validate 门）在词项
   // 构造点就地执行：Iri→check_iri_view / BNode→validate_bnode / TT 壳→deep_check_tt
   // （独立成句的壳已在组装层拆成普通槽位，此臂承接"壳+后续链"形态）。
@@ -504,22 +553,35 @@ pub fn TrigMaterializer::materialize_quad(
   let mut s_kind : @nquads.TermKind = @nquads.TermKind::Iri
   let mut s_view : ArrayView[Byte] = self.data[0:0]
   if quad.subj_shell {
-    // U3a 官方律：注解壳行 = R + reifies 行（锚行由锚 quad 自身断言，只断言一次）
-    let (c1, c2, c3, reif) = self.scan_shell_parts(
-      quad.s.0,
-      quad.s.0 + quad.s.1,
-    )
-    let _ = reif // 注解壳行不带 reifier（~ 链 = U3b 组装层接）
-    let r_view = self.fresh_bnode(quad.s) // 锚 span 全键 memo：同锚多注解行同 R
-    let tt_view = self.compose_shell_tt(
-      c1,
-      c2,
-      c3,
+    // U3b 官方律 + 三 span 直传：注解壳行 = R + reifies 行（锚行由锚 quad
+    // 自身断言）。R = 显式 reifier 展开 / fresh(块身份键 Span(-seq,0))；
+    // TT = 锚行三 span 直过槽位展开臂（annotation-04 嵌套锚主语壳旗同步解析）
+    let anchor_p = match quad.anchor_p {
+      Some(v) => v
+      None =>
+        raise ParseError::ValidationErr("annotation: missing anchor predicate")
+    }
+    let anchor_o = match quad.anchor_o {
+      Some(v) => v
+      None =>
+        raise ParseError::ValidationErr("annotation: missing anchor object")
+    }
+    let (r_kind, r_view) = self.expand_reifier_node(
+      quad.bound_reifier,
+      quad.annot_seq,
       quad.prefix_version,
       quad.base_version,
     )
-    shell_rows.push((@nquads.TermKind::BNode, r_view, tt_view))
-    s_kind = @nquads.TermKind::BNode
+    let tt_view = self.compose_anchor_tt(
+      quad.s,
+      anchor_p,
+      anchor_o,
+      quad.s_shell_seq,
+      quad.prefix_version,
+      quad.base_version,
+    )
+    shell_rows.push((r_kind, r_view, tt_view))
+    s_kind = r_kind
     s_view = r_view
   } else if self.is_shell_span(quad.s) {
     // 裸壳/括号壳做主语（rt 族：s span = 全壳文本，~ 内嵌）
@@ -717,39 +779,9 @@ pub fn TrigMaterializer::materialize_quad(
       }
     }
   }
-  // 图名位：Iri / BNode / PrefName 展开（TriG 图名可为前缀名）
-  let mut g_kind : @nquads.TermKind = @nquads.TermKind::DefaultGraph
-  let mut g_view : ArrayView[Byte] = self.data[0:0]
-  if quad.g is Some(g) {
-    let c0 = self.data[g.0]
-    if c0 == b'<' {
-      let v = self.iri_term(g, quad.base_version)
-      let v = self.gate_iri(v)
-      g_kind = @nquads.TermKind::Iri
-      g_view = v
-    } else if c0 == b'_' {
-      let v = slice_span(self.data, g)
-      let v = self.gate_bnode(v)
-      g_kind = @nquads.TermKind::BNode
-      g_view = v
-    } else if c0 == b'[' || c0 == b'(' {
-      // ★3 fresh 结构节点（图名位不可为 fresh——表保证图名位只有 Iri/PrefName/
-      // BlankNode 三事件；防御位照接）
-      g_kind = @nquads.TermKind::BNode
-      g_view = self.fresh_bnode(g)
-    } else {
-      let hit = self.expand_prefname(g, quad.prefix_version, quad.base_version)
-      match hit {
-        Some(expanded) => {
-          let v = self.gate_iri(slice_span(self.arena[:], expanded))
-          g_kind = @nquads.TermKind::Iri
-          g_view = v
-        }
-        None =>
-          raise ParseError::ValidationErr("Graph name has undeclared prefix")
-      }
-    }
-  }
+  // 图名位：Iri / BNode / PrefName 展开（TriG 图名可为前缀名）——U3b 抽
+  // resolve_graph_slot 共用（链载体行同径）
+  let (g_kind, g_view) = self.resolve_graph_slot(quad)
   let main : @nquads.QuadEmit = {
     s_kind,
     s_view,
@@ -759,15 +791,39 @@ pub fn TrigMaterializer::materialize_quad(
     g_kind,
     g_view,
   }
+  // U3b 语句级 ~ 链：主行随附（每 ~ 一条 reifies 行；TT = 镜面锚行三 span
+  // ——annotation-09 双 ~ 各领一条、-12 链块交错随发射消费）
+  if quad.reifiers.length() > 0 {
+    let anchor_p = match quad.anchor_p {
+      Some(v) => v
+      None => raise ParseError::ValidationErr("chain: missing anchor predicate")
+    }
+    let anchor_o = match quad.anchor_o {
+      Some(v) => v
+      None => raise ParseError::ValidationErr("chain: missing anchor object")
+    }
+    let tt_view = self.compose_anchor_tt(
+      quad.s,
+      anchor_p,
+      anchor_o,
+      quad.s_shell_seq,
+      quad.prefix_version,
+      quad.base_version,
+    )
+    for r in quad.reifiers {
+      let (r_kind, r_view) = self.expand_reifier_node(
+        Some(r),
+        quad.annot_seq,
+        quad.prefix_version,
+        quad.base_version,
+      )
+      shell_rows.push((r_kind, r_view, tt_view))
+    }
+  }
   let rows : Array[@nquads.QuadEmit] = [main]
   for row in shell_rows {
     let (r_kind, r_view, tt_view) = row
-    let start = self.arena.length()
-    self.push_text("<http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies>")
-    let reifies_pred = slice_span(
-      self.arena[:],
-      (start, self.arena.length() - start),
-    )
+    let reifies_pred = self.push_reifies_pred()
     rows.push({
       s_kind: r_kind,
       s_view: r_view,
@@ -1007,6 +1063,7 @@ fn TrigMaterializer::shell_term_view(
   pv : Int32,
   bv : Int32,
   slot : Int32,
+  rify~ : Bool = false,
 ) -> (@nquads.TermKind, ArrayView[Byte]) raise ParseError {
   let c0 = self.data[sp.0]
   // `(` 集合壳内恒拒（bad-06 官判）；`[` 匿名谓语位拒（bad-03 官判）、
@@ -1042,9 +1099,17 @@ fn TrigMaterializer::shell_term_view(
     let (c1, c2, c3, _) = self.scan_shell_parts(sp.0 + 3, sp.0 + sp.1 - 3)
     (@nquads.TermKind::TripleTerm, self.compose_shell_tt(c1, c2, c3, pv, bv))
   } else if c0 == b'<' && sp.1 >= 4 && self.data[sp.0 + 1] == b'<' {
-    // 嵌套裸壳：同一剥壳展开重编（递归深验 + 展开形；官方 R 化留 U3b 嵌套位）
-    let (c1, c2, c3, _) = self.scan_shell_parts(sp.0 + 2, sp.0 + sp.1 - 2)
-    (@nquads.TermKind::TripleTerm, self.compose_shell_tt(c1, c2, c3, pv, bv))
+    // 嵌套裸壳组件：引语语境（rify=false，shell TT 内）= 剥壳展开重编（词项
+    // 本尊，嵌套壳逐层引语透明）；断言语境（rify=true，注解锚 TT）= 官方律
+    // R 化——R(显式-or-fresh) + reifies 行挂池（rt-annotation-02/03 判）
+    if rify {
+      let (r_kind, r_view, tt_view) = self.shell_reifier_flow(sp, pv, bv)
+      self.shell_rows.push((r_kind, r_view, tt_view))
+      (r_kind, r_view)
+    } else {
+      let (c1, c2, c3, _) = self.scan_shell_parts(sp.0 + 2, sp.0 + sp.1 - 2)
+      (@nquads.TermKind::TripleTerm, self.compose_shell_tt(c1, c2, c3, pv, bv))
+    }
   } else if c0 == b'<' {
     let v = self.iri_term(sp, bv)
     (@nquads.TermKind::Iri, self.gate_iri(v))
@@ -1098,6 +1163,120 @@ fn TrigMaterializer::compose_shell_tt(
   self.push_byte(b' ')
   self.push_view(v3)
   self.push_text(" )>>")
+  slice_span(self.arena[:], (start, self.arena.length() - start))
+}
+
+///|
+/// U3b R 节点解析：显式 reifier（Iri/PrefName/BlankNode）展开；缺省 = fresh
+/// 块身份键 Span(-seq, 0)（负 offset 与真 token span 无撞域，annotation-10
+/// 定谳——同锚连续块各领独立 R）
+fn TrigMaterializer::expand_reifier_node(
+  self : TrigMaterializer,
+  reif : Span?,
+  seq : Int32,
+  pv : Int32,
+  bv : Int32,
+) -> (@nquads.TermKind, ArrayView[Byte]) raise ParseError {
+  match reif {
+    Some(r) => {
+      let c0 = self.data[r.0]
+      if c0 == b'<' {
+        let v = self.iri_term(r, bv)
+        (@nquads.TermKind::Iri, self.gate_iri(v))
+      } else if c0 == b'_' {
+        (@nquads.TermKind::BNode, self.gate_bnode(slice_span(self.data, r)))
+      } else {
+        match self.expand_prefname(r, pv, bv) {
+          Some(expanded) =>
+            (
+              @nquads.TermKind::Iri,
+              self.gate_iri(slice_span(self.arena[:], expanded)),
+            )
+          None =>
+            raise ParseError::ValidationErr("reifier has undeclared prefix")
+        }
+      }
+    }
+    None => (@nquads.TermKind::BNode, self.fresh_bnode((-seq, 0)))
+  }
+}
+
+///|
+/// U3b 锚行 TT 组合（断言语境）：锚行三 span 直过槽位展开臂（锚文重扫全废
+/// ——合并锚文 span 退役）。嵌套锚主语壳旗（annotation-04）：TT 首成分 R =
+/// 该块身份键。断言语境裸壳组件 R 化（rify=true，rt-annotation-02/03 判）。
+fn TrigMaterializer::compose_anchor_tt(
+  self : TrigMaterializer,
+  s_span : Span,
+  p_span : Span,
+  o_span : Span,
+  s_shell_seq : Int32?,
+  pv : Int32,
+  bv : Int32,
+) -> ArrayView[Byte] raise ParseError {
+  let (_, v1) = match s_shell_seq {
+    Some(n) => (@nquads.TermKind::BNode, self.fresh_bnode((-n, 0)))
+    None => self.shell_term_view(s_span, pv, bv, 0, rify=true)
+  }
+  let (k2, v2) = self.shell_term_view(p_span, pv, bv, 1)
+  if !(k2 is @nquads.TermKind::Iri) {
+    raise ParseError::ValidationErr(
+      "anchor: predicate component must be an IRI",
+    )
+  }
+  let (_, v3) = self.shell_term_view(o_span, pv, bv, 2, rify=true)
+  let start = self.arena.length()
+  self.push_text("<<( ")
+  self.push_view(v1)
+  self.push_byte(b' ')
+  self.push_view(v2)
+  self.push_byte(b' ')
+  self.push_view(v3)
+  self.push_text(" )>>")
+  slice_span(self.arena[:], (start, self.arena.length() - start))
+}
+
+///|
+/// U3b 图名槽解析（materialize_quad 主行/链载体行两径共用）
+fn TrigMaterializer::resolve_graph_slot(
+  self : TrigMaterializer,
+  quad : QuadSpan,
+) -> (@nquads.TermKind, ArrayView[Byte]) raise ParseError {
+  match quad.g {
+    Some(g) => {
+      let c0 = self.data[g.0]
+      if c0 == b'<' {
+        let v = self.iri_term(g, quad.base_version)
+        (@nquads.TermKind::Iri, self.gate_iri(v))
+      } else if c0 == b'_' {
+        (@nquads.TermKind::BNode, self.gate_bnode(slice_span(self.data, g)))
+      } else if c0 == b'[' || c0 == b'(' {
+        // ★3 fresh 结构节点做图名（`[] { … }` 图标签，kw-graph-07 口径）——
+        // 开括号 offset memo 与主位/宾位同键（同 anon 同节点）
+        (@nquads.TermKind::BNode, self.fresh_bnode(g))
+      } else {
+        match self.expand_prefname(g, quad.prefix_version, quad.base_version) {
+          Some(expanded) =>
+            (
+              @nquads.TermKind::Iri,
+              self.gate_iri(slice_span(self.arena[:], expanded)),
+            )
+          None =>
+            raise ParseError::ValidationErr("Graph name has undeclared prefix")
+        }
+      }
+    }
+    None => (@nquads.TermKind::DefaultGraph, self.data[0:0])
+  }
+}
+
+///|
+/// reifies 谓词视图（词表 IRI 推入 arena，往返共享）
+fn TrigMaterializer::push_reifies_pred(
+  self : TrigMaterializer,
+) -> ArrayView[Byte] {
+  let start = self.arena.length()
+  self.push_text("<http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies>")
   slice_span(self.arena[:], (start, self.arena.length() - start))
 }
 

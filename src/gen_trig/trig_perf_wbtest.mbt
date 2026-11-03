@@ -244,13 +244,19 @@ async test "gen_trig 性能(复杂语料): lexer / engine / parse_all / 物化" 
   )
   println("每秒解析:    \{quads_per_sec.to_string()}")
 
-  // 正确性断言（性能测试兼冒烟）：各阶段口径一致，默认图块/具名图块分界正确
-  assert_eq(quads.length(), total)
-  assert_eq(engine_count, total)
+  // 正确性断言（性能测试兼冒烟）：各阶段口径一致，默认图块/具名图块分界正确。
+  // U3b 块透明不变量：每注解块收口回填槽位 → 句界/收口 `.` 重发主行（250 笔
+  // 重复 quad；物化比对层集合塌缩）
+  assert_eq(quads.length(), total + 250)
+  assert_eq(engine_count, total + 250)
   assert_eq(engine_errors, 0)
   assert_eq(parse_errors.length(), 0)
-  // U3a 官方律：语料 500 壳 quad 各追加 reifies 行（2258 → 2758）
-  assert_eq(emits.length(), total + 500)
+  // U3a/U3b 官方律 emits 增量（每迭代 +6）：
+  //   壳行 reifies 500（U3a 既有）+ 收口重发主行 250×2（块透明不变量——
+  //   重复行，比对层集合塌缩）+ ~ 链行 250（stmt3 reifier 随主行）+
+  //   锚 s 成分壳 R 化 reifies 250（rt-annotation-02 判：锚主语 = 裸壳 →
+  //   R + 自身 reifies 行）
+  assert_eq(emits.length(), total + 1500)
   assert_eq(mat_errors.length(), 0)
   assert_true(quads[0].g is None) // 默认图块 {} 内 g=None
   assert_true(quads[6].g is Some(_)) // 首个 ex:g0 图块 quad 带图标签

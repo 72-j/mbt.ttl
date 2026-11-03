@@ -345,11 +345,15 @@ impl[L : LexerSource] TrigSupervisor for TrigEngine[L] with fn recover(
   self.record_error(span)
   self.ctx.slot_stack.clear()
   self.ctx.pred_kind = Normal
-  // 役9：注解壳账随错回收（带病续跑不出幽灵壳）
-  self.ctx.annot_close = false
+  // 役9/U3b：注解壳账随错回收（带病续跑不出幽灵壳——镜面/栈/链全清）
   self.ctx.subj_shell = false
   self.ctx.annot_s = None
+  self.ctx.annot_p = None
   self.ctx.annot_o = None
+  self.ctx.s_shell_seq = None
+  self.ctx.bound_reifier = None
+  self.ctx.reifiers.clear()
+  self.ctx.annot_stack.clear()
   self.consume_to_recover_point()
 }
 
@@ -431,10 +435,14 @@ impl[L : LexerSource] TrigSupervisor for TrigEngine[L] with fn finish_at_end(
     self.ctx.prefix_name = None
     self.ctx.slot_stack.clear()
     self.ctx.pred_kind = Normal
-    self.ctx.annot_close = false
     self.ctx.subj_shell = false
     self.ctx.annot_s = None
+    self.ctx.annot_p = None
     self.ctx.annot_o = None
+    self.ctx.s_shell_seq = None
+    self.ctx.bound_reifier = None
+    self.ctx.reifiers.clear()
+    self.ctx.annot_stack.clear()
     self.ctx.state = TrigState::TrigExpectSubject
     Some(Err(err))
   } else {
@@ -568,52 +576,23 @@ pub fn trig_parser(
 }
 
 ///|
-/// 役9 注解壳主语结算：体区旗真且主语 = 锚主语（span 身份交换键，役6 is_src
-/// 同教义——嵌套 bnp/集合内层 fresh 主语天然错键）时换壳 span：锚主语起点→
-/// 锚宾语终点的原文连续区间，物化层据此合成 <<原文>> TT 壳。
-/// 错键支强制旗落假：subj_shell 是 ctx 直引 extra，不落旗内层 quad 无条件继承
-/// 壳旗被误包（役8 教训）。
-fn TrigContext::settle_shell(
-  self : TrigContext,
-  pending : TrigPendingQuad,
-) -> TrigPendingQuad {
-  if pending.subj_shell {
-    if pending.subj == self.annot_s {
-      match (self.annot_s, self.annot_o) {
-        (Some(s), Some(o)) =>
-          return { ..pending, subj: Some((s.0, o.0 + o.1 - s.0)), }
-        (_, _) => ()
-      }
-    }
-    return { ..pending, subj_shell: false, }
-  }
-  pending
-}
-
-///|
-/// 役9 收口旗消费：annot_close 置真时清壳账（发射位快照之后、reset 之前调用；
-/// PredObj reset 保锚主语在槽——`|} ; …` 续锚口径）
-fn TrigContext::settle_annotation(self : TrigContext) -> Unit {
-  if self.annot_close {
-    self.annot_close = false
-    self.subj_shell = false
-    self.annot_s = None
-    self.annot_o = None
-  }
-}
-
-// ===== 役11（T11）：效果面接活——引擎兑现 handler 的真实挂点 =====
-// interpret（套装默认体）为唯一解释器；snapshot 负责壳旗结算与收口旗消费，
-// on_* 把意图兑现机械（action）接回；其余成员用套装默认。
-
-///|
-/// snapshot 覆盖：壳旗结算 + 收口旗消费（役9 口径），产出待上抛的 pending quad
+/// snapshot 覆盖：壳键守卫 + 收官 pk 回放（役9/U3b 口径），产出待上抛的 pending quad。
+/// 壳键守卫（役8 教训迁驻）：体区旗真但主语 ≠ 镜面锚主语（bnp/集合内层 fresh 主语
+/// 天然错键）→ 旗落假，免内层行误包壳。U3b 后无合并锚文（三 span 直传）——
+/// 锚三槽以镜面 extras 随 pending 直达物化层，settle_shell 合并机械退役。
 impl[L] TrigEffectHandler for TrigEngine[L] with fn snapshot(
   self : TrigEngine[L],
   ctx : TrigContext,
 ) -> TrigPendingQuad {
-  let pending = ctx.settle_shell(ctx.snapshot())
-  ctx.settle_annotation()
+  // 壳键守卫（役8 教训）：只改 pending 副本，**不动 ctx 旗**——bnp/集合内层
+  // fresh 主语的行落旗后，块级旗必须对后续体行存续（U3b 旧形误写 ctx 曾致
+  // annotation-02 块内 bnp 后体行全裸）
+  let pending = ctx.snapshot()
+  let pending = if pending.subj_shell && pending.subj != ctx.annot_s {
+    { ..pending, subj_shell: false, }
+  } else {
+    pending
+  }
   // T22 逗号续行谓词形态沿用：ctx.snapshot 把 `pred_kind` 归 `Normal`（spec I-8）后，
   // 由引擎侧载体回放——`:s a :o1, :o2 .` 的续 quad 谓词仍按 `a` 物化。载体随写随平：
   // `;` / `.` 后的下个谓词到位即被归属块覆盖，无跨语句残留。
@@ -621,6 +600,16 @@ impl[L] TrigEffectHandler for TrigEngine[L] with fn snapshot(
     ctx.pred_kind = self.pk_carry
   }
   pending
+}
+
+///|
+/// U3b AnnotPop 兑现：注解帧出栈还镜（Sequence 内嵌钩子——末体行快照之后弹）
+impl[L] TrigEffectHandler for TrigEngine[L] with fn on_annot_pop(
+  self : TrigEngine[L],
+  ctx : TrigContext,
+) -> Unit {
+  let _ = self
+  ctx.annot_pop_frame()
 }
 
 ///|

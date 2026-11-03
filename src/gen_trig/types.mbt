@@ -77,7 +77,15 @@ pub(all) struct QuadSpan {
   pk : PredKind // 谓词来源：Normal=原文；RDFFirst/RDFRest=集合链合成（p 无字节）
   prefix_version : Int32 // 前缀账本版本 = 发射时点账本长（物化层回扫上界——中途重声明不污染历史 quad）
   base_version : Int32 // base 链版本 = 发射时点链长（物化层折叠得该 quad 生效 base）
-  subj_shell : Bool // 注解壳主语（役9）：true = s 为锚三元组原文 span，物化层合成 <<原文>> TT 壳。
+  subj_shell : Bool // 注解壳主语（役9）：true = s 为锚行主语 span（三 span 直传后的镜面余量），物化层 R 化。
+  // —— U3b 三 span 直传族（注解壳行 / 链载体行专用；主行恒 None/0/空）——
+  anchor_p : Span? // 锚行谓词（壳行 reifies TT 第二成分源）
+  anchor_o : Span? // 锚行宾语（第三成分源；第一成分 = s 本尊）
+  annot_seq : Int32 // 块身份（壳行 fresh R 键 = Span(-seq, 0)，负 offset 无真 token 撞域）
+  s_shell_seq : Int32? // 嵌套锚主语壳旗 → TT 首成分 R = 该块身份键（annotation-04）
+  bound_reifier : Span? // 块绑定显式 reifier（~ 链末项；None = fresh）
+  reifiers : Array[Span] // 语句级 ~ 链（每项一条 reifies 行，TT = 锚行三 span）
+  chain_only : Bool // 链载体行：主行不发射（块后 ~ 链的句界残行，annotation-11）
 }
 
 ///|
@@ -93,6 +101,21 @@ pub(all) enum SlotType {
   BnodeProp
   List
   Formula
+}
+
+///|
+/// U3b 注解簿记帧（ctx.annot_stack 元素，嵌套注解 annotation-04 定谳——
+/// 内块注解外块刚成形行）：每块一帧；镜面字段（annot_s/p/o/annot_seq/
+/// s_shell_seq/bound_reifier）在发射快照位由帧回放，栈由 annot_open 推、
+/// AnnotPop 弹（bnp/集合帧的 ret_state 同律——收口态由帧定夺）。
+pub(all) struct AnnotFrame {
+  anchor_s : Span // 锚行主语 span（嵌套帧 = 外帧锚主语，配 s_shell_seq 壳旗）
+  anchor_p : Span // 锚行谓词 span
+  anchor_o : Span // 锚行宾语 span
+  s_shell_seq : Int32? // Some(n) = 锚主语是块 n 的壳行（TT 首成分 R 复用其身份键）
+  block_seq : Int32 // 本块身份（fresh R 键 = Span(-seq, 0)，负 offset 无真 token 撞域）
+  bound_reifier : Span? // 块绑定显式 reifier（~ 链末项）；None = fresh
+  ret_state : TrigState // 收口返回态：平地 = ExpectDotOrGraph，嵌套 = 外层 AnnotExpectEnd
 }
 
 ///|

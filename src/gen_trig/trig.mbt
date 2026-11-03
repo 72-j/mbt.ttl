@@ -109,6 +109,7 @@ pub(all) enum TrigEffect {
   ExitGraph
   Sequence(Array[TrigEffect])
   PopBnp
+  AnnotPop
   ListStep(Span)
   OpenSlot(Span, SlotType, TrigState)
 }
@@ -134,7 +135,12 @@ pub(all) struct TrigContext {
   mut annot_s : Span?
   mut annot_o : Span?
   mut subj_shell : Bool
-  mut annot_close : Bool
+  mut annot_p : Span?
+  mut annot_seq : Int32
+  mut s_shell_seq : Int32?
+  mut bound_reifier : Span?
+  mut reifiers : Array[Span]
+  mut annot_stack : Array[AnnotFrame]
 }
 
 ///|
@@ -159,7 +165,12 @@ pub fn TrigContext::new() -> TrigContext {
     annot_s: None,
     annot_o: None,
     subj_shell: false,
-    annot_close: false,
+    annot_p: None,
+    annot_seq: 0,
+    s_shell_seq: None,
+    bound_reifier: None,
+    reifiers: [],
+    annot_stack: [],
   }
 }
 
@@ -199,6 +210,12 @@ pub(all) struct TrigPendingQuad {
   prefix_version : Int32
   base_version : Int32
   subj_shell : Bool
+  anchor_p : Span?
+  anchor_o : Span?
+  annot_seq : Int32
+  s_shell_seq : Int32?
+  bound_reifier : Span?
+  reifiers : Array[Span]
 } derive(Eq)
 
 ///|
@@ -218,6 +235,8 @@ pub fn TrigContext::has_pending(self : TrigContext) -> Bool {
 pub fn TrigContext::snapshot(self : TrigContext) -> TrigPendingQuad {
   let pk = self.pred_kind
   self.pred_kind = Normal
+  let reifiers = self.reifiers
+  self.reifiers = []
   {
     subj: self.subject,
     pred: self.predicate,
@@ -227,6 +246,12 @@ pub fn TrigContext::snapshot(self : TrigContext) -> TrigPendingQuad {
     prefix_version: self.prefixes.length(),
     base_version: self.bases.length(),
     subj_shell: self.subj_shell,
+    anchor_p: self.annot_p,
+    anchor_o: self.annot_o,
+    annot_seq: self.annot_seq,
+    s_shell_seq: self.s_shell_seq,
+    bound_reifier: self.bound_reifier,
+    reifiers,
   }
 }
 
@@ -262,7 +287,11 @@ pub(open) trait TrigActions {
     TrigActionError,
   ]
   fn set_object(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
-  fn annot_open(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
+  fn annot_open(Self, TrigContext, TrigState) -> Result[
+    TrigEffect,
+    TrigActionError,
+  ]
+  fn set_reifier(Self, TrigContext, Span) -> Result[TrigEffect, TrigActionError]
   fn annot_body_verb(Self, TrigContext, Span) -> Result[
     TrigEffect,
     TrigActionError,
@@ -429,7 +458,7 @@ pub fn[A : TrigActions] step(
     }
     (TrigExpectDotOrGraph, TrigAnnotStart) => {
       ctx.state = TrigAnnotExpectVerb
-      actions.annot_open(ctx)
+      actions.annot_open(ctx, TrigExpectDotOrGraph)
     }
     (TrigExpectVerbOrEnd, TrigIri(payload)) => {
       ctx.state = TrigExpectObject
@@ -479,15 +508,19 @@ pub fn[A : TrigActions] step(
       ctx.state = TrigExpectSubject
       Ok(TrigEffect::EmitQuad(ResetScope::SPO))
     }
-    (TrigExpectTildeEnd, TrigIri(_)) => {
+    (TrigExpectTildeEnd, TrigIri(payload)) => {
       ctx.state = TrigExpectTildeEnd
-      Ok(TrigEffect::Continue)
+      actions.set_reifier(ctx, payload)
     }
-    (TrigExpectTildeEnd, TrigPrefName(_)) => {
+    (TrigExpectTildeEnd, TrigPrefName(payload)) => {
       ctx.state = TrigExpectTildeEnd
-      Ok(TrigEffect::Continue)
+      actions.set_reifier(ctx, payload)
     }
-    (TrigExpectTildeEnd, TrigBlankNode(_)) => {
+    (TrigExpectTildeEnd, TrigBlankNode(payload)) => {
+      ctx.state = TrigExpectTildeEnd
+      actions.set_reifier(ctx, payload)
+    }
+    (TrigExpectTildeEnd, TrigTilde) => {
       ctx.state = TrigExpectTildeEnd
       Ok(TrigEffect::Continue)
     }
@@ -505,7 +538,7 @@ pub fn[A : TrigActions] step(
     }
     (TrigExpectTildeEnd, TrigAnnotStart) => {
       ctx.state = TrigAnnotExpectVerb
-      actions.annot_open(ctx)
+      actions.annot_open(ctx, TrigExpectDotOrGraph)
     }
     (TrigAnnotExpectVerb, TrigIri(payload)) => {
       ctx.state = TrigAnnotExpectObject
@@ -540,7 +573,7 @@ pub fn[A : TrigActions] step(
       Ok(TrigEffect::Continue)
     }
     (TrigAnnotExpectVerbTail, TrigAnnotEnd) => {
-      ctx.state = TrigExpectVerbOrEnd
+      ctx.state = TrigExpectDotOrGraph
       actions.annot_close_silent(ctx)
     }
     (TrigAnnotExpectObject, TrigIri(payload)) => {
@@ -584,8 +617,12 @@ pub fn[A : TrigActions] step(
       Ok(TrigEffect::EmitQuad(ResetScope::PredObj))
     }
     (TrigAnnotExpectEnd, TrigAnnotEnd) => {
-      ctx.state = TrigExpectVerbOrEnd
+      ctx.state = TrigExpectDotOrGraph
       actions.annot_end(ctx)
+    }
+    (TrigAnnotExpectEnd, TrigAnnotStart) => {
+      ctx.state = TrigAnnotExpectVerb
+      actions.annot_open(ctx, TrigAnnotExpectEnd)
     }
     (TrigExpectDirectiveKind, TrigPrefixKw) => {
       ctx.state = TrigExpectPrefixName
@@ -760,7 +797,7 @@ pub fn[A : TrigActions] step(
     }
     (TrigGraphExpectDotOrGraph, TrigAnnotStart) => {
       ctx.state = TrigGraphAnnotExpectVerb
-      actions.annot_open(ctx)
+      actions.annot_open(ctx, TrigGraphExpectDotOrGraph)
     }
     (TrigGraphExpectDotOrGraph, TrigRbrace) => {
       ctx.state = TrigExpectSubject
@@ -815,15 +852,19 @@ pub fn[A : TrigActions] step(
       ctx.state = TrigExpectSubject
       Ok(TrigEffect::Reset(ResetScope::All))
     }
-    (TrigGraphExpectTildeEnd, TrigIri(_)) => {
+    (TrigGraphExpectTildeEnd, TrigIri(payload)) => {
       ctx.state = TrigGraphExpectTildeEnd
-      Ok(TrigEffect::Continue)
+      actions.set_reifier(ctx, payload)
     }
-    (TrigGraphExpectTildeEnd, TrigPrefName(_)) => {
+    (TrigGraphExpectTildeEnd, TrigPrefName(payload)) => {
       ctx.state = TrigGraphExpectTildeEnd
-      Ok(TrigEffect::Continue)
+      actions.set_reifier(ctx, payload)
     }
-    (TrigGraphExpectTildeEnd, TrigBlankNode(_)) => {
+    (TrigGraphExpectTildeEnd, TrigBlankNode(payload)) => {
+      ctx.state = TrigGraphExpectTildeEnd
+      actions.set_reifier(ctx, payload)
+    }
+    (TrigGraphExpectTildeEnd, TrigTilde) => {
       ctx.state = TrigGraphExpectTildeEnd
       Ok(TrigEffect::Continue)
     }
@@ -841,7 +882,7 @@ pub fn[A : TrigActions] step(
     }
     (TrigGraphExpectTildeEnd, TrigAnnotStart) => {
       ctx.state = TrigGraphAnnotExpectVerb
-      actions.annot_open(ctx)
+      actions.annot_open(ctx, TrigGraphExpectDotOrGraph)
     }
     (TrigGraphExpectTildeEnd, TrigRbrace) => {
       ctx.state = TrigExpectSubject
@@ -885,7 +926,7 @@ pub fn[A : TrigActions] step(
       Ok(TrigEffect::Continue)
     }
     (TrigGraphAnnotExpectVerbTail, TrigAnnotEnd) => {
-      ctx.state = TrigGraphExpectVerbOrEnd
+      ctx.state = TrigGraphExpectDotOrGraph
       actions.annot_close_silent(ctx)
     }
     (TrigGraphAnnotExpectObject, TrigIri(payload)) => {
@@ -929,8 +970,12 @@ pub fn[A : TrigActions] step(
       Ok(TrigEffect::EmitQuad(ResetScope::PredObj))
     }
     (TrigGraphAnnotExpectEnd, TrigAnnotEnd) => {
-      ctx.state = TrigGraphExpectVerbOrEnd
+      ctx.state = TrigGraphExpectDotOrGraph
       actions.annot_end(ctx)
+    }
+    (TrigGraphAnnotExpectEnd, TrigAnnotStart) => {
+      ctx.state = TrigGraphAnnotExpectVerb
+      actions.annot_open(ctx, TrigGraphAnnotExpectEnd)
     }
     (TrigBnpExpectPredicate, TrigRbracket) => {
       ctx.state = TrigBnpExpectPredicate
@@ -1211,6 +1256,7 @@ pub trait TrigEffectHandler {
   fn handle_exit_graph(Self) -> Result[Unit, TrigEffectError] = _
   fn handle_sequence(Self, Array[TrigEffect]) -> Result[Unit, TrigEffectError] = _
   fn handle_pop_bnp(Self) -> Result[Unit, TrigEffectError] = _
+  fn handle_annot_pop(Self) -> Result[Unit, TrigEffectError] = _
   fn handle_list_step(Self, Span) -> Result[Unit, TrigEffectError] = _
   fn handle_open_slot(Self, Span, SlotType, TrigState) -> Result[
     Unit,
@@ -1221,6 +1267,7 @@ pub trait TrigEffectHandler {
   fn apply_scope(Self, ctx : TrigContext, scope : ResetScope) -> Unit = _
   fn on_exit_graph(Self) -> Unit = _
   fn on_pop_bnp(Self, ctx : TrigContext) -> Unit = _
+  fn on_annot_pop(Self, ctx : TrigContext) -> Unit = _
   fn on_list_step(Self, ctx : TrigContext, elem : Span) -> Unit = _
   fn on_open_slot(
     Self,
@@ -1283,6 +1330,12 @@ impl TrigEffectHandler with fn handle_pop_bnp(_self) {
 }
 
 ///|
+/// handle_annot_pop 模板默认：无操作
+impl TrigEffectHandler with fn handle_annot_pop(_self) {
+  Ok(())
+}
+
+///|
 /// handle_list_step 模板默认：无操作
 impl TrigEffectHandler with fn handle_list_step(_self, _elem) {
   Ok(())
@@ -1311,6 +1364,12 @@ impl TrigEffectHandler with fn on_exit_graph(_self) {
 ///|
 /// on_pop_bnp 模板默认：Sequence 内嵌钩子（无帧机械时无操作）
 impl TrigEffectHandler with fn on_pop_bnp(_self, _ctx) {
+  ()
+}
+
+///|
+/// on_annot_pop 模板默认：Sequence 内嵌钩子（无帧机械时无操作）
+impl TrigEffectHandler with fn on_annot_pop(_self, _ctx) {
   ()
 }
 
@@ -1376,6 +1435,11 @@ impl TrigEffectHandler with fn interpret(self, ctx, effect) {
       self.on_pop_bnp(ctx)
       KeepGoing
     }
+    TrigEffect::AnnotPop => {
+      let _ = self.handle_annot_pop()
+      self.on_annot_pop(ctx)
+      KeepGoing
+    }
     TrigEffect::ListStep(elem) => {
       let _ = self.handle_list_step(elem)
       self.on_list_step(ctx, elem)
@@ -1406,6 +1470,7 @@ impl TrigEffectHandler with fn interpret(self, ctx, effect) {
           TrigEffect::Reset(scope) => self.apply_scope(ctx, scope)
           TrigEffect::ExitGraph => self.on_exit_graph()
           TrigEffect::PopBnp => self.on_pop_bnp(ctx)
+          TrigEffect::AnnotPop => self.on_annot_pop(ctx)
           TrigEffect::ListStep(elem) => self.on_list_step(ctx, elem)
           TrigEffect::OpenSlot(span, typ, ret_state) =>
             self.on_open_slot(ctx, span, typ, ret_state)
@@ -1435,6 +1500,7 @@ impl TrigEffectHandler with fn dispatch(self, effect) {
     ExitGraph => self.handle_exit_graph()
     Sequence(effects) => self.handle_sequence(effects)
     PopBnp => self.handle_pop_bnp()
+    AnnotPop => self.handle_annot_pop()
     ListStep(elem) => self.handle_list_step(elem)
     OpenSlot(span, typ, ret_state) =>
       self.handle_open_slot(span, typ, ret_state)

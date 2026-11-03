@@ -392,18 +392,174 @@ impl TrigActions for TrigActionsImpl with fn list_step(
 }
 
 ///|
+/// U3b 注解簿记机械（帧栈 + 镜面）：镜面字段（annot_s/p/o/annot_seq/
+/// s_shell_seq/bound_reifier）是发射快照的唯一读取面——动作在返回发射效果前
+/// 先把"该次发射所属帧"回放进镜面；栈只作簿记（嵌套还层/收口返回态）。
+/// 栈空时镜面保留平地锚账（块后 ~ 链复用锚，annotation-11 判）。
+fn TrigContext::annot_mirror(self : TrigContext, fr : AnnotFrame) -> Unit {
+  self.annot_s = Some(fr.anchor_s)
+  self.annot_p = Some(fr.anchor_p)
+  self.annot_o = Some(fr.anchor_o)
+  self.annot_seq = fr.block_seq
+  self.s_shell_seq = fr.s_shell_seq
+  self.bound_reifier = fr.bound_reifier
+}
+
+///|
+/// U3b 链末项绑定：~ 链（ctx.reifiers）末项 = 当前块显式 reifier；空链 = fresh
+fn TrigContext::annot_chain_bound(self : TrigContext) -> Span? {
+  if self.reifiers.length() > 0 {
+    Some(self.reifiers[self.reifiers.length() - 1])
+  } else {
+    None
+  }
+}
+
+///|
+/// U3b 出栈还镜 + 收口兑现：弹帧 → ① 出栈帧 ret_state 落地（bnp/集合帧同律
+/// ——嵌套闭还外层 AnnotExpectEnd，平地闭还 ExpectDotOrGraph，表靶由动作覆写）；
+/// ② 出栈帧锚行谓宾槽回填（**块透明不变量**：收口后槽位 = 开壳前快照——句界
+/// 续链/`,`/`;` 与收口 `.` 的重复主行靠集合语义塌缩，annotation-03 块后 `,` 续行
+/// 免 stale 锚）；③ 镜面回放外层帧（嵌套还层，壳旗续真）或平地收口落旗。
+/// annot_close_silent 直调；annot_end 经 AnnotPop 效果后置兑现（末体行快照后弹）。
+fn TrigContext::annot_pop_frame(self : TrigContext) -> Unit {
+  let popped : AnnotFrame? = if self.annot_stack.length() > 0 {
+    let fr = self.annot_stack[self.annot_stack.length() - 1]
+    let _ = self.annot_stack.pop()
+    Some(fr)
+  } else {
+    None
+  }
+  match popped {
+    Some(fr) => {
+      self.state = fr.ret_state
+      self.predicate = Some(fr.anchor_p)
+      self.object = Some(fr.anchor_o)
+    }
+    None => ()
+  }
+  if self.annot_stack.length() > 0 {
+    let fr = self.annot_stack[self.annot_stack.length() - 1]
+    self.annot_mirror(fr)
+    self.subj_shell = true
+  } else {
+    self.subj_shell = false
+  }
+}
+
+///|
 impl TrigActions for TrigActionsImpl with fn annot_open(
   _self : TrigActionsImpl,
   ctx : TrigContext,
+  ret_state : TrigState,
 ) -> Result[TrigEffect, TrigActionError] {
-  // 役9 注解开壳：锚 s/o 入壳账（槽位不动——主 quad 快照仍取锚槽位）。
-  // 返回 EmitQuad(PredObj) = 原固定效果行的 action 返回式（役8 同款架构约束：
-  // 生成的 action 一律返回 Effect，没有「action + 固定效果」行型）
-  ctx.annot_s = ctx.subject
-  ctx.annot_o = ctx.object
-  ctx.subj_shell = false
-  ctx.annot_close = false
-  Ok(TrigEffect::EmitQuad(ResetScope::PredObj))
+  // 块身份序号（fresh R 键 Span(-seq, 0)）+ ~ 链末项绑定（发射即随快照清账）
+  ctx.annot_seq = ctx.annot_seq + 1
+  let bound = ctx.annot_chain_bound()
+  if ctx.annot_stack.length() > 0 {
+    // U3b 嵌套（annotation-04 定谳）：锚 = 外块刚成形体行——主语承外帧锚
+    //（壳旗 = 外块身份），谓宾取当前槽（外块体动词/宾语已落槽）。
+    let outer = ctx.annot_stack[ctx.annot_stack.length() - 1]
+    let anchor_p = match ctx.predicate {
+      Some(span) => span
+      None =>
+        return Err(
+          TrigActionError::BusinessFailed(
+            "annotation: nested block without anchor predicate",
+          ),
+        )
+    }
+    let anchor_o = match ctx.object {
+      Some(span) => span
+      None =>
+        return Err(
+          TrigActionError::BusinessFailed(
+            "annotation: nested block without anchor object",
+          ),
+        )
+    }
+    let inner : AnnotFrame = {
+      anchor_s: outer.anchor_s,
+      anchor_p,
+      anchor_o,
+      s_shell_seq: Some(outer.block_seq),
+      block_seq: ctx.annot_seq,
+      bound_reifier: bound,
+      ret_state,
+    }
+    // 发射外块体行：镜面先回放外帧（壳旗真），内帧只推栈不动镜面——
+    // 快照读镜面，序不倒挂
+    ctx.annot_mirror(outer)
+    ctx.subj_shell = true
+    ctx.annot_stack.push(inner)
+    Ok(TrigEffect::EmitQuad(ResetScope::PredObj))
+  } else {
+    // 平地：槽全 = 取槽（新行成形）；槽残 = 镜面已有账（连续块 annotation-10 /
+    // 块后块复用同行锚）
+    let complete = ctx.subject is Some(_) &&
+      ctx.predicate is Some(_) &&
+      ctx.object is Some(_)
+    let (anchor_s, anchor_p, anchor_o) = if complete {
+      let s = match ctx.subject {
+        Some(span) => span
+        None =>
+          return Err(TrigActionError::BusinessFailed("annotation: no anchor"))
+      }
+      let p = match ctx.predicate {
+        Some(span) => span
+        None =>
+          return Err(TrigActionError::BusinessFailed("annotation: no anchor"))
+      }
+      let o = match ctx.object {
+        Some(span) => span
+        None =>
+          return Err(TrigActionError::BusinessFailed("annotation: no anchor"))
+      }
+      (s, p, o)
+    } else {
+      match (ctx.annot_s, ctx.annot_p, ctx.annot_o) {
+        (Some(s), Some(p), Some(o)) => (s, p, o)
+        (_, _, _) =>
+          return Err(
+            TrigActionError::BusinessFailed("annotation: no anchor row"),
+          )
+      }
+    }
+    let fr : AnnotFrame = {
+      anchor_s,
+      anchor_p,
+      anchor_o,
+      s_shell_seq: None,
+      block_seq: ctx.annot_seq,
+      bound_reifier: bound,
+      ret_state,
+    }
+    ctx.annot_mirror(fr)
+    // 主行非壳行（体动词落槽时置真——役9 架构）
+    ctx.subj_shell = false
+    ctx.annot_stack.push(fr)
+    Ok(TrigEffect::EmitQuad(ResetScope::PredObj))
+  }
+}
+
+///|
+/// U3b 语句级 ~ reifier 捕获：入链 + 链锚捕获（槽全时当前行三槽入镜——
+/// 平地链无块，载体行/主行的链行 TT 源；槽残 = 镜面已有账，保留）
+impl TrigActions for TrigActionsImpl with fn set_reifier(
+  _self : TrigActionsImpl,
+  ctx : TrigContext,
+  payload : Span,
+) -> Result[TrigEffect, TrigActionError] {
+  ctx.reifiers.push(payload)
+  let complete = ctx.subject is Some(_) &&
+    ctx.predicate is Some(_) &&
+    ctx.object is Some(_)
+  if complete {
+    ctx.annot_s = ctx.subject
+    ctx.annot_p = ctx.predicate
+    ctx.annot_o = ctx.object
+  }
+  Ok(TrigEffect::Continue)
 }
 
 ///|
@@ -412,7 +568,12 @@ impl TrigActions for TrigActionsImpl with fn annot_body_verb(
   ctx : TrigContext,
   payload : Span,
 ) -> Result[TrigEffect, TrigActionError] {
-  // 役9 体动词：壳旗置真（体 quad 主语 = TT 壳）+ 谓词槽位（set_predicate 口径）
+  // 体动词：镜面刷新 = 栈顶帧（嵌套开壳后镜面仍持外帧值——内块体行开始即切内帧）
+  // + 壳旗置真（体行主语换壳，役9 口径）+ 谓词槽位
+  if ctx.annot_stack.length() > 0 {
+    let fr = ctx.annot_stack[ctx.annot_stack.length() - 1]
+    ctx.annot_mirror(fr)
+  }
   ctx.subj_shell = true
   ctx.predicate = Some(payload)
   Ok(TrigEffect::Continue)
@@ -423,10 +584,18 @@ impl TrigActions for TrigActionsImpl with fn annot_end(
   _self : TrigActionsImpl,
   ctx : TrigContext,
 ) -> Result[TrigEffect, TrigActionError] {
-  // 役9 收口：置还原旗——末体 quad 在发射位（旗真）换 TT 壳主语，
-  // settle_annotation 在快照之后消费清账
-  ctx.annot_close = true
-  Ok(TrigEffect::EmitQuad(ResetScope::PredObj))
+  // 收口：镜面回放收口帧（末体行发射属收口帧）→ 末体行发射 + AnnotPop
+  // 后置弹栈还镜（Sequence 序：快照先、弹栈后——序不倒挂）
+  if ctx.annot_stack.length() > 0 {
+    let fr = ctx.annot_stack[ctx.annot_stack.length() - 1]
+    ctx.annot_mirror(fr)
+  }
+  Ok(
+    TrigEffect::Sequence([
+      TrigEffect::EmitQuad(ResetScope::PredObj),
+      TrigEffect::AnnotPop,
+    ]),
+  )
 }
 
 ///|
@@ -434,10 +603,7 @@ impl TrigActions for TrigActionsImpl with fn annot_close_silent(
   _self : TrigActionsImpl,
   ctx : TrigContext,
 ) -> Result[TrigEffect, TrigActionError] {
-  // 役9 静默收口：末体 quad 已随分号行发射，直清壳账零发射
-  ctx.annot_close = false
-  ctx.subj_shell = false
-  ctx.annot_s = None
-  ctx.annot_o = None
+  // 静默收口（收口帧末体行已随嵌套开壳发射）：直弹栈还镜零发射
+  ctx.annot_pop_frame()
   Ok(TrigEffect::Continue)
 }

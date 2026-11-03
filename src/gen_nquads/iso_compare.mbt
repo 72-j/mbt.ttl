@@ -23,11 +23,13 @@ pub fn rows_isomorphic(
   left : Array[(String, String, String, String)],
   right : Array[(String, String, String, String)],
 ) -> Bool raise {
-  if left.length() != right.length() {
-    return false
-  }
+  // 规范化 + 集合去重先行（U3b：长度快拒必须在去重后——物化层的块透明
+  // 设计有意产出重复行，按图语义折叠后再对拍）
   let nl = norm_rows(left)
   let nr = norm_rows(right)
+  if nl.length() != nr.length() {
+    return false
+  }
   // 地面行（全行无 bnode）：多重集直比
   let ground_l = nl.filter(row_is_ground)
   let ground_r = nr.filter(row_is_ground)
@@ -55,15 +57,29 @@ pub fn rows_isomorphic(
 }
 
 ///|
-/// 行规范化：四槽各过 norm_term
+/// 行规范化：四槽各过 norm_term + 集合语义去重（U3b：RDF 图 = 三元组集合
+/// 非多重集——块透明设计的重复主行/reifies 行按图语义折叠后对拍）
 fn norm_rows(
   rows : Array[(String, String, String, String)],
 ) -> Array[(String, String, String, String)] raise {
   let out : Array[(String, String, String, String)] = []
   for row in rows {
-    out.push(
-      (norm_term(row.0), norm_term(row.1), norm_term(row.2), norm_term(row.3)),
+    let normed = (
+      norm_term(row.0),
+      norm_term(row.1),
+      norm_term(row.2),
+      norm_term(row.3),
     )
+    let mut seen = false
+    for prior in out {
+      if prior == normed {
+        seen = true
+        break
+      }
+    }
+    if !seen {
+      out.push(normed)
+    }
   }
   out
 }

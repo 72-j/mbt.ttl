@@ -41,10 +41,13 @@ impl TrigEffectHandler for TrigProbeHandler with fn snapshot(
   _self : TrigProbeHandler,
   ctx : TrigContext,
 ) -> TrigPendingQuad {
-  // 与引擎覆盖一致：壳旗结算 + 收口旗消费
-  let pending = ctx.settle_shell(ctx.snapshot())
-  ctx.settle_annotation()
-  pending
+  // 与引擎覆盖一致：壳键守卫只改 pending 副本（ctx 旗存续，U3b 口径）
+  let pending = ctx.snapshot()
+  if pending.subj_shell && pending.subj != ctx.annot_s {
+    { ..pending, subj_shell: false, }
+  } else {
+    pending
+  }
 }
 
 ///|

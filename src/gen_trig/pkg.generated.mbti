@@ -14,6 +14,16 @@ pub fn trig_parser(Array[Byte], lenient? : Bool, dialect? : TrigDialect) -> (Arr
 // Errors
 
 // Types and methods
+pub(all) struct AnnotFrame {
+  anchor_s : (Int32, Int32)
+  anchor_p : (Int32, Int32)
+  anchor_o : (Int32, Int32)
+  s_shell_seq : Int32?
+  block_seq : Int32
+  bound_reifier : (Int32, Int32)?
+  ret_state : TrigState
+}
+
 pub(all) enum GraphPolicy {
   Strict
   Drop
@@ -40,6 +50,13 @@ pub(all) struct QuadSpan {
   prefix_version : Int32
   base_version : Int32
   subj_shell : Bool
+  anchor_p : (Int32, Int32)?
+  anchor_o : (Int32, Int32)?
+  annot_seq : Int32
+  s_shell_seq : Int32?
+  bound_reifier : (Int32, Int32)?
+  reifiers : Array[(Int32, Int32)]
+  chain_only : Bool
 }
 
 pub(all) enum ResetScope {
@@ -100,7 +117,12 @@ pub(all) struct TrigContext {
   mut annot_s : (Int32, Int32)?
   mut annot_o : (Int32, Int32)?
   mut subj_shell : Bool
-  mut annot_close : Bool
+  mut annot_p : (Int32, Int32)?
+  mut annot_seq : Int32
+  mut s_shell_seq : Int32?
+  mut bound_reifier : (Int32, Int32)?
+  mut reifiers : Array[(Int32, Int32)]
+  mut annot_stack : Array[AnnotFrame]
 }
 pub fn TrigContext::has_pending(Self) -> Bool
 pub fn TrigContext::new() -> Self
@@ -124,6 +146,7 @@ pub(all) enum TrigEffect {
   ExitGraph
   Sequence(Array[TrigEffect])
   PopBnp
+  AnnotPop
   ListStep((Int32, Int32))
   OpenSlot((Int32, Int32), SlotType, TrigState)
 }
@@ -224,6 +247,7 @@ pub struct TrigMaterializer {
   mut deep_validate : Bool
   fresh_ids : Map[(Int32, Int32), (Int32, Int32)]
   arena : Array[Byte]
+  shell_rows : Array[(@gen_nquads.TermKind, ArrayView[Byte], ArrayView[Byte])]
 }
 pub fn TrigMaterializer::materialize_all(Self, Array[QuadSpan], deep_validate? : Bool, mode? : @gen_nquads.ValidateMode) -> (Array[@gen_nquads.QuadEmit], Array[@gen_nquads.ParseError])
 pub fn TrigMaterializer::materialize_quad(Self, QuadSpan) -> Array[@gen_nquads.QuadEmit] raise @gen_nquads.ParseError
@@ -238,6 +262,12 @@ pub(all) struct TrigPendingQuad {
   prefix_version : Int32
   base_version : Int32
   subj_shell : Bool
+  anchor_p : (Int32, Int32)?
+  anchor_o : (Int32, Int32)?
+  annot_seq : Int32
+  s_shell_seq : Int32?
+  bound_reifier : (Int32, Int32)?
+  reifiers : Array[(Int32, Int32)]
 } derive(Eq)
 pub fn TrigPendingQuad::equal(Self, Self) -> Bool
 pub fn TrigPendingQuad::not_equal(Self, Self) -> Bool
@@ -355,7 +385,8 @@ pub(open) trait TrigActions {
   fn enter_graph(Self, TrigContext, (Int32, Int32)?) -> Result[TrigEffect, TrigActionError]
   fn set_predicate(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
   fn set_object(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
-  fn annot_open(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
+  fn annot_open(Self, TrigContext, TrigState) -> Result[TrigEffect, TrigActionError]
+  fn set_reifier(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
   fn annot_body_verb(Self, TrigContext, (Int32, Int32)) -> Result[TrigEffect, TrigActionError]
   fn annot_close_silent(Self, TrigContext) -> Result[TrigEffect, TrigActionError]
   fn open_bnode_prop(Self, TrigContext, (Int32, Int32), Bool, TrigState) -> Result[TrigEffect, TrigActionError]
@@ -386,12 +417,14 @@ pub trait TrigEffectHandler {
   fn handle_exit_graph(Self) -> Result[Unit, TrigEffectError]
   fn handle_sequence(Self, Array[TrigEffect]) -> Result[Unit, TrigEffectError]
   fn handle_pop_bnp(Self) -> Result[Unit, TrigEffectError]
+  fn handle_annot_pop(Self) -> Result[Unit, TrigEffectError]
   fn handle_list_step(Self, (Int32, Int32)) -> Result[Unit, TrigEffectError]
   fn handle_open_slot(Self, (Int32, Int32), SlotType, TrigState) -> Result[Unit, TrigEffectError]
   fn snapshot(Self, TrigContext) -> TrigPendingQuad
   fn apply_scope(Self, TrigContext, ResetScope) -> Unit
   fn on_exit_graph(Self) -> Unit
   fn on_pop_bnp(Self, TrigContext) -> Unit
+  fn on_annot_pop(Self, TrigContext) -> Unit
   fn on_list_step(Self, TrigContext, (Int32, Int32)) -> Unit
   fn on_open_slot(Self, TrigContext, (Int32, Int32), SlotType, TrigState) -> Unit
   fn interpret(Self, TrigContext, TrigEffect) -> TrigEffectOutcome

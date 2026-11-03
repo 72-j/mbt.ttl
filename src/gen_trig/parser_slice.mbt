@@ -283,13 +283,11 @@ fn[L] TrigSliceParser::assemble(
     (Some(s), Some(p), Some(o)) => {
       if !self.lenient {
         let prefixes = self.engine.ctx.prefixes
-        // 役9：壳主语跳验证（s 是锚 s→o 原文区间非词项；成分已在主 quad
-        // 组装时验过）
-        if !pending.subj_shell {
-          match validate_term(self.data, prefixes, s, false) {
-            Some(e) => raise e
-            None => ()
-          }
+        // U3b：壳行主语 = 锚行主语 span（真词项，三 span 直传后无合并锚文）——
+        // 验证口径与普通主语同权
+        match validate_term(self.data, prefixes, s, false) {
+          Some(e) => raise e
+          None => ()
         }
         match validate_term(self.data, prefixes, p, true) {
           Some(e) => raise e
@@ -317,10 +315,20 @@ fn[L] TrigSliceParser::assemble(
         prefix_version: pending.prefix_version,
         base_version: pending.base_version,
         subj_shell: pending.subj_shell,
+        anchor_p: pending.anchor_p,
+        anchor_o: pending.anchor_o,
+        annot_seq: pending.annot_seq,
+        s_shell_seq: pending.s_shell_seq,
+        bound_reifier: pending.bound_reifier,
+        reifiers: pending.reifiers,
+        chain_only: false,
       }
     }
     // RDF 1.2 引用三元组壳独立成句：`<< s p o >> .`——壳落主语槽后无谓词/宾语，
-    // 语句即断言壳内三元组（组装层拆壳，三项交 validate_term 递归验证）
+    // 语句即断言壳内三元组（组装层拆壳，三项交 validate_term 递归验证）。
+    // U3b 链载体行：subj-only + ~ 链非空（块后 ~ 链的句界残行）——主行不发射，
+    // 只发链 reifies 行（annotation-11 判）；p/o 以 (0,0) 占位（合成谓词族同款，
+    // 物化层 chain_only 臂专用，永不读 p/o 字节）
     (Some(s), None, None) =>
       match self.tt_shell_terms(s) {
         Some((ts, tp, to)) =>
@@ -334,6 +342,13 @@ fn[L] TrigSliceParser::assemble(
               prefix_version: pending.prefix_version,
               base_version: pending.base_version,
               subj_shell: false,
+              anchor_p: None,
+              anchor_o: None,
+              annot_seq: 0,
+              s_shell_seq: None,
+              bound_reifier: None,
+              reifiers: pending.reifiers,
+              chain_only: false,
             }
           } else {
             let prefixes = self.engine.ctx.prefixes
@@ -366,9 +381,37 @@ fn[L] TrigSliceParser::assemble(
               prefix_version: pending.prefix_version,
               base_version: pending.base_version,
               subj_shell: false,
+              anchor_p: None,
+              anchor_o: None,
+              annot_seq: 0,
+              s_shell_seq: None,
+              bound_reifier: None,
+              reifiers: pending.reifiers,
+              chain_only: false,
             }
           }
-        None => raise ParseError::SyntaxErr("Incomplete quad at emission", s)
+        None =>
+          if pending.reifiers.length() > 0 {
+            {
+              s,
+              p: (0, 0),
+              o: (0, 0),
+              g: pending.graph,
+              pk: pending.pk,
+              prefix_version: pending.prefix_version,
+              base_version: pending.base_version,
+              subj_shell: false,
+              anchor_p: pending.anchor_p,
+              anchor_o: pending.anchor_o,
+              annot_seq: pending.annot_seq,
+              s_shell_seq: pending.s_shell_seq,
+              bound_reifier: pending.bound_reifier,
+              reifiers: pending.reifiers,
+              chain_only: true,
+            }
+          } else {
+            raise ParseError::SyntaxErr("Incomplete quad at emission", s)
+          }
       }
     _ =>
       raise ParseError::SyntaxErr(
@@ -415,6 +458,26 @@ pub fn[L : LexerSource] TrigSliceParser::parse_next(
     }
     Some(Err(e)) => Some(Err(e))
     Some(Ok(pending)) => {
+      // U3b 句界残行分流：subj-only + ~ 链空 + 非 tt 壳 + 非 `(` 领头 = 静默跳过
+      //（`[] .` 空属性列表 / 块后 `.` 载体 / 嵌套闭 `;` 噪声——均无行可断言）。
+      // 链载体行（链非空）与 tt 壳进组装成形；`(` 领头进组装报错
+      //（bad-list-01 口径，集合独立成句非法）。
+      if pending.pred is None &&
+        pending.obj is None &&
+        pending.reifiers.length() == 0 {
+        let skip = match pending.subj {
+          Some(s) => {
+            let v = slice_span(self.data, s)
+            let tt_lead = v.length() > 1 && v[0] == b'<' && v[1] == b'<'
+            let paren_lead = v.length() > 0 && v[0] == b'('
+            !(tt_lead || paren_lead)
+          }
+          None => false
+        }
+        if skip {
+          return self.parse_next()
+        }
+      }
       // ★3 空 fresh 结构独立成句（`[] .`）：主槽 fresh + 谓/宾全空 = 空属性列表
       // 断言零三元组，静默跳过（不进组装——组装层会当缺槽误报 Incomplete quad）。
       // 只认 `[`：`(...)` 集合独立成句是非法文法（bad-list-01 口径），必须进组装报错
