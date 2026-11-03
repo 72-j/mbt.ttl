@@ -141,6 +141,7 @@ priv enum N3Effect {
   Sequence(Array[N3Effect])
   PopBnp
   OpenSlot(Span, SlotType, N3State)
+  AnnotPop
 }
 
 ///|
@@ -173,7 +174,12 @@ priv struct N3Context {
   mut annot_s : Span?
   mut annot_o : Span?
   mut subj_shell : Bool
-  mut annot_close : Bool
+  mut annot_p : Span?
+  mut annot_seq : Int32
+  mut s_shell_seq : Int32?
+  mut bound_reifier : Span?
+  mut reifiers : Array[Span]
+  mut annot_stack : Array[AnnotFrame]
 }
 
 ///|
@@ -207,7 +213,12 @@ fn N3Context::new() -> N3Context {
     annot_s: None,
     annot_o: None,
     subj_shell: false,
-    annot_close: false,
+    annot_p: None,
+    annot_seq: 0,
+    s_shell_seq: None,
+    bound_reifier: None,
+    reifiers: [],
+    annot_stack: [],
   }
 }
 
@@ -248,6 +259,12 @@ pub(all) struct N3PendingQuad {
   base_version : Int32
   iri_version : Int32
   subj_shell : Bool
+  anchor_p : Span?
+  anchor_o : Span?
+  annot_seq : Int32
+  s_shell_seq : Int32?
+  bound_reifier : Span?
+  reifiers : Array[Span]
 } derive(Eq)
 
 ///|
@@ -262,6 +279,8 @@ fn N3Context::has_pending(self : N3Context) -> Bool {
 ///|
 /// 发射槽位快照：ctx → 发射边界载荷（loop 模板发射点调用，字段映射随 ctx 生成）
 fn N3Context::snapshot(self : N3Context) -> N3PendingQuad {
+  let reifiers = self.reifiers
+  self.reifiers = []
   {
     subj: self.subject,
     pred: self.predicate,
@@ -272,6 +291,12 @@ fn N3Context::snapshot(self : N3Context) -> N3PendingQuad {
     base_version: self.bases.length(),
     iri_version: self.iri_upcast,
     subj_shell: self.subj_shell,
+    anchor_p: self.annot_p,
+    anchor_o: self.annot_o,
+    annot_seq: self.annot_seq,
+    s_shell_seq: self.s_shell_seq,
+    bound_reifier: self.bound_reifier,
+    reifiers,
   }
 }
 
@@ -301,7 +326,7 @@ priv trait N3Actions {
   fn set_subject(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn set_predicate(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn set_object(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
-  fn annot_open(Self, N3Context) -> Result[N3Effect, N3ActionError]
+  fn annot_open(Self, N3Context, N3State) -> Result[N3Effect, N3ActionError]
   fn set_prefix_name(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn declare_prefix(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn set_base(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
@@ -393,6 +418,7 @@ priv trait N3Actions {
   ]
   fn annot_close_silent(Self, N3Context) -> Result[N3Effect, N3ActionError]
   fn annot_end(Self, N3Context) -> Result[N3Effect, N3ActionError]
+  fn set_reifier(Self, N3Context, Span) -> Result[N3Effect, N3ActionError]
   fn open_slot(Self, N3Context, Span, SlotType, N3State) -> Result[
     N3Effect,
     N3ActionError,
@@ -507,7 +533,7 @@ fn[A : N3Actions] step(
     }
     (N3ExpectDotOrGraph, N3AnnotStart) => {
       ctx.state = N3AnnotExpectVerb
-      actions.annot_open(ctx)
+      actions.annot_open(ctx, N3ExpectDotOrGraph)
     }
     (N3ExpectVerbOrEnd, N3Iri(payload)) => {
       ctx.state = N3ExpectObject
@@ -1975,7 +2001,7 @@ fn[A : N3Actions] step(
       Ok(N3Effect::Continue)
     }
     (N3AnnotExpectVerbTail, N3AnnotEnd) => {
-      ctx.state = N3ExpectVerbOrEnd
+      ctx.state = N3ExpectDotOrGraph
       actions.annot_close_silent(ctx)
     }
     (N3AnnotExpectObject, N3Iri(payload)) => {
@@ -2019,18 +2045,26 @@ fn[A : N3Actions] step(
       Ok(N3Effect::EmitQuad(ResetScope::PredObj))
     }
     (N3AnnotExpectEnd, N3AnnotEnd) => {
-      ctx.state = N3ExpectVerbOrEnd
+      ctx.state = N3ExpectDotOrGraph
       actions.annot_end(ctx)
     }
-    (N3ExpectTildeEnd, N3Iri(_)) => {
-      ctx.state = N3ExpectTildeEnd
-      Ok(N3Effect::Continue)
+    (N3AnnotExpectEnd, N3AnnotStart) => {
+      ctx.state = N3AnnotExpectVerb
+      actions.annot_open(ctx, N3AnnotExpectEnd)
     }
-    (N3ExpectTildeEnd, N3PrefName(_)) => {
+    (N3ExpectTildeEnd, N3Iri(payload)) => {
       ctx.state = N3ExpectTildeEnd
-      Ok(N3Effect::Continue)
+      actions.set_reifier(ctx, payload)
     }
-    (N3ExpectTildeEnd, N3BlankNode(_)) => {
+    (N3ExpectTildeEnd, N3PrefName(payload)) => {
+      ctx.state = N3ExpectTildeEnd
+      actions.set_reifier(ctx, payload)
+    }
+    (N3ExpectTildeEnd, N3BlankNode(payload)) => {
+      ctx.state = N3ExpectTildeEnd
+      actions.set_reifier(ctx, payload)
+    }
+    (N3ExpectTildeEnd, N3Tilde) => {
       ctx.state = N3ExpectTildeEnd
       Ok(N3Effect::Continue)
     }
@@ -2048,7 +2082,7 @@ fn[A : N3Actions] step(
     }
     (N3ExpectTildeEnd, N3AnnotStart) => {
       ctx.state = N3AnnotExpectVerb
-      actions.annot_open(ctx)
+      actions.annot_open(ctx, N3ExpectDotOrGraph)
     }
     (_, _) => Err(N3ActionError::UnexpectedEvent(ctx.state, event))
   }
@@ -2076,6 +2110,7 @@ priv trait N3EffectHandler {
     Unit,
     N3EffectError,
   ] = _
+  fn handle_annot_pop(Self) -> Result[Unit, N3EffectError] = _
   // —— 组装机械归位：默认直调 N3Context；on_* 由引擎覆盖注入动作 ——
   fn apply_scope(Self, ctx : N3Context, scope : ResetScope) -> Unit = _
   fn on_pop_bnp(Self, ctx : N3Context) -> Unit = _
@@ -2086,6 +2121,7 @@ priv trait N3EffectHandler {
     typ : SlotType,
     ret_state : N3State,
   ) -> Unit = _
+  fn on_annot_pop(Self, ctx : N3Context) -> Unit = _
   // —— 唯一解释器：效果 → loop 控制流（KeepGoing/YieldQuad/Stop）——
   fn interpret(Self, ctx : N3Context, effect : N3Effect) -> N3EffectOutcome = _
 }
@@ -2121,6 +2157,12 @@ impl N3EffectHandler with fn handle_open_slot(_self, _span, _typ, _ret_state) {
 }
 
 ///|
+/// handle_annot_pop 模板默认：无操作（观测位）
+impl N3EffectHandler with fn handle_annot_pop(_self) {
+  Ok(())
+}
+
+///|
 /// 单个效果的解释结果（loop 级控制流意图）
 priv enum N3EffectOutcome {
   KeepGoing // 无产出，继续循环
@@ -2147,6 +2189,12 @@ impl N3EffectHandler with fn on_open_slot(_self, _ctx, _span, _typ, _ret_state) 
 }
 
 ///|
+/// on_annot_pop 模板默认：无机械（引擎覆盖注入 annot_pop_frame 镜面弹帧）
+impl N3EffectHandler with fn on_annot_pop(_self, _ctx) {
+  ()
+}
+
+///|
 /// interpret 模板默认：唯一效果解释器（役22 接活——engine.next 的效果语义
 /// 全数移驻于此）。机械经 ctx 级 take_pending/under_formula 与 on_* 注入点
 /// 完成；handle_* 先通知后机械（默认无操作，行为零变化）
@@ -2163,6 +2211,12 @@ impl N3EffectHandler with fn interpret(self, ctx, effect) {
       // 嵌套元素开帧：机械在 action
       let _ = self.handle_open_slot(span, typ, ret)
       self.on_open_slot(ctx, span, typ, ret)
+      KeepGoing
+    }
+    N3Effect::AnnotPop => {
+      // 注解收口弹帧：镜面机械在引擎注入（帧携带返回态与锚槽）
+      let _ = self.handle_annot_pop()
+      self.on_annot_pop(ctx)
       KeepGoing
     }
     N3Effect::Reset(scope) => {
@@ -2199,6 +2253,7 @@ impl N3EffectHandler with fn interpret(self, ctx, effect) {
           N3Effect::PopBnp => self.on_pop_bnp(ctx)
           N3Effect::OpenSlot(span, typ, ret) =>
             self.on_open_slot(ctx, span, typ, ret)
+          N3Effect::AnnotPop => self.on_annot_pop(ctx)
           N3Effect::Done => break
           N3Effect::Continue | N3Effect::Sequence(_) => ()
         }

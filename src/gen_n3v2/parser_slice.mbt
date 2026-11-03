@@ -328,13 +328,11 @@ fn[L] N3SliceParser::assemble(
     (Some(s), Some(p), Some(o)) => {
       if !self.lenient {
         let prefixes = self.engine.ctx.prefixes
-        // 役8 壳主语：s = 锚三元组原文 span（非单一词项），跳过主语深验——
-        // 分量已在主 quad（AnnotStart 出账）组装点各自过验；物化层据此合成壳
-        if !pending.subj_shell {
-          match validate_term(self.data, prefixes, s, false) {
-            Some(e) => raise e
-            None => ()
-          }
+        // U5：壳行主语 = 锚行主语 span（真词项，三 span 直传后无合并锚文）——
+        // 验证口径与普通主语同权
+        match validate_term(self.data, prefixes, s, false) {
+          Some(e) => raise e
+          None => ()
         }
         match validate_term(self.data, prefixes, p, true) {
           Some(e) => raise e
@@ -363,55 +361,89 @@ fn[L] N3SliceParser::assemble(
         base_version: pending.base_version,
         iri_version: pending.iri_version,
         subj_shell: pending.subj_shell,
+        anchor_p: pending.anchor_p,
+        anchor_o: pending.anchor_o,
+        annot_seq: pending.annot_seq,
+        s_shell_seq: pending.s_shell_seq,
+        bound_reifier: pending.bound_reifier,
+        reifiers: pending.reifiers,
+        chain_only: false,
       }
     }
-    // RDF 1.2 triple-term shell standalone statement: `<< s p o >> .` --
-    // shell lands in subject slot with no pred/obj; the statement IS the
-    // shell's inner triple (assemble unwraps, terms re-validated recursively)
-    (Some(s), None, None) => {
-      let terms = triple_term_inner_terms(self.data, s)
-      if terms.length() == 3 {
-        let ts = terms[0]
-        let tp = terms[1]
-        let to = terms[2]
-        if !self.lenient {
-          let prefixes = self.engine.ctx.prefixes
-          match validate_term(self.data, prefixes, ts, false) {
-            Some(e) => raise e
-            None => ()
+    // RDF 1.2 引用三元组壳独立成句：`<< s p o >> .`——壳落主语槽后无谓词/宾语，
+    // 语句即断言壳内三元组（组装层拆壳，三项交 validate_term 递归验证）。
+    // U5 链载体行：subj-only + ~ 链非空（块后 ~ 链的句界残行）——主行不发射，
+    // 只发链 reifies 行（trig annotation-11 判）；p/o 以 (0,0) 占位（合成谓词族
+    // 同款，物化层 chain_only 臂专用，永不读 p/o 字节）
+    (Some(s), None, None) =>
+      match self.tt_shell_terms(s) {
+        Some((ts, tp, to)) => {
+          if !self.lenient {
+            let prefixes = self.engine.ctx.prefixes
+            match validate_term(self.data, prefixes, ts, false) {
+              Some(e) => raise e
+              None => ()
+            }
+            match validate_term(self.data, prefixes, tp, true) {
+              Some(e) => raise e
+              None => ()
+            }
+            match validate_term(self.data, prefixes, to, false) {
+              Some(e) => raise e
+              None => ()
+            }
+            match pending.graph {
+              Some(g) =>
+                match validate_term(self.data, prefixes, g, false) {
+                  Some(e) => raise e
+                  None => ()
+                }
+              None => ()
+            }
           }
-          match validate_term(self.data, prefixes, tp, true) {
-            Some(e) => raise e
-            None => ()
-          }
-          match validate_term(self.data, prefixes, to, false) {
-            Some(e) => raise e
-            None => ()
-          }
-          match pending.graph {
-            Some(g) =>
-              match validate_term(self.data, prefixes, g, false) {
-                Some(e) => raise e
-                None => ()
-              }
-            None => ()
+          {
+            s: ts,
+            p: tp,
+            o: to,
+            g: pending.graph,
+            pk: pending.pk,
+            prefix_version: pending.prefix_version,
+            base_version: pending.base_version,
+            iri_version: pending.iri_version,
+            subj_shell: false,
+            anchor_p: None,
+            anchor_o: None,
+            annot_seq: 0,
+            s_shell_seq: None,
+            bound_reifier: None,
+            reifiers: pending.reifiers,
+            chain_only: false,
           }
         }
-        {
-          s: ts,
-          p: tp,
-          o: to,
-          g: pending.graph,
-          pk: pending.pk,
-          prefix_version: pending.prefix_version,
-          base_version: pending.base_version,
-          iri_version: pending.iri_version,
-          subj_shell: false,
-        }
-      } else {
-        raise ParseError::SyntaxErr("Incomplete quad at emission", s)
+        None =>
+          if pending.reifiers.length() > 0 {
+            {
+              s,
+              p: (0, 0),
+              o: (0, 0),
+              g: pending.graph,
+              pk: pending.pk,
+              prefix_version: pending.prefix_version,
+              base_version: pending.base_version,
+              iri_version: pending.iri_version,
+              subj_shell: false,
+              anchor_p: pending.anchor_p,
+              anchor_o: pending.anchor_o,
+              annot_seq: pending.annot_seq,
+              s_shell_seq: pending.s_shell_seq,
+              bound_reifier: pending.bound_reifier,
+              reifiers: pending.reifiers,
+              chain_only: true,
+            }
+          } else {
+            raise ParseError::SyntaxErr("Incomplete quad at emission", s)
+          }
       }
-    }
     _ =>
       // N3 无壳独立成句形态（表无主语位壳行；`[] .` 空属性列表已在
       // parse_next 静默跳过）；缺谓/宾 = 缺槽
@@ -420,6 +452,22 @@ fn[L] N3SliceParser::assemble(
         pending.subj.unwrap_or((0, 0)),
       )
   }
+}
+
+///|
+/// 壳作主语的拆壳：span 为 `<< … >>` 形态且内部恰三项时返回 (s, p, o) 内部 span
+fn[L] N3SliceParser::tt_shell_terms(
+  self : N3SliceParser[L],
+  span : Span,
+) -> (Span, Span, Span)? {
+  let view = slice_span(self.data, span)
+  if view.length() > 1 && view[0] == b'<' && view[1] == b'<' {
+    let terms = triple_term_inner_terms(self.data, span)
+    if terms.length() == 3 {
+      return Some((terms[0], terms[1], terms[2]))
+    }
+  }
+  None
 }
 
 ///|
@@ -441,6 +489,25 @@ pub fn[L : LexerSource] N3SliceParser::parse_next(
       Some(Err(e))
     }
     Some(Ok(pending)) => {
+      // U5 句界残行分流：subj-only + ~ 链空 + 非 tt 壳 + 非 `(` 领头 = 静默跳过
+      //（块后 `.` 载体 / 嵌套闭 `;` 噪声——均无行可断言）。链载体行（链非空）
+      // 与 tt 壳进组装成形；`(` 领头进组装报错（bad-list-01 口径）。
+      if pending.pred is None &&
+        pending.obj is None &&
+        pending.reifiers.length() == 0 {
+        let skip = match pending.subj {
+          Some(s) => {
+            let v = slice_span(self.data, s)
+            let tt_lead = v.length() > 1 && v[0] == b'<' && v[1] == b'<'
+            let paren_lead = v.length() > 0 && v[0] == b'('
+            !(tt_lead || paren_lead)
+          }
+          None => false
+        }
+        if skip {
+          return self.parse_next()
+        }
+      }
       // 空 fresh 结构独立成句（`[] .`）：主槽 fresh + 谓/宾全空 = 空属性列表
       // 断言零三元组，静默跳过。只认 `[`：`(...)` 集合独立成句非法，必须进组装报错
       match pending.subj {

@@ -10,6 +10,16 @@ import {
 // Errors
 
 // Types and methods
+pub(all) struct AnnotFrame {
+  anchor_s : (Int32, Int32)
+  anchor_p : (Int32, Int32)
+  anchor_o : (Int32, Int32)
+  s_shell_seq : Int32?
+  block_seq : Int32
+  bound_reifier : (Int32, Int32)?
+  ret_state : N3State
+}
+
 pub(all) enum N3ActionError {
   UnexpectedEvent(N3State, N3Event)
   BusinessFailed(String)
@@ -119,9 +129,10 @@ pub struct N3Materializer {
   mut deep_validate : Bool
   fresh_ids : Map[(Int32, Int32), (Int32, Int32)]
   arena : Array[Byte]
+  shell_rows : Array[(@gen_nquads.TermKind, ArrayView[Byte], ArrayView[Byte])]
 }
 pub fn N3Materializer::materialize_all(Self, Array[QuadSpan], deep_validate? : Bool, mode? : @gen_nquads.ValidateMode) -> (Array[@gen_nquads.QuadEmit], Array[@gen_nquads.ParseError])
-pub fn N3Materializer::materialize_quad(Self, QuadSpan) -> @gen_nquads.QuadEmit raise @gen_nquads.ParseError
+pub fn N3Materializer::materialize_quad(Self, QuadSpan) -> Array[@gen_nquads.QuadEmit] raise @gen_nquads.ParseError
 pub fn N3Materializer::new(ArrayView[Byte], Array[((Int32, Int32), (Int32, Int32))], bases? : Array[(Int32, Int32)], base_fallback? : String?, rdf12? : Bool) -> Self
 
 pub(all) struct N3PendingQuad {
@@ -134,6 +145,12 @@ pub(all) struct N3PendingQuad {
   base_version : Int32
   iri_version : Int32
   subj_shell : Bool
+  anchor_p : (Int32, Int32)?
+  anchor_o : (Int32, Int32)?
+  annot_seq : Int32
+  s_shell_seq : Int32?
+  bound_reifier : (Int32, Int32)?
+  reifiers : Array[(Int32, Int32)]
 } derive(Eq)
 pub fn N3PendingQuad::equal(Self, Self) -> Bool
 pub fn N3PendingQuad::not_equal(Self, Self) -> Bool
@@ -261,6 +278,13 @@ pub(all) struct QuadSpan {
   base_version : Int32
   iri_version : Int32
   subj_shell : Bool
+  anchor_p : (Int32, Int32)?
+  anchor_o : (Int32, Int32)?
+  annot_seq : Int32
+  s_shell_seq : Int32?
+  bound_reifier : (Int32, Int32)?
+  reifiers : Array[(Int32, Int32)]
+  chain_only : Bool
 }
 
 // Type aliases

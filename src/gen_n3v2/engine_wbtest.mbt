@@ -788,62 +788,73 @@ test "役7: 公式罩内 =——罩内零发射口径不变，外层不受扰" {
 }
 
 ///|
-test "役8: 正典注解——主 quad 锚主语 + 体 quad 壳主语（span 账）" {
+test "U5: 正典注解——锚行平地出账 + 体行壳旗（三 span 账，重复主行 set 塌缩）" {
   let input = ":s :p :o {| :q :z |} .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
   assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 2)
-  // 主 quad：锚主语预发射，壳旗假
+  // U5 官方律：锚行（块开）+ 体行（收口）+ 锚行重复（Dot，块透明不变量）
+  assert_eq(quads.length(), 3)
+  // 锚 quad：三槽 = 语句槽位，壳旗假，块身份 1
   assert_eq(quads[0].subj.unwrap(), (0, 2))
   assert_eq(quads[0].pred.unwrap(), (3, 2))
   assert_eq(quads[0].obj.unwrap(), (6, 2))
   assert_false(quads[0].subj_shell)
-  // 体 quad：subj = 壳 span（锚 s 起点 (0) 至锚 o 终点 (8) 的连续原文
-  // ":s :p :o"），壳旗真
+  assert_eq(quads[0].annot_seq, 1)
+  // 体 quad：subj = 锚行主语 span（真词项，非合并锚文），壳旗真
   assert_true(quads[1].subj_shell)
-  assert_eq(quads[1].subj.unwrap(), (0, 8))
-  assert_eq(view_str(data[:], quads[1].subj.unwrap()), ":s :p :o")
-  assert_eq(quads[1].pred.unwrap(), (12, 2))
-  assert_eq(quads[1].obj.unwrap(), (15, 2))
+  assert_eq(quads[1].subj.unwrap(), (0, 2))
+  assert_eq(view_str(data[:], quads[1].pred.unwrap()), ":q")
+  assert_eq(view_str(data[:], quads[1].obj.unwrap()), ":z")
+  assert_eq(quads[1].annot_seq, 1)
+  // 重复主行：收口还槽后 Dot 出账，壳旗假
+  assert_false(quads[2].subj_shell)
+  assert_eq(quads[2].obj.unwrap(), (6, 2))
 }
 
 ///|
-test "役8: 收尾续锚——{|…|} 后 `;` 谓词回锚主语（收口还原口径）" {
+test "U5: 收尾续锚——{|…|} 后 `;` 重复主行 + 谓词续锚主语（块透明不变量）" {
   let input = ":s :p :o {| :q :z |} ; :r :w .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
   assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 3)
+  // 锚 + 体 + 收口还槽后 `;` 重复主行(:p,:o) + 续锚行(:r,:w)
+  assert_eq(quads.length(), 4)
   assert_true(quads[1].subj_shell)
-  // 末体 quad 收口发射（annot_end），其后 `; :r :w` 续锚主语、壳旗假
+  // `;` 重复主行：槽位 = 锚行 p/o 快照（块透明还原），壳旗假
   assert_false(quads[2].subj_shell)
-  assert_eq(quads[2].subj.unwrap(), (0, 2))
-  assert_eq(view_str(data[:], quads[2].pred.unwrap()), ":r")
-  assert_eq(view_str(data[:], quads[2].obj.unwrap()), ":w")
+  assert_eq(view_str(data[:], quads[2].pred.unwrap()), ":p")
+  assert_eq(view_str(data[:], quads[2].obj.unwrap()), ":o")
+  // 续锚行 :r :w 照常
+  assert_false(quads[3].subj_shell)
+  assert_eq(view_str(data[:], quads[3].pred.unwrap()), ":r")
+  assert_eq(view_str(data[:], quads[3].obj.unwrap()), ":w")
 }
 
 ///|
-test "役8: 体区逗号连换——多体 quad 同壳（旗直引保真）" {
+test "U5: 体区逗号连换——两体行各自出账同壳" {
   let input = ":s :p :o {| :q :z1, :z2 |} .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
   assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 3)
+  // 锚 + 体1(Comma 出账) + 体2(收口出账) + 重复主行
+  assert_eq(quads.length(), 4)
   assert_true(quads[1].subj_shell)
   assert_true(quads[2].subj_shell)
-  assert_eq(quads[1].subj.unwrap(), (0, 8))
-  assert_eq(quads[2].subj.unwrap(), (0, 8))
+  assert_eq(view_str(data[:], quads[1].obj.unwrap()), ":z1")
   assert_eq(view_str(data[:], quads[2].obj.unwrap()), ":z2")
+  assert_eq(quads[1].subj.unwrap(), (0, 2))
+  assert_eq(quads[2].subj.unwrap(), (0, 2))
 }
 
 ///|
-test "役8: 体区分号多谓词——逐体出账同壳" {
+test "U5: 体区分号多谓词——逐体出账同壳" {
   let input = ":s :p :o {| :q :z ; :r :w |} .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
   assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 3)
+  // 锚 + 体1(`;` 出账) + 体2(收口出账) + 重复主行
+  assert_eq(quads.length(), 4)
   assert_true(quads[1].subj_shell)
   assert_true(quads[2].subj_shell)
   assert_eq(view_str(data[:], quads[2].pred.unwrap()), ":r")
@@ -851,32 +862,34 @@ test "役8: 体区分号多谓词——逐体出账同壳" {
 }
 
 ///|
-test "役8: 嵌套 bnp——内层 fresh 主语错键不带壳旗，外层体 quad 同壳" {
+test "U5: 嵌套 bnp——内层 fresh 主语错键不带壳旗，外层体行壳行出账" {
   let input = ":s :p :o {| :q [ :x :y ] |} .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
   assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 3)
-  // 内层 (genid, :x, :y)：fresh 主语 ≠ 锚主语 = 错键不换 + 壳旗落假
+  // 锚 + 内层(genid,:x,:y) + 外层体行(壳,:q,genid) + 重复主行
+  assert_eq(quads.length(), 4)
+  // 内层 (genid, :x, :y)：fresh 主语 ≠ 锚主语 = 壳键守卫落假
   assert_false(quads[1].subj_shell)
-  assert_true(quads[1].subj.unwrap() != (0, 8))
-  // 外层体 quad（壳, :q, genid）：收口发射，壳旗真
+  assert_true(quads[1].subj.unwrap() != (0, 2))
+  // 外层体行（壳, :q, genid）：收口发射，subj = 锚主语 span
   assert_true(quads[2].subj_shell)
-  assert_eq(quads[2].subj.unwrap(), (0, 8))
+  assert_eq(quads[2].subj.unwrap(), (0, 2))
 }
 
 ///|
-test "役8: 静默收口——体尾分号后 |} 直清壳账，后语句不染" {
+test "U5: 静默收口——体尾分号后 |} 直弹帧，后语句不染" {
   let input = ":s :p :o {| :q :z ; |} . :a :b :c .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
   assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 3)
+  // 锚 + 体(`;` 出账) + 重复主行 + :a 语句
+  assert_eq(quads.length(), 4)
   assert_true(quads[1].subj_shell)
   // 后续正常语句：无壳旗（旗漏 = 全局污染，此处钉死）
-  assert_false(quads[2].subj_shell)
-  assert_eq(quads[2].subj.unwrap(), (25, 2))
-  assert_eq(view_str(data[:], quads[2].pred.unwrap()), ":b")
+  assert_false(quads[3].subj_shell)
+  assert_eq(quads[3].subj.unwrap(), (25, 2))
+  assert_eq(view_str(data[:], quads[3].pred.unwrap()), ":b")
 }
 
 ///|
@@ -899,16 +912,21 @@ test "役8: 残缺体 EOF——主 quad 已出账，收尾判脏报错" {
 }
 
 ///|
-test "役8: ~ 驻留位注解——标签驻留不占槽，壳账照抄锚槽" {
+test "U5: ~ 驻留位注解——块绑显式 reifier，链随锚行携出" {
   let input = ":s :p :o ~ :l {| :q :z |} .\n"
   let data = bytes_of(input)
   let (quads, errors) = drain_n3(N3Engine::from_bytes(data))
   assert_eq(errors.length(), 0)
-  assert_eq(quads.length(), 2)
+  // 锚行(携 ~ 链) + 体行 + 重复主行
+  assert_eq(quads.length(), 3)
   assert_eq(quads[0].subj.unwrap(), (0, 2))
+  assert_false(quads[0].subj_shell)
+  // 锚行携 ~ 链（(R,:reifies,tt) 在物化层展开），块绑 = :l
+  assert_eq(quads[0].reifiers.length(), 1)
   assert_true(quads[1].subj_shell)
-  assert_eq(quads[1].subj.unwrap(), (0, 8))
+  assert_eq(quads[1].subj.unwrap(), (0, 2))
   assert_eq(view_str(data[:], quads[1].pred.unwrap()), ":q")
+  assert_true(quads[1].bound_reifier is Some(_))
 }
 
 ///|
@@ -1232,6 +1250,13 @@ test "R-06: zero-length span at non-lparen offset is rejected" {
     base_version: 0,
     iri_version: 0,
     subj_shell: false,
+    anchor_p: None,
+    anchor_o: None,
+    annot_seq: 0,
+    s_shell_seq: None,
+    bound_reifier: None,
+    reifiers: [],
+    chain_only: false,
   }
   let (_, merrs) = mat.materialize_all([quad])
   assert_eq(merrs.length(), 1)

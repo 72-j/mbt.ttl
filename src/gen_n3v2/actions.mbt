@@ -1181,29 +1181,185 @@ impl N3Actions for N3ActionsImpl with fn set_sameas(
 }
 
 ///|
-/// 注解开壳：抄录锚 s/o 入壳账（槽位不动、不发射不收拾——发射意图由动作
-/// 返回值承载：主 quad 仍锚主语预发射，壳账尚无旗 = 锚身出账；口径 §6 役8）
-impl N3Actions for N3ActionsImpl with fn annot_open(
-  _self : N3ActionsImpl,
-  ctx : N3Context,
-) -> Result[N3Effect, N3ActionError] {
-  ctx.annot_s = ctx.subject
-  ctx.annot_o = ctx.object
-  ctx.subj_shell = false
-  ctx.annot_close = false
-  // 主 quad 预发射（锚主语）：PredObj 粒度清 p/o、保 s——体区首动词前
-  // 槽位无发射，annot_body_verb 才开旗
-  Ok(N3Effect::EmitQuad(ResetScope::PredObj))
+/// U5 注解簿记机械（帧栈 + 镜面，trig U3b 同律）：镜面字段（annot_s/p/o/
+/// annot_seq/s_shell_seq/bound_reifier）是发射快照的唯一读取面——动作在返回
+/// 发射效果前先把"该次发射所属帧"回放进镜面；栈只作簿记（嵌套还层/收口返回态）。
+/// 栈空时镜面保留平地锚账（块后 ~ 链复用锚）。
+fn N3Context::annot_mirror(self : N3Context, fr : AnnotFrame) -> Unit {
+  self.annot_s = Some(fr.anchor_s)
+  self.annot_p = Some(fr.anchor_p)
+  self.annot_o = Some(fr.anchor_o)
+  self.annot_seq = fr.block_seq
+  self.s_shell_seq = fr.s_shell_seq
+  self.bound_reifier = fr.bound_reifier
 }
 
 ///|
-/// 注解体动词：首动词开体区旗（交换在引擎发射点 take：键 = subj == annot_s），
-/// 谓词槽位照 set_predicate 口径（kw_a_live 兑现落 pk；口径 §6 役8）
+/// U5 链末项绑定：~ 链（ctx.reifiers）末项 = 当前块显式 reifier；空链 = fresh
+fn N3Context::annot_chain_bound(self : N3Context) -> Span? {
+  if self.reifiers.length() > 0 {
+    Some(self.reifiers[self.reifiers.length() - 1])
+  } else {
+    None
+  }
+}
+
+///|
+/// U5 出栈还镜 + 收口兑现：弹帧 → ① 出栈帧 ret_state 落地（bnp/集合帧同律
+/// ——嵌套闭还外层 AnnotExpectEnd，平地闭还 ExpectDotOrGraph，表靶由动作覆写）；
+/// ② 出栈帧锚行谓宾槽回填（**块透明不变量**：收口后槽位 = 开壳前快照——句界
+/// 续链/`,`/`;` 与收口 `.` 的重复主行靠集合语义塌缩）；③ 镜面回放外层帧
+///（嵌套还层，壳旗续真）或平地收口落旗。annot_close_silent 直调；annot_end
+/// 经 AnnotPop 效果后置兑现（末体行快照后弹）。
+fn N3Context::annot_pop_frame(self : N3Context) -> Unit {
+  let popped : AnnotFrame? = if self.annot_stack.length() > 0 {
+    let fr = self.annot_stack[self.annot_stack.length() - 1]
+    let _ = self.annot_stack.pop()
+    Some(fr)
+  } else {
+    None
+  }
+  match popped {
+    Some(fr) => {
+      self.state = fr.ret_state
+      self.predicate = Some(fr.anchor_p)
+      self.object = Some(fr.anchor_o)
+    }
+    None => ()
+  }
+  if self.annot_stack.length() > 0 {
+    let fr = self.annot_stack[self.annot_stack.length() - 1]
+    self.annot_mirror(fr)
+    self.subj_shell = true
+  } else {
+    self.subj_shell = false
+  }
+}
+
+///|
+impl N3Actions for N3ActionsImpl with fn annot_open(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+  ret_state : N3State,
+) -> Result[N3Effect, N3ActionError] {
+  // 块身份序号（fresh R 键 Span(-seq, 0)）+ ~ 链末项绑定（发射即随快照清账）
+  ctx.annot_seq = ctx.annot_seq + 1
+  let bound = ctx.annot_chain_bound()
+  if ctx.annot_stack.length() > 0 {
+    // U5 嵌套（trig annotation-04 定谳同律）：锚 = 外块刚成形体行——主语承
+    // 外帧锚（壳旗 = 外块身份），谓宾取当前槽（外块体动词/宾语已落槽）。
+    let outer = ctx.annot_stack[ctx.annot_stack.length() - 1]
+    let anchor_p = match ctx.predicate {
+      Some(span) => span
+      None =>
+        return Err(
+          N3ActionError::BusinessFailed(
+            "annotation: nested block without anchor predicate",
+          ),
+        )
+    }
+    let anchor_o = match ctx.object {
+      Some(span) => span
+      None =>
+        return Err(
+          N3ActionError::BusinessFailed(
+            "annotation: nested block without anchor object",
+          ),
+        )
+    }
+    let inner : AnnotFrame = {
+      anchor_s: outer.anchor_s,
+      anchor_p,
+      anchor_o,
+      s_shell_seq: Some(outer.block_seq),
+      block_seq: ctx.annot_seq,
+      bound_reifier: bound,
+      ret_state,
+    }
+    // 发射外块体行：镜面先回放外帧（壳旗真），内帧只推栈不动镜面——
+    // 快照读镜面，序不倒挂
+    ctx.annot_mirror(outer)
+    ctx.subj_shell = true
+    ctx.annot_stack.push(inner)
+    Ok(N3Effect::EmitQuad(ResetScope::PredObj))
+  } else {
+    // 平地：槽全 = 取槽（新行成形）；槽残 = 镜面已有账（连续块 / 块后块复用同行锚）
+    let complete = ctx.subject is Some(_) &&
+      ctx.predicate is Some(_) &&
+      ctx.object is Some(_)
+    let (anchor_s, anchor_p, anchor_o) = if complete {
+      let s = match ctx.subject {
+        Some(span) => span
+        None =>
+          return Err(N3ActionError::BusinessFailed("annotation: no anchor"))
+      }
+      let p = match ctx.predicate {
+        Some(span) => span
+        None =>
+          return Err(N3ActionError::BusinessFailed("annotation: no anchor"))
+      }
+      let o = match ctx.object {
+        Some(span) => span
+        None =>
+          return Err(N3ActionError::BusinessFailed("annotation: no anchor"))
+      }
+      (s, p, o)
+    } else {
+      match (ctx.annot_s, ctx.annot_p, ctx.annot_o) {
+        (Some(s), Some(p), Some(o)) => (s, p, o)
+        (_, _, _) =>
+          return Err(N3ActionError::BusinessFailed("annotation: no anchor row"))
+      }
+    }
+    let fr : AnnotFrame = {
+      anchor_s,
+      anchor_p,
+      anchor_o,
+      s_shell_seq: None,
+      block_seq: ctx.annot_seq,
+      bound_reifier: bound,
+      ret_state,
+    }
+    ctx.annot_mirror(fr)
+    // 主行非壳行（体动词落槽时置真）
+    ctx.subj_shell = false
+    ctx.annot_stack.push(fr)
+    Ok(N3Effect::EmitQuad(ResetScope::PredObj))
+  }
+}
+
+///|
+/// U5 语句级 ~ reifier 捕获：入链 + 链锚捕获（槽全时当前行三槽入镜——
+/// 平地链无块，载体行/主行的链行 TT 源；槽残 = 镜面已有账，保留）
+impl N3Actions for N3ActionsImpl with fn set_reifier(
+  _self : N3ActionsImpl,
+  ctx : N3Context,
+  payload : Span,
+) -> Result[N3Effect, N3ActionError] {
+  ctx.reifiers.push(payload)
+  let complete = ctx.subject is Some(_) &&
+    ctx.predicate is Some(_) &&
+    ctx.object is Some(_)
+  if complete {
+    ctx.annot_s = ctx.subject
+    ctx.annot_p = ctx.predicate
+    ctx.annot_o = ctx.object
+  }
+  Ok(N3Effect::Continue)
+}
+
+///|
 impl N3Actions for N3ActionsImpl with fn annot_body_verb(
   _self : N3ActionsImpl,
   ctx : N3Context,
   payload : Span,
 ) -> Result[N3Effect, N3ActionError] {
+  // 体动词：镜面刷新 = 栈顶帧（嵌套开壳后镜面仍持外帧值——内块体行开始即切内帧）
+  // + 壳旗置真（体行主语换壳）+ 谓词槽位；N3 特有 kw_a_live 兑现落 pk（役5 口径）
+  if ctx.annot_stack.length() > 0 {
+    let fr = ctx.annot_stack[ctx.annot_stack.length() - 1]
+    ctx.annot_mirror(fr)
+  }
   ctx.subj_shell = true
   ctx.predicate = Some(payload)
   ctx.pred_kind = if ctx.kw_a_live { PredKind::KwA } else { PredKind::Normal }
@@ -1212,26 +1368,30 @@ impl N3Actions for N3ActionsImpl with fn annot_body_verb(
 }
 
 ///|
-/// 注解收口：置收口旗 + 返回末体 quad 发射——take 消费旗（壳交换先兑现在
-/// 本 quad 上）后还原清账；槽位经 PredObj 粒度保锚主语，`;` 续锚直落（§6 役8）
 impl N3Actions for N3ActionsImpl with fn annot_end(
   _self : N3ActionsImpl,
   ctx : N3Context,
 ) -> Result[N3Effect, N3ActionError] {
-  ctx.annot_close = true
-  Ok(N3Effect::EmitQuad(ResetScope::PredObj))
+  // 收口：镜面回放收口帧（末体行发射属收口帧）→ 末体行发射 + AnnotPop
+  // 后置弹栈还镜（Sequence 序：快照先、弹栈后——序不倒挂）
+  if ctx.annot_stack.length() > 0 {
+    let fr = ctx.annot_stack[ctx.annot_stack.length() - 1]
+    ctx.annot_mirror(fr)
+  }
+  Ok(
+    N3Effect::Sequence([
+      N3Effect::EmitQuad(ResetScope::PredObj),
+      N3Effect::AnnotPop,
+    ]),
+  )
 }
 
 ///|
-/// 注解静默收口：体尾分号后 |}——末体 quad 已随分号行出账（壳交换已兑现），
-/// 直清壳账零发射（口径 §6 役8）
 impl N3Actions for N3ActionsImpl with fn annot_close_silent(
   _self : N3ActionsImpl,
   ctx : N3Context,
 ) -> Result[N3Effect, N3ActionError] {
-  ctx.annot_close = false
-  ctx.subj_shell = false
-  ctx.annot_s = None
-  ctx.annot_o = None
+  // 静默收口（收口帧末体行已随嵌套开壳发射）：直弹栈还镜零发射
+  ctx.annot_pop_frame()
   Ok(N3Effect::Continue)
 }

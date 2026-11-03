@@ -70,7 +70,8 @@ fn n3_suite_n3_legal(name : String) -> Bool {
 
 ///|
 /// Unified verdict: parse errors + materializer errors (incl. deep gates) merged;
-/// good files additionally require emits.length == quads.length
+/// good files additionally require emits.length >= quads.length
+///（U5 官方律松绑，trig 同款：壳 quad 产主行+reifies 行，emit ≥ quad）
 fn n3_suite_verdict(
   is_bad : Bool,
   perr_count : Int32,
@@ -82,7 +83,7 @@ fn n3_suite_verdict(
   if is_bad {
     perr_count + merrs.length() > 0
   } else {
-    perr_count == 0 && merrs.length() == 0 && emits.length() == quad_count
+    perr_count == 0 && merrs.length() == 0 && emits.length() >= quad_count
   }
 }
 
@@ -201,5 +202,193 @@ async test "W3C turtle suite: rdf11 + rdf12 syntax (pinned)" {
     rdf12=true,
     expect_pass=75,
     expect_strict_gap=0, // 影子零缺口（rdf12 语料无未声明前缀/操作符谓词）
+  )
+}
+
+// ============================================================
+// U5：Turtle 1.2 eval 经 N3 链再入（第二实现 oracle 轮）
+// ------------------------------------------------------------
+
+///|
+/// 行内锚点后第一个 `<...>` 提取（U4 trig runner 同款本地复刻——测试件不跨包）
+fn n3_angle_after(line : String, anchor : String) -> String? {
+  let anchor_units = anchor.length()
+  let mut i = 0
+  let units = line.length()
+  while i < units {
+    if line[i] == anchor[0] {
+      let mut j = 0
+      let mut hit = true
+      while j < anchor_units {
+        if line[i + j] != anchor[j] {
+          hit = false
+          break
+        }
+        j += 1
+      }
+      if hit {
+        let mut k = i + anchor_units
+        while k < units && line[k] != '<' {
+          k += 1
+        }
+        if k < units {
+          let mut e = k + 1
+          while e < units && line[e] != '>' {
+            e += 1
+          }
+          if e < units {
+            return Some(line[k + 1:e].to_owned())
+          }
+        }
+      }
+    }
+    i += 1
+  }
+  None
+}
+
+///|
+/// 行槽词项原文（span 视图 → String）
+fn n3_quad_text(view : ArrayView[Byte]) -> String {
+  @utf8.decode_lossy(Bytes::from_array(view))
+}
+
+///|
+/// U5 前哨：turtle12 eval 经 N3 链——manifest 驱动（rdft:TestTurtleEval），
+/// N3Engine → N3SliceParser → N3Materializer → 行四元组 → 与期望 .nt
+/// rows_isomorphic 对拍。摸底不 pin——先出失败谱定 charter 裁决
+/// （官方律全量移植 vs deferred 逐条立案）。
+async fn run_n3_turtle12_eval(
+  test_dir : String,
+  label : String,
+  pin~ : Bool = false,
+) -> Unit {
+  let text = @fs.read_file("\{test_dir}/manifest.ttl").text()
+  let cases : Array[(String, String)] = []
+  let mut cur_action = ""
+  let mut cur_result = ""
+  for line_view in text.split("\n") {
+    let line = line_view.to_owned()
+    let mut k = 0
+    let units = line.length()
+    while k < units && line[k] == ' ' {
+      k += 1
+    }
+    if k < units && line[k] == '#' {
+      continue
+    }
+    if k == 0 && line.contains("rdft:TestTurtleEval") {
+      cur_action = ""
+      cur_result = ""
+      continue
+    }
+    match n3_angle_after(line, "mf:action") {
+      Some(v) => cur_action = v
+      None => ()
+    }
+    match n3_angle_after(line, "mf:result") {
+      Some(v) => cur_result = v
+      None => ()
+    }
+    if cur_action != "" && cur_result != "" {
+      cases.push((cur_action, cur_result))
+      cur_action = ""
+      cur_result = ""
+    }
+  }
+  let mut passed = 0
+  let mut failed = 0
+  let mut detail = ""
+  for case in cases {
+    let action_file = case.0
+    let result_file = case.1
+    let data = @fs.read_file("\{test_dir}/\{action_file}").binary().to_array()
+    let sec = data[:]
+    let engine = N3Engine::from_bytes(data)
+    let slice = N3SliceParser::new(engine, sec, lenient=true)
+    let (quads, perrs) = slice.parse_all()
+    let mat = N3Materializer::new(
+      sec,
+      slice.prefixes(),
+      bases=slice.bases(),
+      base_fallback=Some(
+        "https://w3c.github.io/rdf-tests/rdf/rdf12/rdf-turtle/eval/",
+      ),
+      rdf12=true,
+    )
+    let (emits, merrs) = mat.materialize_all(quads)
+    if perrs.length() > 0 || merrs.length() > 0 {
+      failed += 1
+      detail = "\{detail}\{label}/\{action_file}: parse \{perrs.length()} mat \{merrs.length()} err\n"
+      if perrs.length() > 0 {
+        detail = "\{detail}  perr0=\{perrs[0].message()}\n"
+      }
+      if merrs.length() > 0 {
+        detail = "\{detail}  merr0=\{merrs[0].message()}\n"
+      }
+      continue
+    }
+    let got_rows : Array[(String, String, String, String)] = emits.map(fn(q) {
+      (
+        n3_quad_text(q.g_view),
+        n3_quad_text(q.s_view),
+        n3_quad_text(q.predicate),
+        n3_quad_text(q.o_view),
+      )
+    })
+    let exp_data = @fs.read_file("\{test_dir}/\{result_file}")
+      .binary()
+      .to_array()
+    let exp_sec = exp_data[:]
+    let exp_engine = @nquads.NQuadsEngine::new(@nquads.Lexermoon::new(exp_sec))
+    let exp_slice = @nquads.SliceParser::new(exp_engine, exp_sec, lenient=false)
+    let (exp_quads, exp_errs) = exp_slice.parse_all()
+    if exp_errs.length() > 0 {
+      failed += 1
+      detail = "\{detail}\{label}/\{action_file}: expected file unparsable\n"
+      continue
+    }
+    let exp_mat = @nquads.materialize_all(exp_quads)
+    let exp_rows : Array[(String, String, String, String)] = exp_mat.0.map(fn(
+      q,
+    ) {
+      (
+        n3_quad_text(q.g_view),
+        n3_quad_text(q.s_view),
+        n3_quad_text(q.predicate),
+        n3_quad_text(q.o_view),
+      )
+    })
+    let mut same = false
+    let mut iso_err = ""
+    try {
+      same = @nquads.rows_isomorphic(got_rows, exp_rows)
+    } catch {
+      _ => iso_err = " (iso raise)"
+    }
+    if same {
+      passed += 1
+    } else {
+      failed += 1
+      detail = "\{detail}\{label}/\{action_file}: not isomorphic\{iso_err}\n"
+    }
+  }
+  debug("=== \{label}: \{passed}/\{passed + failed} (failed \{failed}) ===")
+  if pin {
+    // closure pin: zero failures, full-set coverage（trig U3c 同款）
+    assert_eq(passed + failed, cases.length())
+    assert_eq(failed, 0)
+  }
+  if detail != "" {
+    debug(detail)
+  }
+}
+
+///|
+async test "U5：turtle12 eval 经 N3 链（第二实现 oracle，pin）" {
+  run_n3_turtle12_eval(
+    ".rdf-tests/trig/rdf12/rdf-turtle/eval",
+    "n3-turtle12-eval",
+    pin=true,
   )
 }

@@ -137,13 +137,23 @@ test "物化: 字面量后缀 —— @lang 保真 / ^^PrefName 展开 / ^^<IRI> 
 }
 
 ///|
-test "物化: TT 壳宾位整段保真" {
+test "物化: TT 裸壳宾位——fresh R + reifies 行（U5 官方律①，括号壳 tt-01 同径另测）" {
   let (emits, errors) = parse_materialize(
     "@prefix ex: <http://example/> .\nex:s ex:p << <http://a> <http://b> <http://c> >> .\n",
   )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  assert_eq(emit_object(emits[0]), "<< <http://a> <http://b> <http://c> >>")
+  // 主行：宾位 = fresh R（壳 span memo）；链行：R reifies 复合重编 TT
+  assert_eq(emits.length(), 2)
+  assert_eq(emit_subject(emits[0]), "<http://example/s>")
+  let r_label = emit_object(emits[0])
+  assert_true(r_label.has_prefix("_:genid"))
+  // R 身份主行/链行共享（壳自持身份，壳内三元组不出账）
+  assert_eq(emit_subject(emits[1]), r_label)
+  assert_eq(
+    emit_predicate(emits[1]),
+    "<http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies>",
+  )
+  assert_eq(emit_object(emits[1]), "<<( <http://a> <http://b> <http://c> )>>")
 }
 
 ///|
@@ -504,36 +514,51 @@ test "役7 物化: 逗号连发——双 emit 同展开 owl:sameAs" {
 }
 
 ///|
-test "役8: 注解壳主语物化——体 quad 主语合成 <<锚三元组原文>> TT 壳" {
+test "U5: 注解壳行物化——fresh R（块身份键）+ reifies 锚行 TT" {
   let (emits, errors) = parse_materialize(
     "<http://e/s> <http://e/p> <http://e/o> {| <http://e/q> <http://e/z> |} .\n",
   )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  // 主 quad：锚主语原样
+  // 锚行 + 壳行(R 主行) + reifies 链行 + 重复主行
+  assert_eq(emits.length(), 4)
   assert_eq(emit_subject(emits[0]), "<http://e/s>")
-  // 体 quad：主语 = <<<s> <p> <o>>>（锚三元组原文整段，arena 合成）
-  assert_eq(
-    emit_subject(emits[1]),
-    "<<<http://e/s> <http://e/p> <http://e/o>>>",
-  )
+  // 壳行主语 = fresh 块身份键 Span(-1,0)；谓宾 = 体动词/宾语
+  assert_eq(emit_subject(emits[1]), "_:genid-1")
+  assert_eq(emit_predicate(emits[1]), "<http://e/q>")
   assert_eq(emit_object(emits[1]), "<http://e/z>")
+  // reifies 链行：R reifies 锚行三 span 复合重编
+  assert_eq(emit_subject(emits[2]), "_:genid-1")
+  assert_eq(
+    emit_predicate(emits[2]),
+    "<http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies>",
+  )
+  assert_eq(
+    emit_object(emits[2]),
+    "<<( <http://e/s> <http://e/p> <http://e/o> )>>",
+  )
+  // 重复主行（块透明）
+  assert_eq(emit_subject(emits[3]), "<http://e/s>")
 }
 
 ///|
-test "役8: 体区多 quad 同壳——逗号连发皆 TT 壳主语" {
+test "U5: 体区多行同块——同块身份共享 R（两体行两 reifies 同键）" {
   let (emits, errors) = parse_materialize(
     "<http://e/s> <http://e/p> <http://e/o> {| <http://e/q> <http://e/z1>, <http://e/z2> |} .\n",
   )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 3)
+  // 锚 + 体1 + 体2 + 重复主行；体行各携 reifies 链行（同块 R 同键）
+  assert_eq(emits.length(), 6)
+  assert_eq(emit_subject(emits[1]), "_:genid-1")
+  assert_eq(emit_object(emits[1]), "<http://e/z1>")
+  assert_eq(emit_subject(emits[3]), "_:genid-1")
+  assert_eq(emit_object(emits[3]), "<http://e/z2>")
   assert_eq(
-    emit_subject(emits[1]),
-    "<<<http://e/s> <http://e/p> <http://e/o>>>",
+    emit_object(emits[2]),
+    "<<( <http://e/s> <http://e/p> <http://e/o> )>>",
   )
   assert_eq(
-    emit_subject(emits[2]),
-    "<<<http://e/s> <http://e/p> <http://e/o>>>",
+    emit_object(emits[4]),
+    "<<( <http://e/s> <http://e/p> <http://e/o> )>>",
   )
 }
 

@@ -36,6 +36,7 @@ pub struct N3Materializer {
   mut deep_validate : Bool // 深验融合开关（materialize_all 参数落位，materialize_quad 单入口读）
   fresh_ids : Map[Span, Span] // fresh 节点 memo：开括号全 span → arena 内 `_:genid<N>` span
   arena : Array[Byte] // 展开字节缓冲（PrefName/'a'/数值/布尔/^^PrefName/相对 IRI 落这里）
+  shell_rows : Array[(@nquads.TermKind, ArrayView[Byte], ArrayView[Byte])] // U5 reifies 行挂账池（每 quad 起点清池，出口统一冲洗）
 }
 
 ///|
@@ -60,6 +61,7 @@ pub fn N3Materializer::new(
     deep_validate: true,
     fresh_ids: Map([]),
     arena: [],
+    shell_rows: [],
   }
 }
 
@@ -555,11 +557,54 @@ fn N3Materializer::materialize_literal(
 }
 
 ///|
-/// 物化单个 quad：span 四元组 → QuadEmit（PrefName 展开等改写项落 arena）
+/// 物化单个 quad：span 四元组 → QuadEmit 行数组（主行 + reifies 行族，U5 官方律
+/// ——PrefName 展开等改写项落 arena）
 pub fn N3Materializer::materialize_quad(
   self : N3Materializer,
   quad : QuadSpan,
-) -> @nquads.QuadEmit raise ParseError {
+) -> Array[@nquads.QuadEmit] raise ParseError {
+  // U5 reifies 行挂账池：每 quad 起点清池（递归深处 push、出口统一冲洗）
+  self.shell_rows.clear()
+  let shell_rows = self.shell_rows
+  // U5 链载体行（块后 ~ 链）：主行已随块发射，只发链行
+  if quad.chain_only {
+    let anchor_p = match quad.anchor_p {
+      Some(v) => v
+      None => raise ParseError::ValidationErr("chain: missing anchor predicate")
+    }
+    let anchor_o = match quad.anchor_o {
+      Some(v) => v
+      None => raise ParseError::ValidationErr("chain: missing anchor object")
+    }
+    let tt_view = self.compose_anchor_tt(
+      quad.s,
+      anchor_p,
+      anchor_o,
+      quad.s_shell_seq,
+      quad.prefix_version,
+      quad.base_version,
+    )
+    let rows : Array[@nquads.QuadEmit] = []
+    for r in quad.reifiers {
+      let (r_kind, r_view) = self.expand_reifier_node(
+        Some(r),
+        quad.annot_seq,
+        quad.prefix_version,
+        quad.base_version,
+      )
+      let reifies_pred = self.push_reifies_pred()
+      rows.push({
+        s_kind: r_kind,
+        s_view: r_view,
+        predicate: reifies_pred,
+        o_kind: @nquads.TermKind::TripleTerm,
+        o_view: tt_view,
+        g_kind: @nquads.TermKind::DefaultGraph,
+        g_view: self.data[0:0],
+      })
+    }
+    return rows
+  }
   // 役23 R-06：nil 标记验形门（零长 span = 空集合 rdf:nil in-band 标记，
   // 唯一构造点 pop_bnode_prop——offset 恒指 `(` 开括号原文位；offset 处
   // 非 `(` 的事故零长 span 报错，不再静默变 rdf:nil。边缘：data[0]=='('
@@ -583,23 +628,68 @@ pub fn N3Materializer::materialize_quad(
       "Zero-length predicate span is not a valid nil marker",
     )
   }
-  // 主语位：Iri / BNode / fresh 结构 / PrefName（TT 壳臂为防御位：N3 表无
-  // 主语位壳行）。融合深验在词项构造点就地执行
+  // 主语位：Iri / BNode / fresh 结构 / PrefName / TT（U5 官方律臂）。融合深验
+  // 在词项构造点就地执行
   let mut s_kind : @nquads.TermKind = @nquads.TermKind::Iri
   let mut s_view : ArrayView[Byte] = self.data[0:0]
   if quad.subj_shell {
-    // 役8 注解壳主语：s = 锚三元组连续原文 span，物化层合成 <<原文>> TT 壳
-    //（分量在主 quad 组装点各自过验；整段原样回写同 TT 黑盒口径）
-    let start = self.arena.length()
-    self.push_byte(b'<')
-    self.push_byte(b'<')
-    for i in quad.s.0..<(quad.s.0 + quad.s.1) {
-      self.arena.push(self.data[i])
+    // U5 官方律 + 三 span 直传：注解壳行 = R + reifies 行（锚行由锚 quad
+    // 自身断言）。R = 显式 reifier 展开 / fresh(块身份键 Span(-seq,0))；
+    // TT = 锚行三 span 直过槽位展开臂（嵌套锚主语壳旗同步解析）
+    let anchor_p = match quad.anchor_p {
+      Some(v) => v
+      None =>
+        raise ParseError::ValidationErr("annotation: missing anchor predicate")
     }
-    self.push_byte(b'>')
-    self.push_byte(b'>')
-    s_kind = @nquads.TermKind::TripleTerm
-    s_view = slice_span(self.arena[:], (start, self.arena.length() - start))
+    let anchor_o = match quad.anchor_o {
+      Some(v) => v
+      None =>
+        raise ParseError::ValidationErr("annotation: missing anchor object")
+    }
+    let (r_kind, r_view) = self.expand_reifier_node(
+      quad.bound_reifier,
+      quad.annot_seq,
+      quad.prefix_version,
+      quad.base_version,
+    )
+    let tt_view = self.compose_anchor_tt(
+      quad.s,
+      anchor_p,
+      anchor_o,
+      quad.s_shell_seq,
+      quad.prefix_version,
+      quad.base_version,
+    )
+    shell_rows.push((r_kind, r_view, tt_view))
+    s_kind = r_kind
+    s_view = r_view
+  } else if self.is_shell_span(quad.s) {
+    // U5 官方律：裸壳/括号壳做主语——裸壳 = R(显式-or-fresh) + reifies 行；
+    // 括号壳 = 剥壳展开重编（词项本尊，引语透明）
+    let paren = self.data[quad.s.0 + 2] == b'('
+    if paren {
+      let (c1, c2, c3, _) = self.scan_shell_parts(
+        quad.s.0 + 3,
+        quad.s.0 + quad.s.1 - 3,
+      )
+      s_kind = @nquads.TermKind::TripleTerm
+      s_view = self.compose_shell_tt(
+        c1,
+        c2,
+        c3,
+        quad.prefix_version,
+        quad.base_version,
+      )
+    } else {
+      let (r_kind, r_view, tt_view) = self.shell_reifier_flow(
+        quad.s,
+        quad.prefix_version,
+        quad.base_version,
+      )
+      shell_rows.push((r_kind, r_view, tt_view))
+      s_kind = r_kind
+      s_view = r_view
+    }
   } else if quad.s.1 == 0 {
     // rdf:nil 标记（Span(open.0, 0)，长度 0 = 无字节词项）：合成词表 IRI，
     // 可信免深验（ADR-003a 空集合主位）
@@ -764,20 +854,37 @@ pub fn N3Materializer::materialize_quad(
         c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')
       ) &&
       @nquads.is_numeric_span(self.data, quad.o.0, quad.o.1)
-    if c0 == b'<' {
-      if quad.o.1 > 1 && self.data[quad.o.0 + 1] == b'<' {
-        // 引用三元组壳（N3 宾位合法）：整段原文持有，字节保真；壳内 term-kind
-        // 深验就地执行
-        let v = slice_span(self.data, quad.o)
-        let v = self.gate_tt(v)
+    if self.is_shell_span(quad.o) {
+      // U5 官方律：壳做宾语——裸壳 = R(显式-or-fresh) + reifies 行；
+      // 括号壳 = 剥壳展开重编（词项本尊，tt-01 判）
+      if self.data[quad.o.0 + 2] == b'(' {
+        let (c1, c2, c3, _) = self.scan_shell_parts(
+          quad.o.0 + 3,
+          quad.o.0 + quad.o.1 - 3,
+        )
         o_kind = @nquads.TermKind::TripleTerm
-        o_view = v
+        o_view = self.compose_shell_tt(
+          c1,
+          c2,
+          c3,
+          quad.prefix_version,
+          quad.base_version,
+        )
       } else {
-        let v = self.iri_term(quad.o, quad.base_version)
-        let v = self.gate_iri(v)
-        o_kind = @nquads.TermKind::Iri
-        o_view = v
+        let (r_kind, r_view, tt_view) = self.shell_reifier_flow(
+          quad.o,
+          quad.prefix_version,
+          quad.base_version,
+        )
+        shell_rows.push((r_kind, r_view, tt_view))
+        o_kind = r_kind
+        o_view = r_view
       }
+    } else if c0 == b'<' {
+      let v = self.iri_term(quad.o, quad.base_version)
+      let v = self.gate_iri(v)
+      o_kind = @nquads.TermKind::Iri
+      o_view = v
     } else if c0 == b'_' {
       let v = slice_span(self.data, quad.o)
       let v = self.gate_bnode(v)
@@ -864,7 +971,68 @@ pub fn N3Materializer::materialize_quad(
       }
     }
   }
-  { s_kind, s_view, predicate, o_kind, o_view, g_kind, g_view, }
+  let main : @nquads.QuadEmit = {
+    s_kind,
+    s_view,
+    predicate,
+    o_kind,
+    o_view,
+    g_kind,
+    g_view,
+  }
+  // U5 语句级 ~ 链：主行随附（每 ~ 一条 reifies 行；TT = 镜面锚行三 span
+  // ——双 ~ 各领一条、链块交错随发射消费）。N3 无图块：链行恒默认图
+  let rows : Array[@nquads.QuadEmit] = [main]
+  if quad.reifiers.length() > 0 {
+    let anchor_p = match quad.anchor_p {
+      Some(v) => v
+      None => raise ParseError::ValidationErr("chain: missing anchor predicate")
+    }
+    let anchor_o = match quad.anchor_o {
+      Some(v) => v
+      None => raise ParseError::ValidationErr("chain: missing anchor object")
+    }
+    let tt_view = self.compose_anchor_tt(
+      quad.s,
+      anchor_p,
+      anchor_o,
+      quad.s_shell_seq,
+      quad.prefix_version,
+      quad.base_version,
+    )
+    for r in quad.reifiers {
+      let (r_kind, r_view) = self.expand_reifier_node(
+        Some(r),
+        quad.annot_seq,
+        quad.prefix_version,
+        quad.base_version,
+      )
+      let reifies_pred = self.push_reifies_pred()
+      rows.push({
+        s_kind: r_kind,
+        s_view: r_view,
+        predicate: reifies_pred,
+        o_kind: @nquads.TermKind::TripleTerm,
+        o_view: tt_view,
+        g_kind: @nquads.TermKind::DefaultGraph,
+        g_view: self.data[0:0],
+      })
+    }
+  }
+  for row in shell_rows {
+    let (r_kind, r_view, tt_view) = row
+    let reifies_pred = self.push_reifies_pred()
+    rows.push({
+      s_kind: r_kind,
+      s_view: r_view,
+      predicate: reifies_pred,
+      o_kind: @nquads.TermKind::TripleTerm,
+      o_view: tt_view,
+      g_kind,
+      g_view,
+    })
+  }
+  rows
 }
 
 ///|
@@ -895,8 +1063,10 @@ pub fn N3Materializer::materialize_all(
   }
   for quad in quads {
     try {
-      let q = self.materialize_quad(quad)
-      results.push(q)
+      let rows = self.materialize_quad(quad)
+      for q in rows {
+        results.push(q)
+      }
     } catch {
       e => errors.push(e)
     }
@@ -1031,4 +1201,424 @@ fn N3Materializer::fresh_bnode(
   let memo = (start, self.arena.length() - start)
   self.fresh_ids[span] = memo
   slice_span(self.arena[:], memo)
+}
+
+// ============================================================
+// U5 官方律壳机械（trig materialize_trig 同律镜像；N3 特有变量臂 + 无图槽）：
+// 壳 span 判形 / 内体三成分 + reifier 扫描 / 成分槽位展开（含 R 化语境）/
+// 复合重编 `<<( … )>>` / R 节点解析 / reifies 谓词 / 裸壳 reifier 流。
+// `~` 为 reifier 引导（其后可选一词项至尾；空 ~ = fresh）。
+// ============================================================
+
+///|
+/// 壳 span 判形（`<<` 起始，裸/括号皆算；注解锚行走 subj_shell 旗不经此）
+fn N3Materializer::is_shell_span(self : N3Materializer, sp : Span) -> Bool {
+  sp.1 >= 4 && self.data[sp.0] == b'<' && self.data[sp.0 + 1] == b'<'
+}
+
+///|
+fn N3Materializer::is_shell_blank(self : N3Materializer, b : Byte) -> Bool {
+  let _ = self
+  b == b' ' || b == b'\t' || b == b'\r' || b == b'\n'
+}
+
+///|
+fn N3Materializer::shell_skip_blank(
+  self : N3Materializer,
+  at : Int32,
+  end : Int32,
+) -> Int32 {
+  let mut i = at
+  while i < end && self.is_shell_blank(self.data[i]) {
+    i += 1
+  }
+  i
+}
+
+///|
+/// 壳内单词项扫描：返回 (span, 下一索引)。嵌套壳深度计（引号体跳过），
+/// 字面量转义感知 + 可跨白后缀，其余词项扫到空白/`~`/尾
+fn N3Materializer::shell_term_span(
+  self : N3Materializer,
+  at : Int32,
+  end : Int32,
+) -> (Span, Int32) raise ParseError {
+  if at >= end {
+    raise ParseError::ValidationErr("shell: missing component")
+  }
+  let c0 = self.data[at]
+  if c0 == b'<' && at + 1 < end && self.data[at + 1] == b'<' {
+    let mut depth = 1
+    let mut i = if at + 2 < end && self.data[at + 2] == b'(' {
+      at + 3
+    } else {
+      at + 2
+    }
+    while i < end && depth > 0 {
+      let u = self.data[i]
+      if u == b'"' || u == b'\'' {
+        let q = u
+        i += 1
+        while i < end {
+          let w = self.data[i]
+          if w == b'\\' {
+            i += 2
+            continue
+          }
+          i += 1
+          if w == q {
+            break
+          }
+        }
+        continue
+      }
+      if u == b'<' && i + 1 < end && self.data[i + 1] == b'<' {
+        depth += 1
+        i += if i + 2 < end && self.data[i + 2] == b'(' { 3 } else { 2 }
+        continue
+      }
+      if u == b')' &&
+        i + 2 < end &&
+        self.data[i + 1] == b'>' &&
+        self.data[i + 2] == b'>' {
+        depth -= 1
+        i += 3
+        continue
+      }
+      if u == b'>' && i + 1 < end && self.data[i + 1] == b'>' {
+        depth -= 1
+        i += 2
+        continue
+      }
+      i += 1
+    }
+    if depth != 0 {
+      raise ParseError::ValidationErr("shell: unbalanced nested shell")
+    }
+    return ((at, i - at), i)
+  }
+  if c0 == b'"' || c0 == b'\'' {
+    let q = c0
+    let mut i = at + 1
+    let mut closed = false
+    while i < end {
+      let w = self.data[i]
+      if w == b'\\' {
+        i += 2
+        continue
+      }
+      i += 1
+      if w == q {
+        closed = true
+        break
+      }
+    }
+    if !closed {
+      raise ParseError::ValidationErr("shell: unterminated literal")
+    }
+    let mut k = self.shell_skip_blank(i, end)
+    if k < end && self.data[k] == b'@' {
+      k += 1
+      while k < end &&
+            !self.is_shell_blank(self.data[k]) &&
+            self.data[k] != b'<' &&
+            self.data[k] != b'>' {
+        k += 1
+      }
+      i = k
+    } else if k < end &&
+      self.data[k] == b'^' &&
+      k + 1 < end &&
+      self.data[k + 1] == b'^' {
+      k += 2
+      while k < end && self.data[k] != b'>' {
+        k += 1
+      }
+      if k < end {
+        k += 1
+      }
+      i = k
+    }
+    return ((at, i - at), i)
+  }
+  if c0 == b'<' {
+    // IRIREF：扫到首个 `>`（紧邻形 `<a><b>` 靠 > 自界定）
+    let mut i = at + 1
+    while i < end && self.data[i] != b'>' {
+      i += 1
+    }
+    if i >= end {
+      raise ParseError::ValidationErr("shell: unterminated iri")
+    }
+    return ((at, i + 1 - at), i + 1)
+  }
+  let mut i = at + 1
+  while i < end {
+    let u = self.data[i]
+    if u == b'~' || u == b'<' || u == b'>' || self.is_shell_blank(u) {
+      break
+    }
+    i += 1
+  }
+  ((at, i - at), i)
+}
+
+///|
+/// 壳内三成分 + 可选 reifier 扫描（start/end = 已剥壳的内体绝对区间）
+fn N3Materializer::scan_shell_parts(
+  self : N3Materializer,
+  start : Int32,
+  end : Int32,
+) -> (Span, Span, Span, Span?) raise ParseError {
+  // 尾语句点剥除（词法尾并律：`...)>>.` 的 `.` 并入词尾）
+  let mut end = end
+  while end > start &&
+        (
+          self.data[end - 1] == b'.' ||
+          self.data[end - 1] == b',' ||
+          self.data[end - 1] == b';'
+        ) {
+    end -= 1
+  }
+  let mut i = self.shell_skip_blank(start, end)
+  let c1 = self.shell_term_span(i, end)
+  i = self.shell_skip_blank(c1.1, end)
+  let c2 = self.shell_term_span(i, end)
+  i = self.shell_skip_blank(c2.1, end)
+  let c3 = self.shell_term_span(i, end)
+  i = self.shell_skip_blank(c3.1, end)
+  let mut reif : Span? = None
+  if i < end && self.data[i] == b'~' {
+    let k = self.shell_skip_blank(i + 1, end)
+    if k < end {
+      let r = self.shell_term_span(k, end)
+      reif = Some(r.0)
+      i = self.shell_skip_blank(r.1, end)
+    } else {
+      i = end
+    }
+  }
+  if i != end {
+    raise ParseError::ValidationErr("shell: trailing content")
+  }
+  (c1.0, c2.0, c3.0, reif)
+}
+
+///|
+/// 壳成分物化视图（slot 纪律：0=主语 1=谓语 2=宾语——官方 tt 词项类律：
+/// 数字主语拒、匿名节点 `[]`/`()` 恒拒、谓语位仅 IRI；N3 特有：变量 `?x`
+/// 任槽合法——N3 verb ::= expression 口径）。rify=true = 断言语境裸壳组件
+/// R 化（R + reifies 行挂池）；false = 引语语境剥壳展开重编（词项本尊）
+fn N3Materializer::shell_term_view(
+  self : N3Materializer,
+  sp : Span,
+  pv : Int32,
+  bv : Int32,
+  slot : Int32,
+  rify~ : Bool = false,
+) -> (@nquads.TermKind, ArrayView[Byte]) raise ParseError {
+  let c0 = self.data[sp.0]
+  // `(` 集合壳内恒拒；`[` 匿名谓语位拒、主/宾位合法 = fresh bnode
+  if c0 == b'(' {
+    raise ParseError::ValidationErr(
+      "shell: collection not allowed in triple term",
+    )
+  }
+  if c0 == b'[' {
+    if slot == 1 {
+      raise ParseError::ValidationErr(
+        "shell: anonymous node not allowed in predicate slot",
+      )
+    }
+    return (@nquads.TermKind::BNode, self.fresh_bnode(sp))
+  }
+  // 数值 / 布尔面（仅宾语槽）：展开为 Literal
+  let is_num = (
+      c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')
+    ) &&
+    @nquads.is_numeric_span(self.data, sp.0, sp.1)
+  let is_bool = @nquads.is_boolean_word(self.data, sp.0, sp.1)
+  if slot != 2 && (is_num || is_bool || c0 == b'"' || c0 == b'\'') {
+    raise ParseError::ValidationErr(
+      "shell: literal/numeric component only allowed in object slot",
+    )
+  }
+  if c0 == b'<' &&
+    sp.1 >= 4 &&
+    self.data[sp.0 + 1] == b'<' &&
+    self.data[sp.0 + 2] == b'(' {
+    let (c1, c2, c3, _) = self.scan_shell_parts(sp.0 + 3, sp.0 + sp.1 - 3)
+    (@nquads.TermKind::TripleTerm, self.compose_shell_tt(c1, c2, c3, pv, bv))
+  } else if c0 == b'<' && sp.1 >= 4 && self.data[sp.0 + 1] == b'<' {
+    // 嵌套裸壳组件：引语语境（rify=false，shell TT 内）= 剥壳展开重编（词项
+    // 本尊，嵌套壳逐层引语透明）；断言语境（rify=true，注解锚 TT）= 官方律
+    // R 化——R(显式-or-fresh) + reifies 行挂池
+    if rify {
+      let (r_kind, r_view, tt_view) = self.shell_reifier_flow(sp, pv, bv)
+      self.shell_rows.push((r_kind, r_view, tt_view))
+      (r_kind, r_view)
+    } else {
+      let (c1, c2, c3, _) = self.scan_shell_parts(sp.0 + 2, sp.0 + sp.1 - 2)
+      (@nquads.TermKind::TripleTerm, self.compose_shell_tt(c1, c2, c3, pv, bv))
+    }
+  } else if c0 == b'<' {
+    let v = self.iri_term(sp, bv)
+    (@nquads.TermKind::Iri, self.gate_iri(v))
+  } else if c0 == b'_' {
+    (@nquads.TermKind::BNode, self.gate_bnode(slice_span(self.data, sp)))
+  } else if c0 == b'?' {
+    // N3 特有（ADR-004）：壳内变量任槽合法，只记身份
+    (@nquads.TermKind::Variable, self.gate_variable(slice_span(self.data, sp)))
+  } else if c0 == b'"' || c0 == b'\'' {
+    (@nquads.TermKind::Literal, slice_span(self.data, sp))
+  } else if is_num {
+    let nspan = self.expand_number(sp)
+    (@nquads.TermKind::Literal, slice_span(self.arena[:], nspan))
+  } else if is_bool {
+    let bspan = self.expand_boolean(sp)
+    (@nquads.TermKind::Literal, slice_span(self.arena[:], bspan))
+  } else {
+    let hit = self.expand_prefname(sp, pv, bv)
+    match hit {
+      Some(expanded) =>
+        (
+          @nquads.TermKind::Iri,
+          self.gate_iri(slice_span(self.arena[:], expanded)),
+        )
+      None =>
+        raise ParseError::ValidationErr(
+          "shell: component has undeclared prefix",
+        )
+    }
+  }
+}
+
+///|
+/// 复合重编：`<<( v1 v2 v3 )>>`（展开形落 arena；谓语成分须 IRI）
+fn N3Materializer::compose_shell_tt(
+  self : N3Materializer,
+  c1 : Span,
+  c2 : Span,
+  c3 : Span,
+  pv : Int32,
+  bv : Int32,
+) -> ArrayView[Byte] raise ParseError {
+  let (_, v1) = self.shell_term_view(c1, pv, bv, 0)
+  let (k2, v2) = self.shell_term_view(c2, pv, bv, 1)
+  if !(k2 is @nquads.TermKind::Iri) {
+    raise ParseError::ValidationErr("shell: predicate component must be an IRI")
+  }
+  let (_, v3) = self.shell_term_view(c3, pv, bv, 2)
+  let start = self.arena.length()
+  self.push_str("<<( ")
+  self.push_view(v1)
+  self.push_byte(b' ')
+  self.push_view(v2)
+  self.push_byte(b' ')
+  self.push_view(v3)
+  self.push_str(" )>>")
+  slice_span(self.arena[:], (start, self.arena.length() - start))
+}
+
+///|
+/// U5 R 节点解析：显式 reifier（Iri/PrefName/BlankNode）展开；缺省 = fresh
+/// 块身份键 Span(-seq, 0)（负 offset 与真 token span 无撞域——同锚连续块
+/// 各领独立 R）
+fn N3Materializer::expand_reifier_node(
+  self : N3Materializer,
+  reif : Span?,
+  seq : Int32,
+  pv : Int32,
+  bv : Int32,
+) -> (@nquads.TermKind, ArrayView[Byte]) raise ParseError {
+  match reif {
+    Some(r) => {
+      let c0 = self.data[r.0]
+      if c0 == b'<' {
+        let v = self.iri_term(r, bv)
+        (@nquads.TermKind::Iri, self.gate_iri(v))
+      } else if c0 == b'_' {
+        (@nquads.TermKind::BNode, self.gate_bnode(slice_span(self.data, r)))
+      } else {
+        match self.expand_prefname(r, pv, bv) {
+          Some(expanded) =>
+            (
+              @nquads.TermKind::Iri,
+              self.gate_iri(slice_span(self.arena[:], expanded)),
+            )
+          None =>
+            raise ParseError::ValidationErr("reifier has undeclared prefix")
+        }
+      }
+    }
+    None => (@nquads.TermKind::BNode, self.fresh_bnode((-seq, 0)))
+  }
+}
+
+///|
+/// U5 锚行 TT 组合（断言语境）：锚行三 span 直过槽位展开臂（锚文重扫全废
+/// ——合并锚文 span 退役）。嵌套锚主语壳旗：TT 首成分 R = 该块身份键。
+/// 断言语境裸壳组件 R 化（rify=true）。
+fn N3Materializer::compose_anchor_tt(
+  self : N3Materializer,
+  s_span : Span,
+  p_span : Span,
+  o_span : Span,
+  s_shell_seq : Int32?,
+  pv : Int32,
+  bv : Int32,
+) -> ArrayView[Byte] raise ParseError {
+  let (_, v1) = match s_shell_seq {
+    Some(n) => (@nquads.TermKind::BNode, self.fresh_bnode((-n, 0)))
+    None => self.shell_term_view(s_span, pv, bv, 0, rify=true)
+  }
+  let (k2, v2) = self.shell_term_view(p_span, pv, bv, 1)
+  if !(k2 is @nquads.TermKind::Iri) {
+    raise ParseError::ValidationErr(
+      "anchor: predicate component must be an IRI",
+    )
+  }
+  let (_, v3) = self.shell_term_view(o_span, pv, bv, 2, rify=true)
+  let start = self.arena.length()
+  self.push_str("<<( ")
+  self.push_view(v1)
+  self.push_byte(b' ')
+  self.push_view(v2)
+  self.push_byte(b' ')
+  self.push_view(v3)
+  self.push_str(" )>>")
+  slice_span(self.arena[:], (start, self.arena.length() - start))
+}
+
+///|
+/// reifies 谓词视图（词表 IRI 推入 arena，往返共享）
+fn N3Materializer::push_reifies_pred(self : N3Materializer) -> ArrayView[Byte] {
+  let start = self.arena.length()
+  self.push_str("<http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies>")
+  slice_span(self.arena[:], (start, self.arena.length() - start))
+}
+
+///|
+/// 裸壳 reifier 流：剥 `<< >>` → 三成分 + reifier（显式展开 / 空 = fresh 壳 span memo）
+/// → (R kind, R view, tt view)
+fn N3Materializer::shell_reifier_flow(
+  self : N3Materializer,
+  sp : Span,
+  pv : Int32,
+  bv : Int32,
+) -> (@nquads.TermKind, ArrayView[Byte], ArrayView[Byte]) raise ParseError {
+  let (c1, c2, c3, reif) = self.scan_shell_parts(sp.0 + 2, sp.0 + sp.1 - 2)
+  let (r_kind, r_view) = match reif {
+    Some(rs) => {
+      // reifier 位 = 主语位纪律（Iri/BNode/变量，拒字面量/数值/布尔）
+      let (k, v) = self.shell_term_view(rs, pv, bv, 0)
+      if k is @nquads.TermKind::Literal {
+        raise ParseError::ValidationErr("shell: reifier cannot be a literal")
+      }
+      (k, v)
+    }
+    None => (@nquads.TermKind::BNode, self.fresh_bnode(sp))
+  }
+  let tt_view = self.compose_shell_tt(c1, c2, c3, pv, bv)
+  (r_kind, r_view, tt_view)
 }

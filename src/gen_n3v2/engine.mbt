@@ -463,10 +463,7 @@ impl[L : LexerSource] N3Supervisor for N3Engine[L] with fn finish_at_end(
     self.ctx.slot_stack.clear()
     self.ctx.pred_kind = Normal
     self.ctx.is_src = None
-    self.ctx.annot_s = None
-    self.ctx.annot_o = None
-    self.ctx.subj_shell = false
-    self.ctx.annot_close = false
+    self.ctx.clear_annotation()
     self.ctx.state = N3ExpectSubject
     Some(Err(err))
   } else {
@@ -503,14 +500,17 @@ fn N3Context::settle_inversion(self : N3Context, scope : ResetScope) -> Unit {
 }
 
 ///|
-/// 组清·注解壳账（役28 R-13）：四件套一组回收——壳账（annot_s/annot_o）与
-/// 壳位旗（subj_shell/annot_close）同生共灭，清账成组防漏。消费点三处：
-/// settle_annotation 收口半边、begin_record 全量重置、recover_cleanup 随错回收。
+/// 组清·注解壳账（U5 官方律，trig 同律）：镜面六件 + 帧栈一组回收。消费点：
+/// begin_record 全量重置、recover_cleanup 随错回收、finish_at_end 排水。
 fn N3Context::clear_annotation(self : N3Context) -> Unit {
   self.annot_s = None
+  self.annot_p = None
   self.annot_o = None
   self.subj_shell = false
-  self.annot_close = false
+  self.s_shell_seq = None
+  self.bound_reifier = None
+  self.reifiers.clear()
+  self.annot_stack.clear()
 }
 
 ///|
@@ -524,39 +524,22 @@ fn N3Context::clear_path(self : N3Context) -> Unit {
 }
 
 ///|
-/// 注解壳账收口半边（役8；役22 下沉 ctx 级）：末体 quad 出账点（take）或
-/// 公式罩内压位点消费 annot_close 旗——还原即清账（收口行 PredObj 粒度本就
-/// 保锚主语在槽，`;` 续锚直落现状；体区旗/壳账四件套齐清，防旗漏后语句）
-fn N3Context::settle_annotation(self : N3Context) -> Unit {
-  if self.annot_close {
-    self.clear_annotation()
-  }
-}
+/// 注解壳账收口半边（役8 旧律）已退役：U5 官方律收口兑现 = AnnotPop 效果
+/// → annot_pop_frame（actions.mbt），发射快照不含清理副作用。
 
 ///|
 /// 发射出账机械（役6 收口；役22 下沉 ctx 级 take_pending，interpret 与引擎
-/// 共用同一入口）：快照打包槽位 span；倒装交换键在场且挂起主语即倒装主语 →
-/// 主宾互换（`X is P of Y` grammar 序槽位、语义序 `Y P X` 出账——span 全局
-/// 唯一 ⇒ 嵌套 bnp/集合内层 fresh 主语天然错键不换）；随后按 scope 粒度重置
-/// 并走清账半边（逗号 Object 粒度保键连换）。
+/// 共用同一入口）：快照打包槽位 span；U5 壳键守卫（copy 形）+ 倒装交换；
+/// 随后按 scope 粒度重置。
 fn N3Context::take_pending(
   self : N3Context,
   scope : ResetScope,
 ) -> N3PendingQuad {
   let pending = self.snapshot()
-  // 役8 注解壳交换：体区旗在场且挂起主语 == 锚主语（span 身份键，嵌套内层
-  // fresh 主语错键不换）→ 主语改指壳 span（锚 s 起点至锚 o 终点的连续原文，
-  // 物化层合成 <<原文>> TT 壳）；先壳交换后倒装交换，两键互斥不叠加
-  let pending = if self.subj_shell && pending.subj == self.annot_s {
-    match (self.annot_s, self.annot_o) {
-      (Some(s), Some(o)) =>
-        // 命中：主语改指壳 span + 壳旗随账（extra 直引已真，显式保真）
-        { ..pending, subj: Some((s.0, o.0 + o.1 - s.0)), subj_shell: true, }
-      (_, _) => pending
-    }
-  } else if self.subj_shell {
-    // 错键不换（嵌套 bnp/集合内层 fresh 主语，役6 同款）：壳旗强制落假——
-    // extra 直引自 ctx 会把体区旗漏挂到内层 quad 上
+  // U5 壳键守卫（copy 形，trig 同律）：壳旗在场且挂起主语非锚主语（嵌套
+  // bnp/集合内层 fresh 主语，役6 同款错键）→ 只清 pending 旗，ctx 镜面不动
+  //（annotation-02 块内 bnp 后体行全裸）
+  let pending = if pending.subj_shell && pending.subj != self.annot_s {
     { ..pending, subj_shell: false, }
   } else {
     pending
@@ -567,7 +550,6 @@ fn N3Context::take_pending(
     pending
   }
   self.settle_inversion(scope)
-  self.settle_annotation()
   self.reset(scope)
   pending
 }
@@ -593,6 +575,17 @@ impl[L] N3EffectHandler for N3Engine[L] with fn on_open_slot(
   ret_state : N3State,
 ) -> Unit {
   let _ = N3Actions::open_slot(self.actions, ctx, span, typ, ret_state)
+}
+
+///|
+/// U5 AnnotPop 意图兑现（trig 同律）：弹帧还镜 + 收口槽位回填，机械在
+/// annot_pop_frame（帧携带返回态与锚槽）
+impl[L] N3EffectHandler for N3Engine[L] with fn on_annot_pop(
+  self : N3Engine[L],
+  ctx : N3Context,
+) -> Unit {
+  let _ = self
+  ctx.annot_pop_frame()
 }
 
 ///|
