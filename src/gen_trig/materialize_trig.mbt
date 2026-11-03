@@ -483,11 +483,19 @@ fn TrigMaterializer::materialize_literal(
 }
 
 ///|
-/// 物化单个 quad：span 四元组 → QuadEmit（PrefName 展开等改写项落 arena）
+/// 物化单个 quad：span 四元组 → QuadEmit 行数组（U3a 官方律：壳语句追加
+/// reifies 行）。主语位三臂：
+///   · subj_shell（注解壳行）→ R = fresh_bnode(锚 span memo，同锚多行同 R)，
+///     主语换 R + 追加 (R, rdf:reifies, tt(展开三成分))；
+///   · 裸壳 `<< s p o [~ r] >>` 词项 → R = 显式 reifier 展开-or-fresh(壳 span memo)，
+///     主语换 R + 追加 reifies 行（官方判：bare 壳不自断言）；
+///   · 括号壳 `<<( s p o )>>` 词项 → 剥壳展开重编（词项本尊，无 reifies 行）。
 pub fn TrigMaterializer::materialize_quad(
   self : TrigMaterializer,
   quad : QuadSpan,
-) -> @nquads.QuadEmit raise ParseError {
+) -> Array[@nquads.QuadEmit] raise ParseError {
+  // 追加 reifies 行的挂账（R kind, R view, tt view）——图名位物化后统一造行
+  let shell_rows : Array[(@nquads.TermKind, ArrayView[Byte], ArrayView[Byte])] = []
   // 主语位：Iri / BNode / TT 壳 / PrefName。融合深验（deep_validate 门）在词项
   // 构造点就地执行：Iri→check_iri_view / BNode→validate_bnode / TT 壳→deep_check_tt
   // （独立成句的壳已在组装层拆成普通槽位，此臂承接"壳+后续链"形态）。
@@ -496,16 +504,49 @@ pub fn TrigMaterializer::materialize_quad(
   let mut s_kind : @nquads.TermKind = @nquads.TermKind::Iri
   let mut s_view : ArrayView[Byte] = self.data[0:0]
   if quad.subj_shell {
-    // 役9 注解壳主语：s = 锚三元组原文区间（锚 s 起点→锚 o 终点，含原空白），
-    // 物化层 <<原文>> 逐字节保真合成 TT 壳；壳成分 = 主 quad 锚项已验，免深验
-    let start = self.arena.length()
-    self.push_byte(b'<')
-    self.push_byte(b'<')
-    self.push_view(self.data[quad.s.0:quad.s.0 + quad.s.1])
-    self.push_byte(b'>')
-    self.push_byte(b'>')
-    s_kind = @nquads.TermKind::TripleTerm
-    s_view = slice_span(self.arena[:], (start, self.arena.length() - start))
+    // U3a 官方律：注解壳行 = R + reifies 行（锚行由锚 quad 自身断言，只断言一次）
+    let (c1, c2, c3, reif) = self.scan_shell_parts(
+      quad.s.0,
+      quad.s.0 + quad.s.1,
+    )
+    let _ = reif // 注解壳行不带 reifier（~ 链 = U3b 组装层接）
+    let r_view = self.fresh_bnode(quad.s) // 锚 span 全键 memo：同锚多注解行同 R
+    let tt_view = self.compose_shell_tt(
+      c1,
+      c2,
+      c3,
+      quad.prefix_version,
+      quad.base_version,
+    )
+    shell_rows.push((@nquads.TermKind::BNode, r_view, tt_view))
+    s_kind = @nquads.TermKind::BNode
+    s_view = r_view
+  } else if self.is_shell_span(quad.s) {
+    // 裸壳/括号壳做主语（rt 族：s span = 全壳文本，~ 内嵌）
+    let paren = self.data[quad.s.0 + 2] == b'('
+    if paren {
+      let (c1, c2, c3, _) = self.scan_shell_parts(
+        quad.s.0 + 3,
+        quad.s.0 + quad.s.1 - 3,
+      )
+      s_kind = @nquads.TermKind::TripleTerm
+      s_view = self.compose_shell_tt(
+        c1,
+        c2,
+        c3,
+        quad.prefix_version,
+        quad.base_version,
+      )
+    } else {
+      let (r_kind, r_view, tt_view) = self.shell_reifier_flow(
+        quad.s,
+        quad.prefix_version,
+        quad.base_version,
+      )
+      shell_rows.push((r_kind, r_view, tt_view))
+      s_kind = r_kind
+      s_view = r_view
+    }
   } else if quad.s.1 == 0 {
     // rdf:nil 标记（Span(open.0, 0)，长度 0 = 无字节词项）：合成词表 IRI，可信免深验
     let start = self.arena.length()
@@ -604,19 +645,37 @@ pub fn TrigMaterializer::materialize_quad(
         c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')
       ) &&
       @nquads.is_numeric_span(self.data, quad.o.0, quad.o.1)
-    if c0 == b'<' {
-      if quad.o.1 > 1 && self.data[quad.o.0 + 1] == b'<' {
-        // 引用三元组壳：整段原文持有，字节保真；壳内 term-kind 深验就地执行
-        let v = slice_span(self.data, quad.o)
-        let v = self.gate_tt(v)
+    if self.is_shell_span(quad.o) {
+      // U3a 官方律：壳做宾语——裸壳 = R(显式-or-fresh) + reifies 行（rt-08 判）；
+      // 括号壳 = 剥壳展开重编（词项本尊，tt-01 判）
+      if self.data[quad.o.0 + 2] == b'(' {
+        let (c1, c2, c3, _) = self.scan_shell_parts(
+          quad.o.0 + 3,
+          quad.o.0 + quad.o.1 - 3,
+        )
         o_kind = @nquads.TermKind::TripleTerm
-        o_view = v
+        o_view = self.compose_shell_tt(
+          c1,
+          c2,
+          c3,
+          quad.prefix_version,
+          quad.base_version,
+        )
       } else {
-        let v = self.iri_term(quad.o, quad.base_version)
-        let v = self.gate_iri(v)
-        o_kind = @nquads.TermKind::Iri
-        o_view = v
+        let (r_kind, r_view, tt_view) = self.shell_reifier_flow(
+          quad.o,
+          quad.prefix_version,
+          quad.base_version,
+        )
+        shell_rows.push((r_kind, r_view, tt_view))
+        o_kind = r_kind
+        o_view = r_view
       }
+    } else if c0 == b'<' {
+      let v = self.iri_term(quad.o, quad.base_version)
+      let v = self.gate_iri(v)
+      o_kind = @nquads.TermKind::Iri
+      o_view = v
     } else if c0 == b'_' {
       let v = slice_span(self.data, quad.o)
       let v = self.gate_bnode(v)
@@ -691,7 +750,381 @@ pub fn TrigMaterializer::materialize_quad(
       }
     }
   }
-  { s_kind, s_view, predicate, o_kind, o_view, g_kind, g_view, }
+  let main : @nquads.QuadEmit = {
+    s_kind,
+    s_view,
+    predicate,
+    o_kind,
+    o_view,
+    g_kind,
+    g_view,
+  }
+  let rows : Array[@nquads.QuadEmit] = [main]
+  for row in shell_rows {
+    let (r_kind, r_view, tt_view) = row
+    let start = self.arena.length()
+    self.push_text("<http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies>")
+    let reifies_pred = slice_span(
+      self.arena[:],
+      (start, self.arena.length() - start),
+    )
+    rows.push({
+      s_kind: r_kind,
+      s_view: r_view,
+      predicate: reifies_pred,
+      o_kind: @nquads.TermKind::TripleTerm,
+      o_view: tt_view,
+      g_kind,
+      g_view,
+    })
+  }
+  rows
+}
+
+// ============================================================
+// U3a 剥壳展开件（官方 reifier 律基建）
+// ------------------------------------------------------------
+// 壳文本（裸 `<< s p o [~ r] >>` / 括号 `<<( s p o )>>` / 注解锚 `s p o`）
+// 字节级重扫：空白容忍、引号体整对跳过（转义感知）、嵌套壳深度计、
+// `~` 为 reifier 引导（其后可选一词项至尾；空 ~ = fresh）。
+// 成分物化走既有展开臂（iri_term / expand_prefname / gate_*），复合重编
+// `<<( v1 v2 v3 )>>` 落 arena（展开形——sparql T62 同课：复合文本须携展开词项）。
+// ============================================================
+
+///|
+/// 壳 span 判形（`<<` 起始，裸/括号皆算；注解锚行走 subj_shell 旗不经此）
+fn TrigMaterializer::is_shell_span(self : TrigMaterializer, sp : Span) -> Bool {
+  sp.1 >= 4 && self.data[sp.0] == b'<' && self.data[sp.0 + 1] == b'<'
+}
+
+///|
+fn TrigMaterializer::is_shell_blank(self : TrigMaterializer, b : Byte) -> Bool {
+  let _ = self
+  b == b' ' || b == b'\t' || b == b'\r' || b == b'\n'
+}
+
+///|
+fn TrigMaterializer::shell_skip_blank(
+  self : TrigMaterializer,
+  at : Int32,
+  end : Int32,
+) -> Int32 {
+  let mut i = at
+  while i < end && self.is_shell_blank(self.data[i]) {
+    i += 1
+  }
+  i
+}
+
+///|
+/// ASCII 文本推入 arena（词表串/壳符）
+fn TrigMaterializer::push_text(self : TrigMaterializer, text : String) -> Unit {
+  let len = text.length()
+  let mut i = 0
+  while i < len {
+    self.arena.push(text[i].to_byte())
+    i += 1
+  }
+}
+
+///|
+/// 壳内单词项扫描：返回 (span, 下一索引)。嵌套壳深度计（引号体跳过），
+/// 字面量转义感知 + 可跨白后缀，其余词项扫到空白/`~`/尾
+fn TrigMaterializer::shell_term_span(
+  self : TrigMaterializer,
+  at : Int32,
+  end : Int32,
+) -> (Span, Int32) raise ParseError {
+  if at >= end {
+    raise ParseError::ValidationErr("shell: missing component")
+  }
+  let c0 = self.data[at]
+  if c0 == b'<' && at + 1 < end && self.data[at + 1] == b'<' {
+    let mut depth = 1
+    let mut i = if at + 2 < end && self.data[at + 2] == b'(' {
+      at + 3
+    } else {
+      at + 2
+    }
+    while i < end && depth > 0 {
+      let u = self.data[i]
+      if u == b'"' || u == b'\'' {
+        let q = u
+        i += 1
+        while i < end {
+          let w = self.data[i]
+          if w == b'\\' {
+            i += 2
+            continue
+          }
+          i += 1
+          if w == q {
+            break
+          }
+        }
+        continue
+      }
+      if u == b'<' && i + 1 < end && self.data[i + 1] == b'<' {
+        depth += 1
+        i += if i + 2 < end && self.data[i + 2] == b'(' { 3 } else { 2 }
+        continue
+      }
+      if u == b')' &&
+        i + 2 < end &&
+        self.data[i + 1] == b'>' &&
+        self.data[i + 2] == b'>' {
+        depth -= 1
+        i += 3
+        continue
+      }
+      if u == b'>' && i + 1 < end && self.data[i + 1] == b'>' {
+        depth -= 1
+        i += 2
+        continue
+      }
+      i += 1
+    }
+    if depth != 0 {
+      raise ParseError::ValidationErr("shell: unbalanced nested shell")
+    }
+    return ((at, i - at), i)
+  }
+  if c0 == b'"' || c0 == b'\'' {
+    let q = c0
+    let mut i = at + 1
+    let mut closed = false
+    while i < end {
+      let w = self.data[i]
+      if w == b'\\' {
+        i += 2
+        continue
+      }
+      i += 1
+      if w == q {
+        closed = true
+        break
+      }
+    }
+    if !closed {
+      raise ParseError::ValidationErr("shell: unterminated literal")
+    }
+    let mut k = self.shell_skip_blank(i, end)
+    if k < end && self.data[k] == b'@' {
+      k += 1
+      while k < end &&
+            !self.is_shell_blank(self.data[k]) &&
+            self.data[k] != b'<' &&
+            self.data[k] != b'>' {
+        k += 1
+      }
+      i = k
+    } else if k < end &&
+      self.data[k] == b'^' &&
+      k + 1 < end &&
+      self.data[k + 1] == b'^' {
+      k += 2
+      while k < end && self.data[k] != b'>' {
+        k += 1
+      }
+      if k < end {
+        k += 1
+      }
+      i = k
+    }
+    return ((at, i - at), i)
+  }
+  if c0 == b'<' {
+    // IRIREF：扫到首个 `>`（紧邻形 `<a><b>` 靠 > 自界定，nt-ttl12-syntax-2 官判）
+    let mut i = at + 1
+    while i < end && self.data[i] != b'>' {
+      i += 1
+    }
+    if i >= end {
+      raise ParseError::ValidationErr("shell: unterminated iri")
+    }
+    return ((at, i + 1 - at), i + 1)
+  }
+  let mut i = at + 1
+  while i < end {
+    let u = self.data[i]
+    if u == b'~' || u == b'<' || u == b'>' || self.is_shell_blank(u) {
+      break
+    }
+    i += 1
+  }
+  ((at, i - at), i)
+}
+
+///|
+/// 壳内三成分 + 可选 reifier 扫描（start/end = 已剥壳的内体绝对区间）
+fn TrigMaterializer::scan_shell_parts(
+  self : TrigMaterializer,
+  start : Int32,
+  end : Int32,
+) -> (Span, Span, Span, Span?) raise ParseError {
+  // 尾语句点剥除（词法尾并律：`...)>>.` 的 `.` 并入词尾——nt-ttl12-syntax-2/3 官判）
+  let mut end = end
+  while end > start &&
+        (
+          self.data[end - 1] == b'.' ||
+          self.data[end - 1] == b',' ||
+          self.data[end - 1] == b';'
+        ) {
+    end -= 1
+  }
+  let mut i = self.shell_skip_blank(start, end)
+  let c1 = self.shell_term_span(i, end)
+  i = self.shell_skip_blank(c1.1, end)
+  let c2 = self.shell_term_span(i, end)
+  i = self.shell_skip_blank(c2.1, end)
+  let c3 = self.shell_term_span(i, end)
+  i = self.shell_skip_blank(c3.1, end)
+  let mut reif : Span? = None
+  if i < end && self.data[i] == b'~' {
+    let k = self.shell_skip_blank(i + 1, end)
+    if k < end {
+      let r = self.shell_term_span(k, end)
+      reif = Some(r.0)
+      i = self.shell_skip_blank(r.1, end)
+    } else {
+      i = end
+    }
+  }
+  if i != end {
+    raise ParseError::ValidationErr("shell: trailing content")
+  }
+  (c1.0, c2.0, c3.0, reif)
+}
+
+///|
+/// 壳成分物化视图（slot 纪律：0=主语 1=谓语 2=宾语——官方 tt 词项类律，
+/// trig12-syntax-bad-02/03 官判：数字主语拒、匿名节点 `[]`/`()` 恒拒、
+/// 谓语位仅 IRI；expand_prefname 对无冒号 span 走默认前缀语义，数字面
+/// 不得直喂——先槽位裁决再展开）
+fn TrigMaterializer::shell_term_view(
+  self : TrigMaterializer,
+  sp : Span,
+  pv : Int32,
+  bv : Int32,
+  slot : Int32,
+) -> (@nquads.TermKind, ArrayView[Byte]) raise ParseError {
+  let c0 = self.data[sp.0]
+  // `(` 集合壳内恒拒（bad-06 官判）；`[` 匿名谓语位拒（bad-03 官判）、
+  // 主/宾位合法 = fresh bnode（bnode-03 官判）
+  if c0 == b'(' {
+    raise ParseError::ValidationErr(
+      "shell: collection not allowed in triple term",
+    )
+  }
+  if c0 == b'[' {
+    if slot == 1 {
+      raise ParseError::ValidationErr(
+        "shell: anonymous node not allowed in predicate slot",
+      )
+    }
+    return (@nquads.TermKind::BNode, self.fresh_bnode(sp))
+  }
+  // 数值 / 布尔面（仅宾语槽）：展开为 Literal
+  let is_num = (
+      c0 == b'+' || c0 == b'-' || c0 == b'.' || (c0 >= b'0' && c0 <= b'9')
+    ) &&
+    @nquads.is_numeric_span(self.data, sp.0, sp.1)
+  let is_bool = @nquads.is_boolean_word(self.data, sp.0, sp.1)
+  if slot != 2 && (is_num || is_bool || c0 == b'"' || c0 == b'\'') {
+    raise ParseError::ValidationErr(
+      "shell: literal/numeric component only allowed in object slot",
+    )
+  }
+  if c0 == b'<' &&
+    sp.1 >= 4 &&
+    self.data[sp.0 + 1] == b'<' &&
+    self.data[sp.0 + 2] == b'(' {
+    let (c1, c2, c3, _) = self.scan_shell_parts(sp.0 + 3, sp.0 + sp.1 - 3)
+    (@nquads.TermKind::TripleTerm, self.compose_shell_tt(c1, c2, c3, pv, bv))
+  } else if c0 == b'<' && sp.1 >= 4 && self.data[sp.0 + 1] == b'<' {
+    // 嵌套裸壳：同一剥壳展开重编（递归深验 + 展开形；官方 R 化留 U3b 嵌套位）
+    let (c1, c2, c3, _) = self.scan_shell_parts(sp.0 + 2, sp.0 + sp.1 - 2)
+    (@nquads.TermKind::TripleTerm, self.compose_shell_tt(c1, c2, c3, pv, bv))
+  } else if c0 == b'<' {
+    let v = self.iri_term(sp, bv)
+    (@nquads.TermKind::Iri, self.gate_iri(v))
+  } else if c0 == b'_' {
+    (@nquads.TermKind::BNode, self.gate_bnode(slice_span(self.data, sp)))
+  } else if c0 == b'"' || c0 == b'\'' {
+    (@nquads.TermKind::Literal, slice_span(self.data, sp))
+  } else if is_num {
+    let nspan = self.expand_number(sp)
+    (@nquads.TermKind::Literal, slice_span(self.arena[:], nspan))
+  } else if is_bool {
+    let bspan = self.expand_boolean(sp)
+    (@nquads.TermKind::Literal, slice_span(self.arena[:], bspan))
+  } else {
+    let hit = self.expand_prefname(sp, pv, bv)
+    match hit {
+      Some(expanded) =>
+        (
+          @nquads.TermKind::Iri,
+          self.gate_iri(slice_span(self.arena[:], expanded)),
+        )
+      None =>
+        raise ParseError::ValidationErr(
+          "shell: component has undeclared prefix",
+        )
+    }
+  }
+}
+
+///|
+/// 复合重编：`<<( v1 v2 v3 )>>`（展开形落 arena；谓语成分须 IRI）
+fn TrigMaterializer::compose_shell_tt(
+  self : TrigMaterializer,
+  c1 : Span,
+  c2 : Span,
+  c3 : Span,
+  pv : Int32,
+  bv : Int32,
+) -> ArrayView[Byte] raise ParseError {
+  let (_, v1) = self.shell_term_view(c1, pv, bv, 0)
+  let (k2, v2) = self.shell_term_view(c2, pv, bv, 1)
+  if !(k2 is @nquads.TermKind::Iri) {
+    raise ParseError::ValidationErr("shell: predicate component must be an IRI")
+  }
+  let (_, v3) = self.shell_term_view(c3, pv, bv, 2)
+  let start = self.arena.length()
+  self.push_text("<<( ")
+  self.push_view(v1)
+  self.push_byte(b' ')
+  self.push_view(v2)
+  self.push_byte(b' ')
+  self.push_view(v3)
+  self.push_text(" )>>")
+  slice_span(self.arena[:], (start, self.arena.length() - start))
+}
+
+///|
+/// 裸壳 reifier 流：剥 `<< >>` → 三成分 + reifier（显式展开 / 空 = fresh 壳 span memo）
+/// → (R kind, R view, tt view)
+fn TrigMaterializer::shell_reifier_flow(
+  self : TrigMaterializer,
+  sp : Span,
+  pv : Int32,
+  bv : Int32,
+) -> (@nquads.TermKind, ArrayView[Byte], ArrayView[Byte]) raise ParseError {
+  let (c1, c2, c3, reif) = self.scan_shell_parts(sp.0 + 2, sp.0 + sp.1 - 2)
+  let (r_kind, r_view) = match reif {
+    Some(rs) => {
+      // reifier 位 = 主语位纪律（Iri/BNode，拒字面量/数值/布尔；前缀名
+      // `:id` 形合法——inside-03 官判，且 reifier 可复用为主语）
+      let (k, v) = self.shell_term_view(rs, pv, bv, 0)
+      if k is @nquads.TermKind::Literal {
+        raise ParseError::ValidationErr("shell: reifier cannot be a literal")
+      }
+      (k, v)
+    }
+    None => (@nquads.TermKind::BNode, self.fresh_bnode(sp))
+  }
+  let tt_view = self.compose_shell_tt(c1, c2, c3, pv, bv)
+  (r_kind, r_view, tt_view)
 }
 
 ///|
@@ -709,8 +1142,10 @@ pub fn TrigMaterializer::materialize_all(
   let errors : Array[ParseError] = []
   for quad in quads {
     try {
-      let q = self.materialize_quad(quad)
-      results.push(q)
+      let rows = self.materialize_quad(quad)
+      for q in rows {
+        results.push(q)
+      }
     } catch {
       e => errors.push(e)
     }

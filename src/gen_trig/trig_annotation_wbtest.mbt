@@ -111,13 +111,15 @@ test "役9 物化：TT 壳逐字节保真直出（三右尖括号 = 壳自有的
     "@prefix : <http://e/> .\n:s :p :o {| :q :z |} .\n",
   )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  // 主 quad：锚 IRI 原样
+  // U3a 官方律：锚行 + 注解行(R 主语) + reifies 行
+  assert_eq(emits.length(), 3)
   assert_eq(mat_vs(mat_subj(emits[0])), "<http://e/s>")
-  // 体 quad：主语 = <<锚三元组原文>>——壳 span 原文逐字节保真（prefname
-  // 不展开，与宾位的词项展开成对照）；全 IRI 输入时壳内即全 IRI
-  assert_eq(mat_vs(mat_subj(emits[1])), "<<:s :p :o>>")
+  assert_true(mat_vs(mat_subj(emits[1])).has_prefix("_:"))
   assert_eq(mat_vs(mat_obj(emits[1])), "<http://e/z>")
+  assert_eq(
+    mat_vs(mat_obj(emits[2])),
+    "<<( <http://e/s> <http://e/p> <http://e/o> )>>",
+  )
 }
 
 ///|
@@ -126,7 +128,8 @@ test "役9 物化图块区：壳主语 + 图名随行" {
     "@prefix : <http://e/> .\n:G { :s :p :o {| :q :z |} . }\n",
   )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 2)
-  assert_eq(mat_vs(mat_subj(emits[1])), "<<:s :p :o>>")
+  assert_eq(emits.length(), 3)
+  assert_true(mat_vs(mat_subj(emits[1])).has_prefix("_:"))
   assert_eq(mat_vs(mat_graph(emits[1])), "<http://e/G>")
+  assert_eq(mat_vs(mat_graph(emits[2])), "<http://e/G>")
 }

@@ -160,8 +160,13 @@ test "物化: 引用三元组壳整段保真 + bnode 图名零拷贝" {
     "@prefix ex: <http://example/> .\nex:s ex:p << <http://a> <http://b> <http://c> >> .\n",
   )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  assert_eq(mat_vs(mat_obj(emits[0])), "<< <http://a> <http://b> <http://c> >>")
+  // U3a 官方律：裸壳宾语 = R + reifies 行（展开形 tt）
+  assert_eq(emits.length(), 2)
+  assert_true(mat_vs(mat_obj(emits[0])).has_prefix("_:"))
+  assert_eq(
+    mat_vs(mat_obj(emits[1])),
+    "<<( <http://a> <http://b> <http://c> )>>",
+  )
 }
 
 ///|
@@ -349,8 +354,13 @@ test "深验: TT 壳内 term-kind —— 数字主语拒 / 字面量谓词拒 / 
   )
   assert_eq(p4.length(), 0)
   assert_eq(m4.length(), 0)
-  assert_eq(e4.length(), 1)
-  assert_eq(mat_vs(mat_obj(e4[0])), "<< ex:a ex:b \"lit\" >>")
+  // U3a 官方律：裸壳宾语 = fresh reifier R（主行）+ (R, rdf:reifies, 展开形 tt) 追加行
+  assert_eq(e4.length(), 2)
+  assert_true(mat_vs(mat_obj(e4[0])).has_prefix("_:"))
+  assert_eq(
+    mat_vs(mat_obj(e4[1])),
+    "<<( <http://example/a> <http://example/b> \"lit\" )>>",
+  )
   // 5) 嵌套壳：合法递归放行 / 内层数字谓词递归拒
   let (e5, m5, p5) = mat_chain_deep(
     "@prefix ex: <http://example/> .\nex:s ex:p << << ex:a ex:b ex:c >> ex:p2 ex:o2 >> .\n",
@@ -358,7 +368,7 @@ test "深验: TT 壳内 term-kind —— 数字主语拒 / 字面量谓词拒 / 
   )
   assert_eq(p5.length(), 0)
   assert_eq(m5.length(), 0)
-  assert_eq(e5.length(), 1)
+  assert_eq(e5.length(), 2) // U3a：主行 + reifies 行（内层壳展开重编入 tt）
   let (e6, m6, p6) = mat_chain_deep(
     "@prefix ex: <http://example/> .\nex:s ex:p << << ex:a 3 ex:c >> ex:p2 ex:o2 >> .\n",
     true,

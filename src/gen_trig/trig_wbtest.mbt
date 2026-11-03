@@ -944,13 +944,17 @@ test "★3 回收: 指令后 TT 壳主位（turtle12-bnode-03 口径）" {
     "PREFIX : <http://example/>\n\n<<:s :p :o >> :q :z .\n",
   )
   assert_eq(errors.length(), 0)
-  assert_eq(emits.length(), 1)
-  // 壳主语：TripleTerm 变体整段保真（mat_subj 不覆盖该变体，直接 match）
+  // U3a 官方律：裸壳主语 = fresh R + reifies 行（展开形 tt）
+  assert_eq(emits.length(), 2)
   match emits[0].s_kind {
-    @nquads.TermKind::TripleTerm =>
-      assert_eq(mat_vs(emits[0].s_view), "<<:s :p :o >>")
+    @nquads.TermKind::BNode =>
+      assert_true(mat_vs(emits[0].s_view).has_prefix("_:"))
     _ => assert_true(false)
   }
+  assert_eq(
+    mat_vs(emits[1].o_view),
+    "<<( <http://example/s> <http://example/p> <http://example/o> )>>",
+  )
   // 括号壳主位：无行 → 恢复报错
   let (_, errors2) = mat_chain("<<(:s :p :o) >> :q :z .\n")
   assert_true(errors2.length() > 0)
@@ -1043,43 +1047,49 @@ test "壳内 ~ reifier：分写 / 连写 / 全连写 / 裸 ~ / IRI 形（syntax-
     "@prefix : <http://example/> .\n:s :p << :s :p :o1 ~ :id >> .\n",
   )
   assert_eq(errors1.length(), 0)
-  assert_eq(emits1.length(), 1)
-  assert_eq(mat_vs(mat_obj(emits1[0])), "<< :s :p :o1 ~ :id >>")
+  assert_eq(emits1.length(), 2)
+  assert_eq(mat_vs(mat_obj(emits1[0])), "<http://example/id>")
+  assert_eq(
+    mat_vs(mat_obj(emits1[1])),
+    "<<( <http://example/s> <http://example/p> <http://example/o1> )>>",
+  )
   // 连写 BlankNode（~ 后无空白）
   let (emits2, errors2) = mat_chain(
     "@prefix : <http://example/> .\n:s :p <<:s :p :o1 ~_:id>> .\n",
   )
   assert_eq(errors2.length(), 0)
-  assert_eq(emits2.length(), 1)
+  assert_eq(emits2.length(), 2) // R = _:id（连写同律）
   // 全连写：~ 粘着第 3 项尾（词法同分写）
   let (emits3, errors3) = mat_chain(
     "@prefix : <http://example/> .\n:s :p <<:s :p :o1~_:id>> .\n",
   )
   assert_eq(errors3.length(), 0)
-  assert_eq(emits3.length(), 1)
+  assert_eq(emits3.length(), 2) // R = _:id（连写同律）
   // 裸 ~（fresh reifier）
   let (emits4, errors4) = mat_chain(
     "@prefix : <http://example/> .\n:s :p << :s :p :o ~ >> .\n",
   )
   assert_eq(errors4.length(), 0)
-  assert_eq(emits4.length(), 1)
+  assert_eq(emits4.length(), 2) // 裸 ~ = fresh R
   // IRI reifier
   let (emits5, errors5) = mat_chain(
     "@prefix : <http://example/> .\n:s :p << :s :p :o ~ <http://x/> >> .\n",
   )
   assert_eq(errors5.length(), 0)
-  assert_eq(emits5.length(), 1)
+  assert_eq(emits5.length(), 2)
+  assert_eq(mat_vs(mat_obj(emits5[0])), "<http://x/>")
   // 主位壳带尾巴（turtle12-bnode-03 形 + reifier）：壳是项不是断言，单发射
   let (emits6, errors6) = mat_chain(
     "@prefix : <http://example/> .\n<< :s :p :o ~ :id >> :q :z .\n",
   )
   assert_eq(errors6.length(), 0)
-  assert_eq(emits6.length(), 1)
-  match emits6[0].s_kind {
-    @nquads.TermKind::TripleTerm =>
-      assert_eq(mat_vs(emits6[0].s_view), "<< :s :p :o ~ :id >>")
-    _ => assert_true(false)
-  }
+  // U3a：主位壳 = R(显式 :id) 主语行 + reifies 行
+  assert_eq(emits6.length(), 2)
+  assert_eq(mat_vs(emits6[0].s_view), "<http://example/id>")
+  assert_eq(
+    mat_vs(emits6[1].o_view),
+    "<<( <http://example/s> <http://example/p> <http://example/o> )>>",
+  )
 }
 
 ///|

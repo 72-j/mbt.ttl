@@ -129,7 +129,8 @@ async test "gen_trig 性能(简单语料): lexer / engine / parse_all / 物化" 
   assert_eq(engine_count, total)
   assert_eq(engine_errors, 0)
   assert_eq(parse_errors.length(), 0)
-  assert_eq(emits.length(), total)
+  // U3a 官方律：语料 500 壳 quad 各追加 reifies 行（2258 → 2758）
+  assert_eq(emits.length(), total) // 简语料无壳：无 reifies 追加
   assert_eq(mat_errors.length(), 0)
   assert_true(quads[0].g is None) // 顶层三元组 = 默认图
   assert_true(quads[n_flat].g is Some(_)) // 图块起点起 quad 带图标签
@@ -248,7 +249,8 @@ async test "gen_trig 性能(复杂语料): lexer / engine / parse_all / 物化" 
   assert_eq(engine_count, total)
   assert_eq(engine_errors, 0)
   assert_eq(parse_errors.length(), 0)
-  assert_eq(emits.length(), total)
+  // U3a 官方律：语料 500 壳 quad 各追加 reifies 行（2258 → 2758）
+  assert_eq(emits.length(), total + 500)
   assert_eq(mat_errors.length(), 0)
   assert_true(quads[0].g is None) // 默认图块 {} 内 g=None
   assert_true(quads[6].g is Some(_)) // 首个 ex:g0 图块 quad 带图标签

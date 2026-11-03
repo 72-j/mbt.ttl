@@ -27,7 +27,8 @@ fn trig_suite_verdict(
   if is_bad {
     perr_count + merrs.length() > 0
   } else {
-    perr_count == 0 && merrs.length() == 0 && emits.length() == quad_count
+    // U3a 官方律：壳 quad 产主行+reifies 行（emit ≥ quad），等数不变量随之松绑
+    perr_count == 0 && merrs.length() == 0 && emits.length() >= quad_count
   }
 }
 
