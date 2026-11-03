@@ -217,21 +217,64 @@ fn Lexermoon::scan_literal_suffix(self : Lexermoon) -> Unit {
   if p >= l {
     return
   }
-  let caret_dt = v.unsafe_get(p) == b'^' &&
-    p + 1 < l &&
-    v.unsafe_get(p + 1) == b'^'
-  if !caret_dt && v.unsafe_get(p) != b'@' {
+  // RDF 1.2 律（c14n extra_whitespace-03/04 实证）：字符串与标注之间允许
+  // 空白——只跨同行空格/制表（不跨换行：注释语义与行号统计不动）。
+  // 跳过后再判后缀门；无后缀则**回针**（token 止于闭引号，空白留给主扫
+  // 循环），token span 连续性不变。与 lexerc_ffi.c 同步（镜像律）。
+  let mut q = p
+  while q < l && (v.unsafe_get(q) == b' ' || v.unsafe_get(q) == b'\t') {
+    q = q + 1
+  }
+  if q >= l {
     return
   }
-  while p < l &&
-        v.unsafe_get(p) != b' ' &&
-        v.unsafe_get(p) != b'\t' &&
-        v.unsafe_get(p) != b'\r' &&
-        v.unsafe_get(p) != b'\n' &&
-        v.unsafe_get(p) != b')' &&
-        v.unsafe_get(p) != b']' &&
-        v.unsafe_get(p) != b'}' {
+  let caret_dt = v.unsafe_get(q) == b'^' &&
+    q + 1 < l &&
+    v.unsafe_get(q + 1) == b'^'
+  if !caret_dt && v.unsafe_get(q) != b'@' {
+    return
+  }
+  if v.unsafe_get(q) == b'@' {
+    // @lang：无脑扫到空白/右括族（原径）
+    p = q
+    while p < l &&
+          v.unsafe_get(p) != b' ' &&
+          v.unsafe_get(p) != b'\t' &&
+          v.unsafe_get(p) != b'\r' &&
+          v.unsafe_get(p) != b'\n' &&
+          v.unsafe_get(p) != b')' &&
+          v.unsafe_get(p) != b']' &&
+          v.unsafe_get(p) != b'}' {
+      p = p + 1
+    }
+    self.pos = p
+    return
+  }
+  // ^^datatype：`^^` 后可隔空白再 <iri>（c14n extra_whitespace-04 实证）——
+  // 两段式：跨白后见 '<' 则按 IRIREF 扫至 '>' 再续原尾扫；否则照旧无脑扫
+  p = q + 2
+  while p < l && (v.unsafe_get(p) == b' ' || v.unsafe_get(p) == b'\t') {
     p = p + 1
+  }
+  if p < l && v.unsafe_get(p) == b'<' {
+    while p < l && v.unsafe_get(p) != b'>' {
+      p = p + 1
+    }
+    if p < l {
+      p = p + 1
+    }
+  } else {
+    p = q
+    while p < l &&
+          v.unsafe_get(p) != b' ' &&
+          v.unsafe_get(p) != b'\t' &&
+          v.unsafe_get(p) != b'\r' &&
+          v.unsafe_get(p) != b'\n' &&
+          v.unsafe_get(p) != b')' &&
+          v.unsafe_get(p) != b']' &&
+          v.unsafe_get(p) != b'}' {
+      p = p + 1
+    }
   }
   self.pos = p
   // 右括族 `) ] }` 停扫（后缀合法域 = IRIREF / PrefName / langtag）；`.` `,` `;` 仍并入词尾，

@@ -136,14 +136,43 @@ static int32_t utf8_name_advance(const uint8_t *v, int32_t pos, int32_t l) {
 // 尾部被吞的语句点等结构问题交引擎/校验层判定，词法器不做语法判断。
 // 役16（moonttl N3）：右括族 ) ] } 停扫——后缀合法域终结于闭括号；
 // 役18：单 ^ 须后随第二 ^ 才是 datatype 门——"lit"^:prop 的路径操作符
-// 旧门误当 ^^ 入扫整段胶进词尾。与 lexer_mbt.mbt scan_literal_suffix 同步
+// 旧门误当 ^^ 入扫整段胶进词尾。与 lexer_mbt.mbt scan_literal_suffix 同步。
+// RDF 1.2 律（c14n extra_whitespace-03/04）：字符串与标注之间允许空白——
+// 只跨同行空格/制表；跳过后再判后缀门，无后缀回针（token 止于闭引号）。
 static void scan_literal_suffix(Lexer *l) {
   if (l->pos >= l->len)
     return;
-  int caret_dt = l->data[l->pos] == '^' && l->pos + 1 < l->len &&
-                 l->data[l->pos + 1] == '^';
-  if (!caret_dt && l->data[l->pos] != '@')
+  int q = l->pos;
+  while (q < l->len && (l->data[q] == ' ' || l->data[q] == '\t'))
+    q++;
+  if (q >= l->len)
     return;
+  int caret_dt = l->data[q] == '^' && q + 1 < l->len &&
+                 l->data[q + 1] == '^';
+  if (!caret_dt && l->data[q] != '@')
+    return;
+  if (l->data[q] == '@') {
+    /* @lang：无脑扫到空白/右括族（原径） */
+    l->pos = q;
+    while (l->pos < l->len && !is_whitespace(l->data[l->pos]) &&
+           l->data[l->pos] != ')' && l->data[l->pos] != ']' &&
+           l->data[l->pos] != '}') {
+      l->pos++;
+    }
+    return;
+  }
+  /* ^^datatype：`^^` 后可隔空白再 <iri>（c14n extra_whitespace-04）——两段式 */
+  l->pos = q + 2;
+  while (l->pos < l->len && (l->data[l->pos] == ' ' || l->data[l->pos] == '\t'))
+    l->pos++;
+  if (l->pos < l->len && l->data[l->pos] == '<') {
+    while (l->pos < l->len && l->data[l->pos] != '>')
+      l->pos++;
+    if (l->pos < l->len)
+      l->pos++;
+    return;
+  }
+  l->pos = q;
   while (l->pos < l->len && !is_whitespace(l->data[l->pos]) &&
          l->data[l->pos] != ')' && l->data[l->pos] != ']' &&
          l->data[l->pos] != '}') {

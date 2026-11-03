@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn canonical_document(Array[QuadSpan]) -> String raise ParseError
+
 pub fn is_banned_langstring_iri(ArrayView[Byte]) -> Bool
 
 pub fn is_boolean_word(ArrayView[Byte], Int32, Int32) -> Bool

@@ -583,32 +583,42 @@ fn validate_literal(
   }
   // 内容扫描：转义成对消费，定位配对闭引号（原语复用：单引号口径 quote_run=1）
   let close = scan_string_body(lit, base, 1, 1)
-  // 闭引号之后：@lang / ^^<datatype>，其余残余一律拒绝
-  if close + 1 < len {
-    let s = lit[close + 1]
+  // 闭引号之后：空白可隔（RDF 1.2，与词法器跨白口径同律）→ @lang / ^^<datatype>，
+  // 其余残余一律拒绝。无空白时 suf == close+1，各报错位与旧径全同。
+  let mut suf = close + 1
+  while suf < len && (lit[suf] == b' ' || lit[suf] == b'\t') {
+    suf = suf + 1
+  }
+  if suf < len {
+    let s = lit[suf]
     if s == b'@' {
       // BCP47 口径（与对象级 LanguageTag 一致），原语复用（验证热路径零分配）
-      validate_lang_suffix(lit, base, close + 1, len, rdf12)
+      validate_lang_suffix(lit, base, suf, len, rdf12)
     } else if s == b'^' {
-      if close + 3 >= len || lit[close + 2] != b'^' || lit[close + 3] != b'<' {
+      // ^^ 后可隔空白再 <iri>（同词法器两段式口径）
+      let mut dt = suf + 2
+      while dt < len && (lit[dt] == b' ' || lit[dt] == b'\t') {
+        dt = dt + 1
+      }
+      if dt >= len || lit[dt] != b'<' {
         raise ParseError::SyntaxErr(
           "Datatype must be an IRI (^^<...>)",
-          (base + close + 1, 2),
+          (base + suf, 2),
         )
       }
-      validate_iri(lit[close + 3:len], base + close + 3)
+      validate_iri(lit[dt:len], base + dt)
       // RDF 1.2：langString/dirLangString 只能由 @lang 派生，显式 ^^ 写法非法
       // （口径：按 #后缀 判定，与 rdf: 命名空间约定一致）
-      if rdf12 && is_banned_langstring_iri(lit[close + 3:len]) {
+      if rdf12 && is_banned_langstring_iri(lit[dt:len]) {
         raise ParseError::SyntaxErr(
           "langString/dirLangString cannot be written explicitly (use @lang)",
-          (base + close + 3, len - close - 3),
+          (base + dt, len - dt),
         )
       }
     } else {
       raise ParseError::SyntaxErr(
         "Unexpected content after literal",
-        (base + close + 1, 1),
+        (base + suf, 1),
       )
     }
   }

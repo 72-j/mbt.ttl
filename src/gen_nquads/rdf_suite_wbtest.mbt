@@ -379,3 +379,147 @@ async test "rdf12 套件: 循环读文件（现状摸底）" {
   run_rdf12_suite(".rdf-tests/nquads/rdf12/rdf-n-triples/syntax", "rdf12-nt")
   run_rdf12_suite(".rdf-tests/nquads/rdf12/rdf-n-quads/syntax", "rdf12-nq")
 }
+
+///|
+/// rdf12 c14n 套件（U1）：manifest 驱动——逐案 `mf:action` 输入件
+/// parse → canonical_document → 与该案 `mf:result` 期望件逐字节对拍。
+/// 期望件不按名拼（实证：-02 与 -01 共享同一规范形期望件），从
+/// manifest 链接取；被注释排除的案天然不入单。
+async fn run_c14n_suite(test_dir : String, label : String) -> Unit {
+  let text = @fs.read_file("\{test_dir}/manifest.ttl").text()
+  let cases : Array[(String, String)] = []
+  let mut cur_action = ""
+  let mut cur_result = ""
+  for line_view in text.split("\n") {
+    let line = line_view.to_owned()
+    let mut k = 0
+    let units = line.length()
+    while k < units && line[k] == ' ' {
+      k += 1
+    }
+    if k < units && line[k] == '#' {
+      // 注释行整行跳过（含被注释排除的案块,如 lantag_with_subtag）
+      continue
+    }
+    if line.has_prefix(":") && line.contains("PositiveC14N") {
+      cur_action = ""
+      cur_result = ""
+      continue
+    }
+    match angle_after(line, "mf:action") {
+      Some(v) => cur_action = v
+      None => ()
+    }
+    match angle_after(line, "mf:result") {
+      Some(v) => cur_result = v
+      None => ()
+    }
+    if cur_action != "" && cur_result != "" {
+      cases.push((cur_action, cur_result))
+      cur_action = ""
+      cur_result = ""
+    }
+  }
+  let mut passed = 0
+  let mut failed = 0
+  let mut detail = ""
+  for case in cases {
+    let action_file = case.0
+    let result_file = case.1
+    let data = @fs.read_file("\{test_dir}/\{action_file}").binary().to_array()
+    let sec = data[:]
+    let engine = NQuadsEngine::new(Lexermoon::new(sec))
+    let slice = SliceParser::new(engine, sec, lenient=false)
+    let (quads, errors) = slice.parse_all()
+    if errors.length() > 0 {
+      failed += 1
+      detail = "\{detail}\{label}/\{action_file}: parse errors \{errors.length()}\n"
+      continue
+    }
+    let expected = @fs.read_file("\{test_dir}/\{result_file}").binary()
+    let mut doc = ""
+    let mut canon_failed = false
+    try {
+      doc = canonical_document(quads)
+    } catch {
+      _ => canon_failed = true
+    }
+    if canon_failed {
+      failed += 1
+      detail = "\{detail}\{label}/\{action_file}: canonical raise\n"
+      continue
+    }
+    let got = @utf8.encode(doc)
+    let shorter = if got.length() < expected.length() {
+      got.length()
+    } else {
+      expected.length()
+    }
+    let mut diff = if got.length() != expected.length() { shorter } else { -1 }
+    for i in 0..<shorter {
+      if diff >= 0 {
+        break
+      }
+      if got[i] != expected[i] {
+        diff = i
+      }
+    }
+    if diff < 0 {
+      passed += 1
+    } else {
+      failed += 1
+      let tail : Array[Byte] = []
+      for i in diff..<got.length() {
+        tail.push(got[i])
+      }
+      let head = @utf8.decode_lossy(Bytes::from_array(tail))
+      detail = "\{detail}\{label}/\{action_file}: byte diff at \{diff} (got \{got.length()} exp \{expected.length()}) tail=\{head}\n"
+    }
+  }
+  debug("=== \{label}: \{passed}/\{passed + failed} (failed \{failed}) ===")
+  if detail != "" {
+    debug(detail)
+  }
+  // pin 闭环：零失败 + 案单闭合（manifest 案数 = 全集，无 deferred 桶）
+  assert_eq(failed, 0)
+  assert_eq(passed + failed, cases.length())
+}
+
+///|
+/// 行内锚点后第一个 `<...>` 提取（manifest 字段抽取；锚点两侧同为
+/// ASCII，UTF-16 单位 == 字符）。同携字段各行独立锚定。
+fn angle_after(line : String, anchor : String) -> String? {
+  let anchor_units = anchor.length()
+  let line_units = line.length()
+  let mut i = 0
+  while i + anchor_units <= line_units {
+    let mut k = 0
+    while k < anchor_units && line[i + k] == anchor[k] {
+      k += 1
+    }
+    if k == anchor_units {
+      let mut j = i + anchor_units
+      while j < line_units && line[j] != '<' {
+        j += 1
+      }
+      if j < line_units {
+        let mut end = j + 1
+        while end < line_units && line[end] != '>' {
+          end += 1
+        }
+        if end < line_units {
+          return Some(line[j + 1:end].to_owned())
+        }
+      }
+      return None
+    }
+    i += 1
+  }
+  None
+}
+
+///|
+async test "rdf12 c14n 套件: 规范形逐字节对拍（U1）" {
+  run_c14n_suite(".rdf-tests/nquads/rdf12/rdf-n-triples/c14n", "rdf12-nt-c14n")
+  run_c14n_suite(".rdf-tests/nquads/rdf12/rdf-n-quads/c14n", "rdf12-nq-c14n")
+}
