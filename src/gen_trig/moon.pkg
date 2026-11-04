@@ -15,6 +15,11 @@ import {
 } for "wbtest"
 
 options(
-  // trig_bench 对照 C FFI 词法器（@nquads.Lexerc），仅 native
-  targets: { "trig_bench_wbtest.mbt": [ "native" ] },
+  targets: {
+    // trig_bench 对照 C FFI 词法器（@nquads.Lexerc），仅 native
+    "trig_bench_wbtest.mbt": [ "native" ],
+    // rdf_suite_wbtest 走 @fs 读语料——wasm-gc/js 后端 async/fs 无文件 API,
+    // 两面摘除;生产面全后端不设限(2026-11-03 平台 check wasm-gc/js 腿实测修复)
+    "rdf_suite_wbtest.mbt": [ "native", "wasm" ],
+  },
 )

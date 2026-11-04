@@ -1,3 +1,12 @@
+pkgtype(kind: "executable")
+
+options(
+  // js 后端 moonbitlang/async/fs 无文件 API(read_file/exists)——bench 为
+  // native 计时工具(正式口径 native --release),js/wasm-gc 独排;native/wasm
+  // 编译面原样(2026-11-03 平台 check js 腿实测修复)
+  supported_targets: [ "native", "wasm" ],
+)
+
 import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
@@ -11,4 +20,3 @@ import {
 // 比 FFI 路径快 ~2×：每 token 一次跨界的代价大于 C 扫描省下的时间），且 FFI 版
 // native-only。双词法器同表对照见 gen_nquads 的 lexer_bench_wbtest.mbt。
 // 正式计时口径 = `--target native --release`（debug 档同代码慢 4.6×，不作结论）。
-pkgtype(kind: "executable")

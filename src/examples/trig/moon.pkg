@@ -1,3 +1,9 @@
+options(
+  // js 后端 async/fs 无文件 API——示例读真文件,native/wasm 档,js/wasm-gc 独排
+  // (2026-11-03 平台 check js 腿实测修复)
+  supported_targets: [ "native", "wasm" ],
+)
+
 import {
   "moonbitlang/async",
   "moonbitlang/async/fs",

@@ -16,3 +16,13 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/core/bench",
 } for "wbtest"
+
+options(
+  // 后缀系 wbtest 走 @fs 读语料/黄金件——wasm-gc/js 后端 async/fs 无文件 API,
+  // 两面摘除;生产面全后端不设限(2026-11-03 平台 check wasm-gc/js 腿实测修复)
+  targets: {
+    "examples_wbtest.mbt": [ "native", "wasm" ],
+    "n3tests_suite_wbtest.mbt": [ "native", "wasm" ],
+    "rdf_suite_wbtest.mbt": [ "native", "wasm" ],
+  },
+)
