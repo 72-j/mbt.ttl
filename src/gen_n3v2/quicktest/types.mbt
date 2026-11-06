@@ -11,12 +11,14 @@
 
 ///|
 /// Span 的符号替身：生成期以 Symbolic(Var) 引用，执行期解析为 Concrete(RefId)
+#derive(Eq, Debug)
 priv struct RefId {
   id : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 /// Command - 测试命令类型（源: [[events]]）
+#derive(Eq, Debug)
 priv enum Command {
   Iri(@qcs.Ref[RefId])
   BlankNode(@qcs.Ref[RefId])
@@ -59,19 +61,21 @@ priv enum Command {
   Id
   Invert
   EOF
-} derive(Eq, Debug)
+}
 
 ///|
 /// Quad - EmitQuad 载荷的模型表示（**引擎发射边界的槽位快照**；槽位可空，见 ADR-QM-009）
+#derive(Eq, Debug)
 priv struct Quad {
   subject : RefId?
   predicate : RefId?
   object : RefId?
   graph : RefId?
-} derive(Eq, Debug)
+}
 
 ///|
 /// Response - 测试响应类型（源: [[effects]] + 错误归一化）
+#derive(Eq, Debug)
 priv enum Response {
   Continue
   EmitQuad(Quad)
@@ -83,10 +87,11 @@ priv enum Response {
   // qcs 的 `run_command` 是单值接口（外部依赖），故用本变体承载批，不 patch 依赖；
   // 系统侧只在 `step_all` 长度 > 1 时包批（单枚仍是原变体，旧口径零迁移）。
   Batch(Array[Response])
-} derive(Eq, Debug)
+}
 
 ///|
 /// ModelState - 纯模型状态枚举（镜像引擎 State 枚举，独立于引擎包）
+#derive(Eq, Debug)
 priv enum ModelState {
   ExpectSubject
   ExpectPredicate
@@ -143,10 +148,11 @@ priv enum ModelState {
   ListPathAfterStep
   ObjTrailExpectVerb
   ObjTrailAfterStep
-} derive(Eq, Debug)
+}
 
 ///|
 /// Model - 纯模型（源: Context 的 Span 槽位；规格而非被测实现）
+#derive(Eq, Debug)
 priv struct Model {
   state : ModelState
   subject : RefId?
@@ -164,21 +170,23 @@ priv struct Model {
   frames : Array[Frame]
   annot_frames : Array[AnnotFrameM] // U5 帧栈律：注解簿记帧（镜面机械的观测投影）
   recovering : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 /// AnnotFrameM - 注解簿记帧（U5 官方律镜像，trig AnnotFrameM 同款）：
 /// 捕获锚行谓宾（弹帧回填槽 = 块透明不变量）+ 收口返回态（表靶由弹帧覆写）。
 /// 镜面壳旗/块身份/绑定 reifier 不进观测面（响应/状态/四槽指纹），不入帧。
+#derive(Eq, Debug)
 priv struct AnnotFrameM {
   anchor_p : RefId?
   anchor_o : RefId?
   ret_state : ModelState
-} derive(Eq, Debug)
+}
 
 ///|
 /// Frame - 开括号帧（P4.2e）：记外层三槽快照 + open_span + 返回态
 /// （`ret_state` 是"状态由表管理"的唯一例外：弹帧时兑现，见引擎 pop_bnode_prop）
+#derive(Eq, Debug)
 priv struct Frame {
   subject : RefId?
   predicate : RefId?
@@ -190,7 +198,7 @@ priv struct Frame {
   is_formula : Bool
   as_pred : Bool
   id_subject : RefId?
-} derive(Eq, Debug)
+}
 // 未进模型的 Context 字段: directive_at (Bool), prefixes (Array[(Span, Span)]), bases (Array[Span]), slot_stack (Array[Slot]), pred_kind (PredKind), path_fwd (Bool), iri_upcast (Int), version_lit_ok (Bool), kw_ledger (Array[Span]), kw_directive_seen (Bool), kw_a_live (Bool), is_depth (Int), subj_shell (Bool), annot_s (Span?), annot_p (Span?), annot_o (Span?), annot_seq (Int32), s_shell_seq (Int32?), bound_reifier (Span?), reifiers (Array[Span])
 //（U5 注：annot_close 已随旧役8律退役；annot 帧栈的观测投影 = annot_frames——
 //  镜面六件中只有锚行谓宾/返回态可观测，其余不入模型）

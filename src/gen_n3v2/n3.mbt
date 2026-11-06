@@ -9,13 +9,14 @@
 
 ///|
 /// 谓词来源标记（管线同源快照槽）：ADR-003a 集合恒 Normal；RDFFirst/RDFRest 仅为 ADR-003b 显式链物化预留；KwA = 'a' 关键词谓词（役5，引擎归位点裁定活性、set_predicate 消费落账）；SameAs = `=` 等同谓词（役7，token span 占谓词槽、owl:sameAs 出账）
+#derive(Eq)
 pub(all) enum PredKind {
   Normal
   RDFFirst
   RDFRest
   KwA
   SameAs
-} derive(Eq)
+}
 
 ///|
 pub(all) enum N3Event {
@@ -249,6 +250,7 @@ fn N3Context::reset(self : N3Context, scope : ResetScope) -> Unit {
 /// 发射边界快照类型：发射槽位 span（offset,length）原样上抛，未切片。
 /// 主循环模板的返回载荷；组装与缺槽检测在切片组装层（装配区）。
 /// 字段只收链 resets 点名的发射槽——簿记槽位（prefix_name/base 族）不入快照。
+#derive(Eq)
 pub(all) struct N3PendingQuad {
   subj : Span?
   pred : Span?
@@ -265,7 +267,7 @@ pub(all) struct N3PendingQuad {
   s_shell_seq : Int32?
   bound_reifier : Span?
   reifiers : Array[Span]
-} derive(Eq)
+}
 
 ///|
 /// 发射槽位脏净判定：任一发射槽非空即有待发射残留（loop 的 EOF 收尾判据）

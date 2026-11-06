@@ -36,10 +36,11 @@ using @gs {
 /// 方言开关（生成契约不引用，引擎 loop 用）：N3 = 默认扩展；RDF-star 暂不开放。
 /// 所有权：手写面持有（n3_domain.toml 里 emit = false，生成器只记账不发射——
 /// 与 PredKind 的生成器发射成对照，两栖开关在表）。
+#derive(Eq)
 pub(all) enum N3Dialect {
   N3
   RDFStarOff
-} derive(Eq)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。

@@ -24,20 +24,22 @@ pub(all) struct AnnotFrame {
   ret_state : TrigState
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum GraphPolicy {
   Strict
   Drop
-} derive(Eq, @debug.Debug)
+}
 pub fn GraphPolicy::equal(Self, Self) -> Bool
 pub fn GraphPolicy::not_equal(Self, Self) -> Bool
 pub fn GraphPolicy::to_repr(Self) -> @debug.Repr
 
+#derive(Eq)
 pub(all) enum PredKind {
   Normal
   RDFFirst
   RDFRest
   KwA
-} derive(Eq)
+}
 pub fn PredKind::equal(Self, Self) -> Bool
 pub fn PredKind::not_equal(Self, Self) -> Bool
 
@@ -59,18 +61,20 @@ pub(all) struct QuadSpan {
   chain_only : Bool
 }
 
+#derive(@debug.Debug)
 pub(all) enum ResetScope {
   Object
   PredObj
   SPO
   All
-} derive(@debug.Debug)
+}
 pub fn ResetScope::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum SerializeFormat {
   Turtle
   TriG
-} derive(Eq, @debug.Debug)
+}
 pub fn SerializeFormat::equal(Self, Self) -> Bool
 pub fn SerializeFormat::not_equal(Self, Self) -> Bool
 pub fn SerializeFormat::to_repr(Self) -> @debug.Repr
@@ -129,11 +133,12 @@ pub fn TrigContext::new() -> Self
 pub fn TrigContext::reset(Self, ResetScope) -> Unit
 pub fn TrigContext::snapshot(Self) -> TrigPendingQuad
 
+#derive(Eq)
 pub(all) enum TrigDialect {
   TriG
   Turtle
   N3
-} derive(Eq)
+}
 pub fn TrigDialect::equal(Self, Self) -> Bool
 pub fn TrigDialect::not_equal(Self, Self) -> Bool
 
@@ -253,6 +258,7 @@ pub fn TrigMaterializer::materialize_all(Self, Array[QuadSpan], deep_validate? :
 pub fn TrigMaterializer::materialize_quad(Self, QuadSpan) -> Array[@gen_nquads.QuadEmit] raise @gen_nquads.ParseError
 pub fn TrigMaterializer::new(ArrayView[Byte], Array[((Int32, Int32), (Int32, Int32))], bases? : Array[(Int32, Int32)], base_fallback? : String?, rdf12? : Bool) -> Self
 
+#derive(Eq)
 pub(all) struct TrigPendingQuad {
   subj : (Int32, Int32)?
   pred : (Int32, Int32)?
@@ -268,7 +274,7 @@ pub(all) struct TrigPendingQuad {
   s_shell_seq : Int32?
   bound_reifier : (Int32, Int32)?
   reifiers : Array[(Int32, Int32)]
-} derive(Eq)
+}
 pub fn TrigPendingQuad::equal(Self, Self) -> Bool
 pub fn TrigPendingQuad::not_equal(Self, Self) -> Bool
 

@@ -6,6 +6,7 @@
 // type Span = (Int, Int) // (offset, length)
 
 ///|
+#derive(Debug)
 pub(all) enum Token {
   // 结构标点
   Dot(Span) // .
@@ -25,7 +26,7 @@ pub(all) enum Token {
 
   // 结束
   EOF(Int32) // 文件结束
-} derive(Debug)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。

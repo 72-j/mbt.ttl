@@ -8,12 +8,13 @@ pub type Span = (Int32, Int32)
 
 ///|
 /// 词项类型
+#derive(Debug, Eq)
 pub(all) enum TermType {
   Iri
   BNode
   Literal
   TripleTerm // <<( s p o )>>（RDF 1.2，只出现于宾语位）
-} derive(Debug, Eq)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -25,6 +26,7 @@ pub extend TermType with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 /// 已切片的四元组（span → 数据视图 + 词项类型）
+#derive(Debug)
 pub struct QuadSpan {
   subj : ArrayView[Byte]
   pred : ArrayView[Byte]
@@ -32,7 +34,7 @@ pub struct QuadSpan {
   graph : ArrayView[Byte]? // 图名 span，缺省 None
   subj_type : TermType
   obj_type : TermType
-} derive(Debug)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。

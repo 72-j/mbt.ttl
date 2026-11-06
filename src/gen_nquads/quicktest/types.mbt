@@ -17,12 +17,14 @@ using @nquads {trait NQuadsActions}
 ///|
 /// Span 的符号替身：符号期 Symbolic(Var)，执行期 Concrete(RefId)。
 /// 编解码在 system.mbt：Span = (id, id)，往返可逆，模型与系统同值可比。
+#derive(Eq, Debug)
 priv struct RefId {
   id : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 /// Command - 测试命令类型（源 [[events]]）：每个 Event 变体对应一个 Command 变体
+#derive(Eq, Debug)
 priv enum Command {
   Iri(@qcs.Ref[RefId])
   BlankNode(@qcs.Ref[RefId])
@@ -34,39 +36,43 @@ priv enum Command {
   Dot
   Unknown
   EOF
-} derive(Eq, Debug)
+}
 
 ///|
 /// Quad - EmitQuad 载荷的模型表示（槽位引用；graph 缺省 = 默认图）
+#derive(Eq, Debug)
 priv struct Quad {
   subject : RefId
   predicate : RefId
   object : RefId
   graph : RefId?
-} derive(Eq, Debug)
+}
 
 ///|
 /// Response - 测试响应类型（源 [[effects]] + 错误归一化）
+#derive(Eq, Debug)
 priv enum Response {
   Continue
   EmitQuad(Quad)
   Done
   Skip // 恢复窗吞咽（R-19）：窗内事件不进表（≠ Continue：Continue = 进了表）
   Error(Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 /// ModelState - 纯模型状态枚举（镜像引擎 NQuadsState，独立于引擎包）
+#derive(Eq, Debug)
 priv enum ModelState {
   ExpectSubject
   ExpectPredicate
   ExpectObject
   ExpectDotOrGraph
   ExpectDot
-} derive(Eq, Debug)
+}
 
 ///|
 /// Model - 纯模型（规格，不是被测实现）：状态 + 四个语义槽位
+#derive(Eq, Debug)
 priv struct Model {
   state : ModelState
   subject : RefId?
@@ -74,7 +80,7 @@ priv struct Model {
   object : RefId?
   graph : RefId?
   recovering : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 /// 初始模型：ExpectSubject，槽位全空

@@ -39,11 +39,12 @@ using @gs {
 /// 钉 6 防过度受理）。**套件**：N3 档**无 W3C 套件**（Turtle/TriG 套件不含 N3 档）⇒
 /// 入册为覆盖缺口（面一侧）。口径依据：`@keywords` 在 Turtle/TriG 套件里是
 /// `bad-n3-extras` **负例**（期望拒）⇒ 受理必须由档位表达（甲案，用户 2026-09-22 拍）。
+#derive(Eq)
 pub(all) enum TrigDialect {
   TriG
   Turtle
   N3
-} derive(Eq)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -53,6 +54,7 @@ pub extend TrigDialect with Eq::{equal, not_equal}
 /// 合成谓词标记（★3 集合链）：链节点 rdf:first/rdf:rest 谓词在数据中无字节，
 /// 表在合成发射行把标记写 ctx.pred_kind，快照时随 quad 带出（快照即消费——
 /// 读后归 Normal，恰覆盖一次发射），物化层据此合成词表 IRI。Normal = 原文谓词
+#derive(Eq)
 pub(all) enum PredKind {
   Normal
   RDFFirst
@@ -61,7 +63,7 @@ pub(all) enum PredKind {
   // 与 n3v2 的 `PredKind::KwA` 同名同义（收敛：**判据落在产物可判的 pk 面**）。
   // 失效（N3 档 ∧ `@keywords` 已受理）时不置位 ⇒ 物化层按 PrefName 展开。
   KwA
-} derive(Eq)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。

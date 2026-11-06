@@ -17,10 +17,11 @@
 
 ///|
 /// 输出语法开关
+#derive(Debug, Eq)
 pub(all) enum SerializeFormat {
   Turtle // 默认图三元组，图名位不得出现
   TriG // 默认图三元组 + 命名图块区
-} derive(Debug, Eq)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -32,10 +33,11 @@ pub extend SerializeFormat with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
 /// 图名策略（仅 format=Turtle 时生效；format=TriG 下空转）
+#derive(Debug, Eq)
 pub(all) enum GraphPolicy {
   Strict // 图名存在 → 报错（拒绝有损）
   Drop // 图名存在 → 丢弃（有损导出）
-} derive(Debug, Eq)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。

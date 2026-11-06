@@ -3,13 +3,14 @@
 ///|
 
 // IRI 结构: scheme://authority/path?query#fragment
+#derive(Debug, Eq, Default)
 pub(all) struct Iri {
   scheme : StringView
   authority : StringView?
   path : StringView
   query : StringView? // None = 未出现；Some("") = 出现但为空
   fragment : StringView? // 同上
-} derive(Debug, Eq, Default)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -37,6 +38,7 @@ pub fn Iri::Iri(
 ///|
 
 // 解析中间状态: 存储各组件的 (偏移, 长度)
+#derive(Eq)
 struct IriSpan {
   mut scheme : Span
   mut authority : Span
@@ -45,7 +47,16 @@ struct IriSpan {
   mut query : Span? // None = 未出现
   mut fragment : Span? // None = 未出现
   mut pos : Int32 // 当前解析位置
-} derive(Eq, Default)
+}
+
+///|
+// 2026-11-06 [0027] 波收编役：derive(Default) × 元组别名字段（Span=(Int32,Int32)）
+// 触 moonc 65efd5b93 ICE（native 链接 Machine_error "unbound scalar" /
+// wasm Key_not_found Tuple2::Default::default）——手写 impl 绕开。
+// 真解 = moonc 修复后换回 derive(Default)（探针 h 验，AGENTS 坑账在册）。
+pub impl Default for IriSpan with default() {
+  { scheme: (0, 0), authority: (0, 0), has_authority: false, path: (0, 0), query: None, fragment: None, pos: 0, }
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。

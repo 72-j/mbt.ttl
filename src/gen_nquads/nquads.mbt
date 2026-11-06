@@ -31,12 +31,13 @@ pub(all) enum NQuadsState {
 ///|
 /// 重置粒度：每个变体显式列出"清谁"，未列字段一律保留（防错误重置）。
 /// 粒度不回头写 state —— state 由转移表的 to= 负责，两者正交。
+#derive(Debug)
 pub(all) enum ResetScope {
   Object // 清 object；保留 subject/predicate/graph
   PredObj // 清 predicate/object；保留 subject/graph
   SPO // 清 subject/predicate/object；保留 graph（TriG 图块口径）
   All // 清 subject/predicate/object/graph（N-Quads 行口径）
-} derive(Debug)
+}
 
 ///|
 pub extend ResetScope with @moonbitlang/core/debug.Debug::{to_repr}
@@ -98,12 +99,13 @@ pub fn NQuadsContext::reset(self : NQuadsContext, scope : ResetScope) -> Unit {
 /// 发射边界快照类型：发射槽位 span（offset,length）原样上抛，未切片。
 /// 主循环模板的返回载荷；组装与缺槽检测在切片组装层（装配区）。
 /// 字段只收链 resets 点名的发射槽——簿记槽位（prefix_name/base 族）不入快照。
+#derive(Eq)
 pub(all) struct NQuadsPendingQuad {
   subj : Span?
   pred : Span?
   obj : Span?
   graph : Span?
-} derive(Eq)
+}
 
 ///|
 pub extend NQuadsPendingQuad with Eq::{equal, not_equal}

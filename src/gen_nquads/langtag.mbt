@@ -9,10 +9,11 @@ pub type TagSpan = (Int32, Int32)
 ///|
 /// 扩展 (单字符标识符 + 多个子标签)
 /// 例如: u-nu-hanidec → ident='u', subtags=["nu", "hanidec"]
+#derive(Debug, Eq)
 pub struct Extension {
   ident : TagSpan // 单字符标识符的位置
   subtags : Array[TagSpan] // 后续子标签
-} derive(Debug, Eq)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -41,10 +42,11 @@ pub extend Extension with Show::{output, to_string}
 ///|
 /// 私有使用 (x- 前缀 + 多个子标签)
 /// 例如: x-mycorp-private → prefix='x', subtags=["mycorp", "private"]
+#derive(Debug, Eq)
 pub struct PrivateUse {
   prefix : TagSpan // "x" 的位置
   subtags : Array[TagSpan]
-} derive(Debug, Eq)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -73,10 +75,11 @@ pub extend PrivateUse with Show::{output, to_string}
 ///|
 /// 语言标签 (RFC 5646 / BCP 47)
 /// 结构: language ["-" extlang] ["-" script] ["-" region] *("-" variant) *("-" extension) ["-" privateuse]
+#derive(Debug, Eq)
 pub struct LanguageTag {
   tag : StringView // 原始输入
   state : TagState
-} derive(Debug, Eq)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -108,6 +111,7 @@ pub impl Show for LanguageTag with fn output(
 pub extend LanguageTag with Show::{output, to_string}
 
 ///|
+#derive(Debug, Eq)
 pub struct TagState {
   // 必选 + 位置固定的部分
   language : TagSpan // 主语言 (2-3位 或 5-8位字母)
@@ -121,7 +125,7 @@ pub struct TagState {
   private_use : PrivateUse? // 私有使用
   // 元信息
   is_grandfathered : Bool // 是否是祖父标签
-} derive(Debug, Eq)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。

@@ -49,6 +49,7 @@ pub extend TermType with Show::{output, to_string}
 /// 词项种类（产物模型：Subject/Object/GraphName 三枚举并入单 kind 轴）。
 /// 8 臂全常量构造子 = 立即 tag 零箱（同械先例 QuadSpan.subj_type : TermType）；
 /// DefaultGraph 单例常量 = 原 GraphName::None（图名位缺省，非箱）
+#derive(Debug, Eq)
 pub(all) enum TermKind {
   Iri // <http://...>
   BNode // _:label（blank node：label 作用域限本文档）
@@ -62,7 +63,7 @@ pub(all) enum TermKind {
   Formula // { ... }（N3 ADR-002：GraphTerm 不透明不断言为真，整段原文持有；
   // nquads/trig 方言不产出，序列化侧防御拒臂钉住）
   DefaultGraph // 图名位缺省（W3C N-Quads 默认图；单例常量非箱）
-} derive(Debug, Eq)
+}
 
 ///|
 // 工具链 `implicit_impl_as_method` 弃用 ⇒ trait 方法显式提升。
@@ -80,6 +81,7 @@ pub type Predicate = ArrayView[Byte]
 /// N-Quads Quad（平化：kind+view 直挂，词项零箱——沿革见 perf-review.txt）。
 /// view 有效性由 kind 门控：DefaultGraph 的 g_view、以及"位-种类"非法组合下的
 /// view 值未定义，消费侧必须先判 kind 再读 view（DefaultGraph 臂不得触 view）
+#derive(Debug, Eq)
 pub(all) struct QuadEmit {
   s_kind : TermKind
   s_view : ArrayView[Byte]
@@ -88,7 +90,7 @@ pub(all) struct QuadEmit {
   o_view : ArrayView[Byte]
   g_kind : TermKind
   g_view : ArrayView[Byte]
-} derive(Debug, Eq)
+}
 
 ///|
 // 工具链 `implicit_impl_as_method` 弃用 ⇒ trait 方法显式提升。

@@ -671,6 +671,7 @@ fn model_state_of_engine(state : @n3.N3State) -> ModelState? {
 /// 字段面 = 生成面 `[type_mapping]` 的 `model_slots` + `fwd_slot`（模型有的槽这里就有，
 /// 一位不多一位不少）。归一化同 `Model`：`Span` → `RefId`（取 start；与 `quad_from_pending`
 /// 的 `ref_id_of` 同一把尺子）。两侧同形即可整块 `==` 比对。
+#derive(Eq)
 priv struct SlotView {
   subject : RefId?
   predicate : RefId?
@@ -680,7 +681,7 @@ priv struct SlotView {
   path_pend : RefId?
   path_tail : RefId?
   path_fwd : Bool
-} derive(Eq)
+}
 
 ///|
 fn slot_view_of_model(model : Model) -> SlotView {

@@ -1,11 +1,12 @@
 ///|
 /// NQuadsEngine 错误类型（包含位置信息）
+#derive(Debug)
 pub(all) suberror ParseError {
   StructSyntaxErr(String, Int32, Span) // 结构错误（语法层）
   SyntaxErr(String, Span) // 结构错误（语法层）
   ValidationErr(String) // 语义错误（验证层）
   IriErr(String) // IRI 解析错误
-} derive(Debug)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -75,6 +76,7 @@ pub impl Show for ParseError with fn output(self : ParseError, logger : &Logger)
 pub extend ParseError with Show::{output, to_string}
 
 ///|
+#derive(Debug)
 pub(all) suberror IriError {
   /// 没有 scheme
   NoScheme(Int32)
@@ -90,7 +92,7 @@ pub(all) suberror IriError {
   InvalidPercentEncoding(Int32)
   /// 意外的结束
   UnexpectedEnd(Int32)
-} derive(Debug)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -170,6 +172,7 @@ pub impl Show for IriError with fn output(self : IriError, logger : &Logger) -> 
 pub extend IriError with Show::{output, to_string}
 
 ///|
+#derive(Debug)
 pub(all) suberror TagParseErr {
   EmptyTag
   EmptySubtag
@@ -181,7 +184,7 @@ pub(all) suberror TagParseErr {
   EmptyPrivateUse
   InvalidVariant
   InvalidPrivateUsePrefix
-} derive(Debug)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。

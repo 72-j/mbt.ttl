@@ -27,10 +27,11 @@ pub(all) enum N3ActionError {
 
 type N3ActionsImpl
 
+#derive(Eq)
 pub(all) enum N3Dialect {
   N3
   RDFStarOff
-} derive(Eq)
+}
 pub fn N3Dialect::equal(Self, Self) -> Bool
 pub fn N3Dialect::not_equal(Self, Self) -> Bool
 
@@ -135,6 +136,7 @@ pub fn N3Materializer::materialize_all(Self, Array[QuadSpan], deep_validate? : B
 pub fn N3Materializer::materialize_quad(Self, QuadSpan) -> Array[@gen_nquads.QuadEmit] raise @gen_nquads.ParseError
 pub fn N3Materializer::new(ArrayView[Byte], Array[((Int32, Int32), (Int32, Int32))], bases? : Array[(Int32, Int32)], base_fallback? : String?, rdf12? : Bool) -> Self
 
+#derive(Eq)
 pub(all) struct N3PendingQuad {
   subj : (Int32, Int32)?
   pred : (Int32, Int32)?
@@ -151,7 +153,7 @@ pub(all) struct N3PendingQuad {
   s_shell_seq : Int32?
   bound_reifier : (Int32, Int32)?
   reifiers : Array[(Int32, Int32)]
-} derive(Eq)
+}
 pub fn N3PendingQuad::equal(Self, Self) -> Bool
 pub fn N3PendingQuad::not_equal(Self, Self) -> Bool
 
@@ -258,13 +260,14 @@ pub(all) enum N3State {
   N3ObjTrailAfterStep
 }
 
+#derive(Eq)
 pub(all) enum PredKind {
   Normal
   RDFFirst
   RDFRest
   KwA
   SameAs
-} derive(Eq)
+}
 pub fn PredKind::equal(Self, Self) -> Bool
 pub fn PredKind::not_equal(Self, Self) -> Bool
 

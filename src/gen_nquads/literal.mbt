@@ -3,10 +3,11 @@
 // ============================================================
 
 ///|
+#derive(Eq, Debug, Hash, ToJson)
 pub(all) enum BaseDirection {
   Ltr
   Rtl
-} derive(Eq, Debug, Hash, ToJson)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -41,9 +42,10 @@ pub extend BaseDirection with Show::{output, to_string}
 
 ///|
 /// IRI 引用
+#derive(Debug, Eq, Hash)
 pub(all) struct NamedNodeRef {
   iri : StringView
-} derive(Debug, Eq, Hash)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -78,7 +80,8 @@ pub fn NamedNodeRef::new_unchecked(iri : StringView) -> NamedNodeRef {
 
 ///|
 /// 字面量引用 (无所有权)
-pub(all) struct LiteralRef(LiteralRefContent) derive(Eq, Debug, Hash)
+#derive(Eq, Debug, Hash)
+pub(all) struct LiteralRef(LiteralRefContent)
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
@@ -94,6 +97,7 @@ pub extend LiteralRef with Eq::{equal, not_equal}
 
 ///|
 /// 字面量引用内容
+#derive(Eq, Debug, Hash)
 pub(all) enum LiteralRefContent {
   String(StringView)
   LanguageTaggedString(value~ : StringView, language~ : StringView)
@@ -103,7 +107,7 @@ pub(all) enum LiteralRefContent {
     direction~ : BaseDirection
   )
   TypedLiteral(value~ : StringView, datatype~ : NamedNodeRef)
-} derive(Eq, Debug, Hash)
+}
 
 ///|
 // W18（2026-09-21，工具链 0.1.20260920 起 `implicit_impl_as_method` 弃用）：trait 方法显式提升。
