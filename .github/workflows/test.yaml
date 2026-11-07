@@ -252,12 +252,17 @@ jobs:
               return 1
             fi
           }
-          check_default_arms src/gen_trig/quicktest/model_exec.mbt 30
+          # 30 → 28（2026-11-07 清账补记）：102d851 模型镜像清偿役真臂化
+          # ——(ExpectTildeEnd, BlankNode) / (GraphExpectTildeEnd, BlankNode) 保守臂
+          # 换 annot 帧栈真机械（U3b/U5 Tilde 链 + AnnotPop 律配套），役时门数字未随笔推。
+          check_default_arms src/gen_trig/quicktest/model_exec.mbt 28
           # 49 → 48（R-17 转正同笔，2026-09-20）：set_id_subject 真臂化（帧位
           # id_subject + 条件 ret_state=flag:as_subject）——(BnpExpectIdNode, PrefName)
           # 保守臂退役；剩 1 臂 = (BnpExpectPredicate, Id) 表行**无 action 声明**
           # （默认 Continue 恰为真值；表源缺口另立，非生成器债）。
-          check_default_arms src/gen_n3v2/quicktest/model_exec.mbt 48
+          # 48 → 47（2026-11-07 清账补记）：102d851 同役 (ExpectTildeEnd, BlankNode)
+          # 保守臂真值确认（annot 帧栈真机械），役时门数字未随笔推。
+          check_default_arms src/gen_n3v2/quicktest/model_exec.mbt 47
 
       - name: "文档门（guides/** 结构：H1 / 导航 / 零死链 / 命名 / 无孤岛）"
         run: sh ci/docs-check.sh

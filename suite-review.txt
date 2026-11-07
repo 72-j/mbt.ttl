@@ -11,6 +11,9 @@
 # 留证位置：CI test 作业日志（同上命令）；本地复跑同命令即可复现（2026-09-20 连跑两次逐字节一致）。
 # 缺口清零：由各套件测试**自身断言**（缺口/失败非零即 `moon test` 红），本表只做"可复现"这一半。
 # 缺口解释表：见 `review.md` §1.2（逐条引模块台账编号，不复制正文）。
+# 沿革：2026-11-07 同笔重生成（CI 静态门解蔽批量清账：U3c/U4/U1 役新增套件行补录
+#   ——n3-turtle12-eval 29/29、trig12-eval 25/25、turtle12-eval 29/29、
+#   rdf12-nq-c14n 41/41、rdf12-nt-c14n 41/41；全部缺口 0，无 §1.2 新行）。
 #
 # 覆盖边界（**必写**：复核面只覆盖"它覆盖的那部分"，读者不得误以为覆盖全；`const.md` §6.5.7）
 #   本面 = **套件自报行面**：三方言套件（N3Tests / rdf-turtle / rdf-* / rdf12-*）的 `=== … ===` 自报行。
@@ -19,15 +22,19 @@
 #     ② **覆盖率面**（行覆盖 / 可达命令名覆盖 —— 由**基线棘轮**管：`coverage-baseline.txt`、`reachable-coverage-baseline.txt`）；
 #     ③ **方言语义面**（`validate_term` / `classify_structural` 等**有意分叉件**的内部语义 —— 由各包 wbtest 管）；
 #     ④ **性能面**（bench：`trig_bench_wbtest` / nquads 基准）。
+
 [n3v2]
 N3Tests parser sweep: neg 23ok/0miss, pos+eval 205clean 0mat-only 0parse-fail, strict-gap 0
 examples: A=13 B=0 C=0 strict-gap=0
+n3-turtle12-eval: 29/29 (failed 0)
 rdf-turtle: 316/316 (failed 0, strict-gap 0)
 rdf12-turtle: 75/75 (failed 0, strict-gap 0)
 [nquads]
 MoonBit 解析 test_1000.nq
 Result: 89/89 (failed 0)
+rdf12-nq-c14n: 41/41 (failed 0)
 rdf12-nq: 27/27 (failed 0)
+rdf12-nt-c14n: 41/41 (failed 0)
 rdf12-nt: 29/29 (failed 0)
 对比: 72 段, mismatch=0, failed=0
 循环读文件: 72/72 (failed 0)
@@ -39,3 +46,5 @@ rdf-trig: 357/357 (failed 0)
 rdf-turtle: 316/316 (failed 0)
 rdf12-trig: 36/36 (failed 0)
 rdf12-turtle: 75/75 (failed 0)
+trig12-eval: 25/25 (failed 0)
+turtle12-eval: 29/29 (failed 0)
