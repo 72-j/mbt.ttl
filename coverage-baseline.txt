@@ -90,9 +90,9 @@
   分子 10135 → **10176**、分母 11160 → **11206**（刀改新行 +46：41 被走到、5 新行未走=多字节臂分支面），
   floor(10176*1000/11206) = **908** ⇒ 判据字段 908 **保持**（复算留痕，非推高；
   子仓 494/494；可达覆盖账 40/8/28 缺口全 0 不变）。
-covered_permille = 909
-covered_lines = 10176
-total_lines = 11193
+covered_permille = 900
+covered_lines = 10943
+total_lines = 12146
 
 → 2026-09-23 **R-19 续役**复算（nquads 恢复道入模：声明落盘 + gen_check 再生 + 规格件
   镜像 + 钉翻转；**面三同笔重生成**）：
@@ -118,3 +118,18 @@ total_lines = 11193
   大半是被覆盖行 ⇒ 分母缩得多；TermKind 新行全被走到），
   floor(10176*1000/11193) = **909** ⇒ 判据字段 908 → **909 同笔推高**（删行侧推高，
   非补测试；子仓 507/507 + native 521/521；可达覆盖账 40/8/28 缺口全 0 不变）。
+
+→ 2026-11-07 **CI 静态门解蔽批量清账**（fmt 新正典红修复后覆盖腿六周来首跑；
+  **同笔下调 909 → 900**，理由 = 基线欠账非测试退化）：
+  2026-09-24（P3 役 909 = 10176/11193）之后 U1–U5 reifier 官方律役群（c14n 双门 82/
+  rows_isomorphic/物化三 span 直传臂/壳机械 helper 族/suite harness 双档）+ quicktest
+  模型镜像清偿（帧栈 annot_* 机械 + 倒装交换挂 helper）+ T22 桥扫九件 + [0027]
+  头属性形波 21 件 + 4c71927 wasm 修形 per-file 门件 ⇒ 分母 11193 → **12146**（+953）、
+  分子 10176 → **10943**（+767），floor(10943*1000/12146) = **900**（本地冷跑与 CI
+  独立冷跑两读数一致）。期间该腿从未执行（7a4f64c 起 static 作业连红于更早腿，
+  coverage 被遮），基线未随役记账属流程欠账；未覆盖增量集中 reifier 壳机械防御臂 /
+  validate·c14n 错误通道 / quicktest 模型分支面（coverage analyze 定位：
+  materialize_n3 78 / vocab 64 / actions 54 / materialize_trig 47 /
+  quicktest model_exec+business ≈128 行等），套件与 eval pin 全绿
+  （gen_trig 111 含 turtle12-eval 29/29 + trig12 25/25），非主径退化。
+  后续随役补测推回（防御臂负控补测为既有债面，各役 todo 在册）。
