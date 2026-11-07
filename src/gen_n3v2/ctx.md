@@ -60,27 +60,27 @@
 
 ### 成员 ① `N3Actions`（语义落点）
 
-- 声明 / 实现锚点：`n3.mbt:299`（48 方法，签名统一 `Result[N3Effect, N3ActionError]`）/
+- 声明 / 实现锚点：`n3.mbt:327`（48 方法，签名统一 `Result[N3Effect, N3ActionError]`）/
   `actions.mbt`（`impl N3Actions for N3ActionsImpl`）。
 - 契约：只写槽位/账本、返回意图；**永不重置 ctx**；拿不到数据视图（只有 span）。
 - 命名：实现载体 `N3ActionsImpl`（役28 由 `Hooks` 改名；trait 保留是生成模板的形态选择）。
 
 ### 成员 ② `N3EffectHandler`（效果面 Hook）
 
-- 声明 / 实现锚点：`n3.mbt:2069`（trait）/ `n3.mbt:2153`（`impl N3EffectHandler with fn interpret`）；
+- 声明 / 实现锚点：`n3.mbt:2105`（trait）/ `n3.mbt:2203`（`impl N3EffectHandler with fn interpret`）；
   套装 verbatim 生成在 `emit.mbt:1085`（`n3_emit_handler_suite`）。
 - 成员：`handle_continue / handle_emit_quad / handle_reset / handle_done / handle_sequence /
   handle_pop_bnp / handle_open_slot`、`snapshot`、`apply_scope`、`on_exit_graph`、`on_pop_bnp`、
-  `on_open_slot`、`interpret`；配套 `N3EffectOutcome`（`n3.mbt:2100`）。
-- 现状（役22 接活后）：`interpret` = **唯一解释器**，`engine.next`（`gen_n3v2/engine.mbt:577`）只做
+  `on_open_slot`、`interpret`；配套 `N3EffectOutcome`（`n3.mbt:2169`）。
+- 现状（役22 接活后）：`interpret` = **唯一解释器**，`engine.next`（`gen_n3v2/engine.mbt:595`）只做
   "取事件 → step → interpret → 上抛"；倒装/注解壳交换已下沉 `N3Context::take_pending`（`gen_n3v2/engine.mbt:517`）；
-  `apply_scope`（`n3.mbt:2108`）调用 `N3Context::reset`（`n3.mbt:216`）而非另实现。
+  `apply_scope`（`n3.mbt:2177`）调用 `N3Context::reset`（`n3.mbt:228`）而非另实现。
   ⚠ `dispatch` 已不存在（旧卷记载作废）。
 - 挂点用途：观测（quad 计数 / span 范围）与容灾（丢弃 / 改写 / 降级）都经此面。
 
 ### 成员 ③ `N3Supervisor`（控制流 Hook；旧名 `N3LoopPolicy`，2026-09-13 已改名）
 
-- 声明 / 实现锚点：`n3.mbt:282` / `gen_n3v2/engine.mbt:350`（`begin_record`）、`:366`（`recover`）、
+- 声明 / 实现锚点：`n3.mbt:309` / `gen_n3v2/engine.mbt:350`（`begin_record`）、`:366`（`recover`）、
   `:423`（`finish_at_end`）、`:454`（`on_business_failed`）；模板注释 `emit.mbt:660`。
 - 契约：循环骨架固定（入口/终止 → step → interpret → 错误降级），领域知识全在 4 钩子。
 - 钩子语义：`begin_record` 会话起点（计数器/trace 注入）｜`recover` 容灾决策点（现行 = 记录 +
@@ -137,12 +137,12 @@
 | R | 役 | ADR | 现口径（一句） | 现行锚点 |
 |---|---|---|---|---|
 | R-01 | 役23 | ADR-24 | 状态权威 = 表边为主 + 3 处破例入册（id 特例刻帧 + pop 无条件读帧） | `gen_n3v2/actions.mbt:172/560/750`；`spec.md` §5.1 |
-| R-02 | 役22 | ADR-22 | `interpret` 唯一解释器；engine 只做控制流；`take_pending` 下沉 ctx | `n3.mbt:2069/2153`；`gen_n3v2/engine.mbt:517/577` |
+| R-02 | 役22 | ADR-22 | `interpret` 唯一解释器；engine 只做控制流；`take_pending` 下沉 ctx | `n3.mbt:2105/2203`；`gen_n3v2/engine.mbt:534/595` |
 | R-03 | 役23 | ADR-24 | 归位点分类清单（A 直写 / B 引擎归位 / C 关键词真相）；事件重分类出表模型 | `spec.md` §5.1；`gen_n3v2/engine.mbt:136/171/192` |
 | R-04 | 役29 | ADR-29 | 短期 = 补偿点单点台账（六点地图 + 钉面清单）；长期见 §4.2 | `lexer_adapter.mbt` 头注；`gen_n3v2/engine.mbt:84` |
-| R-05 | 役24 | ADR-25 | `error_spans` 累积 + recover 拆层 + drain 三点保文件序 | `gen_n3v2/parser_slice.mbt:67`；`gen_n3v2/engine.mbt:366` |
-| R-06 | 役24 | ADR-25 | 零长 span 带内通道保留 + 物化验形双门（唯一构造点 `pop_bnode_prop`） | `materialize_n3.mbt:601`；`gen_n3v2/actions.mbt:137` |
-| R-07 | 役25 | ADR-23 | 三 runner 双判 + 绝对计数钉 + 桶闭合钉 | `gen_n3v2/rdf_suite_wbtest.mbt:116/118`；`n3tests_suite_wbtest.mbt:50` |
+| R-05 | 役24 | ADR-25 | `error_spans` 累积 + recover 拆层 + drain 三点保文件序 | `gen_n3v2/parser_slice.mbt:70`；`gen_n3v2/engine.mbt:366` |
+| R-06 | 役24 | ADR-25 | 零长 span 带内通道保留 + 物化验形双门（唯一构造点 `pop_bnode_prop`） | `materialize_n3.mbt:562`；`gen_n3v2/actions.mbt:137` |
+| R-07 | 役25 | ADR-23 | 三 runner 双判 + 绝对计数钉 + 桶闭合钉 | `gen_n3v2/rdf_suite_wbtest.mbt:117/118`；`n3tests_suite_wbtest.mbt:50` |
 | R-08 | 役28 | ADR-28 | 生成件与装配层机械降 `priv`；`.mbti` 只留入口 + 数据面（pub 55→29 行） | `emit.mbt`（模板 priv 化）；`pkg.generated.mbti` |
 | R-09 | 役26 | ADR-26 | 0 warning（全模块 30 条清零）；死字段先改表源再生 | `n3v2_base.toml`；`moon check` |
 | R-10 | 役27a/28 | ADR-27·28 | `prefix_version/base_version/iri_version`；`fr→frame`；`Hooks→N3ActionsImpl` | `types.mbt`；`actions.mbt`；trig 同笔 |
@@ -250,10 +250,10 @@
 
 | 主题 | 锚点 |
 |---|---|
-| 契约成员声明 | `n3.mbt:282`（trait 名 `N3Supervisor`，旧名 `N3LoopPolicy`）、`:299`（Actions）、`:2069`（EffectHandler） |
+| 契约成员声明 | `n3.mbt:309`（trait 名 `N3Supervisor`，旧名 `N3LoopPolicy`）、`:327`（Actions）、`:2105`（EffectHandler） |
 | 效果解释器 | `n3.mbt:2128`（impl `interpret`）、`:2108`（`apply_scope`）、`:2100`（`N3EffectOutcome`）；`emit.mbt:1085`（套装生成） |
 | ctx 基座 | `n3.mbt:148`（struct）、`:216`（reset）、`:264`（snapshot）；`gen_n3v2/engine.mbt:517`（take_pending） |
-| 主循环 | `gen_n3v2/engine.mbt:577`（`next`）、`:336`（under_formula）、`:388`（consume_to_recover_point） |
+| 主循环 | `gen_n3v2/engine.mbt:595`（`next`）、`:336`（under_formula）、`:388`（consume_to_recover_point） |
 | Supervisor 四钩子 | `gen_n3v2/engine.mbt:350` / `:366` / `:423` / `:454`；模板 `emit.mbt:660` |
 | 归位点 | `gen_n3v2/engine.mbt:84`（trim_trailing_punct）、`:136`（kw_ledger_hits）、`:171`（is_deprecated_this）、`:192`（normalize_term_span） |
 | 状态直写三处 | `gen_n3v2/actions.mbt:172`、`:560`、`:750`（全入册 `spec.md` §5.1-A） |
@@ -261,10 +261,10 @@
 | 集合 / 帧 | `gen_n3v2/actions.mbt:137`（pop_bnode_prop）、`:1021`（list_top）、`:1033`（list_first） |
 | 倒装 / 等同 / 注解 | `gen_n3v2/actions.mbt:1146`（is_of）、`:1159`（set_inversion）、`:1173`（set_sameas）、`:1186` 起（annot_*） |
 | 组装 / 校验 | `gen_n3v2/parser_slice.mbt:313`（assemble）、`:128`（validate_term）、`:246`（validate_prefname）、`:78`（prefix_declared）、`:67`（drain_engine_errors） |
-| 物化门 | `materialize_n3.mbt:601`（materialize_quad）、`:1007`（materialize_all）、`:1079` 起（gate_iri 等四门） |
+| 物化门 | `materialize_n3.mbt:562`（materialize_quad）、`:1007`（materialize_all）、`:1079` 起（gate_iri 等四门） |
 | 生成链 | `compose.mbt:161`（n3gen_compose）、`emit.mbt:1273`（n3gen_build）、`validate.mbt:687`（G10 装配门）、`:567`（G11 可达性）、`:489`（可达性报告纯函数）、`:558`（`n3_g11_strict`） |
 | 生成门测试 | `rdf/n3gen/n3gen_test.mbt:31`（G1）→ `:209`（G9）→ `:234`（G12）→ `:284`（G13） |
-| 套件 runner | `gen_n3v2/rdf_suite_wbtest.mbt:116/118`、`n3tests_suite_wbtest.mbt:50`、`examples_wbtest.mbt:9` |
+| 套件 runner | `gen_n3v2/rdf_suite_wbtest.mbt:117/118`、`n3tests_suite_wbtest.mbt:50`、`examples_wbtest.mbt:9` |
 
 ---
 

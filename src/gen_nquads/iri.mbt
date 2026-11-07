@@ -54,8 +54,16 @@ struct IriSpan {
 // 触 moonc 65efd5b93 ICE（native 链接 Machine_error "unbound scalar" /
 // wasm Key_not_found Tuple2::Default::default）——手写 impl 绕开。
 // 真解 = moonc 修复后换回 derive(Default)（探针 h 验，AGENTS 坑账在册）。
-pub impl Default for IriSpan with default() {
-  { scheme: (0, 0), authority: (0, 0), has_authority: false, path: (0, 0), query: None, fragment: None, pos: 0, }
+pub impl Default for IriSpan with fn default() {
+  {
+    scheme: (0, 0),
+    authority: (0, 0),
+    has_authority: false,
+    path: (0, 0),
+    query: None,
+    fragment: None,
+    pos: 0,
+  }
 }
 
 ///|

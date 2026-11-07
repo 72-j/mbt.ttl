@@ -8,8 +8,9 @@
 #     `moon fmt --check` 承担，CI 因此只在"提交形态"上判定。
 #   · 版本漂移可观测：CI 装的是最新工具链，static 作业与已知良好版本比对并打 warning。
 #
-# 本地已知良好工具链：**moon 0.1.20260920 (914d7da 2026-09-20)**（CI-5 2026-09-23 勘正——
-# 原注释写 20260915 系跟升前沿革，与下方 `known_good` 值不一致）
+# 本地已知良好工具链：**moon 0.1.20261104**（2026-11-07 跟升——fmt 新正典波：
+# derive 尾形→头属性形 / `with default()`→`with fn default()`；前史 CI-5 2026-09-23
+# 勘正 20260915→20260920，同款"跟升即红不许分两笔"纪律）
 name: Test
 
 on:
@@ -47,10 +48,12 @@ jobs:
           moon --version
           moon version --all
           installed="$(moon --version | head -n 1 | awk '{print $2}')"
-          # W18（2026-09-21，用户拍"CI 跟升"）：钉版 20260915 → **20260920**——
-          # 与"弃用诊断清偿（implicit_impl_as_method 70+16 处）"**同笔**（跟升即红，不许分两笔）。
+          # W18（2026-09-21，用户拍"CI 跟升"）：钉版随工具链演进而 bump
+          # （20260915→20260920→**20261104**）——每次跟升与引入红的修正**同笔**
+          # （跟升即红，不许分两笔）；20261104 = fmt 新正典波（derive 头属性形 +
+          # with fn default()，2026-11-07 iri.mbt 同笔修正）。
           # 跟随口径：CI 取**最新**已知良好版（本地钉回旧版会制造口径分叉）。
-          known_good="0.1.20260920"
+          known_good="0.1.20261104"
           if [ "$installed" != "$known_good" ]; then
             echo "::warning::MoonBit 工具链 $installed ≠ 本地已知良好 $known_good——先在本地复跑 check/test，再按需更新本文件"
           fi
