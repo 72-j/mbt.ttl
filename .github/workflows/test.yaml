@@ -239,7 +239,7 @@ jobs:
         run: |
           # 默认臂 = "未识别 action/event" 的**保守臂**：能跑、但响应正确性没有判据（默认臂≠已验证）。
           # 纪律（评审 P1-4）：数量变化必须同笔说明——否则模型可能悄悄退化成 90% 保守臂而门全绿。
-          # 名单侧另有 gen_trig/quicktest/metrics.mbt 的 default_arms()（30 条逐条断言合法+保守档），
+          # 名单侧另有 gen_trig/quicktest/metrics.mbt 的 default_arms()（28 条逐条断言合法+保守档），
           # 两处一起才防得住"多一条保守臂"。
           check_default_arms() {
             local path="$1"

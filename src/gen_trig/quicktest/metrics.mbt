@@ -746,7 +746,10 @@ test "指标·权重表逐名等值（35 名全量 + 默认档）" {
 }
 
 ///|
-/// **默认臂名单**（役 6，2026-09-18）：30 条 `// TODO(P0): 未识别 action none` 的保守臂。
+/// **默认臂名单**（役 6，2026-09-18）：28 条 `// TODO(P0): 未识别 action none` 的保守臂。
+/// 沿革：2026-11-07 随笔推（102d851 模型镜像清偿役真臂化——(ExpectTildeEnd, BlankNode) /
+/// (GraphExpectTildeEnd, BlankNode) 换 annot 帧栈真机械（Tilde 链自环臂）出名单，30 → 28；
+/// 役时门数字未随笔推，CI 静态门解蔽清账役一并补记）。
 ///
 /// 纪律（评审 P1-4）：**默认臂 ≠ 已验证**——生成器按名猜不准 action 语义时给的是保守档，
 /// 响应正确性**没有判据**；本名单给它们建账，防"模型悄悄退化成 90% 保守臂而门全绿"。
@@ -764,7 +767,6 @@ fn default_arms() -> Array[(ModelState, Command)] {
     (ExpectVerbOrEnd, Semicolon),
     (ExpectTildeEnd, Iri(Concrete({ id: 1, }))),
     (ExpectTildeEnd, PrefName(Concrete({ id: 1, }))),
-    (ExpectTildeEnd, BlankNode(Concrete({ id: 1, }))),
     (AnnotExpectVerb, Semicolon),
     (AnnotExpectVerbTail, Semicolon),
     (ExpectDirectiveKind, PrefixKw),
@@ -782,7 +784,6 @@ fn default_arms() -> Array[(ModelState, Command)] {
     (GraphExpectVerbOrEnd, Semicolon),
     (GraphExpectTildeEnd, Iri(Concrete({ id: 1, }))),
     (GraphExpectTildeEnd, PrefName(Concrete({ id: 1, }))),
-    (GraphExpectTildeEnd, BlankNode(Concrete({ id: 1, }))),
     (GraphAnnotExpectVerb, Semicolon),
     (GraphAnnotExpectVerbTail, Semicolon),
   ]
@@ -792,9 +793,9 @@ fn default_arms() -> Array[(ModelState, Command)] {
 /// 默认臂名单门（役 6）：数量 + 每条"仍是合法臂 + 响应落在保守档"。
 /// 例外一处（与 §2.2 转移普查同款）：`ExpectDirectiveEnd+Dot` 是**唯一带运行时守卫**的保守臂，
 /// `blank_model` 下守卫位为假 ⇒ 该行按"保守拒"给 `Error(0)`，故对它只断言"在册且在册位合法"。
-test "指标·默认臂名单门: 30 条保守臂在册（合法 + 保守档，守卫行单列）" {
+test "指标·默认臂名单门: 28 条保守臂在册（合法 + 保守档，守卫行单列）" {
   let arms = default_arms()
-  assert_eq(arms.length(), 30)
+  assert_eq(arms.length(), 28)
   for site in arms {
     let (state, command) = site
     let model = blank_model(state)
