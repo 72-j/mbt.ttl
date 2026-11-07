@@ -126,7 +126,7 @@ moon clean && moon coverage clean && moon test --enable-coverage
   echo "[行覆盖]"
   moon coverage report -f summary | tail -n 1
   echo "[可达命令名覆盖]"
-  moon test 2>&1 | grep -o '可达覆盖账 [a-z0-9]*：分母 [0-9]* / 分子 [0-9]* / 缺口 [0-9]* / 不可达 [0-9]*' | sort -u
+  moon test 2>&1 | grep -o '可达覆盖账 [a-z0-9]*[^：]*：分母 [0-9]* / 分子 [0-9]* / 缺口 [0-9]* / 不可达 [0-9]*' | sort -u
 } > coverage-review.txt
 ```
 
