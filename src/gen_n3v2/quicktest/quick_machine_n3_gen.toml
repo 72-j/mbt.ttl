@@ -1,0 +1,290 @@
+# ==========================================================
+# QuickMachine **生成面**（纪律：与业务面分文件，2026-09-14）
+# 管：生成什么 / 生成到哪 / 怎么接线 —— [meta] [generator] [type_mapping] [artifacts] [defaults]
+# 业务面见同目录 quick_machine_n3.toml（[business] [random_check] [[assert_check]] [environment] [report]）
+#
+# ⚠ IR 口径（P5.3 MVP 裁定，2026-09-18）：fsm_toml = n3_fsm.toml 是 domain 产线
+#   （domain/n3_domain.toml 2026-09-08 回灌定案）的产物。Id/Invert 深切片已随 R-18
+#   落入 IR、set_id_subject 随 R-17（2026-09-20）升全形声明，业务面权重同笔放开
+#   （Id=1）；历史缺口台账见 moonttl/src/gen_n3v2/quicktest/todo.md §6。
+#   同源再生产线（n3gen dump ≡ fsm_out）另立役（n3v2_base.toml 头部验收门注释即其契约）。
+# ==========================================================
+[meta]
+name = "n3_quick_machine"
+version = "0.1.0"
+description = "N3 解析器 QuickMachine 测试骨架生成配置"
+prefix = "N3"
+
+[generator]
+enabled = true
+# fsm_toml 同目录交付（2026-11-07 表迁 owner 仓，宪法〇第四例；fsm_out 随业务
+# 面同迁，主仓 rdf/domain2/ 双文件编译 ≡ 本文件字节级，dump 门在主仓 rdf 侧）
+fsm_toml = "n3_fsm.toml"
+skelgen_package = "thy1016/moonttl/gen_n3v2"
+engine_alias = "@n3"
+qcs_alias = "@qcs"
+# 交付径 = 本目录（产物与表同住 owner 仓；2026-11-07 迁位后原跨树径退役）
+output_dir = "."
+# 生成头时间戳钉住（G6 口径：再生幂等）
+generated_at = 1789800000000
+
+[type_mapping]
+span_alias = "RefId"
+ref_type = "@qcs.Ref[RefId]"
+# 进模型的槽位白名单（顺序即 Model 槽位顺序）。笔 3a 扩入 path 三账：
+# 引擎 path 机械（actions.mbt path_*）靠 ctx 三账 path_src/path_pend/path_tail
+# 回装槽位再发射——模型不携这三账 ⇒ 发射点读 stale 值（R-17 债 11 点根因）。
+model_slots = ["subject", "predicate", "object", "graph", "path_src", "path_pend", "path_tail"]
+# 进 **Quad 发射载荷**的槽位白名单（笔 3a 分列）：Quad = 引擎发射边界的槽位快照，
+# 只有 SPO 四槽——path 三账是建模账本，不是发射载荷。
+quad_slots = ["subject", "predicate", "object", "graph"]
+# 方向旗标槽（`fwd:<a>|<b>` 写槽来源读的模型旗位；引擎 ctx.path_fwd）。
+fwd_slot = "path_fwd"
+# **帧扩展位**（笔 3b）：引擎元素位路径用帧里的 `prev_node` 当"元素位媒介"
+# （gen_n3v2/actions.mbt:691 path_elem_trail 读它、:871 path_elem_end 写它）——模型帧同形才能把
+# ListPath 族做**值级**建模。槽名是方言数据（生成器不写死）；缺省空 = 只有固定六位。
+# `id_subject`（R-17，2026-09-20）：`[ id :X … ]` 语义主语帧位——`set_id_subject` 刻帧、
+# 弹帧**目标决议**优先读它（gen_n3v2/actions.mbt:148，盖写 fresh 开括号身份；生成器 frame_pop
+# 目标决议按此位在册与否分派，方言以声明领有）。
+frame_slots = ["prev_node", "is_formula:Bool", "as_pred:Bool", "id_subject"]
+# **罩内发射压制**（笔 3c 下半·二）：`suppress_emit = { frame_flag = "…" }` ⇒ 生成的
+# `emit_<scope>` 首行判"任一帧该位为真"——罩内发射降级为只收拾不上抛（ADR-002）。
+suppress_emit = { frame_flag = "is_formula" }
+# **倒装片账本位**（is/of 转正役）：非空 ⇒ Model 加交换键 `src_slot`（span 身份）
+# 与结算界 `depth_slot`（栈深），发射族生成 inversion_swap/inversion_settle
+# （引擎 take_pending/settle_inversion 同形），写源词表开通 `frames_len`；
+# 缺省空 = 无倒装语义（trig/nquads 零迁移）。
+inversion = { src_slot = "is_src", depth_slot = "is_depth" }
+# **罩内发射压制**（笔 3c 下半·二**已开通**）：旗位**压帧即定**——`frame.is_formula=true`
+# 字面写经 frame_push 尾随旗参数落在**新压帧**上、随公式帧弹出而熄，与引擎
+# `SlotType::Formula` 帧同生命周期 ⇒ 模型臂体一次判与引擎逐 sub-effect 判
+# （收口弹帧后旗已不在）同刻同口径。首轮 3 条 Rbrace 违例的根因是旗落**外层帧**
+# （update_tail 折叠链以 model.frames 为基——弹帧后旗仍亮，罩内外判定相反）。
+# 实测：债点 2 → 0（Formula 值分支 Some(_) 臂罩内降级 Continue，两侧同步）、违例 0。
+# 细节见 moonttl/todo.md §V/§V.4。
+# 发射口径（ADR-QM-009）：引擎发射载荷 = `N3PendingQuad`——四槽 `Span?` 的**槽位快照**
+# （缺槽合法；N3 无图块口径 g 恒缺），故取 snapshot：
+# 模型**不设** "槽位齐全" 前置，无条件把当前槽位当快照交出。
+emission_shape = "snapshot"
+# 快照档下全槽可空（与 emission_shape 一致，写出来是显式的方言数据，不是生成器假定）
+optional_slots = ["subject", "predicate", "object", "graph"]
+# Effect → Response 归一化：内部效果（不产出四元组）一律归 Continue；
+# Sequence 的用法（表侧 :1323 一行 + actions 侧 path_elem_close/path_obj_close）
+# **都含 EmitQuad**，故归 EmitQuad。
+effect_maps = { Reset = "Continue", PopBnp = "Continue", OpenSlot = "Continue", Sequence = "EmitQuad" }
+error_codes = { undefined_transition = 0, action_failed = 1 }
+# **恢复窗收窗声明**（R-19 役 2b，2026-09-21；声明门 = 非空才发机件）：
+# 任何 Error 响应 ⇒ 开窗（清帧栈 + is_src，引擎 recover_cleanup_half 同面；path 三账不清）；
+# 窗内事件**不进表**（模型报 `Skip`），命中下表 `from`（Command 变体名）⇒ 按 `to`
+# （scope 链变体名，清槽清单与 `[[scope_chains]]` 同源）清槽 + 归位初始态收窗。
+# 判据与引擎 `N3Context::recover_consume`（engine.mbt，唯一实现）逐字同源：Dot ⇒ All，
+# EOF/枯竭 ⇒ SPO。**未声明（trig/nquads）= 零发射，逐字节零迁移**（生成器门测试在册）。
+[type_mapping.recovery_close]
+Dot = "All"
+EOF = "SPO"
+
+[artifacts]
+types = true
+valid = true
+model_exec = true
+callbacks = false
+business = true
+# 指标门暂缓（与 trig P4.3 同口径）：覆盖率门要求"单个 200 步用例覆盖全部可达命令名"，
+# 深状态（路径/集合/公式）的随机可达性没有保证 —— MVP 只开随机门，覆盖率门 P5.6 再议。
+metrics = false
+system = true
+state_machine = true
+runner = true
+assembly = "direct"
+
+[defaults]
+precondition = "valid_table"
+postcondition = "model_compare"
+invariant = "top"
+generator = "valid_weighted"
+shrinker = "none"
+mock = "model_execute"
+response_vars = "none"
+reify_command = "resolve_symbolic"
+bind_response = "passthrough"
+remap_command = "identity"
+
+# ==========================================================
+# [actions]：action → 意图表（生成面数据，P4.2c 同形）
+# 来源：moonttl/src/gen_n3v2/actions.mbt 实测抽取（todo.md §4.2 表二；U5 表刀 +set_reifier
+# ⇒ 引擎今 50 方法）。
+# 收录范围：IR 转移表实际引用的 45 个（44 + U5 set_reifier） + 引擎侧存真（path_verb_hop / set_inversion /
+# set_id_subject 均升全形——R-17 后帧位词表 + 条件形齐备）。
+# 口径：带参文本（如 "EmitQuad(SPO)"）取 `(` 前的 Effect 名，再做 effect_maps 归一。
+# ⚠ 路径/集合两族的写槽真相部分落在**帧扩展位**（prev_node/node_seq/id_subject/as_pred）
+#   ——笔 3a 起模型槽位扩入 path 三账 + 旗位 path_fwd，尾随路径主位/宾位切片可誊；
+#   元素位（ListPath，Frame.prev_node）仍留笔 3b。
+# ==========================================================
+
+[actions]
+# 纯写槽 6（槽位装填走模型按名约定，returns 只管响应——与 trig 同）
+set_subject = "Continue"
+set_predicate = "Continue"
+set_object = "Continue"
+set_prefix_name = "Continue"
+declare_prefix = "Continue"
+set_base = "Continue"
+# 帧族（P4.2e 同形）：`[`/`(`压帧（外层两槽快照 + open_span + ret_state），收口弹帧
+open_bnode_prop = { returns = "Continue", writes = ["subject=arg0", "predicate=none"], frame = "push" }
+open_collection = { returns = "Continue", writes = ["subject=arg0", "predicate=none"], frame = "push" }
+open_collection_pred = { returns = "Continue", writes = ["subject=arg0", "predicate=none", "frame.as_pred=true"], frame = "push" }
+# Formula 帧与 Bnp 占位分野：s/p 双清（表二 :263/:296）
+open_formula = { returns = "Continue", writes = ["subject=none", "predicate=none", "frame.is_formula=true"], frame = "push" }
+open_formula_pred = { returns = "Continue", writes = ["subject=none", "predicate=none", "frame.is_formula=true", "frame.as_pred=true"], frame = "push" }
+open_bnode_pred = { returns = "Continue", writes = ["subject=arg0", "predicate=none", "frame.as_pred=true"], frame = "push" }
+# `[ id :X p o ]` 语义锚（R-17 转正役，2026-09-20；引擎 gen_n3v2/actions.mbt:185-201 直证）：
+# 刻帧写三处——`ctx.subject=arg0` / `ctx.predicate=None` / 帧位 `id_subject=arg0`
+# （弹帧目标决议的权威：pop 时盖写 fresh 开括号身份，语义 ≡ `:X p o`）；
+# **条件 ret_state 覆写** = 生成器新条件形 `when_frame_flag`（判据 = 帧顶 Bool 位
+# `as_subject`——主位开括号帧；真支写 `BnpIdAfterClose`，`[` 收口后吃 `.` 复位）。
+# 引擎序：基础写在前、条件写在后（判据位 as_subject 不被基础写触及 ⇒ 同值）。
+set_id_subject = { returns = "Continue", writes = ["subject=arg0", "predicate=none", "frame.id_subject=arg0"], when_frame_flag = { flag = "as_subject", writes = ["frame.ret_state=BnpIdAfterClose"] } }
+# `}` 收口：返回 PopBnp（帧语义走 [frames]；表二 :351 零写）
+close_formula = "PopBnp"
+# 谓词路径 7（表二 :403-:529；随机门零权重，returns 照表二存真。
+# 笔 3a：path 三账入模型后，写槽可落 path 账（P5.3 的"写了必坏"随 model_slots
+# 扩容翻案）；fwd 排布走 `fwd:<a>|<b>` 来源，方向旗标值落 IR assign（path_fwd=…）。
+# 路径入口 `!`/`^`（引擎 gen_n3v2/actions.mbt:434-475 直证）也是**值分支**：
+# `ctx.predicate` 在场（`S P!…`，bang 证明非末跳）⇒ 基跳急兑现：`object = op`、`path_src = op`、发 quad；
+# 不在场（裸入口 `S !P O`）⇒ 只把 `path_src = ctx.subject`、Continue。两支都清 `path_pend`。
+path_fwd = { returns = "Continue", writes = ["path_pend=none", "path_src=ctx.subject"], when_some = { slot = "predicate", response = "EmitQuad(SPO)", writes = ["object=arg0", "path_src=arg0", "path_pend=none"] } }
+path_bwd = { returns = "Continue", writes = ["path_pend=none", "path_src=ctx.subject"], when_some = { slot = "predicate", response = "EmitQuad(SPO)", writes = ["object=arg0", "path_src=arg0", "path_pend=none"] } }
+path_step = { returns = "Continue", writes = ["path_pend=arg0"] }
+# 中跳（引擎 :490-511 = `path_hop_resolve` 直证）：发射方向用**旧旗**
+# （`fwd:` 读 model 既有 path_fwd——记录字面量 RHS 全读旧值，行 assign
+# `path_fwd=true|false` 翻的是新旗，两不干扰）；fresh = 本操作符 span
+# （arg0 = 载荷）接棒为源；押步清账；path_tail 引擎不触。
+path_hop_fwd = { returns = "EmitQuad(SPO)", writes = ["subject=fwd:ctx.path_src|arg0", "predicate=ctx.path_pend", "object=fwd:arg0|ctx.path_src", "path_src=arg0", "path_pend=none"] }
+path_hop_bwd = { returns = "EmitQuad(SPO)", writes = ["subject=fwd:ctx.path_src|arg0", "predicate=ctx.path_pend", "object=fwd:arg0|ctx.path_src", "path_src=arg0", "path_pend=none"] }
+# 末跳对象步（引擎 :513-538 直证）：终跳装三槽（正 (源,押步,宾) / 反 (宾,押步,源)），
+# 路径账清（src/pend）；发射交既有收口行（Continue）。
+path_end = { returns = "Continue", writes = ["subject=fwd:ctx.path_src|arg0", "predicate=ctx.path_pend", "object=fwd:arg0|ctx.path_src", "path_src=none", "path_pend=none"] }
+# 嵌套路径收口（笔 3c 下半·四，引擎 gen_n3v2/actions.mbt:552-566 直证）：**fwd 墙**（逆向
+# 拒绝：BusinessFailed + 状态拨回 ExpectDotOrGraph + 清 src/pend——R-03-3 链形值分
+# 派，静态表行表达不了 ⇒ 负例道，不建模）；正道 = s/p 重排（subject=src、
+# predicate=verb）后**压帧**（快照含重排——弹帧恢复重排后的 s/p，P2 组合探针实证：
+# `:s :p![:q :r] .` 引擎终发 (3,4,5)、模型旧形发 (None,None,5)）。src/pend 缺席
+# ⇒ BusinessFailed（负例道）。path_tail 不清（引擎不触）。
+# `when_slot_type`（§AN.11）：末跳后借 `open_slot` 按行实参 `SlotType` 分派三支——
+# `open_bnode_prop`/`open_collection` 占 s 槽（= 开括号身份 open_span = 载荷），
+# `open_formula` 是 **s/p 双清**（gen_n3v2/actions.mbt:314-315）。故基础写的 `subject`/`predicate`
+# 只描述"分派前"形态，最终值按 typ 覆盖声明（p 恒 None）。数据面投影按行 SlotType 选臂。
+path_end_nested = { returns = "OpenSlot", writes = ["subject=ctx.path_src", "predicate=ctx.path_pend", "path_src=none", "path_pend=none"], push_writes = true, when_slot_type = { BnodeProp = ["subject=arg0", "predicate=none"], Collection = ["subject=arg0", "predicate=none"], Formula = ["subject=none", "predicate=none"] }, refuse_when = { slot = "path_fwd", response = "Error(1)", state = "ExpectDotOrGraph", writes = ["path_src=none", "path_pend=none"] } }
+# 尾随路径 12（表二 :599-:938）：trail 入口立三账、hop 兑现、subj_end/obj_close 收口。
+# 覆盖债点 7/11（SubjTrailAfterStep±Formula ×4 + ObjTrailAfterStep ×3）；
+# ListPath ×4 属元素位（Frame.prev_node 帧扩展位），留笔 3b。
+path_subj_trail = { returns = "Continue", writes = ["path_src=ctx.subject", "path_tail=arg0", "path_pend=none"] }
+path_obj_trail = { returns = "Continue", writes = ["object=arg0", "path_src=ctx.object", "path_tail=arg0", "path_pend=none", "subject=ctx.subject", "predicate=ctx.predicate"], frame = "push", push_writes = true }
+path_elem_trail = { returns = "Continue", writes = ["path_src=frame.prev_node", "path_tail=arg0", "path_pend=none", "frame.prev_node=arg0"] }
+# 尾随跳（path_tail_hop_resolve 系，引擎 gen_n3v2/actions.mbt:611 `if fwd` = **本 op 参数旗**，
+# :623 发射后才翻）——与主路径跳（path_hop_resolve :415 旧旗「发射后才翻」）引擎侧
+# 分野 ⇒ 词表用 `nfwd:`：按行 assign（Bang 行 =true / Caret 行 =false）编译期坍缩，
+# 语义 = 参数旗。path_hop_tail/path_verb_hop 同族（:711/:822 直证）。
+# 负道值支（seed 1 反例实证）：动词链 path_subj_end 清 src 后再 Bang ⇒ 引擎
+# path_tail_hop_resolve :599 src 缺 → BusinessFailed=Error(1)（模型原形会发
+# (None,pend,tail) 假四元）。src 首查（:599-610 读序 src→pend→tail），单值支先钉此道。
+path_hop_tail = { returns = "EmitQuad(SPO)", writes = ["subject=nfwd:ctx.path_src|ctx.path_tail", "predicate=ctx.path_pend", "object=nfwd:ctx.path_tail|ctx.path_src", "path_src=ctx.path_tail", "path_tail=arg0", "path_pend=none"], when_absent = { slot = "path_src", response = "Error(1)", state = "", writes = [] } }
+# 元素位中跳（引擎 :716-728 = `path_tail_hop_resolve` + 帧 prev_node 接棒）——
+# Batch 3 反例定夺（2026-09-19，seed 2026 `…Lparen!tt!p Bang` 收缩 20/20）：
+# 引擎发射 fwd=(src, verb, **旧尾**)（EmitQuad(13,55,13) 实证，非 fresh！首版两处
+# 写错即此），兑现后 **path_src = 旧尾接棒**、**path_tail = fresh(arg0)**、押步清；
+# prev_node = resolve **后**的 ctx.path_tail = 新尾 ⇒ 声明须写 arg0（记录字面量
+# RHS 全读旧值，写 ctx.path_tail 会取旧尾——:132 注口径）。写形与 path_hop_tail
+# 同源（:722 共享 resolve），只多帧记账一项。
+path_elem_hop = { returns = "EmitQuad(SPO)", writes = ["subject=nfwd:ctx.path_src|ctx.path_tail", "predicate=ctx.path_pend", "object=nfwd:ctx.path_tail|ctx.path_src", "path_src=ctx.path_tail", "path_tail=arg0", "path_pend=none", "frame.prev_node=arg0"] }
+# 值分支臂（笔 3c，引擎 gen_n3v2/actions.mbt:734-774 直证）：同 (from,on) 行内按**值**分派——
+# `path_src` 有值 ⇒ 终跳边急发（上支）；无值（动词位链 `q!Q O`：path_verb_hop 后源位恒 None）
+# ⇒ 走 `path_subj_object` **回装**分支：主语 = 尾、谓词 = 押步动词、宾语 = 本原子（arg0），
+# 清三账、**不发 quad**（Continue），且 **state 被引擎改写成 ExpectDotOrGraph**（不随行 to）。
+path_subj_end = { returns = "EmitQuad(SPO)", writes = ["subject=fwd:ctx.path_src|ctx.path_tail", "predicate=ctx.path_pend", "object=fwd:ctx.path_tail|ctx.path_src", "path_pend=arg0", "path_src=none"], when_absent = { slot = "path_src", response = "Continue", state = "ExpectDotOrGraph", writes = ["subject=ctx.path_tail", "predicate=ctx.path_pend", "object=arg0", "path_tail=none", "path_pend=none"] } }
+# 回装写槽（族 C，R-20 清偿，2026-09-19；引擎 gen_n3v2/actions.mbt:779-800 直证）：
+# 主语 = 尾 fresh、谓词 = 押步动词、宾语 = 本原子（arg0=payload），清 tail/pend，
+# Continue 不发射。原裸 "Continue" 丢全部写槽 → 值级普查 18 条（10+公式孪生 8）。
+# BusinessFailed 守卫（tail/pend 缺）= 负例道，不建模（R-19 同区）。
+path_subj_object = { returns = "Continue", writes = ["subject=ctx.path_tail", "predicate=ctx.path_pend", "object=arg0", "path_tail=none", "path_pend=none"] }
+# 动词位链中跳（族 C 同笔；引擎 gen_n3v2/actions.mbt:808-839 直证）：fwd 发 (尾,押,原) /
+# bwd 发 (原,押,尾)（fwd 排布走 fwd: 二选一），tail 接棒本原子、押步清；
+# path_fwd 由行 IR assign 喂（Bang 行 =true / Caret 行 =false，生成臂已吃）。
+path_verb_hop = { returns = "EmitQuad(SPO)", writes = ["subject=nfwd:ctx.path_tail|arg0", "predicate=ctx.path_pend", "object=nfwd:arg0|ctx.path_tail", "path_tail=arg0", "path_pend=none"] }
+# 元素位尾跳收口（笔 3b，覆盖 ListPath ×4 债点）：读 path 三账按方向旗排布发射；
+# **写帧扩展位** `frame.prev_node = arg0`（元素随行换新，gen_n3v2/actions.mbt:871）；
+# 收尾清三账（引擎 `clear_path()`；`path_fwd` 的归零本笔暂不走写槽——见 todo §R.2，
+# 路径上每个 hop/end 步骤前都由 Bang/Caret 行经 IR assign 重设，实测不产债点即不补）。
+path_elem_end = { returns = "EmitQuad(SPO)", writes = ["subject=fwd:ctx.path_src|ctx.path_tail", "predicate=ctx.path_pend", "object=fwd:ctx.path_tail|ctx.path_src", "path_src=none", "path_pend=none", "path_tail=none", "frame.prev_node=arg0"] }
+# 元素位嵌套收口（笔 3c 下半·四，引擎 gen_n3v2/actions.mbt:879-923 直证）：**先压帧**（快照=
+# 旧槽位）→ s/p/o 三槽 fwd 双向排布 → **帧顶写** `prev_node := elem`（push_writes：
+# 写落新压帧；生成器先推后写形）→ 清 path 三账 → 发射（快照=**写前**——与 OpenSlot 写后快照形反序，2026-09-19 反例定夺）。
+path_elem_end_nested = { returns = "EmitQuad(SPO)", writes = ["subject=fwd:ctx.path_src|ctx.path_tail", "predicate=ctx.path_pend", "object=fwd:ctx.path_tail|ctx.path_src", "path_src=none", "path_pend=none", "path_tail=none", "frame.prev_node=arg0"], frame = "push", push_writes = true }
+# 非嵌套与嵌套**不同形**（ctx.md 风险③同款，勿合并）：
+#   path_elem_close 双发（gen_n3v2/actions.mbt:924）/ path_obj_close 三发（:969，尾枚 scope 按 ret_state 三向）
+# 元素位尾跳收口（引擎 :924-959 直证）：终跳边三槽 fwd 双向排布、帧顶
+# prev_node := 尾 fresh、clear_path 三账、Sequence 序 = emit 先 snapshot 后
+# 收拾、帧恢复随其后（既有口径）。node_seq+1 引擎有之、模型 Frame 无此位
+# （普查八槽不可见），不建模。
+# `pop_writes`（§AN.14）：上面 `writes` 是**弹帧前**的中间态；**行终态** = 弹帧恢复（三槽回装 +
+# 身份落位）+ scope 收拾 ⇒ 此处按键声明终态。本行帧 `as_subject=true`（元素位开帧）⇒ pop 把身份
+# 落 **s 槽**（= 帧 `open_span`）、p 回装（此行为 None）、o 已被 emit 清且 pop 不再动 ⇒ 三值如下。
+# 键 = 行 `to` 态名；`_` = 兜底臂（本行各行 `to` 不同，取兜底）。
+path_elem_close = { returns = "Sequence([EmitQuad(SPO), PopBnp])", writes = ["subject=fwd:ctx.path_src|ctx.path_tail", "predicate=ctx.path_pend", "object=fwd:ctx.path_tail|ctx.path_src", "path_src=none", "path_pend=none", "path_tail=none", "frame.prev_node=ctx.path_tail"], pop_writes = { _ = ["subject=frame.open_span", "predicate=frame.predicate", "object=none", "graph=frame.graph"] } }
+# 收口（笔 3a）：第一发读 path 账（fwd 排布）；pop 前改帧顶 ret_state/open_span
+# （引擎 :1007-1008 帧顶账——pop 兑现 object := 尾 + state := 改后 ret_state）
+# `pop_writes`（§AN.14）：尾枚 `EmitQuad` 的收拾粒度**随收口事件**（引擎 :998-1002）：
+# `,` 收 ExpectObject ⇒ `ResetScope::Object`（清 o）；`;` 收 ExpectVerbOrEnd ⇒ `PredObj`（清 p,o）；
+# `.` 收 ExpectSubject ⇒ `SPO`（清 s,p,o）。故三臂：s/p = **弹帧回装值**（帧顶 s/p），按上述逐步清。
+# 键 = 行 `to` 态名（正是引擎写进帧 `ret_state` 的那个值）。
+path_obj_close = { returns = "Sequence([EmitQuad(SPO), PopBnp, EmitQuad(SPO)])", writes = ["subject=fwd:ctx.path_src|ctx.path_tail", "predicate=ctx.path_pend", "object=fwd:ctx.path_tail|ctx.path_src", "path_src=none", "path_pend=none", "path_tail=none", "frame.ret_state=to", "frame.open_span=ctx.path_tail"], pop_writes = { ExpectObject = ["subject=frame.subject", "predicate=frame.predicate", "object=none", "graph=frame.graph"], ExpectVerbOrEnd = ["subject=frame.subject", "predicate=none", "object=none", "graph=frame.graph"], ExpectSubject = ["subject=none", "predicate=none", "object=none", "graph=frame.graph"] } }
+# 集合族 5（n3 口径与 trig **相反**：记账零发射，表二 :1033-:1111；发射只在收口行效果）
+# 集合族记账（引擎 gen_n3v2/actions.mbt:1033 起）：**只动帧账**——`node_seq`（不建模）与
+# **`prev_node = Some(elem)`**（元素位媒介：后续 `path_elem_trail`/`path_elem_end` 靠它取值），
+# 不动 ctx 槽位、不发链 quad（n3 口径与 trig 相反，见上行注释）。缺 prev_node ⇒
+# 元素位路径的模型侧读不到源 ⇒ ListPath ×4 债点（3b 清偿）。
+list_first = { returns = "Continue", writes = ["frame.prev_node=arg0"] }
+list_next = { returns = "Continue", writes = ["frame.prev_node=arg0"] }
+# `when_slot_type`（§AN.11）同 `path_end_nested`：记账入帧后返 `OpenSlot(elem, typ, ret_state)`，
+# 兑现走同一 `open_slot` 三支 ⇒ s/p 写槽由 typ 定（元素位开帧 as_subject=false，不落 o 槽）。
+list_first_nested = { returns = "OpenSlot", writes = ["frame.prev_node=arg0"], push_writes = true, when_slot_type = { BnodeProp = ["subject=arg0", "predicate=none"], Collection = ["subject=arg0", "predicate=none"], Formula = ["subject=none", "predicate=none"] } }
+list_next_nested = { returns = "OpenSlot", writes = ["frame.prev_node=arg0"], push_writes = true, when_slot_type = { BnodeProp = ["subject=arg0", "predicate=none"], Collection = ["subject=arg0", "predicate=none"], Formula = ["subject=none", "predicate=none"] } }
+list_nil = "PopBnp"
+# 关键词 2（kw_ledger 账本非模型槽位，写槽从简）
+kw_begin = "Continue"
+declare_keyword = "Continue"
+# 倒装 2（is/of 转正役）：is_src/is_depth 晋**模型账本位**——is_of 记交换键
+# （=subject）与栈深界（`frames_len` 新写源 = frames.length()）；交换/结算在
+# 发射族 inversion_swap/settle。set_inversion 同形（HOLD 族转正 2026-09-20：
+# Invert 放开后反例实证——引擎 gen_n3v2/actions.mbt:1159 set_inversion 同记 is_src/is_depth 两键，
+# 发射点倒装消费；存真桩在权重 0 下无害，放开即漂移）。
+is_of = { returns = "Continue", writes = ["is_src=ctx.subject", "is_depth=frames_len"] }
+set_inversion = { returns = "Continue", writes = ["is_src=ctx.subject", "is_depth=frames_len"] }
+# sameAs 1
+set_sameas = { returns = "Continue", writes = ["predicate=arg0"] }
+# 注解族（U5 官方律，2026-11-03：帧栈 + 镜面——引擎 gen_n3v2/actions.mbt 直证）：
+# annot_open = 捕锚入帧 + 出账锚行 EmitQuad(PredObj)（变体面同旧律；帧栈不入响应面）；
+# annot_end = Sequence([EmitQuad(PredObj), AnnotPop])——弹帧后置（末体行快照先、弹帧还
+#   返回态 + 锚槽回填）；set_reifier = ~ 链捕获（零槽位写，观测面不变）；
+# annot_close_silent = 弹帧零发射。表二 :1155/:1186 + moonttl todo.md「U5 役账·二」
+annot_open = "EmitQuad(PredObj)"
+annot_body_verb = { returns = "Continue", writes = ["predicate=arg0"] }
+annot_end = "Sequence"
+set_reifier = "Continue"
+annot_close_silent = "Continue"
+
+# [frames]：**effect → 帧语义**（无 action 的行靠这张表拿帧语义）。
+# `PopBnp` 出现在 `]`/`)` 收口行（无 action），引擎经 interpret → pop_bnode_prop 弹帧并写 state。
+[frames]
+PopBnp = "pop"
+
+# ==========================================================
+# [effects]：**effect → 写槽/帧**（P4.2g 同形）。用**原始** effect 名（不走 effect_maps）。
+# `Reset(<Scope>)` 不进本表——清谁由 `[[scope_chains]]` 的 scope 变体决定（IR §9 四条已带）。
+# ==========================================================
+
+[effects]
+# `OpenSlot` 作为 actions 侧尾意图出现（list_first_nested/list_next_nested/path_end_nested
+# 整返）——引擎 `on_open_slot` → `open_slot` 按 SlotType 分派三 open_* ⇒ 压一帧。
+# 帧语义用本表的 `frame` 字段（与行级 [actions] 同一通道）。
+OpenSlot = { frame = "push" }

@@ -1,0 +1,175 @@
+# ==========================================================
+# QuickMachine **业务面**（纪律：与生成面分文件，2026-09-14）
+# 管：业务分布 / 回归基线 / 覆盖率要求 —— [business] [random_check]
+#     [[assert_check]] [environment] [failure_detection] [report]
+# 生成面见同目录 quick_machine_n3_gen.toml
+#
+# ⚠ 权重收窄口径（P5.3 MVP 裁定，2026-09-18）：只喂模型可**值级精确表达**的机械片
+#   （裸三元脊柱 + `;`/`,` 谓词组 + @prefix/@base 指令 + `=` sameAs + `~` 简行）。
+#   **零权重排除**（缺口台账 todo.md §6，随机门反例逐一实证）：
+#   · 路径片**全族已转正**（Bang/Implies = Batch 1 前半；ImpliedBy = 役 2 / 2a 零机械；
+#     Caret = 役 2 / 2b —— 反向旗 fwd 墙后的 skip-to-Dot 恢复道已入模，
+#     `[type_mapping.recovery_close]` 声明门 + 探针面同扩，反例形两侧逐步全同）；
+#   · 集合片已转正（Anon Batch 2；Lparen/Rparen Batch 3——node_seq 不建模，prev_node 帧位已入模）；
+#   · Lbracket/Rbracket **放开**（笔 3c 下半·四，2026-09-19）：原排除理由"谓词位 `[`
+#     as_pred 弹帧回写缺口"已清偿（笔 3c 下半·三 as_pred 帧位）——谓位反例
+#     `:_b [:i :o] 58 ;` 两侧同步双发（内 (59,4,5) + 外 (3,59,58)，锚点⑥值级钉死），
+#     组合面九案探针全绿（宾/主/嵌套/罩内谓位/逗号/bnp⊃formula/formula⊃formula/
+#     谓位公式⊃bnp）；唯负例恢复道分道（SubjTrail 区现行权重不可达，R-19 立项）；
+#   · Lbrace/Rbrace **放开**（笔 3c 下半·三，2026-09-19）：原排除理由"公式帧同族
+#     （open_formula_pred as_pred 同缺口）"已清偿——as_pred 帧位弹帧回写占位后，
+#     谓位反例 `:s { :a :b :c } :o .` 两侧同步（引擎/模型同发 (1,7,6)），锚点⑤
+#     五案 + ⑥ 反例复跑值级钉死；普查债 0/违例 0 保持。
+#   · AnnotStart/AnnotEnd 已转正（HOLD 族 2026-09-20）：R-18 真臂（emit_predobj 主 quad 预发射
+#     + annot_end/close_silent 双收口臂）+ 快照 4 行在册；壳旗 subj_shell/annot_close 引擎
+#     发射 take 点消费、非模型槽，组合面对拍由随机门实证裁决；
+#   · KeywordA 已转正（Batch 2，pk=引擎侧非模型槽 span 轴不可见）；
+#   · Is/Of —— 倒装片（is_src/is_depth 非模型字段 + take_pending 倒装交换，
+#     反例实证：bnp 内 `is 0 of 54` 引擎发 (54,0,3)、模型 (3,0,54)）；
+#   · Has 已转正（2026-09-19）：六行（ExpectPredicate/VerbOrEnd/VerbRequired/VerbOrDot/
+#     BnpExpectPredicate/FormulaExpectPredicate）原地 no-op——现代口径 has 直读不倒装，
+#     fsm_out 同源在册、Is=0 下 ExpectIsProp 族不可达 ⇒ 零机械转正；
+#   · KeywordX/ForAllKw/ForSomeKw/KeywordsKw/VersionKw 已转正（HOLD 族 2026-09-20）：
+#     kw_ledger/kw_directive_seen 引擎侧只写不读（grep 全源仅 clear/push）⇒ 零可观测面，
+#     词法降级不过随机门（喂 token）；行面 = set_predicate 族 + 纯转移，快照 23 行在册；
+#     Variable/TripleTerm/BracketTripleTerm 已转正（Batch 2：整词单 token 无内层事件道）；
+#   · Unknown 已转正（HOLD 族 2026-09-20）：ExpectKeywordsList 自环 declare_keyword no-op；
+#   · EOF 仍 0 —— 模型 BFS 不可达（可达覆盖门 uncovered=["EOF"] 钉），随机门喂不进；
+#   · Invert 已转正（HOLD 族 2026-09-20）：set_inversion=Continue 真臂（is_src/is_depth
+#     账本位 Batch 6 已入模，快照 2 行在册）；
+#   · Id 已转正（R-17 转正役，2026-09-20）：`set_id_subject` 全形声明在册（subject/
+#     predicate/frame.id_subject 三写 + when_frame_flag 条件 ret_state），模型 Frame
+#     增 id_subject 位、弹帧目标决议按它在册与否分派——四面（声明/模型/快照/数据面）同步。
+#   权重子集即 trig 先例（34 事件权重表只列 22）——但**未列 ≠ 禁用**：
+#   生成器 business.mbt `command_weight` 对未声明事件**默认权重 1**（P5.3 实测，
+#   Bang 反例），排除片必须**显式置 0**。
+# ==========================================================
+[business]
+ref_id_range = 64
+
+[business.weights]
+Iri = 3
+BlankNode = 2
+Literal = 3
+PrefName = 2
+Dot = 3
+Comma = 1
+Semicolon = 1
+At = 1
+PrefixKw = 1
+BaseKw = 1
+Tilde = 1
+Equals = 1
+Is = 1 # 排除片转正（2026-09-19）：IsProp 词行 = 既有 set_predicate 面（fsm_out 同源在册），零新增机械
+Of = 1 # 排除片转正（2026-09-19）：is_of 晋声明 action（is_src=ctx.subject + is_depth=frames_len 新写源），发射族 inversion_swap/settle 与引擎 take_pending/settle_inversion 同形
+Has = 1 # 排除片转正（2026-09-19）：六行原地 no-op（同态 Continue 无 action，现代口径 has 直读不倒装）；Is=0 下 ExpectIsProp 族不可达 ⇒ 零机械（Batch 2 同款）
+Lbrace = 1
+Rbrace = 1
+Lbracket = 1
+Rbracket = 1
+# ---- 排除片（显式 0；见头部口径）----
+AnnotStart = 1 # HOLD 族转正（2026-09-20）：注解壳转正（R-18 真臂 emit_predobj + annot 端臂在册，快照 2+2 行；壳旗 subj_shell 引擎发射 take 点消费，随机门实证裁决）
+AnnotEnd = 1 # HOLD 族转正（2026-09-20）：同上（annot_end/annot_close_silent 双臂声明在册）
+# 路径族转正·前半（§V.4 舞，R-20 后）：值级面 F 笔清偿 + 普查全绿，放开**正向**响应面对拍。
+# `ImpliedBy` 已转正（役 2 / 2a，2026-09-21）：IR 全 5 行 = `set_predicate`，与已转正的 `Implies`
+# **逐行同形**（ExpectPredicate / ExpectVerbOrEnd / ExpectVerbOrDot / ExpectVerbRequired /
+# FormulaExpectPredicate）⇒ **零机械**（形态同 KeywordA/Has 那类：无反向旗、不涉恢复道）。
+# `Caret` 已转正（役 2 / 2b，2026-09-21）：反向旗置 false 后嵌套开撞 fwd 墙（R-03-2，refuse_when 已建模），
+# 墙后引擎走 skip-to-Dot 恢复道——**恢复位已入模**（`[type_mapping.recovery_close]` 声明门：
+# `Model.recovering` + `Response::Skip` + `recovery_enter/swallow`，探针面同扩），
+# 反例形 `…[p o .]^x v {` 两侧逐步同同（含窗内 Skip 与收窗归位），见 quicktest `r19_probe_wbtest.mbt`。
+Bang = 1
+Caret = 1
+Implies = 1
+ImpliedBy = 1
+Lparen = 1 # Batch 3（2026-09-19）：集合族放开——path_elem_hop 四疑点以反例定夺（§13.5 watch-item）
+Rparen = 1 # Batch 3 同笔：list_nil/path_elem_close 收口行在册
+Anon = 1 # Batch 2（2026-09-19）：`[]` 合成单事件纯槽位写（lexer_adapter:359-375，fresh 身份 = `[` offset）
+KeywordA = 1 # Batch 2：pk 兑现换值翻案——set_predicate 载荷=span 同 IRI（n3.mbt:540-543）；pk=引擎侧非模型槽，span 级四元轴不可见（`=` SameAs 同款先例）；降级道需 @keywords（KeywordsKw=0 死）
+Variable = 1 # Batch 2：整词单 token 槽位装词 id（`?x` 词法词）
+KeywordX = 1 # HOLD 族转正（2026-09-20）：关键词族转正（kw_ledger 引擎侧只写不读 ⇒ 零可观测面；23 行 set_predicate/declare_keyword 快照在册）
+ForAllKw = 1 # HOLD 族转正（2026-09-20）：同族（3 行纯转移无 action）
+ForSomeKw = 1 # HOLD 族转正（2026-09-20）：同族（3 行纯转移无 action）
+KeywordsKw = 1 # HOLD 族转正（2026-09-20）：同族（kw_begin=Continue no-op，@keywords 模式只动词法面、随机门喂 token 不过词法）
+VersionKw = 1 # HOLD 族转正（2026-09-20）：同族（3 行纯转移无 action）
+TripleTerm = 1 # Batch 2：`<< s p o >>` 整词单 token（lexer_mbt:315-345 平衡配对，内层不出词，gate_tt 验证层深验）——原「深片同帧位缺口」不成立：无内层事件道
+BracketTripleTerm = 1 # Batch 2：`<<( )>>` 括号壳整词（lexer_mbt:278-313）同上
+Unknown = 1 # HOLD 族转正（2026-09-20）：负例转正（ExpectKeywordsList 自环 declare_keyword no-op；UnexpectedEvent 归一口径普查在册）
+EOF = 0
+Id = 1 # R-17 转正役（2026-09-20）：set_id_subject 真臂（帧位 id_subject + 条件 ret_state），双 TODO 臂剩一（(BnpExpectPredicate, Id) 无 action 行，表源缺口另立）
+Invert = 1 # HOLD 族转正（2026-09-20）：R-17 倒装片收口（set_inversion=Continue 真臂，is_src/is_depth 账本位 Batch 6 已入模）
+
+[random_check]
+seed = 12345
+cases = 100
+max_commands = 20
+max_tries = 20
+shrink = true
+max_shrinks = 100
+max_shrink_rounds = 20
+required_command_names = []
+
+[environment]
+isolation_strategy = "per_test_case"
+before_each = []
+after_each = []
+timeout_seconds = 30
+
+[failure_detection]
+failure_if = [
+  "postcondition fails",
+  "model != system observable state",
+  "unexpected error code",
+]
+
+[report]
+include_trace = true
+include_model = true
+include_responses = true
+
+# ==========================================================
+# 固定脚本（MVP 两枚，与 probe.mbt 两钉子同口径）：
+# ① 单条三元组 `:a :p :o .`（Iri×3 + Dot ⇒ EmitQuad(SPO)）
+# ② BnP 嵌套块 `:a :p [ :q :r ] .`（Rbracket 表侧唯一 Sequence 行：
+#    `[EmitQuad(PredObj), PopBnp]` ⇒ 批 1 发；Dot ⇒ 外层 (a,p,[bnp])）
+# ==========================================================
+[[assert_check]]
+event = "Iri"
+id = 0
+
+[[assert_check]]
+event = "Iri"
+id = 4
+
+[[assert_check]]
+event = "Iri"
+id = 8
+
+[[assert_check]]
+event = "Dot"
+
+[[assert_check]]
+event = "Iri"
+id = 20
+
+[[assert_check]]
+event = "Iri"
+id = 24
+
+[[assert_check]]
+event = "Lbracket"
+id = 28
+
+[[assert_check]]
+event = "PrefName"
+id = 31
+
+[[assert_check]]
+event = "Iri"
+id = 34
+
+[[assert_check]]
+event = "Rbracket"
+
+[[assert_check]]
+event = "Dot"

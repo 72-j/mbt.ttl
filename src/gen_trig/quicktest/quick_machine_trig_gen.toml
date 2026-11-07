@@ -1,0 +1,145 @@
+# ==========================================================
+# QuickMachine **生成面**（纪律：与业务面分文件，2026-09-14）
+# 管：生成什么 / 生成到哪 / 怎么接线 —— [meta] [generator] [type_mapping] [artifacts] [defaults]
+# 业务面见同目录 quick_machine_trig.toml（[business] [random_check] [[assert_check]] [environment] [report]）
+# ==========================================================
+[meta]
+name = "trig_quick_machine"
+version = "0.1.0"
+description = "TriG 解析器 QuickMachine 测试骨架生成配置"
+prefix = "Trig"
+
+[generator]
+enabled = true
+# fsm_toml 同目录交付（2026-11-07 表迁 owner 仓，宪法〇第四例；fsm_out 随业务
+# 面同迁，主仓 rdf/domain2/ 双文件编译 ≡ 本文件字节级，dump 门在主仓 rdf 侧）
+fsm_toml = "trig_fsm.toml"
+skelgen_package = "thy1016/moonttl/gen_trig"
+engine_alias = "@trig"
+qcs_alias = "@qcs"
+# 交付径 = 本目录（产物与表同住 owner 仓；2026-11-07 迁位后原跨树径退役）
+output_dir = "."
+# 生成头时间戳钉住（G6 口径：再生幂等）
+generated_at = 1789385000000
+
+[type_mapping]
+span_alias = "RefId"
+ref_type = "@qcs.Ref[RefId]"
+# 进模型的槽位白名单（顺序即 Quad 字段顺序；与 nquads 同）
+model_slots = ["subject", "predicate", "object", "graph"]
+# 发射口径（ADR-QM-009）：引擎发射载荷 = `TrigPendingQuad`——四槽 `Span?` 的**槽位快照**
+# （缺槽是边界事实：壳 `<<s p o>>`、集合/串列谓词无字节），故取 snapshot：
+# 模型**不设** "槽位齐全" 前置，无条件把当前槽位当快照交出。
+emission_shape = "snapshot"
+# 快照档下全槽可空（与 emission_shape 一致，写出来是显式的方言数据，不是生成器假定）
+optional_slots = ["subject", "predicate", "object", "graph"]
+# Effect → Response 归一化：内部效果（不产出四元组）一律归 Continue；
+# Sequence 的两处用法（`}`/`]` 收束）**都含 EmitQuad**，故归 EmitQuad。
+effect_maps = { Reset = "Continue", EnterGraph = "Continue", ExitGraph = "Continue", PopBnp = "Continue", ListStep = "Continue", OpenSlot = "Continue", Sequence = "EmitQuad" }
+error_codes = { undefined_transition = 0, action_failed = 1 }
+
+[artifacts]
+types = true
+valid = true
+model_exec = true
+callbacks = false
+business = true
+# 指标门暂缓：trig 有 34 个事件，覆盖率门要求"单个 200 步用例覆盖全部可达命令名"，
+# 深状态（注解/集合）的随机可达性没有保证 —— 属 P4.3（覆盖率策略按命令数自适应）。
+metrics = false
+system = true
+state_machine = true
+runner = true
+assembly = "direct"
+
+[defaults]
+precondition = "valid_table"
+postcondition = "model_compare"
+invariant = "top"
+generator = "valid_weighted"
+shrinker = "none"
+mock = "model_execute"
+response_vars = "none"
+reify_command = "resolve_symbolic"
+bind_response = "passthrough"
+remap_command = "identity"
+
+# ==========================================================
+# [actions]：action → 意图表（生成面数据，P4.2c）
+# 来源：moonttl/src/gen_trig/actions.mbt 实测抽取（22 个 action 的真返回意图）。
+# 作用：quick machine 的模型臂**不再靠 action 名猜**——classify_action 优先查本表，
+#       命中即发精确臂（发射档 → emit_or_error；其余 → 状态推进 + 该响应），
+#       查不到才回落"按名约定 + TODO(P0) 保守臂"。
+# 口径：带参文本（如 "EmitQuad(PredObj)"）取 `(` 前的 Effect 名，再做 effect_maps 归一。
+# ==========================================================
+
+[actions]
+set_subject = "Continue"
+set_predicate = "Continue"
+set_object = "Continue"
+set_prefix_name = "Continue"
+declare_prefix = "Continue"
+set_base = "Continue"
+annot_body_verb = { returns = "Continue", writes = ["predicate=arg0"] }
+enter_graph = { returns = "EnterGraph", writes = ["graph=arg0"] }
+exit_graph = { returns = "ExitGraph", writes = ["graph=none"] }
+# 帧语义（P4.2e）：`[`/`(` 压帧（存外层三槽 + open_span + 该行 action_args 的 state:<X>），
+# 收口弹帧（恢复三槽 + `state = ret_state`——表管状态的唯一例外）。
+open_bnode_prop = { returns = "Continue", writes = ["subject=arg0", "predicate=none"], frame = "push" }
+pop_bnode_prop = { returns = "Continue", frame = "pop" }
+open_collection = { returns = "Continue", writes = ["subject=none", "predicate=none"], frame = "push" }
+open_slot = "Continue"
+# list 族写槽（P4.2h ① ②；引擎真相 `moonttl/src/gen_trig/actions.mbt`）：
+#   `list_first`(`:231`)：`object = elem`（载荷）；subject 仅 `node_seq == 0` 时写、且值 = `open_span`
+#     ⇒ RefId 空间里与 `frame_push` 已写的 subject 相同 ⇒ **不必写**（写了会在 ret_state 回程上出错）
+#   `list_step`(`:353`)：`subject = (open_span.0, node_seq+1)`、`object = elem`
+#     ⇒ RefId 空间里 subject = 帧的 `open_span`（合成节点的 start），故用 `frame.open_span` 来源
+#   `list_next`/`_nested`(`:280/:304`)、`list_nil`(`:331`)：`object = (open_span.0, node_seq±1)`
+#     ⇒ 同上，`object=frame.open_span`
+list_step = { returns = "Continue", writes = ["subject=frame.open_span", "object=arg0"] }
+list_first = { returns = "EmitQuad(PredObj)", writes = ["object=arg0"] }
+list_first_nested = { returns = "Sequence([EmitQuad(PredObj), OpenSlot(elem, typ, ret_state)])", writes = ["object=arg0"] }
+# 非嵌套 `list_next` 是**三意图**（引擎 `gen_trig/actions.mbt:306`：**末尾没有 OpenSlot** ⇒ 不压帧）；
+# 四意图（多一枚 `OpenSlot`）只属于 `list_next_nested`（`:304`）——2026-09-17 实测纠错。
+list_next = { returns = "Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj)])", writes = ["object=frame.open_span"] }
+list_next_nested = { returns = "Sequence([EmitQuad(PredObj), ListStep(elem), EmitQuad(PredObj), OpenSlot(elem, typ, ret_state)])", writes = ["object=frame.open_span"] }
+list_nil = { returns = "Sequence([EmitQuad(PredObj), PopBnp])", writes = ["object=frame.open_span"] }
+annot_open = "EmitQuad(PredObj)"
+# U5 官方律（2026-11-03，引擎 gen_trig/actions.mbt 直证）：`Ok(TrigEffect::Sequence(
+# [EmitQuad(ResetScope::PredObj), TrigEffect::AnnotPop]))`——末体行快照先、弹帧后置
+#（还返回态 + 锚槽回填）；set_reifier = ~ 链捕获零槽位写（同日表刀新动作）
+annot_end = "Sequence"
+set_reifier = "Continue"
+annot_close_silent = "Continue"
+# 役35 35-B1（R-T13/C-T13）：`@keywords` 受理 / 逐词申报两动作——**只动 ctx 台账与受理旗**，
+## 不在模型槽位面写任何四槽 ⇒ 数据面口径 = `Continue` 且零写槽
+##（listed 词的主/谓/宾消费由既有 `set_*` 族行出账，见 `ExpectKeywordsList` 五行）。
+kw_begin = "Continue"
+declare_keyword = "Continue"
+
+# [frames]：**effect → 帧语义**（无 action 的行靠这张表拿帧语义）。
+# `PopBnp` 出现在 `]`/`)` 收口行（无 action），引擎经 interpret → pop_bnode_prop 弹帧并写 state。
+[frames]
+PopBnp = "pop"
+
+# ==========================================================
+# [effects]：**effect → 写槽**（P4.2g）。
+# 行效果里内嵌的**非发射意图**在引擎侧也有真写槽，本表是它的数据面；
+# 用**原始** effect 名（引擎侧口径，与 [frames] 同，不走 effect_maps）。
+# `Reset(<Scope>)` 不进本表——清谁由 `[[scope_chains]]` 的 scope 变体决定。
+# ==========================================================
+
+[effects]
+# 引擎：`interpret` 收到 `ExitGraph` 走 `on_exit_graph` → `TrigActions::exit_graph(ctx)`
+# （`engine.mbt:487`），该 action 写 `ctx.graph = None`（退图 = 回默认图）；
+# 出现形态 = 序列内嵌（`Sequence([EmitQuad(SPO), ExitGraph])`，制表符前的 `}` 收口行）。
+ExitGraph = ["graph=none"]
+# `ListStep` 作为**序列内嵌意图**出现（`list_next` 族的中段）——引擎 `on_list_step` →
+# `list_step` action（`gen_trig/actions.mbt:378`）：subject = 帧的 `open_span`（合成节点 start）、object = elem。
+# 注：`arg0` 取**本行**载荷——`ListStep(elem)` 的 elem 与触发行的载荷同源（trig 全 8 行实测成立）。
+ListStep = ["subject=frame.open_span", "object=arg0"]
+# `OpenSlot` 作为**序列内嵌意图**出现（`list_first_nested`/`list_next_nested` 的末段）——
+# 引擎 `on_open_slot` → `open_slot`（`gen_trig/actions.mbt:227`）按 `SlotType` 分派到
+# `open_bnode_prop`/`open_collection(ctx, open_span=elem, as_subject=false, ret_state)`
+# ⇒ **压一帧 + subject = elem**。帧语义用本表的 `frame` 字段（与行级 `[actions]` 同一通道）。
+OpenSlot = { frame = "push" }

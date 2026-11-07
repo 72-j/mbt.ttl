@@ -1,0 +1,93 @@
+# ==========================================================
+# QuickMachine **业务面**（纪律：与生成面分文件，2026-09-14）
+# 管：业务分布 / 回归基线 / 覆盖率要求 —— [business] [random_check]
+#     [[assert_check]] [environment] [failure_detection] [report]
+# 生成面见同目录 quick_machine_trig_gen.toml
+# ==========================================================
+[business]
+ref_id_range = 8
+
+[business.weights]
+Iri = 3
+BlankNode = 2
+Literal = 3
+PrefName = 2
+Dot = 3
+Comma = 1
+Semicolon = 1
+Lbrace = 1
+Rbrace = 1
+Caret = 1
+Tilde = 1
+AnnotStart = 1
+AnnotEnd = 1
+Lbracket = 1
+Rbracket = 1
+Lparen = 1
+Rparen = 1
+Anon = 1
+GraphKw = 1
+PrefixKw = 1
+BaseKw = 1
+At = 1
+
+[random_check]
+seed = 12345
+cases = 100
+max_commands = 20
+max_tries = 20
+shrink = true
+max_shrinks = 100
+max_shrink_rounds = 20
+required_command_names = []
+
+[environment]
+isolation_strategy = "per_test_case"
+before_each = []
+after_each = []
+timeout_seconds = 30
+
+[failure_detection]
+failure_if = [
+  "postcondition fails",
+  "model != system observable state",
+  "unexpected error code",
+]
+
+[report]
+include_trace = true
+include_model = true
+include_responses = true
+
+# ==========================================================
+# 固定脚本：两条三元组语句（每条 Iri Iri Iri Dot）
+# ==========================================================
+[[assert_check]]
+event = "Iri"
+id = 1
+
+[[assert_check]]
+event = "Iri"
+id = 2
+
+[[assert_check]]
+event = "Iri"
+id = 3
+
+[[assert_check]]
+event = "Dot"
+
+[[assert_check]]
+event = "Iri"
+id = 4
+
+[[assert_check]]
+event = "Iri"
+id = 5
+
+[[assert_check]]
+event = "Iri"
+id = 6
+
+[[assert_check]]
+event = "Dot"
