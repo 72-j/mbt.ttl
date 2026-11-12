@@ -4,7 +4,7 @@
 // pbtgen 模板候补同款 supported_targets(手补先例:Continue 臂人工补同族)。
 // import 面照 git 原件逐字保留(@n3 别名等)。
 options(
-  supported_targets: [ "native", "wasm" ],
+  supported_targets: "+native+wasm",
 )
 
 import {

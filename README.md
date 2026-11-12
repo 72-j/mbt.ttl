@@ -21,18 +21,27 @@ MoonTTL 是一个使用 MoonBit 语言编写的高性能 RDF 解析与序列化�
 
 ## 安装
 
-确保你的环境中已经安装了 MoonBit 工具链。
+确保你的环境中已经安装了 MoonBit 工具链。本仓验证时的工具链版本：
 
-在你的 `moon.mod.json` 中添加依赖：
+- moon `0.1.20261104` / moonc `v0.10.20+65efd5b93` / moonrun `0.1.20261104`
+- 安装与更新：<https://www.moonbitlang.com/download/>
 
-```json
-{
-  "name": "your_username/your_project",
-  "deps": [
-    "thy1016/moonttl"
-  ]
+在你的 `moon.mod` 中添加依赖（TOML 形）：
+
+```toml
+name = "your_username/your_project"
+version = "0.1.0"
+
+import {
+  "thy1016/moonttl@0.3.0",
 }
 ```
+
+### 平台与目标支持
+
+- **库本体**（`gen_nquads` / `gen_trig` / `gen_n3v2` / `ttl`）：native 与 wasm 双后端全支持，纯 MoonBit 零 FFI。
+- **读文件的可执行件**（`src/cmd` / `src/examples` / `src/bench` / quicktest 数据面）：依赖 `moonbitlang/async/fs`，而 js / wasm-gc 后端无文件 API——这些包声明 `supported_targets: "+native+wasm"`（js / wasm-gc 独排）。
+- CI（GitHub Actions `.github/workflows/test.yaml`）持续执行：static 门（`check --deny-warn` / `fmt` / `.mbti` 漂移 / 覆盖率棘轮 / 复核面）+ 三 OS 矩阵（Linux / macOS / Windows）× 双 target（wasm / native）全量测试。
 
 ## 命令行工具
 
@@ -216,10 +225,10 @@ moon run src/examples/n3
 ### 测试与验证
 
 ```bash
-moon test                     # 全模块：507/507（默认档）；--target native 521/521
-moon test src/gen_nquads      # 146/146（W3C N-Quads 89/89、rdf12-nt 29/29、rdf12-nq 27/27、ntriples 72/72）
-moon test src/gen_trig        # 105/105（rdf-trig 357/357、rdf-turtle 316/316、rdf12 36/36 + 75/75）
-moon test src/gen_n3v2        # 122/122（turtle 316/316、rdf12 75/75、N3Tests neg 23ok/0miss + pos+eval 205 clean）
+moon test                     # 全模块：554/554（默认档）；--target native 569/569
+moon test src/gen_nquads      # 183/183（W3C N-Quads 89/89、rdf12-nt 29/29、rdf12-nq 27/27、ntriples 72/72、c14n 41/41 + 41/41）
+moon test src/gen_trig        # 111/111（rdf-trig 357/357、rdf-turtle 316/316、rdf12 36/36 + 75/75）
+moon test src/gen_n3v2        # 125/125（turtle 316/316、rdf12 75/75、N3Tests neg 23ok/0miss + pos+eval 205 clean）
 ```
 
 版本沿革见 `CHANGELOG.md`（对外）；变更日志口径：0.3.0 起 `QuadEmit` 为

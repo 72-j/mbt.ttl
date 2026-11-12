@@ -2,7 +2,7 @@
 options(
   // js 后端 async/fs 无文件 API(read_file)——js/wasm-gc 独排;native/wasm
   // 编译面原样(2026-11-03 平台 check js 腿实测修复)
-  supported_targets: [ "native", "wasm" ],
+  supported_targets: "+native+wasm",
 )
 
 import {

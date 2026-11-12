@@ -3,7 +3,7 @@
 // 黄金件(data_face.mbt read_file actions_truth.gen),js 后端 async/fs 无文件
 // API——pbtgen 模板候补同款 supported_targets(手补先例:Continue 臂人工补同族)。
 options(
-  supported_targets: [ "native", "wasm" ],
+  supported_targets: "+native+wasm",
 )
 
 import {
