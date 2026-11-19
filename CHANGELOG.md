@@ -7,6 +7,13 @@
 
 ## 未发布
 
+- **依赖升钉**：`moonbitlang/async` 0.20.3 → 0.22.4——旧冻结件源码在新工具链
+  （moonc 20261117）下被拒（`_get_internal_buffer`/`_direct_read` 私有方法直调
+  触 [4015]，`--deny-warn` 全仓 check 红）；升钉后全仓 554/554 + 套件桶全绿，
+  库面 API 零变化（async 仅 executable 包 fs 面消费）。
+- **工具链已知良好跟升**：moon 0.1.20261117 / moonc v0.10.21 / moonrun
+  0.1.20261117（README + CI workflow known_good 同笔；fmt 尾逗号正典波
+  `literal.mbt` 6 行随笔归位）。
 - **包清单格式迁移**：8 个包（cmd / examples×3 / bench / gen_guard / quicktest×2）的
   `supported_targets` 由弃用的数组形迁为表达式形（`"+native+wasm"`）——行为零变化
   （wasm 构建图任务数逐包等价验证）；旧形在现役工具链触发 deprecated 告警，消费方

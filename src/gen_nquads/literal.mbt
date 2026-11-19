@@ -104,7 +104,7 @@ pub(all) enum LiteralRefContent {
   DirectionalLanguageTaggedString(
     value~ : StringView,
     language~ : StringView,
-    direction~ : BaseDirection
+    direction~ : BaseDirection,
   )
   TypedLiteral(value~ : StringView, datatype~ : NamedNodeRef)
 }
@@ -235,7 +235,7 @@ pub fn LiteralRef::destruct(
     LiteralRefContent::DirectionalLanguageTaggedString(
       value~,
       language~,
-      direction~
+      direction~,
     ) => (value, None, Some(language), Some(direction))
     LiteralRefContent::TypedLiteral(value~, datatype~) =>
       (value, Some(datatype), None, None)
@@ -291,7 +291,7 @@ pub impl Show for LiteralRef with fn to_string(self) {
     LiteralRefContent::DirectionalLanguageTaggedString(
       value~,
       language~,
-      direction~
+      direction~,
     ) => {
       append_escaped_str(f, value.to_owned())
       f.write("@")

@@ -3,7 +3,7 @@ name = "thy1016/moonttl"
 version = "0.3.0"
 
 import {
-  "moonbitlang/async@0.20.3",
+  "moonbitlang/async@0.22.4",
   "moonbit-community/quickcheck_statemachine@0.0.1",
   "moonbitlang/quickcheck@0.15.1",
 }

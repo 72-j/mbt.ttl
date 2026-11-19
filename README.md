@@ -23,7 +23,7 @@ MoonTTL 是一个使用 MoonBit 语言编写的高性能 RDF 解析与序列化�
 
 确保你的环境中已经安装了 MoonBit 工具链。本仓验证时的工具链版本：
 
-- moon `0.1.20261104` / moonc `v0.10.20+65efd5b93` / moonrun `0.1.20261104`
+- moon `0.1.20261117` / moonc `v0.10.21+06da1ed44` / moonrun `0.1.20261117`
 - 安装与更新：<https://www.moonbitlang.com/download/>
 
 在你的 `moon.mod` 中添加依赖（TOML 形）：
