@@ -7,6 +7,13 @@
 
 ## 未发布
 
+- **CI 维护期减负（评审档 2）**：GitHub Actions 收缩为维护期正形——static 四件
+  （check --deny-warn / fmt --warn / .mbti 漂移 / CI-6 净检出）+ ubuntu 单腿
+  wasm+native 双档（撤 macos/windows 矩阵）；撤活跃期独有八步（coverage/可达
+  覆盖/TODO(P0) 三棘轮 + suite/coverage/perf 三复核面 + 文档门 + 锚点漂移门
+  ——牙口保留在套件自身断言与本地收口笔，基线/复核表文件留史不再被 CI 消费）；
+  新增 `schedule` 周检 cron（周一 02:30 UTC）= 环境漂移周哨（known_good
+  warning 定期开火，防六周红复发）。每跑 -3 jobs、时长约 -60%。
 - **依赖升钉**：`moonbitlang/async` 0.20.3 → 0.22.4——旧冻结件源码在新工具链
   （moonc 20261117）下被拒（`_get_internal_buffer`/`_direct_read` 私有方法直调
   触 [4015]，`--deny-warn` 全仓 check 红）；升钉后全仓 554/554 + 套件桶全绿，
